@@ -1558,8 +1558,19 @@ async def main():
                         logger.warning(f"Telegram MTProto FloodWait: waiting {wait_sec}s before auto-reconnecting...")
                         await asyncio.sleep(wait_sec + 2)
                     else:
-                        logger.error(f"Telegram client start error: {e}")
-                        break
+                        err_str_lower = err_str.lower()
+                        if "auth_key_duplicated" in err_str_lower or getattr(e, "ID", None) == "AUTH_KEY_DUPLICATED" or getattr(e, "CODE", None) == 406 or "406" in err_str:
+                            session_file = config.DATA_DIR / "unfinit_store_session.session"
+                            try:
+                                session_file.unlink(missing_ok=True)
+                                logger.warning(f"[TG] AUTH_KEY_DUPLICATED: deleted stale session file '{session_file}'. Reconnecting in 2s...")
+                            except Exception as del_err:
+                                logger.warning(f"[TG] Could not delete session file: {del_err}")
+                            await asyncio.sleep(2)
+                            # loop continues → fresh session will be created
+                        else:
+                            logger.error(f"Telegram client start error: {e}")
+                            break
 
         asyncio.create_task(start_telegram_with_retry())
 

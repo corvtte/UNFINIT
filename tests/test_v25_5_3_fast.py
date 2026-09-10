@@ -21,11 +21,11 @@ class TestV2553Fast(unittest.TestCase):
         self.assertIn('applySuccessfulLogin', html)
         self.assertIn('checkAdminLoginOnLoad', html)
         self.assertIn('window.handleLoginSubmit = executeAdminLogin;', html)
-        self.assertIn('v25.5.3', html)
+        self.assertIn('v0.1.0', html)
 
     def test_storefront_version(self):
         store_html = render_storefront_html()
-        self.assertIn('v25.5.3', store_html)
+        self.assertIn('v0.1.0', store_html)
 
     def test_api_login_logic(self):
         from app import verify_admin_password

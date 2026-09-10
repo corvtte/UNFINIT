@@ -10,7 +10,7 @@ from services.media_service import clean_display_filename
 
 class TestV255Fast(unittest.TestCase):
     def test_01_version_bump(self):
-        self.assertEqual(config.ENGINE_VERSION, "v25.5.5")
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
     def test_02_bale_adapter_urllib_import(self):
         import platforms.bale_adapter as ba

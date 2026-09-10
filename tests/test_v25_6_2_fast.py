@@ -18,12 +18,12 @@ from services.ai_agent_service import ai_agent_service, STUDIO_SYSTEM_PROMPT
 
 class TestV2562Fast(unittest.TestCase):
     def test_01_version_strings(self):
-        self.assertIn(config.ENGINE_VERSION, ("v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
         
         with open("services/web_panel.py", encoding="utf-8") as f:
             wp_content = f.read()
-        self.assertTrue(any(v in wp_content for v in ("v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
-        self.assertTrue(any(f"UNFINIT Store Engine {v}" in wp_content for v in ("v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", wp_content)
+        self.assertIn("v0.1.0", wp_content)
 
     def test_02_format_transfer_progress(self):
         text = format_transfer_progress(

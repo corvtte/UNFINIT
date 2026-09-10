@@ -167,20 +167,20 @@ class TestV2566Fast(unittest.TestCase):
 
     def test_06_version_consistency_v25_6_6(self):
         """Verify version is consistently set to v25.6.6 across core and web panel."""
-        self.assertIn(config.ENGINE_VERSION, ("v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
         with open("core/config.py", "r", encoding="utf-8") as f:
             cfg_code = f.read()
-        self.assertTrue(any(v in cfg_code for v in ['"v25.6.6"', '"v25.7.0"', '"v25.7.1"', '"v25.7.2"']))
+        self.assertIn("v0.1.0", cfg_code)
 
         stats = get_system_health()
-        self.assertTrue(any(v in stats["engine_version"] for v in ["v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"]))
+        self.assertIn("v0.1.0", stats["engine_version"])
 
         dash_html = render_dashboard_html()
-        self.assertTrue(any(v in dash_html for v in ["v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"]))
+        self.assertIn("v0.1.0", dash_html)
 
         store_html = render_storefront_html()
-        self.assertTrue(any(v in store_html for v in ["v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"]))
+        self.assertIn("v0.1.0", store_html)
 
 
 if __name__ == "__main__":

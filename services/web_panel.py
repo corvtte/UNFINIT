@@ -47,7 +47,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": "v0.1.0 (Clean Architecture & Cloud Secrets Hub - v25.7.5 / v25.7.4 / v25.7.3 / v25.7.2 / v25.7.1)",
+        "engine_version": "UNFINIT Engine v0.1.0",
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -455,7 +455,7 @@ def render_dashboard_html() -> str:
                 <div class="text-right">
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-black text-white tracking-tight">UNFINIT Panel</h1>
-                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">v25.7.5</span>
+                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">v0.1.0</span>
                     </div>
                 </div>
             </div>
@@ -1441,7 +1441,7 @@ def render_dashboard_html() -> str:
                                     <input type="text" id="cfg_TELEGRAM_FORUM_GROUP_ID" placeholder="-100xxxxxxxxxx" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-sky-400 transition text-left" dir="ltr">
                                 </div>
                                 <div class="md:col-span-2">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های عددی ادمین‌های کمکی (ADMIN_USER_IDS)</label>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های ادمین و هدایت پیام‌ها (تلگرام، بله، روبیکا)</label>
                                     <input type="text" id="cfg_ADMIN_USER_IDS" placeholder="12345678, 87654321" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                             </div>
@@ -1872,7 +1872,7 @@ def render_dashboard_html() -> str:
 
         <!-- Footer -->
         <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800/80">
-            طراحی شده با استانداردهای مدرن یونیکس، FFmpeg، Mutagen و معماری چندپلتفرمه UNFINIT Store Engine v25.7.5 <!-- UNFINIT Store Engine v25.7.4 -->
+            طراحی شده با استانداردهای مدرن یونیکس، FFmpeg، Mutagen و معماری چندپلتفرمه UNFINIT Engine v0.1.0
         </footer>
     </main>
     </div>
@@ -2254,6 +2254,24 @@ def render_dashboard_html() -> str:
             try {{
                 const pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
                 const res = await fetch('/api/settings?password=' + encodeURIComponent(pwd));
+                if (res.status === 401) {{
+                    // Session expired or wrong password – ask user for admin password then retry
+                    const newPwd = prompt('🔐 برای بارگذاری تنظیمات، رمز ادمین را وارد کنید:');
+                    if (newPwd) {{
+                        currentAdminPassword = newPwd.trim();
+                        sessionStorage.setItem('unfinit_admin_pwd', currentAdminPassword);
+                        const retryRes = await fetch('/api/settings?password=' + encodeURIComponent(currentAdminPassword));
+                        if (retryRes.ok) {{
+                            const retryData = await retryRes.json();
+                            if (retryData.ok && retryData.settings) {{
+                                populateSettingsForm(retryData.settings);
+                            }}
+                        }} else {{
+                            console.warn('loadSettings: retry failed with status', retryRes.status);
+                        }}
+                    }}
+                    return;
+                }}
                 const data = await res.json();
                 if (data.ok && data.settings) {{
                     populateSettingsForm(data.settings);
@@ -4905,7 +4923,7 @@ def render_storefront_html() -> str:
                 <div>
                     <h1 class="text-sm font-black tracking-wide text-white flex items-center gap-2">
                         UNFINIT STORE
-                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">v25.7.5</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">v0.1.0</span>
                     </h1>
                     <p class="text-[11px] text-slate-400">فروشگاه آنلاین و هوشمند دوره‌های آموزشی</p>
                 </div>
@@ -4944,7 +4962,7 @@ def render_storefront_html() -> str:
     <footer class="border-t border-slate-800/80 bg-slate-950/60 py-6 mt-16 text-center text-xs text-slate-500">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p>© UNFINIT Store Engine - سیستم جامع فروش دوره‌های تخصصی</p>
-            <p class="text-[11px] text-slate-600 font-mono">Secure Payments via Bale & Direct Verification | v25.7.5 (v25.7.4)</p>
+            <p class="text-[11px] text-slate-600 font-mono">Secure Payments via Bale &amp; Direct Verification | UNFINIT Engine v0.1.0</p>
         </div>
     </footer>
 

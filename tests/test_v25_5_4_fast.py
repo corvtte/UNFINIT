@@ -60,11 +60,11 @@ class TestV2554Fast(unittest.TestCase):
             self.assertEqual(p.returncode, 0, f"Script #{i+1} has JS syntax error")
 
     def test_version_strings(self):
-        self.assertEqual(config.ENGINE_VERSION, "v25.5.4")
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
         dash_html = render_dashboard_html()
         store_html = render_storefront_html()
-        self.assertIn("v25.5.4", dash_html)
-        self.assertIn("v25.5.4", store_html)
+        self.assertIn("v0.1.0", dash_html)
+        self.assertIn("v0.1.0", store_html)
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,16 +30,16 @@ class TestV2564Fast(unittest.TestCase):
 
     def test_01_version_strings_v25_6_4(self):
         """Verify engine version is bumped to v25.6.4 or v25.6.5 in config, health, dashboard, and storefront."""
-        self.assertIn(config.ENGINE_VERSION, ("v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
         stats = get_system_health()
-        self.assertTrue(any(v in stats["engine_version"] for v in ("v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", stats["engine_version"])
 
         dash = render_dashboard_html()
-        self.assertTrue(any(v in dash for v in ("v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", dash)
 
         store = render_storefront_html()
-        self.assertTrue(any(v in store for v in ("v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", store)
 
     def test_02_banner_dir_auto_creation(self):
         """Verify BANNERS_DIR is automatically created on config reload and storage init."""

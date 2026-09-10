@@ -23,18 +23,18 @@ class TestV2560Fast(unittest.TestCase):
 
     def test_01_engine_version(self):
         """Verify engine version is bumped to v25.6.0 or higher everywhere."""
-        self.assertTrue(any(v in config.ENGINE_VERSION for v in ("v25.6.0", "v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", config.ENGINE_VERSION)
         stats = get_system_health()
-        self.assertTrue(any(v in stats["engine_version"] for v in ("v25.6.0", "v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", stats["engine_version"])
         
         # Test dashboard HTML
         dash_html = render_dashboard_html()
-        self.assertTrue(any(v in dash_html for v in ("v25.6.0", "v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", dash_html)
         self.assertIn("cfg_GEMINI_API_KEY", dash_html)
         
         # Test storefront HTML
         store_html = render_storefront_html()
-        self.assertTrue(any(v in store_html for v in ("v25.6.0", "v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", store_html)
 
     def test_02_gemini_api_key_settings(self):
         """Verify GEMINI_API_KEY is configured in config and database."""

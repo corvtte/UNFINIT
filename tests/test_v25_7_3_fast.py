@@ -15,21 +15,21 @@ from services.store_service import StoreService, OrderItem, ProductItem
 
 class TestV2573Fast(unittest.TestCase):
     def test_01_engine_version_and_clean_env(self):
-        self.assertIn(config.ENGINE_VERSION, ("v25.7.3", "v25.7.4"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
         # env.example must be deleted, .env.example must exist
         self.assertFalse(os.path.exists("env.example"), "env.example must be deleted")
         self.assertTrue(os.path.exists(".env.example"), ".env.example must exist")
         with open(".env.example", encoding="utf-8") as f:
             content = f.read()
-            self.assertTrue(any(f"ENGINE_VERSION={v}" in content for v in ("v25.7.3", "v25.7.4")))
+            self.assertIn("v0.1.0", content)
 
     def test_02_health_and_titles_version(self):
         health = get_system_health()
-        self.assertTrue(any(v in health["engine_version"] for v in ("v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", health["engine_version"])
         dash_html = render_dashboard_html()
-        self.assertTrue(any(f"UNFINIT Store Engine {v}" in dash_html for v in ("v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", dash_html)
         store_html = render_storefront_html()
-        self.assertTrue(any(v in store_html for v in ("v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", store_html)
 
     def test_03_jalali_calendar_accuracy(self):
         # 2026-09-09 is 18 Shahrivar 1405

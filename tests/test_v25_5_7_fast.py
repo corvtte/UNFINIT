@@ -14,7 +14,7 @@ class TestV257Fast(unittest.TestCase):
         asyncio.run(init_db())
 
     def test_01_version_bump(self):
-        self.assertEqual(config.ENGINE_VERSION, "v25.5.7")
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
     def test_02_store_name_and_welcome_text(self):
         self.assertIn("UNFINIT", config.STORE_NAME)
@@ -76,14 +76,14 @@ class TestV257Fast(unittest.TestCase):
     def test_08_web_panel_version_occurrences(self):
         from services.web_panel import get_system_health, render_dashboard_html, render_storefront_html
         health = get_system_health()
-        self.assertIn("v25.5.7", health["engine_version"])
+        self.assertIn("v0.1.0", health["engine_version"])
 
         dash = render_dashboard_html()
-        self.assertIn("v25.5.7", dash)
+        self.assertIn("v0.1.0", dash)
         self.assertNotIn("v25.5.6", dash)
 
         store = render_storefront_html()
-        self.assertIn("v25.5.7", store)
+        self.assertIn("v0.1.0", store)
         self.assertNotIn("v25.5.6", store)
 
     def test_09_bale_invoice_url_standardization_logic(self):

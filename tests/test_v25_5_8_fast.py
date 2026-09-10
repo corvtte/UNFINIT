@@ -14,7 +14,7 @@ class TestV258Fast(unittest.TestCase):
         asyncio.run(init_db())
 
     def test_01_version_bump(self):
-        self.assertEqual(config.ENGINE_VERSION, "v25.5.8")
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
     def test_02_database_startup_cleanup(self):
         conn = sqlite3.connect(get_db_path())
@@ -69,12 +69,12 @@ class TestV258Fast(unittest.TestCase):
     def test_07_web_panel_version_and_dark_css(self):
         from services.web_panel import get_system_health, render_dashboard_html, render_storefront_html
         health = get_system_health()
-        self.assertIn("v25.5.8", health["engine_version"])
+        self.assertIn("v0.1.0", health["engine_version"])
         dash = render_dashboard_html()
-        self.assertIn("v25.5.8", dash)
+        self.assertIn("v0.1.0", dash)
         self.assertIn("#1e293b", dash)  # Dark input background CSS
         store = render_storefront_html()
-        self.assertIn("v25.5.8", store)
+        self.assertIn("v0.1.0", store)
         
         # Ensure no leftover v25.5.7 in web_panel.py
         with open("services/web_panel.py", "r", encoding="utf-8") as f:

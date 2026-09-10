@@ -41,11 +41,11 @@ class TestV2561Fast(unittest.TestCase):
         self.assertEqual(config.NARA_MODEL, "mimo-v2.5-free")
 
         stats = get_system_health()
-        self.assertTrue(any(v in stats["engine_version"] for v in ("v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", stats["engine_version"])
 
         # Test dashboard HTML contains model selector
         dash_html = render_dashboard_html()
-        self.assertTrue(any(v in dash_html for v in ("v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", dash_html)
         self.assertIn("cfg_GEMINI_API_KEY", dash_html)
         self.assertIn("cfg_GEMINI_MODEL", dash_html)
         self.assertTrue("gemini_models_list" in dash_html or "<select id=\"cfg_GEMINI_MODEL\"" in dash_html)
@@ -54,7 +54,7 @@ class TestV2561Fast(unittest.TestCase):
         
         # Test storefront HTML
         store_html = render_storefront_html()
-        self.assertTrue(any(v in store_html for v in ("v25.6.1", "v25.6.2", "v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", store_html)
 
     def test_02_gemini_model_settings_db(self):
         """Verify GEMINI_MODEL is stored, retrieved, and synced in SQLite database."""

@@ -20,7 +20,7 @@ class TestV2552Fast(unittest.TestCase):
 
     def test_storefront_version(self):
         store_html = render_storefront_html()
-        self.assertIn('v25.5.2', store_html)
+        self.assertIn('v0.1.0', store_html)
 
     def test_api_login_logic(self):
         from app import verify_admin_password

@@ -46,22 +46,22 @@ class TestV2572Fast(unittest.TestCase):
 
     def test_01_version_sync(self):
         """Verify v25.7.2 across all config and templates."""
-        self.assertIn(config.ENGINE_VERSION, ("v25.7.2", "v25.7.3", "v25.7.4"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
         for env_file in [".env.example", "env.example"]:
             p = Path(env_file)
             if p.exists():
                 text = p.read_text(encoding="utf-8")
-                self.assertTrue(any(f"ENGINE_VERSION={v}" in text for v in ("v25.7.2", "v25.7.3", "v25.7.4")))
+                self.assertIn("v0.1.0", text)
 
         health = get_system_health()
-        self.assertTrue(any(v in health["engine_version"] for v in ("v25.7.2", "v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", health["engine_version"])
 
         dash = render_dashboard_html()
-        self.assertTrue(any(v in dash for v in ("v25.7.2", "v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", dash)
 
         store = render_storefront_html()
-        self.assertTrue(any(v in store for v in ("v25.7.2", "v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", store)
 
     def test_02_tehran_timezone(self):
         """Verify Tehran timezone offset is UTC+03:30."""

@@ -35,17 +35,17 @@ class TestV2570Fast(unittest.TestCase):
 
     def test_01_version_synchronization(self):
         """Verify global version is v25.7.0 across all components."""
-        self.assertIn(config.ENGINE_VERSION, ("v25.7.0", "v25.7.1", "v25.7.2", "v25.7.3", "v25.7.4"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
         
         dash = render_dashboard_html()
-        self.assertTrue(any(v in dash for v in ("v25.7.0", "v25.7.1", "v25.7.2", "v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", dash)
         
         store = render_storefront_html()
-        self.assertTrue(any(v in store for v in ("v25.7.0", "v25.7.1", "v25.7.2", "v25.7.3", "v25.7.4")))
+        self.assertIn("v0.1.0", store)
         
         for env_file in [".env.example"]:
             env_content = Path(env_file).read_text(encoding="utf-8")
-            self.assertTrue(any(f"ENGINE_VERSION={v}" in env_content for v in ("v25.7.0", "v25.7.1", "v25.7.2", "v25.7.3", "v25.7.4")))
+            self.assertIn("v0.1.0", env_content)
             self.assertIn("ZARINPAL_MERCHANT_ID=", env_content)
             self.assertIn("TELEGRAM_FORUM_GROUP_ID=", env_content)
             self.assertIn("ADMIN_USER_IDS=", env_content)

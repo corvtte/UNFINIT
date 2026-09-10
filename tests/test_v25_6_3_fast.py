@@ -22,15 +22,15 @@ from services.web_panel import get_system_health, render_dashboard_html, render_
 class TestV2563Fast(unittest.TestCase):
     def test_01_version_strings(self):
         """Verify engine version is bumped to v25.6.3, v25.6.4 or v25.6.5 in config and web panel."""
-        self.assertIn(config.ENGINE_VERSION, ("v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
         health = get_system_health()
-        self.assertTrue(any(v in health["engine_version"] for v in ("v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", health["engine_version"])
         
         dash = render_dashboard_html()
-        self.assertTrue(any(v in dash for v in ("v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", dash)
         
         store = render_storefront_html()
-        self.assertTrue(any(v in store for v in ("v25.6.3", "v25.6.4", "v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", store)
 
     def test_02_persistent_storage_detection_and_seeding(self):
         """Verify /data persistent storage detection, path assignments, and file seeding."""

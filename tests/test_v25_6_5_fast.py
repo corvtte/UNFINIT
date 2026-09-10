@@ -159,15 +159,15 @@ class TestV2565Fast(unittest.IsolatedAsyncioTestCase):
         self.assertIn('value="gemini-3.6-flash"', code)
 
     def test_05_version_consistency_v25_6_5(self):
-        self.assertIn(config.ENGINE_VERSION, ("v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.1.0",))
 
         with open("core/config.py", "r", encoding="utf-8") as f:
             cfg_code = f.read()
-        self.assertTrue(any(v in cfg_code for v in ("v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", cfg_code)
 
         with open("services/web_panel.py", "r", encoding="utf-8") as f:
             wp_code = f.read()
-        self.assertTrue(any(f"UNFINIT Store Engine {v}" in wp_code for v in ("v25.6.5", "v25.6.6", "v25.7.0", "v25.7.1", "v25.7.2")))
+        self.assertIn("v0.1.0", wp_code)
         # self.assertNotIn("v25.6.4", wp_code)
 
 
