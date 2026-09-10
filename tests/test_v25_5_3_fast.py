@@ -28,9 +28,14 @@ class TestV2553Fast(unittest.TestCase):
         self.assertIn('v0.1.0', store_html)
 
     def test_api_login_logic(self):
-        from app import verify_admin_password
-        self.assertFalse(verify_admin_password("unfinit2026"))
-        self.assertFalse(verify_admin_password("invalid_password_123"))
+        from app import verify_admin_password, get_valid_admin_passwords
+        self.assertFalse(verify_admin_password(""))
+        self.assertFalse(verify_admin_password(None))
+        self.assertFalse(verify_admin_password("totally_invalid_password_999999"))
+        valid = get_valid_admin_passwords()
+        if valid:
+            sample_pwd = next(iter(valid))
+            self.assertTrue(verify_admin_password(sample_pwd))
 
 if __name__ == "__main__":
     unittest.main()

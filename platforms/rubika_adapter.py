@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Union
 from core.config import config
-from core.database import fix_mojibake
+from core.database import get_system_setting, fix_mojibake
 from core.logger import get_logger
 from core.formatters import RubikaFormatter, human_size, format_duration, parse_trim_input
 from services.store_service import StoreService

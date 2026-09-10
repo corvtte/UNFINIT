@@ -2255,21 +2255,7 @@ def render_dashboard_html() -> str:
                 const pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
                 const res = await fetch('/api/settings?password=' + encodeURIComponent(pwd));
                 if (res.status === 401) {{
-                    // Session expired or wrong password – ask user for admin password then retry
-                    const newPwd = prompt('🔐 برای بارگذاری تنظیمات، رمز ادمین را وارد کنید:');
-                    if (newPwd) {{
-                        currentAdminPassword = newPwd.trim();
-                        sessionStorage.setItem('unfinit_admin_pwd', currentAdminPassword);
-                        const retryRes = await fetch('/api/settings?password=' + encodeURIComponent(currentAdminPassword));
-                        if (retryRes.ok) {{
-                            const retryData = await retryRes.json();
-                            if (retryData.ok && retryData.settings) {{
-                                populateSettingsForm(retryData.settings);
-                            }}
-                        }} else {{
-                            console.warn('loadSettings: retry failed with status', retryRes.status);
-                        }}
-                    }}
+                    console.warn('loadSettings: unauthorized, active admin login session required.');
                     return;
                 }}
                 const data = await res.json();
@@ -4490,7 +4476,11 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
     except Exception as e:
         logger.warning(f"Error calling bale.create_invoice_link in web_panel: {e}")
 
-    if not inv_url:
+    if inv_url:
+        inv_url = str(inv_url).strip()
+        if not inv_url.startswith("http") and "invoice_id=" in inv_url:
+            inv_url = f"https://ble.ir/payment?{inv_url}"
+    else:
         inv_url = f"https://ble.ir/abasmanesh365bot?start={clean_oid}"
 
     return {

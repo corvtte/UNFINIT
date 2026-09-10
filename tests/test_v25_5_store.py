@@ -28,7 +28,7 @@ class TestV255StorefrontAndPayments(unittest.TestCase):
         html = render_storefront_html()
         self.assertIsInstance(html, str)
         self.assertIn("UNFINIT STORE", html)
-        self.assertIn("v25.5", html)
+        self.assertIn("v0.1.0", html)
         self.assertIn("baleBuyModal", html)
         self.assertIn("cardBuyModal", html)
         self.assertIn("trackOrderModal", html)

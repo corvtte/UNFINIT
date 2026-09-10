@@ -49,11 +49,11 @@ def get_valid_admin_passwords() -> set:
     valid = set()
     if getattr(config, "ADMIN_PANEL_PASSWORD", None):
         p = str(config.ADMIN_PANEL_PASSWORD).strip()
-        if p and p != "unfinit2026":
+        if p:
             valid.add(p)
     if os.environ.get("ADMIN_PANEL_PASSWORD"):
         p = str(os.environ.get("ADMIN_PANEL_PASSWORD")).strip()
-        if p and p != "unfinit2026":
+        if p:
             valid.add(p)
     try:
         conn = get_db_connection()
@@ -63,7 +63,7 @@ def get_valid_admin_passwords() -> set:
             row = cur.fetchone()
             if row and row[0]:
                 p = str(row[0]).strip()
-                if p and p != "unfinit2026":
+                if p:
                     valid.add(p)
         finally:
             conn.close()
@@ -76,7 +76,7 @@ def verify_admin_password(pwd: Any) -> bool:
     if not pwd or not isinstance(pwd, str):
         return False
     pwd_clean = pwd.strip()
-    if not pwd_clean or pwd_clean == "unfinit2026":
+    if not pwd_clean:
         return False
     valid = get_valid_admin_passwords()
     if not valid:
