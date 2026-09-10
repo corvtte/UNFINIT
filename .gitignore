@@ -1,0 +1,68 @@
+# ==========================================
+# UNFINIT Store Engine - .gitignore
+# ==========================================
+
+# 1. Environment & Sensitive Credentials
+.env
+.env.*
+!.env.example
+!env.example
+*.pem
+*.key
+*.cert
+
+# 2. Platform Sessions (Telegram, Rubika, Instagram)
+*.session
+*.session-journal
+*.rubpy
+*.rp
+unfinit_instagram.json
+unfinit_session_cache.json
+sessions/
+
+# 3. Databases & SQLite Storage
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+store_database.db
+
+# 4. Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*.pyc
+*$py.class
+*.so
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution & Build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 5. Temporary Folders, Downloads & Logs
+temp_downloads/
+downloads/
+queue/
+*.log
+logs/
+*.tmp
+*.temp
+
+# 6. IDEs & OS Specific Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

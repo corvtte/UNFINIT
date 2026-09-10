@@ -1,0 +1,13 @@
+rubpy>=7.0.0
+instagrapi>=2.1.0
+pyrogram==2.0.106
+pyaes>=1.6.1
+pycryptodome>=3.20.0
+tgcrypto>=1.2.5
+aiohttp>=3.9.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.20.0
+mutagen>=1.47.0
+python-dotenv>=1.0.0
+openai>=1.0.0
+SpeechRecognition>=3.10.0

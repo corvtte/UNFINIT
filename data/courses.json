@@ -1,0 +1,50 @@
+[
+  {
+    "product_id": "prod_01",
+    "name": "دوره جامع کشف قوانین زندگی",
+    "price": 8800000,
+    "description": "دوره بی‌نظیر کشف قوانین بدون تغییر جهان هستی برای درک مدارها، فرکانس‌ها و ساخت اتفاقات دلخواه زندگی.",
+    "photo_file_id": null,
+    "photo_url": "",
+    "digital_file_id": null,
+    "download_link": "",
+    "digital_file_type": "audio",
+    "active": 1,
+    "allow_card": 1,
+    "allow_bale": 1,
+    "payment_type": "paid",
+    "created_at": "2026-08-22"
+  },
+  {
+    "product_id": "prod_02",
+    "name": "دوره روانشناسی ثروت ۱",
+    "price": 8900000,
+    "description": "شناسایی و تغییر ترمزها و باورهای مخرب مالی و دستیابی به استقلال و آزادی مالی پایدار.",
+    "photo_file_id": null,
+    "photo_url": "",
+    "digital_file_id": null,
+    "download_link": "",
+    "digital_file_type": "audio",
+    "active": 1,
+    "allow_card": 1,
+    "allow_bale": 1,
+    "payment_type": "paid",
+    "created_at": "2026-08-22"
+  },
+  {
+    "product_id": "prod_03",
+    "name": "دوره جامع عزت‌نفس و خودباوری",
+    "price": 3500000,
+    "description": "ساخت بنیادهای محکم شخصیتی، رهایی از گفتگوهای منفی ذهنی، احساس لیاقت و شجاعت فردی.",
+    "photo_file_id": null,
+    "photo_url": "",
+    "digital_file_id": null,
+    "download_link": "",
+    "digital_file_type": "audio",
+    "active": 1,
+    "allow_card": 1,
+    "allow_bale": 1,
+    "payment_type": "paid",
+    "created_at": "2026-08-22"
+  }
+]
