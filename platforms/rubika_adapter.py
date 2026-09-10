@@ -31,7 +31,6 @@ from task_store import (
 )
 
 logger = get_logger("rubika_adapter")
-ACTIVE_RUBIKA_ADMIN_ID: Optional[str] = None
 RUBIKA_CONNECT_TIMEOUT = int(os.getenv("RUBIKA_CONNECT_TIMEOUT", "25") or 25)
 RUBIKA_FINALIZE_RETRIES = int(os.getenv("RUBIKA_FINALIZE_RETRIES", "3") or 3)
 RUBIKA_FINALIZE_RETRY_DELAY = float(os.getenv("RUBIKA_FINALIZE_RETRY_DELAY", "2") or 2)
@@ -402,10 +401,9 @@ class RubikaBotClient:
 
         target_chat = str(chat_id or "").strip()
         if not target_chat or target_chat.lower() == "me":
-            admin_id = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
-            target_chat = admin_id or ACTIVE_RUBIKA_ADMIN_ID or "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
-        if not target_chat or target_chat.lower() == "me":
-            target_chat = "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
+            target_chat = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
+        if not target_chat:
+            return {"ok": False, "error": "شناسه مقصد روبیکا (RUBIKA_OWNER_ID) مشخص نشده است."}
 
         clean_send_name = clean_display_filename(path.name)
         sz_bytes = path.stat().st_size
@@ -835,14 +833,20 @@ class RubikaAdapter:
 
     def get_admin_guid(self) -> str:
         guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
-        return guid or ACTIVE_RUBIKA_ADMIN_ID or "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
+        return guid
 
     def is_admin(self, chat_id: str | int) -> bool:
-        cid = str(chat_id or "").strip()
+        if not chat_id:
+            return False
+        cid = str(chat_id).strip()
         admin_guid = str(config.RUBIKA_OWNER_ID or "").strip()
-        if not admin_guid or admin_guid.lower() == "me":
-            admin_guid = "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
-        return (cid == admin_guid) or cid == str(ACTIVE_RUBIKA_ADMIN_ID or "").strip() or cid == "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
+        if admin_guid and admin_guid.lower() != "me" and cid == admin_guid:
+            return True
+        if hasattr(config, "ADMIN_USER_IDS") and config.ADMIN_USER_IDS:
+            admin_ids = [str(x).strip() for x in config.ADMIN_USER_IDS if str(x).strip()]
+            if cid in admin_ids:
+                return True
+        return False
 
     def has_user_session(self) -> bool:
         return self.user_client.has_session()
@@ -1064,10 +1068,13 @@ async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter
     is_first_poll = True
 
     async def send_rubika_start_flow(c_id: str):
-        is_adm = rubika.is_admin(c_id) or c_id == "b0BNCMy0zOH0f52e0bd2ca1faa9de77f" or not config.RUBIKA_OWNER_ID or config.RUBIKA_OWNER_ID.lower() == "me"
+        is_adm = rubika.is_admin(c_id)
+        s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
+        w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
         if is_adm:
             admin_txt = (
-                f"🎛 <b>پنل مدیریت یکپارچه هاب رسانه و فروشگاه UNFINIT | روبیکا</b>\n\n"
+                f"🎛 <b>پنل مدیریت یکپارچه هاب رسانه و فروشگاه {s_name} | روبیکا</b>\n\n"
+                f"{w_text}\n\n"
                 f"سلام مدیر گرامی روبیکا خوش آمدید.\n"
                 f"شناسه شما (<code>{c_id}</code>) به عنوان ادمین تایید گردید.\n\n"
                 "قابلیت‌های فعال:\n"
@@ -1082,7 +1089,6 @@ async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter
                 inline_keypad=get_default_rubika_main_keyboard()
             )
         else:
-            w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
             await rubika.send_message(
                 c_id,
                 w_text,
@@ -1151,10 +1157,6 @@ async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter
                             event_type = u.get("event_type", "message")
 
                             if chat_id:
-                                if not ACTIVE_RUBIKA_ADMIN_ID:
-                                    ACTIVE_RUBIKA_ADMIN_ID = chat_id
-                                elif chat_id == config.RUBIKA_OWNER_ID or chat_id == "b0BNCMy0zOH0f52e0bd2ca1faa9de77f":
-                                    ACTIVE_RUBIKA_ADMIN_ID = chat_id
                                 await StoreService.get_or_create_customer(chat_id, platform="rubika")
 
                             user_act = session_manager.get_user_action(f"rubika_{chat_id}")
@@ -1168,6 +1170,15 @@ async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter
                                 # Handle Start / Home / Menu Button clicks
                                 if btn_id in ("start", "/start", "btn_start", "main_menu", "menu", "بازگشت به منوی اصلی", "شروع", "خانه", "home"):
                                     await send_rubika_start_flow(chat_id)
+                                    continue
+
+                                if btn_id in ("myid", "/myid", "شناسه من", "guid"):
+                                    myid_msg = (
+                                        "🆔 <b>شناسه اختصاصی شما در روبیکا (GUID):</b>\n\n"
+                                        f"<code>{chat_id}</code>\n\n"
+                                        "💡 <i>جهت تعریف خود به عنوان مدیر سیستم، این شناسه را در بخش سکرت‌های هاگینگ‌فیس به عنوان <code>RUBIKA_OWNER_ID</code> یا در پنل مدیریت وب وارد فرمایید.</i>"
+                                    )
+                                    await rubika.send_message(chat_id, myid_msg, inline_keypad=get_default_rubika_main_keyboard())
                                     continue
 
                                 # URL Uploader Callbacks in Rubika
@@ -1626,7 +1637,7 @@ async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter
                                 # Handle Incoming Media (Admin Media Hub)
                                 file_info = extract_rubika_file_info(raw_msg)
                                 if file_info and not user_act:
-                                    is_adm = rubika.is_admin(chat_id) or chat_id == "b0BNCMy0zOH0f52e0bd2ca1faa9de77f" or not config.RUBIKA_OWNER_ID or config.RUBIKA_OWNER_ID.lower() == "me"
+                                    is_adm = rubika.is_admin(chat_id)
                                     if not is_adm:
                                         txt = (
                                             f"📚 به فروشگاه دوره‌های آموزشی {config.STORE_NAME} خوش آمدید.\n"
@@ -1674,6 +1685,15 @@ async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter
                                 if text_lower in ("/start", "start", "شروع", "/admin", "ادمین", "پنل"):
                                     logger.info(f"Rubika /start received from {chat_id}")
                                     await send_rubika_start_flow(chat_id)
+                                    continue
+
+                                elif text_lower in ("/myid", "myid", "شناسه من", "شناسه", "guid", "آیدی من", "/guid"):
+                                    myid_msg = (
+                                        "🆔 <b>شناسه اختصاصی شما در روبیکا (GUID):</b>\n\n"
+                                        f"<code>{chat_id}</code>\n\n"
+                                        "💡 <i>جهت تعریف خود به عنوان مدیر سیستم، این شناسه را در بخش سکرت‌های هاگینگ‌فیس به عنوان <code>RUBIKA_OWNER_ID</code> یا در پنل مدیریت وب وارد فرمایید.</i>"
+                                    )
+                                    await rubika.send_message(chat_id, myid_msg, inline_keypad=get_default_rubika_main_keyboard())
                                     continue
 
                                 elif text_lower in ("/ping", "ping", "پینگ"):

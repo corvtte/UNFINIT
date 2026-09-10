@@ -1764,7 +1764,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         user_last_actions[txt_key] = now
                                 
                                     if chat_id:
-                                        ACTIVE_BALE_ADMIN_ID = chat_id
+                                        if bale.is_admin(chat_id):
+                                            ACTIVE_BALE_ADMIN_ID = chat_id
                                         await StoreService.get_or_create_customer(chat_id, platform="bale")
 
                                     # Successful Online Payment Handler
@@ -2109,7 +2110,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, p_msg)
                                         continue
 
-                                    if text == "/start":
+                                    if text in ("/start", "start", "شروع", "منوی اصلی", "خانه"):
                                         s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
                                         w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
                                         if bale.is_admin(chat_id):
@@ -2408,6 +2409,22 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         kb = build_bale_media_keyboard(drop_id, data, is_sub=False)
                                         sent = await bale.send_message(chat_id, txt, reply_markup=kb)
                                         data["card_msg_id"] = sent.get("result", {}).get("message_id")
+                                        continue
+
+                                    # Freeform User Text Message -> Invoke AI Sales Copilot!
+                                    if text and not user_act and not media_item:
+                                        try:
+                                            from services.ai_agent_service import ai_agent_service
+                                            ai_reply = await ai_agent_service.chat_course_support(text)
+                                            await bale.send_message(chat_id, ai_reply, reply_markup=get_bale_customer_keyboard())
+                                        except Exception as ai_err:
+                                            logger.warning(f"[bale_copilot] AI course support error: {ai_err}")
+                                            await bale.send_message(
+                                                chat_id,
+                                                f"📚 به فروشگاه دوره‌های آموزشی {config.STORE_NAME} خوش آمدید.\nجهت مشاهده دوره‌ها، دانلود هدایا یا ارتباط با پشتیبانی از دکمه‌های زیر استفاده فرمایید:",
+                                                reply_markup=get_bale_customer_keyboard()
+                                            )
+                                        continue
                             if len(user_last_actions) > 500:
                                 t_cutoff = time.time() - 60.0
                                 user_last_actions = {k: v for k, v in user_last_actions.items() if v > t_cutoff}

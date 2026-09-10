@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import asyncio
+import datetime
 from typing import Any, List, Tuple, Optional
 from pathlib import Path
 from core.logger import get_logger
@@ -57,6 +58,8 @@ async def execute_query(sql: str, params: Tuple = ()) -> Any:
             conn.close()
     return await asyncio.to_thread(_run)
 
+execute_write = execute_query
+
 async def fetch_one(sql: str, params: Tuple = ()) -> Optional[dict]:
     def _run():
         conn = get_db_connection()
@@ -83,8 +86,24 @@ async def fetch_all(sql: str, params: Tuple = ()) -> List[dict]:
 
 async def get_system_setting(key: str, default: str = "") -> str:
     row = await fetch_one("SELECT value FROM system_settings WHERE key = ?", (key,))
-    if row and "value" in row:
-        return str(row["value"])
+    val = ""
+    if row and "value" in row and row["value"] is not None:
+        val = str(row["value"]).strip()
+    if val:
+        return val
+
+    # Fallback to os.environ or config if database has empty value
+    import os
+    from core.config import config
+    k_upper = key.upper()
+    env_val = (os.environ.get(k_upper) or os.environ.get(key) or "").strip()
+    if env_val:
+        return env_val
+
+    cfg_val = str(getattr(config, k_upper, getattr(config, key, "")) or "").strip()
+    if cfg_val:
+        return cfg_val
+
     return default
 
 def sync_settings_to_json_and_env() -> None:
@@ -426,6 +445,25 @@ async def init_db():
             cur.execute("ALTER TABLE orders ADD COLUMN receipt_text TEXT DEFAULT ''")
         if "invoice_id" not in existing_order_cols:
             cur.execute("ALTER TABLE orders ADD COLUMN invoice_id TEXT DEFAULT ''")
+        if "discount_amount" not in existing_order_cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN discount_amount INTEGER DEFAULT 0")
+        if "coupon_code" not in existing_order_cols:
+            cur.execute("ALTER TABLE orders ADD COLUMN coupon_code TEXT DEFAULT ''")
+
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS coupons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE NOT NULL,
+            discount_type TEXT NOT NULL DEFAULT 'percent',
+            discount_value INTEGER NOT NULL DEFAULT 0,
+            max_uses INTEGER NOT NULL DEFAULT 0,
+            used_count INTEGER NOT NULL DEFAULT 0,
+            min_order_amount INTEGER NOT NULL DEFAULT 0,
+            expire_date TEXT DEFAULT '',
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL
+        )
+        """)
 
         cur.execute("""
         CREATE TABLE IF NOT EXISTS customers (
@@ -692,3 +730,51 @@ async def init_db():
         conn.close()
 
     await asyncio.to_thread(_init)
+
+async def db_create_coupon(
+    code: str,
+    discount_type: str = "percent",
+    discount_value: int = 0,
+    max_uses: int = 0,
+    min_order_amount: int = 0,
+    expire_date: str = ""
+) -> bool:
+    code_clean = (code or "").strip().upper()
+    if not code_clean:
+        return False
+    now_str = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    try:
+        await execute_write(
+            """
+            INSERT INTO coupons (code, discount_type, discount_value, max_uses, used_count, min_order_amount, expire_date, active, created_at)
+            VALUES (?, ?, ?, ?, 0, ?, ?, 1, ?)
+            ON CONFLICT(code) DO UPDATE SET
+                discount_type = excluded.discount_type,
+                discount_value = excluded.discount_value,
+                max_uses = excluded.max_uses,
+                min_order_amount = excluded.min_order_amount,
+                expire_date = excluded.expire_date,
+                active = 1
+            """,
+            (code_clean, discount_type, int(discount_value), int(max_uses), int(min_order_amount), expire_date, now_str)
+        )
+        return True
+    except Exception as e:
+        logger.error(f"[db_create_coupon] Error creating coupon {code_clean}: {e}")
+        return False
+
+async def db_get_coupon(code: str) -> Optional[dict]:
+    code_clean = (code or "").strip().upper()
+    if not code_clean:
+        return None
+    return await fetch_one("SELECT * FROM coupons WHERE UPPER(code) = ? AND active = 1", (code_clean,))
+
+async def db_get_all_coupons() -> List[dict]:
+    return await fetch_all("SELECT * FROM coupons ORDER BY id DESC")
+
+async def db_increment_coupon_usage(code: str) -> bool:
+    code_clean = (code or "").strip().upper()
+    if not code_clean:
+        return False
+    await execute_write("UPDATE coupons SET used_count = used_count + 1 WHERE UPPER(code) = ?", (code_clean,))
+    return True

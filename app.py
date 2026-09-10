@@ -101,6 +101,74 @@ def is_masked_or_empty(val: Any) -> bool:
         return True
     return "••••" in s or "****" in s
 
+def _clean_val(val: Any) -> str:
+    s = str(val or "").strip()
+    if s in ("0", "none", "null"):
+        return ""
+    return s
+
+def _first_valid(*vals) -> str:
+    for v in vals:
+        s = _clean_val(v)
+        if s and s.lower() not in ("0", "none", "null", "false"):
+            return s
+    return ""
+
+async def get_all_settings_async() -> dict:
+    # Direct priority: os.environ (HF Space Secrets) -> config -> SQLite database
+    tg_tok = _first_valid(os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("BOT_TOKEN"), config.TELEGRAM_BOT_TOKEN, await get_system_setting("TELEGRAM_BOT_TOKEN", ""))
+    bale_tok = _first_valid(os.environ.get("BALE_BOT_TOKEN"), config.BALE_BOT_TOKEN, await get_system_setting("BALE_BOT_TOKEN", ""))
+    bale_pay = _first_valid(os.environ.get("BALE_PAYMENT_TOKEN"), config.BALE_PAYMENT_TOKEN, await get_system_setting("bale_payment_token", ""))
+    rubika_tok = _first_valid(os.environ.get("RUBIKA_BOT_TOKEN"), config.RUBIKA_BOT_TOKEN, await get_system_setting("RUBIKA_BOT_TOKEN", ""))
+    nara_key = _first_valid(os.environ.get("NARA_API_KEY"), config.NARA_API_KEY, await get_system_setting("nara_api_key", ""))
+    gemini_key = _first_valid(os.environ.get("GEMINI_API_KEY"), config.GEMINI_API_KEY, await get_system_setting("gemini_api_key", ""))
+    hf_tok = _first_valid(os.environ.get("HF_TOKEN"), getattr(config, "HF_TOKEN", ""), await get_system_setting("HF_TOKEN", ""))
+    hf_sp = _first_valid(os.environ.get("HF_SPACE_ID"), getattr(config, "HF_SPACE_ID", ""), await get_system_setting("HF_SPACE_ID", ""), "Foadian/UNFINIT")
+    card_num = _first_valid(os.environ.get("CARD_NUMBER"), config.CARD_NUMBER, await get_system_setting("CARD_NUMBER", ""))
+    card_holder = _first_valid(os.environ.get("CARD_HOLDER"), config.CARD_HOLDER, await get_system_setting("CARD_HOLDER", ""))
+    zarin_mid = _first_valid(os.environ.get("ZARINPAL_MERCHANT_ID"), getattr(config, "ZARINPAL_MERCHANT_ID", ""), await get_system_setting("zarinpal_merchant_id", ""))
+    cd_note = await get_system_setting("COURSE_DELIVERY_NOTE", getattr(config, "COURSE_DELIVERY_NOTE", "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"))
+
+    return {
+        "STORE_NAME": fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME)),
+        "WELCOME_TEXT": fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT),
+        "TELEGRAM_BOT_TOKEN": mask_secret(tg_tok),
+        "TELEGRAM_OWNER_ID": _first_valid(os.environ.get("TELEGRAM_OWNER_ID"), str(config.TELEGRAM_OWNER_ID), await get_system_setting("TELEGRAM_OWNER_ID", "")),
+        "BALE_BOT_TOKEN": mask_secret(bale_tok),
+        "BALE_OWNER_ID": _first_valid(os.environ.get("BALE_OWNER_ID"), str(config.BALE_OWNER_ID), await get_system_setting("BALE_OWNER_ID", "")),
+        "BALE_PAYMENT_TOKEN": mask_secret(bale_pay),
+        "RUBIKA_BOT_TOKEN": mask_secret(rubika_tok),
+        "RUBIKA_OWNER_ID": _first_valid(os.environ.get("RUBIKA_OWNER_ID"), str(config.RUBIKA_OWNER_ID), await get_system_setting("RUBIKA_OWNER_ID", "")),
+        "FORCE_JOIN_CHANNEL_TELEGRAM": await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM),
+        "FORCE_JOIN_CHANNEL_BALE": await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE),
+        "CARD_NUMBER": mask_secret(card_num, 4, 4),
+        "CARD_HOLDER": card_holder,
+        "DEFAULT_ARTIST": fix_mojibake(await get_system_setting("DEFAULT_ARTIST", config.DEFAULT_ARTIST), default=config.DEFAULT_ARTIST),
+        "COURSE_DESC_MAX_LEN": await get_system_setting("COURSE_DESC_MAX_LEN", str(getattr(config, "COURSE_DESC_MAX_LEN", 255))),
+        "NARA_API_KEY": mask_secret(nara_key),
+        "NARA_MODEL": await get_system_setting("nara_model", config.NARA_MODEL),
+        "GEMINI_API_KEY": mask_secret(gemini_key),
+        "GEMINI_MODEL": await get_system_setting("gemini_model", config.GEMINI_MODEL),
+        "TELEGRAM_FORUM_GROUP_ID": await get_system_setting("tg_forum_group_id", getattr(config, "TELEGRAM_FORUM_GROUP_ID", "")),
+        "ADMIN_USER_IDS": await get_system_setting("admin_user_ids", ",".join(getattr(config, "ADMIN_USER_IDS", []))),
+        "ZARINPAL_MERCHANT_ID": mask_secret(zarin_mid),
+        "ZARINPAL_SANDBOX": str(await get_system_setting("zarinpal_sandbox", str(getattr(config, "ZARINPAL_SANDBOX", False)))).lower(),
+        "MAX_SAFE_BALE_SIZE_MB": str(await get_system_setting("max_safe_bale_size_mb", str(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99)))),
+        "HF_TOKEN": mask_secret(hf_tok),
+        "HF_SPACE_ID": str(hf_sp or "Foadian/UNFINIT").strip(),
+        "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"),
+    }
+
+def get_all_settings() -> dict:
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(get_all_settings_async())
+    finally:
+        loop.close()
+
+_get_all_settings = get_all_settings
+
+
 class WebhookAndHealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -142,6 +210,37 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+        elif path == "/api/analytics":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                data = loop.run_until_complete(StoreService.get_sales_analytics())
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "analytics": data}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/coupons":
+            try:
+                from core.database import db_get_all_coupons
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                coupons = loop.run_until_complete(db_get_all_coupons())
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "coupons": coupons}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -384,59 +483,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 return
 
             try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
-                def _clean_val(val: Any) -> str:
-                    s = str(val or "").strip()
-                    if s in ("0", "none", "null"):
-                        return ""
-                    return s
-
-                async def _get_all_settings():
-                    tg_tok = await get_system_setting("TELEGRAM_BOT_TOKEN", config.TELEGRAM_BOT_TOKEN)
-                    bale_tok = await get_system_setting("BALE_BOT_TOKEN", config.BALE_BOT_TOKEN)
-                    bale_pay = await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN)
-                    rubika_tok = await get_system_setting("RUBIKA_BOT_TOKEN", config.RUBIKA_BOT_TOKEN)
-                    nara_key = await get_system_setting("nara_api_key", config.NARA_API_KEY)
-                    gemini_key = await get_system_setting("gemini_api_key", config.GEMINI_API_KEY)
-                    hf_tok = await get_system_setting("HF_TOKEN", getattr(config, "HF_TOKEN", os.environ.get("HF_TOKEN", "")))
-                    hf_sp = await get_system_setting("HF_SPACE_ID", getattr(config, "HF_SPACE_ID", os.environ.get("HF_SPACE_ID", "Foadian/UNFINIT")))
-                    cd_note = await get_system_setting("COURSE_DELIVERY_NOTE", getattr(config, "COURSE_DELIVERY_NOTE", "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"))
-
-                    return {
-                        "STORE_NAME": fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME)),
-                        "WELCOME_TEXT": fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT),
-                        "TELEGRAM_BOT_TOKEN": mask_secret(_clean_val(tg_tok)),
-                        "TELEGRAM_OWNER_ID": await get_system_setting("TELEGRAM_OWNER_ID", str(config.TELEGRAM_OWNER_ID)),
-                        "BALE_BOT_TOKEN": mask_secret(_clean_val(bale_tok)),
-                        "BALE_OWNER_ID": await get_system_setting("BALE_OWNER_ID", config.BALE_OWNER_ID),
-                        "BALE_PAYMENT_TOKEN": mask_secret(_clean_val(bale_pay)),
-                        "RUBIKA_BOT_TOKEN": mask_secret(_clean_val(rubika_tok)),
-                        "RUBIKA_OWNER_ID": await get_system_setting("RUBIKA_OWNER_ID", config.RUBIKA_OWNER_ID),
-                        "FORCE_JOIN_CHANNEL_TELEGRAM": await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM),
-                        "FORCE_JOIN_CHANNEL_BALE": await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE),
-                        "CARD_NUMBER": mask_secret(await get_system_setting("CARD_NUMBER", config.CARD_NUMBER), 4, 4),
-                        "CARD_HOLDER": await get_system_setting("CARD_HOLDER", config.CARD_HOLDER),
-                        "DEFAULT_ARTIST": fix_mojibake(await get_system_setting("DEFAULT_ARTIST", config.DEFAULT_ARTIST), default=config.DEFAULT_ARTIST),
-                        "COURSE_DESC_MAX_LEN": await get_system_setting("COURSE_DESC_MAX_LEN", str(getattr(config, "COURSE_DESC_MAX_LEN", 255))),
-                        "NARA_API_KEY": mask_secret(_clean_val(nara_key)),
-                        "NARA_MODEL": await get_system_setting("nara_model", config.NARA_MODEL),
-                        "GEMINI_API_KEY": mask_secret(_clean_val(gemini_key)),
-                        "GEMINI_MODEL": await get_system_setting("gemini_model", config.GEMINI_MODEL),
-                        "TELEGRAM_FORUM_GROUP_ID": await get_system_setting("tg_forum_group_id", getattr(config, "TELEGRAM_FORUM_GROUP_ID", "")),
-                        "ADMIN_USER_IDS": await get_system_setting("admin_user_ids", ",".join(getattr(config, "ADMIN_USER_IDS", []))),
-                        "ZARINPAL_MERCHANT_ID": mask_secret(await get_system_setting("zarinpal_merchant_id", getattr(config, "ZARINPAL_MERCHANT_ID", ""))),
-                        "ZARINPAL_SANDBOX": str(await get_system_setting("zarinpal_sandbox", str(getattr(config, "ZARINPAL_SANDBOX", False)))).lower(),
-                        "MAX_SAFE_BALE_SIZE_MB": str(await get_system_setting("max_safe_bale_size_mb", str(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99)))),
-                        "HF_TOKEN": mask_secret(_clean_val(hf_tok)),
-                        "HF_SPACE_ID": str(hf_sp or "Foadian/UNFINIT").strip(),
-                        "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"),
-                    }
-
-                settings_data = loop.run_until_complete(_get_all_settings())
-                loop.close()
-
+                settings_data = get_all_settings()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
@@ -649,6 +696,47 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path in ("/api/coupons/validate", "/api/store/coupon/validate"):
+            try:
+                code = (payload.get("code") or payload.get("coupon_code") or "").strip()
+                amt = int(payload.get("amount") or payload.get("order_amount") or 0)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(StoreService.validate_coupon(code, amt))
+                loop.close()
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/coupons/create":
+            try:
+                from core.database import db_create_coupon
+                code = (payload.get("code") or "").strip()
+                dtype = payload.get("discount_type", "percent")
+                dval = int(payload.get("discount_value", 0) or 0)
+                max_u = int(payload.get("max_uses", 0) or 0)
+                min_amt = int(payload.get("min_order_amount", 0) or 0)
+                exp_d = (payload.get("expire_date") or "").strip()
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                ok = loop.run_until_complete(db_create_coupon(code, dtype, dval, max_u, min_amt, exp_d))
+                loop.close()
+                self.send_response(200 if ok else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": ok}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")

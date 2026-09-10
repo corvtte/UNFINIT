@@ -69,7 +69,8 @@ class AIAgentService:
         self,
         user_message: str,
         history: Optional[List[Dict[str, Any]]] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        system_prompt: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Processes chat requests with Nara Router using standard OpenAI completions protocol.
@@ -97,7 +98,7 @@ class AIAgentService:
             }
 
         messages = [
-            {"role": "system", "content": STUDIO_SYSTEM_PROMPT}
+            {"role": "system", "content": system_prompt or STUDIO_SYSTEM_PROMPT}
         ]
 
         if history:
@@ -632,5 +633,110 @@ class AIAgentService:
             "confidence": 0.80,
             "description": "درخواست استودیو یا پردازش هوش مصنوعی"
         }
+
+    async def chat_course_support(
+        self,
+        user_message: str,
+        history: Optional[List[Dict[str, Any]]] = None
+    ) -> str:
+        """
+        AI Sales & Support Copilot:
+        Provides inspiring, motivational, and helpful buying guidance based on the active courses in data/courses.json.
+        """
+        import json
+        courses_data = []
+        courses_json_path = config.DATA_DIR / "courses.json"
+        if courses_json_path.exists():
+            try:
+                with open(courses_json_path, "r", encoding="utf-8") as f:
+                    courses_data = json.load(f)
+            except Exception as e:
+                logger.warning(f"[ai_agent] Failed to read courses.json: {e}")
+
+        # Fallback catalog if courses.json empty or missing
+        if not courses_data:
+            courses_data = [
+                {
+                    "name": "دوره جامع کشف قوانین زندگی",
+                    "price": 8800000,
+                    "description": "دوره بی‌نظیر کشف قوانین بدون تغییر جهان هستی برای درک مدارها، فرکانس‌ها و ساخت اتفاقات دلخواه زندگی."
+                },
+                {
+                    "name": "دوره روانشناسی ثروت ۱",
+                    "price": 8900000,
+                    "description": "شناسایی و تغییر ترمزها و باورهای مخرب مالی و دستیابی به استقلال و آزادی مالی پایدار."
+                },
+                {
+                    "name": "دوره جامع عزت‌نفس و خودباوری",
+                    "price": 3500000,
+                    "description": "ساخت بنیادهای محکم شخصیتی، رهایی از گفتگوهای منفی ذهنی، احساس لیاقت و شجاعت فردی."
+                }
+            ]
+
+        courses_summary = []
+        for i, c in enumerate(courses_data, 1):
+            name = c.get("name") or "دوره آموزشی"
+            price = c.get("price", 0)
+            desc = c.get("description") or ""
+            p_str = f"{price:,} تومان" if price > 0 else "رایگان / هدیه"
+            courses_summary.append(f"{i}. 🎓 {name} ({p_str})\n   📝 {desc}")
+
+        catalog_text = "\n".join(courses_summary)
+
+        sys_prompt = (
+            f"شما «مشاور ارشد و راهنمای هوشمند فروش دوره‌های آموزشی آکادمی UNFINIT» هستید.\n"
+            f"کاتالوگ دوره‌های فعال آکادمی:\n"
+            f"{catalog_text}\n\n"
+            f"دستورالعمل‌ها:\n"
+            f"۱. با لحنی بسیار صمیمی، پرانرژی، الهام‌بخش، انگیزشی و صمیمانه با مخاطب صحبت کنید.\n"
+            f"۲. متناسب با دغدغه، پرسش یا پیام مخاطب، بهترین دوره را با دلایل ملموس پیشنهاد دهید و ارزش تحول‌آفرین آن را توضیح دهید.\n"
+            f"۳. کاربر را با خوش‌رویی به خرید دوره تشویق کنید و راهنمایی کنید که با ارسال /start یا لمس دکمه «📚 دوره‌های آموزشی» می‌تواند فوراً ثبت‌نام کرده و دسترسی آنی دریافت کند.\n"
+            f"۴. از بکار بردن کلمات خشک اداری یا پاسخ‌های بیش از حد طولانی پرهیز کنید. از ایموجی‌های مناسب برای جذابیت استفاده کنید.\n"
+            f"۵. به پیام‌های احوال‌پرسی یا عمومی با انرژی بسیار بالا و پیام مثبت پاسخ دهید و سپس خدمات آکادمی را با افتخار معرفی نمایید."
+        )
+
+        # 1. Try Nara Router first if configured
+        if config.NARA_API_KEY and config.NARA_API_KEY.strip():
+            res = await self.chat(user_message, history=history, system_prompt=sys_prompt)
+            if res.get("ok") and res.get("reply"):
+                return res["reply"]
+
+        # 2. Try Gemini fallback if configured
+        gemini_key = (config.GEMINI_API_KEY or "").strip()
+        if gemini_key:
+            try:
+                g_model = (config.GEMINI_MODEL or "gemini-2.5-flash").strip()
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={gemini_key}"
+                g_payload = {
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": f"{sys_prompt}\n\nپیام مخاطب:\n{user_message}"}
+                            ]
+                        }
+                    ],
+                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1000}
+                }
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+                    async with session.post(url, json=g_payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            cands = data.get("candidates", [])
+                            if cands:
+                                parts = cands[0].get("content", {}).get("parts", [])
+                                if parts and "text" in parts[0]:
+                                    return parts[0]["text"].strip()
+            except Exception as e:
+                logger.warning(f"[ai_agent] Gemini fallback failed: {e}")
+
+        # 3. Intelligent polite Persian greeting fallback
+        return (
+            "سلام و درود دوست ارزشمند من! ✨\n\n"
+            "بسیار خوشحالم که در مسیر یادگیری، آگاهی و رشد فردی با ما همراه هستید. 🌱\n\n"
+            "دوره‌های فعال و تحول‌آفرین آکادمی ما عبارتند از:\n\n"
+            f"{catalog_text}\n\n"
+            "💎 جهت مشاهده جزئیات بیشتر، ثبت‌نام و دریافت فوری محتوا، کافیست دستور /start را ارسال فرمایید یا دکمه **«📚 لیست دوره‌های آموزشی»** را لمس نمایید.\n"
+            "اگر در انتخاب مناسب‌ترین دوره نیاز به مشاوره دارید، با کمال میل راهنمای شما هستم! 🌟"
+        )
 
 ai_agent_service = AIAgentService()

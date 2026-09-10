@@ -420,6 +420,24 @@ def render_dashboard_html() -> str:
         input::placeholder, textarea::placeholder {{
             color: #94a3b8 !important;
         }}
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active,
+        textarea:-webkit-autofill,
+        textarea:-webkit-autofill:hover,
+        textarea:-webkit-autofill:focus,
+        textarea:-webkit-autofill:active,
+        select:-webkit-autofill,
+        select:-webkit-autofill:hover,
+        select:-webkit-autofill:focus,
+        select:-webkit-autofill:active {{
+            -webkit-box-shadow: 0 0 0 1000px #0f172a inset !important;
+            -webkit-text-fill-color: #f1f5f9 !important;
+            caret-color: #f1f5f9 !important;
+            border-color: var(--card-border) !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }}
     </style>
 </head>
 <body class="text-slate-100 min-h-screen">
@@ -1006,6 +1024,152 @@ def render_dashboard_html() -> str:
                 {prod_cards}
             </div>
 
+            <!-- Sales Analytics Dashboard -->
+            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4 mt-8" id="analyticsCard">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>📊</span> آمار و تحلیل فروش کل فروشگاه (Sales Analytics)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">گزارش لحظه‌ای فروش به تفکیک دوره‌ها، زمان و پلتفرم‌های تلگرام، بله، روبیکا و وب</p>
+                    </div>
+                    <button onclick="loadStoreAnalytics()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                        <span>🔄</span> بازخوانی آمار
+                    </button>
+                </div>
+
+                <!-- 4 KPI Metrics Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-cyan-900/40">
+                        <div class="text-[11px] text-slate-400 mb-1">فروش کل (تایید شده)</div>
+                        <div id="metricTotalSales" class="text-lg font-bold text-cyan-400 font-mono">۰ تومان</div>
+                        <div id="metricTotalOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش موفق</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-emerald-900/40">
+                        <div class="text-[11px] text-slate-400 mb-1">فروش امروز</div>
+                        <div id="metricTodaySales" class="text-lg font-bold text-emerald-400 font-mono">۰ تومان</div>
+                        <div id="metricTodayOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-blue-900/40">
+                        <div class="text-[11px] text-slate-400 mb-1">فروش ۷ روز گذشته</div>
+                        <div id="metricWeekSales" class="text-lg font-bold text-blue-400 font-mono">۰ تومان</div>
+                        <div id="metricWeekOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
+                    </div>
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-purple-900/40">
+                        <div class="text-[11px] text-slate-400 mb-1">فروش ۳۰ روز گذشته</div>
+                        <div id="metricMonthSales" class="text-lg font-bold text-purple-400 font-mono">۰ تومان</div>
+                        <div id="metricMonthOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
+                    </div>
+                </div>
+
+                <!-- Platform Breakdown & Discounts -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span>✈️</span>
+                            <span class="text-xs text-slate-300">تلگرام</span>
+                        </div>
+                        <div class="text-left font-mono text-xs text-sky-400" id="platSalesTg">۰ تومان (۰)</div>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span>🟢</span>
+                            <span class="text-xs text-slate-300">بله</span>
+                        </div>
+                        <div class="text-left font-mono text-xs text-emerald-400" id="platSalesBale">۰ تومان (۰)</div>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span>🟣</span>
+                            <span class="text-xs text-slate-300">روبیکا</span>
+                        </div>
+                        <div class="text-left font-mono text-xs text-purple-400" id="platSalesRubika">۰ تومان (۰)</div>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span>🌐</span>
+                            <span class="text-xs text-slate-300">فروشگاه وب</span>
+                        </div>
+                        <div class="text-left font-mono text-xs text-amber-400" id="platSalesWeb">۰ تومان (۰)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coupons & Discounts Engine -->
+            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4 mt-8" id="couponsCard">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>🏷️</span> مدیریت کدهای تخفیف و کوپن‌ها (Discount Coupons)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">تعریف کدهای تخفیف درصدی یا مبلغی با سقف استفاده و تاریخ انقضا</p>
+                    </div>
+                    <button onclick="toggleAddCouponForm()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <span>➕</span> افزودن کد تخفیف جدید
+                    </button>
+                </div>
+
+                <!-- Add Coupon Form (collapsible) -->
+                <div id="addCouponCard" class="hidden bg-slate-900/90 p-5 rounded-2xl border border-slate-700/80 space-y-4">
+                    <form id="addCouponForm" onsubmit="handleCreateCoupon(event)" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">کد تخفیف (Coupon Code)</label>
+                                <input type="text" id="newCouponCode" required placeholder="مثلاً: NOWRUZ1404" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">نوع تخفیف</label>
+                                <select id="newCouponType" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                                    <option value="percent">درصدی (%)</option>
+                                    <option value="fixed">مبلغ ثابت (تومان)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">مقدار تخفیف</label>
+                                <input type="number" id="newCouponValue" required min="1" placeholder="مثلاً 20 درصد یا 50000 تومان" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">سقف تعداد استفاده (0 = نامحدود)</label>
+                                <input type="number" id="newCouponMaxUses" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">حداقل مبلغ سفارش (تومان، 0 = بدون شرط)</label>
+                                <input type="number" id="newCouponMinAmount" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-300 mb-1">تاریخ انقضا (YYYY-MM-DD اختیاری)</label>
+                                <input type="text" id="newCouponExpire" placeholder="2026-12-31" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                            <button type="button" onclick="toggleAddCouponForm()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 text-xs text-slate-400 hover:text-white">انصراف</button>
+                            <button type="submit" id="btnSubmitCoupon" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">ثبت کوپن تخفیف</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Coupons Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-400">
+                                <th class="py-2.5 px-3">کد تخفیف</th>
+                                <th class="py-2.5 px-3">نوع و مقدار</th>
+                                <th class="py-2.5 px-3">دفعات مصرف</th>
+                                <th class="py-2.5 px-3">حداقل سفارش</th>
+                                <th class="py-2.5 px-3">انقضا</th>
+                                <th class="py-2.5 px-3">وضعیت</th>
+                            </tr>
+                        </thead>
+                        <tbody id="couponsTableBody">
+                            <tr><td colspan="6" class="py-4 text-center text-slate-500">در حال بارگذاری کوپن‌ها...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Orders Management Card -->
             <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4 mt-8" id="ordersCard">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
@@ -1112,35 +1276,35 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات تلگرام (TELEGRAM_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_TELEGRAM_BOT_TOKEN" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-sky-400 transition" dir="ltr">
+                                        <input type="password" id="cfg_TELEGRAM_BOT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-sky-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_TELEGRAM_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات بله (BALE_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_BALE_BOT_TOKEN" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
+                                        <input type="password" id="cfg_BALE_BOT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن درگاه پرداخت آنلاین بله (BALE_PAYMENT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_BALE_PAYMENT_TOKEN" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
+                                        <input type="password" id="cfg_BALE_PAYMENT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_PAYMENT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن بات رسمی روبیکا (RUBIKA_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_RUBIKA_BOT_TOKEN" class="w-full bg-slate-800/80 border border-purple-500/80 text-purple-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-purple-400 transition" dir="ltr">
+                                        <input type="password" id="cfg_RUBIKA_BOT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-purple-500/80 text-purple-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-purple-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_RUBIKA_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">مرچنت آیدی زرین‌پال (ZARINPAL_MERCHANT_ID)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_ZARINPAL_MERCHANT_ID" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
+                                        <input type="password" id="cfg_ZARINPAL_MERCHANT_ID" autocomplete="new-password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_ZARINPAL_MERCHANT_ID', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1167,7 +1331,7 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API اختصاصی Nara Router (NARA_API_KEY)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_NARA_API_KEY" placeholder="sk-..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                        <input type="password" id="cfg_NARA_API_KEY" autocomplete="new-password" placeholder="sk-..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1182,7 +1346,7 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API گوگل جمینای برای پردازش مستقیم صوت (GEMINI_API_KEY)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_GEMINI_API_KEY" placeholder="AIzaSy..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                        <input type="password" id="cfg_GEMINI_API_KEY" autocomplete="new-password" placeholder="AIzaSy..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1215,7 +1379,7 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن دسترسی هاگینگ فیس (HF_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_HF_TOKEN" placeholder="hf_..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                        <input type="password" id="cfg_HF_TOKEN" autocomplete="new-password" placeholder="hf_..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_HF_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1226,14 +1390,14 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور جدید مدیریت</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_NEW_ADMIN_PASSWORD" placeholder="در صورت تمایل به تغییر رمز عبور وارد کنید" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                        <input type="password" id="cfg_NEW_ADMIN_PASSWORD" autocomplete="new-password" placeholder="در صورت تمایل به تغییر رمز عبور وارد کنید" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_NEW_ADMIN_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">تکرار رمز عبور جدید</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_CONFIRM_ADMIN_PASSWORD" placeholder="تکرار رمز عبور جدید" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                        <input type="password" id="cfg_CONFIRM_ADMIN_PASSWORD" autocomplete="new-password" placeholder="تکرار رمز عبور جدید" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_CONFIRM_ADMIN_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1299,7 +1463,7 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شماره کارت ۱۶ رقمی (CARD_NUMBER)</label>
-                                    <input type="text" id="cfg_CARD_NUMBER" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_CARD_NUMBER" autocomplete="new-password" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">متن خوش‌آمدگویی و استارت ربات‌ها (WELCOME_TEXT)</label>
@@ -1912,6 +2076,8 @@ def render_dashboard_html() -> str:
             }}
             if (tabId === 'tab-courses') {{
                 loadStoreOrders();
+                loadStoreAnalytics();
+                loadStoreCoupons();
             }}
         }}
 
@@ -2225,9 +2391,23 @@ def render_dashboard_html() -> str:
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID'
             ];
+            const sensitiveKeys = [
+                'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
+                'RUBIKA_BOT_TOKEN', 'ZARINPAL_MERCHANT_ID', 'NARA_API_KEY',
+                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
+            ];
             fields.forEach(f => {{
                 const el = document.getElementById('cfg_' + f);
-                if (el) settings[f] = el.value.trim();
+                if (el) {{
+                    const val = el.value.trim();
+                    if (sensitiveKeys.includes(f)) {{
+                        if (val && !val.includes('••••') && !val.includes('****')) {{
+                            settings[f] = val;
+                        }}
+                    }} else {{
+                        settings[f] = val;
+                    }}
+                }}
             }});
             if (p1) {{
                 settings['NEW_ADMIN_PASSWORD'] = p1;
@@ -2567,6 +2747,123 @@ def render_dashboard_html() -> str:
                 }}
             }} catch (err) {{
                 alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function loadStoreAnalytics() {{
+            try {{
+                const res = await fetch('/api/analytics');
+                const data = await res.json();
+                if (data.ok && data.analytics) {{
+                    const a = data.analytics;
+                    const totEl = document.getElementById('metricTotalSales');
+                    if (totEl) totEl.innerText = (a.total_sales_amount || 0).toLocaleString() + ' تومان';
+                    const ordEl = document.getElementById('metricTotalOrders');
+                    if (ordEl) ordEl.innerText = (a.total_sales_count || 0) + ' سفارش موفق';
+
+                    const todayEl = document.getElementById('metricTodaySales');
+                    if (todayEl) todayEl.innerText = (a.today_sales_amount || 0).toLocaleString() + ' تومان';
+                    const todayOrd = document.getElementById('metricTodayOrders');
+                    if (todayOrd) todayOrd.innerText = (a.today_sales_count || 0) + ' سفارش';
+
+                    const weekEl = document.getElementById('metricWeekSales');
+                    if (weekEl) weekEl.innerText = (a.week_sales_amount || 0).toLocaleString() + ' تومان';
+                    const weekOrd = document.getElementById('metricWeekOrders');
+                    if (weekOrd) weekOrd.innerText = (a.week_sales_count || 0) + ' سفارش';
+
+                    const monthEl = document.getElementById('metricMonthSales');
+                    if (monthEl) monthEl.innerText = (a.month_sales_amount || 0).toLocaleString() + ' تومان';
+                    const monthOrd = document.getElementById('metricMonthOrders');
+                    if (monthOrd) monthOrd.innerText = (a.month_sales_count || 0) + ' سفارش';
+
+                    const pb = a.platform_breakdown || {{}};
+                    const tg = pb.telegram || {{ amount: 0, count: 0 }};
+                    const bale = pb.bale || {{ amount: 0, count: 0 }};
+                    const rub = pb.rubika || {{ amount: 0, count: 0 }};
+                    const web = pb.web || {{ amount: 0, count: 0 }};
+
+                    const tgEl = document.getElementById('platSalesTg');
+                    if (tgEl) tgEl.innerText = (tg.amount || 0).toLocaleString() + ' تومان (' + (tg.count || 0) + ')';
+                    const baleEl = document.getElementById('platSalesBale');
+                    if (baleEl) baleEl.innerText = (bale.amount || 0).toLocaleString() + ' تومان (' + (bale.count || 0) + ')';
+                    const rubEl = document.getElementById('platSalesRubika');
+                    if (rubEl) rubEl.innerText = (rub.amount || 0).toLocaleString() + ' تومان (' + (rub.count || 0) + ')';
+                    const webEl = document.getElementById('platSalesWeb');
+                    if (webEl) webEl.innerText = (web.amount || 0).toLocaleString() + ' تومان (' + (web.count || 0) + ')';
+                }}
+            }} catch (err) {{
+                console.error('Error loading analytics:', err);
+            }}
+        }}
+
+        function toggleAddCouponForm() {{
+            const el = document.getElementById('addCouponCard');
+            if (el) el.classList.toggle('hidden');
+        }}
+
+        async function loadStoreCoupons() {{
+            const tbody = document.getElementById('couponsTableBody');
+            if (!tbody) return;
+            try {{
+                const res = await fetch('/api/coupons');
+                const data = await res.json();
+                if (!data.ok || !data.coupons || data.coupons.length === 0) {{
+                    tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">هیچ کد تخفیفی در سیستم ثبت نشده است.</td></tr>';
+                    return;
+                }}
+                tbody.innerHTML = data.coupons.map(c => {{
+                    const valNum = parseInt(c.discount_value) || 0;
+                    const typeLabel = c.discount_type === 'percent' ? (valNum + '%') : (valNum.toLocaleString() + ' تومان');
+                    const maxLabel = (c.max_uses && c.max_uses > 0) ? ((c.used_count || 0) + ' / ' + c.max_uses) : ((c.used_count || 0) + ' (نامحدود)');
+                    const minLabel = (c.min_order_amount && c.min_order_amount > 0) ? (parseInt(c.min_order_amount).toLocaleString() + ' تومان') : 'بدون شرط';
+                    const expLabel = c.expire_date ? c.expire_date : 'همیشگی';
+                    const statusBadge = c.active ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">فعال</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">غیرفعال</span>';
+
+                    return '<tr class="border-b border-slate-800/80 hover:bg-slate-800/30 transition">' +
+                        '<td class="py-2.5 px-3 font-mono text-emerald-400 font-bold">' + escapeHtml(c.code) + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-200 font-bold">' + typeLabel + '</td>' +
+                        '<td class="py-2.5 px-3 font-mono text-slate-300">' + maxLabel + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-400 font-mono">' + minLabel + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-400 font-mono text-[11px]">' + escapeHtml(expLabel) + '</td>' +
+                        '<td class="py-2.5 px-3">' + statusBadge + '</td>' +
+                    '</tr>';
+                }}).join('');
+            }} catch (err) {{
+                tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-rose-400">خطا در بارگذاری کوپن‌ها: ' + err.message + '</td></tr>';
+            }}
+        }}
+
+        async function handleCreateCoupon(e) {{
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitCoupon');
+            if (btn) {{ btn.disabled = true; btn.innerText = 'در حال ثبت...'; }}
+
+            const code = document.getElementById('newCouponCode').value.trim();
+            const discount_type = document.getElementById('newCouponType').value;
+            const discount_value = parseInt(document.getElementById('newCouponValue').value) || 0;
+            const max_uses = parseInt(document.getElementById('newCouponMaxUses').value) || 0;
+            const min_order_amount = parseInt(document.getElementById('newCouponMinAmount').value) || 0;
+            const expire_date = document.getElementById('newCouponExpire').value.trim();
+
+            try {{
+                const res = await fetch('/api/coupons/create', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ code, discount_type, discount_value, max_uses, min_order_amount, expire_date }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ کد تخفیف ' + code + ' با موفقیت ایجاد شد!');
+                    document.getElementById('addCouponForm').reset();
+                    toggleAddCouponForm();
+                    loadStoreCoupons();
+                }} else {{
+                    alert('❌ خطا در ثبت کد تخفیف: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }} finally {{
+                if (btn) {{ btn.disabled = false; btn.innerText = 'ثبت کوپن تخفیف'; }}
             }}
         }}
 
@@ -3368,7 +3665,9 @@ async def handle_api_dispatch_url(data: dict) -> dict:
         elif target == "rubika_bot":
             from platforms.rubika_adapter import RubikaBotClient
             bot = RubikaBotClient()
-            target_guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
+            target_guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
+            if not target_guid:
+                return {"ok": False, "error": "شناسه مقصد روبیکا (RUBIKA_OWNER_ID) در تنظیمات یا سکرت‌ها تعریف نشده است."}
             res = await bot.send_document(target_guid, final_path, caption=caption)
             logger.info(f"[web_dispatch] [{drop_id}] Rubika bot send_document result: {res}")
             if res.get("ok") or res.get("status") == "OK":
@@ -3888,7 +4187,9 @@ async def handle_studio_dispatch(payload: dict) -> dict:
                     return {"ok": True, "message": f"✅ فایل {send_name} ({human_size(final_sz)}) در Saved Messages روبیکا آپلود گردید!"}
             from platforms.rubika_adapter import RubikaBotClient
             bot = RubikaBotClient()
-            target_guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else "b0BNCMy0zOH0f52e0bd2ca1faa9de77f"
+            target_guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
+            if not target_guid:
+                return {"ok": False, "error": "شناسه مقصد روبیکا (RUBIKA_OWNER_ID) در تنظیمات یا سکرت‌ها تعریف نشده است."}
             res = await bot.send_document(target_guid, final_path, caption=caption)
             if res.get("ok") or res.get("status") == "OK":
                 session["current_status"] = "SENT_TO_RUBIKA_BOT"
@@ -4095,6 +4396,7 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
     course_id = (payload.get("course_id") or "").strip()
     customer_name = (payload.get("customer_name") or "کاربر وب").strip()
     phone = (payload.get("phone") or "").strip()
+    coupon_code = (payload.get("coupon_code") or payload.get("coupon") or "").strip()
 
     if not course_id:
         return {"ok": False, "error": "شناسه دوره الزامی است."}
@@ -4115,22 +4417,23 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
         customer_name=customer_name,
         phone=phone,
         payment_method="bale_online",
-        receipt_info=""
+        receipt_info="",
+        coupon_code=coupon_code
     )
     if not order:
         return {"ok": False, "error": "خطا در ثبت سفارش در پایگاه داده."}
 
     order_id = order.order_id
 
-    # If course is free (0 Tomans), auto-approve immediately
-    if prod.price <= 0:
+    # If course is free or 100% discounted (0 Tomans), auto-approve immediately
+    if order.total <= 0:
         await StoreService.approve_order(order_id)
         return {
             "ok": True,
             "order_id": order_id,
             "is_free": True,
             "download_link": prod.download_link or "",
-            "message": "دوره رایگان با موفقیت فعال گردید."
+            "message": "دوره با موفقیت و به صورت رایگان فعال گردید."
         }
 
     from platforms.bale_adapter import BaleAdapter
@@ -4161,7 +4464,7 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
             description=prod.description or f"خرید آنلاین دوره {prod.name}",
             payload=order_id,
             provider_token=provider_token,
-            amount_tomans=prod.price,
+            amount_tomans=order.total,
             photo_url=prod.photo_url or None
         )
         if inv_res.get("ok") and inv_res.get("result"):
@@ -4176,7 +4479,7 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
         "ok": True,
         "order_id": order_id,
         "invoice_url": inv_url,
-        "amount": prod.price,
+        "amount": order.total,
         "course_name": prod.name
     }
 
@@ -4190,6 +4493,7 @@ async def handle_store_buy_card_async(payload: dict) -> dict:
     customer_name = (payload.get("customer_name") or "").strip()
     phone = (payload.get("phone") or "").strip()
     receipt_info = (payload.get("receipt_info") or "").strip()
+    coupon_code = (payload.get("coupon_code") or payload.get("coupon") or "").strip()
 
     if not course_id:
         return {"ok": False, "error": "شناسه دوره الزامی است."}
@@ -4213,7 +4517,8 @@ async def handle_store_buy_card_async(payload: dict) -> dict:
         customer_name=customer_name,
         phone=phone,
         payment_method="card_to_card",
-        receipt_info=receipt_info
+        receipt_info=receipt_info,
+        coupon_code=coupon_code
     )
     if not order:
         return {"ok": False, "error": "خطا در ثبت سفارش کارت به کارت."}

@@ -53,6 +53,8 @@ class OrderItem:
         self.payment_method = d.get("payment_method", "telegram")
         self.status = d.get("status", "pending")
         self.platform = d.get("platform", "telegram")
+        self.discount_amount = int(d.get("discount_amount", 0) or 0)
+        self.coupon_code = d.get("coupon_code", "")
         self.created_at = d.get("created_at", "")
         self.download_link = d.get("download_link", "")
 
@@ -201,6 +203,52 @@ class StoreService:
         return cust.wallet_balance
 
     @staticmethod
+    async def validate_coupon(code: str, order_amount: int) -> Dict[str, Any]:
+        """Validates a coupon code and calculates the discount amount."""
+        from core.database import db_get_coupon
+        coupon = await db_get_coupon(code)
+        if not coupon:
+            return {"ok": False, "error": "کد تخفیف وارد شده معتبر یا فعال نیست."}
+
+        max_uses = int(coupon.get("max_uses", 0) or 0)
+        used_count = int(coupon.get("used_count", 0) or 0)
+        if max_uses > 0 and used_count >= max_uses:
+            return {"ok": False, "error": "ظرفیت استفاده از این کد تخفیف به اتمام رسیده است."}
+
+        min_amt = int(coupon.get("min_order_amount", 0) or 0)
+        if min_amt > 0 and order_amount < min_amt:
+            return {"ok": False, "error": f"این کد تخفیف برای سفارش‌های بالای {min_amt:,} تومان معتبر است."}
+
+        expire_date = (coupon.get("expire_date") or "").strip()
+        if expire_date:
+            try:
+                import datetime
+                exp_dt = datetime.datetime.strptime(expire_date[:10], "%Y-%m-%d")
+                if datetime.datetime.now() > exp_dt:
+                    return {"ok": False, "error": "مهلت استفاده از این کد تخفیف به پایان رسیده است."}
+            except Exception:
+                pass
+
+        disc_type = coupon.get("discount_type", "percent")
+        disc_val = int(coupon.get("discount_value", 0) or 0)
+        discount_amount = 0
+        if disc_type == "percent":
+            discount_amount = int(order_amount * (disc_val / 100.0))
+        else:
+            discount_amount = min(order_amount, disc_val)
+
+        final_total = max(0, order_amount - discount_amount)
+        return {
+            "ok": True,
+            "code": coupon["code"],
+            "discount_type": disc_type,
+            "discount_value": disc_val,
+            "discount_amount": discount_amount,
+            "final_total": final_total,
+            "message": f"کد تخفیف {coupon['code']} با موفقیت اعمال شد ({discount_amount:,} تومان تخفیف)."
+        }
+
+    @staticmethod
     async def create_order(
         user_id: str | int,
         username: str,
@@ -209,12 +257,27 @@ class StoreService:
         product: ProductItem,
         platform: str = "telegram",
         wallet_used: int = 0,
-        payment_method: Optional[str] = None
+        payment_method: Optional[str] = None,
+        coupon_code: Optional[str] = None
     ) -> OrderItem:
         order_id = "ORD_" + uuid.uuid4().hex[:8].upper()
         uid = str(user_id)
         now_str = get_tehran_now_str()
-        status = "completed" if product.price == 0 else "pending"
+
+        # Calculate discount if coupon provided
+        discount_amount = 0
+        final_price = product.price
+        applied_coupon = ""
+        if coupon_code and product.price > 0:
+            c_val = await StoreService.validate_coupon(coupon_code, product.price)
+            if c_val.get("ok"):
+                discount_amount = int(c_val.get("discount_amount", 0))
+                final_price = max(0, product.price - discount_amount)
+                applied_coupon = c_val.get("code", "")
+                from core.database import db_increment_coupon_usage
+                await db_increment_coupon_usage(applied_coupon)
+
+        status = "completed" if final_price == 0 else "pending"
         if not payment_method:
             payment_method = "bale_online" if platform == "bale" else "card_to_card"
 
@@ -223,13 +286,29 @@ class StoreService:
 
         try:
             await execute_query(
-                "INSERT INTO orders (order_id, invoice_id, user_id, username, customer_name, phone, product_id, product_name, total, wallet_used, payment_method, status, platform, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (order_id, f"ord_{order_id}", uid, username or "", customer_name or "", phone or "", product.product_id, product.name, product.price, wallet_used, payment_method, status, platform, now_str)
+                """INSERT INTO orders (
+                    order_id, invoice_id, user_id, username, customer_name, phone,
+                    product_id, product_name, total, wallet_used, discount_amount, coupon_code,
+                    payment_method, status, platform, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    order_id, f"ord_{order_id}", uid, username or "", customer_name or "", phone or "",
+                    product.product_id, product.name, final_price, wallet_used, discount_amount, applied_coupon,
+                    payment_method, status, platform, now_str
+                )
             )
         except Exception:
             await execute_query(
-                "INSERT INTO orders (order_id, user_id, username, customer_name, phone, product_id, product_name, total, wallet_used, payment_method, status, platform, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (order_id, uid, username or "", customer_name or "", phone or "", product.product_id, product.name, product.price, wallet_used, payment_method, status, platform, now_str)
+                """INSERT INTO orders (
+                    order_id, user_id, username, customer_name, phone,
+                    product_id, product_name, total, wallet_used, discount_amount, coupon_code,
+                    payment_method, status, platform, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    order_id, uid, username or "", customer_name or "", phone or "",
+                    product.product_id, product.name, final_price, wallet_used, discount_amount, applied_coupon,
+                    payment_method, status, platform, now_str
+                )
             )
         row = await fetch_one("SELECT * FROM orders WHERE order_id = ?", (order_id,))
         return OrderItem(row)
@@ -358,7 +437,8 @@ class StoreService:
         customer_name: str,
         phone: str,
         payment_method: str = "bale",
-        receipt_info: str = ""
+        receipt_info: str = "",
+        coupon_code: Optional[str] = None
     ) -> Optional[OrderItem]:
         prod = await StoreService.get_product(course_id)
         if not prod:
@@ -366,19 +446,32 @@ class StoreService:
 
         order_id = "ORD_" + uuid.uuid4().hex[:8].upper()
         now_str = get_tehran_now_str()
-        status = "completed" if prod.price == 0 else ("pending_review" if "card" in payment_method else "pending")
+
+        discount_amount = 0
+        final_price = prod.price
+        applied_coupon = ""
+        if coupon_code and prod.price > 0:
+            c_val = await StoreService.validate_coupon(coupon_code, prod.price)
+            if c_val.get("ok"):
+                discount_amount = int(c_val.get("discount_amount", 0))
+                final_price = max(0, prod.price - discount_amount)
+                applied_coupon = c_val.get("code", "")
+                from core.database import db_increment_coupon_usage
+                await db_increment_coupon_usage(applied_coupon)
+
+        status = "completed" if final_price == 0 else ("pending_review" if "card" in payment_method else "pending")
         uid = f"web_{phone.strip() or uuid.uuid4().hex[:6]}"
 
         try:
             await execute_query(
                 """INSERT INTO orders (
                     order_id, invoice_id, user_id, username, customer_name, phone,
-                    product_id, product_name, total, wallet_used,
+                    product_id, product_name, total, wallet_used, discount_amount, coupon_code,
                     receipt_text, payment_method, status, platform, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     order_id, f"ord_{order_id}", uid, "", customer_name or "خریدار آنلاین",
-                    phone or "", prod.product_id, prod.name, prod.price, 0,
+                    phone or "", prod.product_id, prod.name, final_price, 0, discount_amount, applied_coupon,
                     receipt_info or "", payment_method, status, "web", now_str
                 )
             )
@@ -386,12 +479,12 @@ class StoreService:
             await execute_query(
                 """INSERT INTO orders (
                     order_id, user_id, username, customer_name, phone,
-                    product_id, product_name, total, wallet_used,
+                    product_id, product_name, total, wallet_used, discount_amount, coupon_code,
                     receipt_text, payment_method, status, platform, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     order_id, uid, "", customer_name or "خریدار آنلاین",
-                    phone or "", prod.product_id, prod.name, prod.price, 0,
+                    phone or "", prod.product_id, prod.name, final_price, 0, discount_amount, applied_coupon,
                     receipt_info or "", payment_method, status, "web", now_str
                 )
             )
@@ -402,6 +495,92 @@ class StoreService:
             WHERE o.order_id = ?
         """, (order_id,))
         return OrderItem(row) if row else None
+
+    @staticmethod
+    async def get_sales_analytics() -> Dict[str, Any]:
+        """Calculates store sales analytics across platforms and time periods."""
+        now_tehran = datetime.now(TEHRAN_TZ)
+        today_start = now_tehran.strftime("%Y-%m-%d 00:00:00")
+        seven_days_ago = (now_tehran - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+        thirty_days_ago = (now_tehran - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+
+        orders = await fetch_all("SELECT total, discount_amount, platform, payment_method, status, created_at FROM orders")
+
+        total_sales_amount = 0
+        total_sales_count = 0
+        today_sales_amount = 0
+        today_sales_count = 0
+        week_sales_amount = 0
+        week_sales_count = 0
+        month_sales_amount = 0
+        month_sales_count = 0
+        total_discount_amount = 0
+
+        platform_breakdown = {
+            "telegram": {"count": 0, "amount": 0},
+            "bale": {"count": 0, "amount": 0},
+            "rubika": {"count": 0, "amount": 0},
+            "web": {"count": 0, "amount": 0},
+            "other": {"count": 0, "amount": 0}
+        }
+        payment_breakdown: Dict[str, Dict[str, int]] = {}
+
+        total_orders_count = len(orders)
+        pending_orders_count = 0
+
+        for o in orders:
+            status = str(o.get("status", "")).lower()
+            amt = int(o.get("total") or 0)
+            disc = int(o.get("discount_amount") or 0)
+            plat = str(o.get("platform", "")).lower()
+            method = str(o.get("payment_method", "")).lower() or "unknown"
+            created = str(o.get("created_at") or "")
+
+            if status in ("pending", "pending_review"):
+                pending_orders_count += 1
+
+            if status in ("approved", "completed"):
+                total_sales_amount += amt
+                total_sales_count += 1
+                total_discount_amount += disc
+
+                if created >= today_start:
+                    today_sales_amount += amt
+                    today_sales_count += 1
+                if created >= seven_days_ago:
+                    week_sales_amount += amt
+                    week_sales_count += 1
+                if created >= thirty_days_ago:
+                    month_sales_amount += amt
+                    month_sales_count += 1
+
+                if plat in platform_breakdown:
+                    platform_breakdown[plat]["count"] += 1
+                    platform_breakdown[plat]["amount"] += amt
+                else:
+                    platform_breakdown["other"]["count"] += 1
+                    platform_breakdown["other"]["amount"] += amt
+
+                if method not in payment_breakdown:
+                    payment_breakdown[method] = {"count": 0, "amount": 0}
+                payment_breakdown[method]["count"] += 1
+                payment_breakdown[method]["amount"] += amt
+
+        return {
+            "total_sales_amount": total_sales_amount,
+            "total_sales_count": total_sales_count,
+            "today_sales_amount": today_sales_amount,
+            "today_sales_count": today_sales_count,
+            "week_sales_amount": week_sales_amount,
+            "week_sales_count": week_sales_count,
+            "month_sales_amount": month_sales_amount,
+            "month_sales_count": month_sales_count,
+            "total_discount_amount": total_discount_amount,
+            "total_orders_count": total_orders_count,
+            "pending_orders_count": pending_orders_count,
+            "platform_breakdown": platform_breakdown,
+            "payment_breakdown": payment_breakdown
+        }
 
     @staticmethod
     async def notify_admin_card_order(order: OrderItem, receipt_image_path: Optional[str] = None) -> None:

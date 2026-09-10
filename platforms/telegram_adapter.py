@@ -2407,6 +2407,17 @@ class TelegramAdapter:
                         reply_markup=InlineKeyboardMarkup(buttons)
                     )
                     return
+                # User sent freeform text message -> Invoke AI Sales Copilot!
+                try:
+                    from services.ai_agent_service import ai_agent_service
+                    ai_reply = await ai_agent_service.chat_course_support(text)
+                    await message.reply_text(ai_reply, reply_markup=get_customer_keyboard())
+                except Exception as ai_err:
+                    logger.warning(f"[tg_copilot] AI course support failed: {ai_err}")
+                    await message.reply_text(
+                        "سلام! جهت مشاهده دوره‌های آموزشی یا هدایا لطفاً از دکمه‌های منوی زیر استفاده فرمایید:",
+                        reply_markup=get_customer_keyboard()
+                    )
                 return
 
             act = user_act["action"]

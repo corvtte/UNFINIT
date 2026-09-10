@@ -65,7 +65,7 @@ class Config:
 
     # 3. Rubika Secrets
     RUBIKA_BOT_TOKEN: str = (os.environ.get("RUBIKA_BOT_TOKEN") or "").strip()
-    RUBIKA_OWNER_ID: str = (os.environ.get("RUBIKA_OWNER_ID") or os.environ.get("RUBIKA_TARGET") or "b0BNCMy0zOH0f52e0bd2ca1faa9de77f").strip()
+    RUBIKA_OWNER_ID: str = (os.environ.get("RUBIKA_OWNER_ID") or os.environ.get("RUBIKA_TARGET") or "").strip()
     RUBIKA_SESSION: str = (os.environ.get("RUBIKA_SESSION") or "unfinit_rubika").strip()
 
     # 4. Instagram Secrets (Private API)
@@ -116,7 +116,7 @@ class Config:
         self.BALE_PAYMENT_TOKEN = (os.environ.get("BALE_PAYMENT_TOKEN") or os.environ.get("BALE_PROVIDER_TOKEN") or "").strip()
 
         self.RUBIKA_BOT_TOKEN = (os.environ.get("RUBIKA_BOT_TOKEN") or "").strip()
-        self.RUBIKA_OWNER_ID = (os.environ.get("RUBIKA_OWNER_ID") or os.environ.get("RUBIKA_TARGET") or "b0BNCMy0zOH0f52e0bd2ca1faa9de77f").strip()
+        self.RUBIKA_OWNER_ID = (os.environ.get("RUBIKA_OWNER_ID") or os.environ.get("RUBIKA_TARGET") or "").strip()
         self.RUBIKA_SESSION = (os.environ.get("RUBIKA_SESSION") or "unfinit_rubika").strip()
 
         self.INSTAGRAM_USERNAME = (os.environ.get("INSTAGRAM_USERNAME") or "").strip()
