@@ -369,7 +369,8 @@ class BaleAdapter:
         payload: str,
         provider_token: str,
         amount_tomans: int,
-        photo_url: Optional[str] = None
+        photo_url: Optional[str] = None,
+        reply_markup: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Sends an official invoice for Bale online payment / wallet.
@@ -396,6 +397,8 @@ class BaleAdapter:
             "prices": [{"label": safe_title, "amount": amount_rials}],
             "currency": "IRR"
         }
+        if reply_markup:
+            body["reply_markup"] = reply_markup
         if photo_url:
             p_url = str(photo_url).strip()
             final_photo_url = resolve_bale_invoice_photo_url(p_url)
@@ -1033,26 +1036,69 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "❌ دوره مورد نظر یافت نشد.")
                                             continue
 
-                                        desc_txt = prod.description or "بدون توضیحات"
-                                        price_str = f"{prod.price:,} تومان" if prod.price > 0 else "رایگان 🎁"
-                                        dl_txt = f"\n📦 همراه با فایل دانلودی / لینک مستقیم" if prod.download_link else ""
-                                        c_card = (
-                                            f"🎓 <b>{prod.name}</b>\n\n"
-                                            f"▫️ قیمت دوره: <b>{price_str}</b>{dl_txt}\n"
-                                            f"▫️ توضیحات کامل:\n{desc_txt}\n\n"
-                                            "لطفاً روش پرداخت یا دریافت دوره را انتخاب فرمایید:"
+                                        if prod.price <= 0:
+                                            order = await StoreService.create_order(
+                                                user_id=chat_id,
+                                                username="",
+                                                customer_name="",
+                                                phone="",
+                                                product=prod,
+                                                platform="bale"
+                                            )
+                                            await StoreService.approve_order(order.order_id)
+                                            dl_content = prod.download_link or "لینک دانلودی برای این دوره ثبت نشده است."
+                                            cust_msg = StoreService.format_delivery_message(prod.name, order.order_id, dl_content, 0)
+                                            await bale.send_message(chat_id, cust_msg)
+                                            continue
+
+                                        order = await StoreService.create_order(
+                                            user_id=chat_id,
+                                            username="",
+                                            customer_name="",
+                                            phone="",
+                                            product=prod,
+                                            platform="bale"
                                         )
-                                        c_btns = []
+
                                         bale_token = config.BALE_PAYMENT_TOKEN or await get_system_setting("bale_payment_token")
-                                        if prod.price == 0:
-                                            c_btns.append([{"text": "📥 دریافت و دانلود رایگان", "callback_data": f"bpay_free:{prod.product_id}"}])
-                                        else:
-                                            if prod.allow_bale and bale_token:
-                                                c_btns.append([{"text": "💳 پرداخت آنلاین (کیف پول / کارت بله)", "callback_data": f"bpay_online:{prod.product_id}"}])
-                                            if prod.allow_card:
-                                                c_btns.append([{"text": "💳 پرداخت کارت به کارت (ثبت فیش)", "callback_data": f"bpay_card:{prod.product_id}"}])
-                                        c_btns.append([{"text": "🔙 بازگشت به لیست دوره‌ها", "callback_data": "bale:courses_list"}])
-                                        await bale.send_message(chat_id, c_card, reply_markup={"inline_keyboard": c_btns})
+                                        if not bale_token:
+                                            bale_token = await get_system_setting("BALE_PAYMENT_TOKEN")
+
+                                        inv_kb = {
+                                            "inline_keyboard": [
+                                                [{"text": "💳 مشکل در پرداخت آنلاین؟ پرداخت کارت به کارت", "callback_data": f"c2c_{order.order_id}"}],
+                                                [{"text": "🔙 بازگشت به لیست دوره‌ها", "callback_data": "bale:courses_list"}]
+                                            ]
+                                        }
+
+                                        if bale_token:
+                                            res_inv = await bale.send_invoice(
+                                                chat_id=chat_id,
+                                                title=prod.name,
+                                                description=prod.description or f"خرید آنلاین دوره {prod.name}",
+                                                payload=order.order_id,
+                                                provider_token=bale_token,
+                                                amount_tomans=prod.price,
+                                                photo_url=prod.photo_url or None,
+                                                reply_markup=inv_kb
+                                            )
+                                            if res_inv.get("ok"):
+                                                continue
+                                            logger.warning(f"Bale send_invoice returned not ok: {res_inv}")
+
+                                        # Fallback to Card-to-Card if invoice sending failed or token missing
+                                        c_num = await get_system_setting("CARD_NUMBER", config.CARD_NUMBER)
+                                        c_name = await get_system_setting("CARD_HOLDER", config.CARD_HOLDER)
+                                        card_msg = (
+                                            f"🧾 <b>فاکتور پرداخت دوره: {prod.name}</b>\n\n"
+                                            f"▫️ مبلغ قابل پرداخت: <b>{prod.price:,} تومان</b>\n"
+                                            f"▫️ شماره کارت: <code>{c_num}</code>\n"
+                                            f"▫️ به نام: <b>{c_name}</b>\n"
+                                            f"▫️ کد سفارش شما: <code>{order.order_id}</code>\n\n"
+                                            "📌 لطفاً پس از واریز مبلغ، تصویر رسید / فیش واریزی خود را در همین چت ارسال فرمایید تا تایید و محتوا تحویل گردد."
+                                        )
+                                        session_manager.set_user_action(f"bale_{chat_id}", "await_receipt", order.order_id)
+                                        await bale.send_message(chat_id, card_msg)
                                         continue
 
                                     if cb_data.startswith("bpay_online:"):
@@ -1117,6 +1163,34 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             "📌 لطفاً پس از واریز مبلغ، تصویر رسید / فیش واریزی خود را در همین چت ارسال فرمایید تا تایید و محتوا تحویل گردد."
                                         )
                                         session_manager.set_user_action(f"bale_{chat_id}", "await_receipt", order.order_id)
+                                        await bale.send_message(chat_id, card_msg)
+                                        continue
+
+                                    if cb_data.startswith("c2c_"):
+                                        oid = cb_data[4:].strip()
+                                        order_item = await StoreService.get_order(oid)
+                                        prod_name = "دوره آموزشی"
+                                        price_val = 0
+                                        if order_item:
+                                            prod = await StoreService.get_product(order_item.product_id)
+                                            if prod:
+                                                prod_name = prod.name
+                                                price_val = prod.price
+                                            elif order_item.amount:
+                                                price_val = order_item.amount
+
+                                        c_num = await get_system_setting("CARD_NUMBER", config.CARD_NUMBER)
+                                        c_name = await get_system_setting("CARD_HOLDER", config.CARD_HOLDER)
+                                        price_str = f"{price_val:,} تومان" if price_val > 0 else "طبق فاکتور"
+                                        card_msg = (
+                                            f"🧾 <b>مشخصات پرداخت کارت به کارت: {prod_name}</b>\n\n"
+                                            f"▫️ مبلغ قابل پرداخت: <b>{price_str}</b>\n"
+                                            f"▫️ شماره کارت: <code>{c_num}</code>\n"
+                                            f"▫️ به نام: <b>{c_name}</b>\n"
+                                            f"▫️ کد سفارش شما: <code>{oid}</code>\n\n"
+                                            "📌 لطفاً پس از واریز مبلغ، تصویر رسید / فیش واریزی خود را در همین چت ارسال فرمایید تا تایید و محتوا تحویل گردد."
+                                        )
+                                        session_manager.set_user_action(f"bale_{chat_id}", "await_receipt", oid)
                                         await bale.send_message(chat_id, card_msg)
                                         continue
 
@@ -2036,6 +2110,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     if not bale_token:
                                                         bale_token = await get_system_setting("BALE_PAYMENT_TOKEN")
                                                     if bale_token:
+                                                        inv_kb = {
+                                                            "inline_keyboard": [
+                                                                [{"text": "💳 مشکل در پرداخت آنلاین؟ پرداخت کارت به کارت", "callback_data": f"c2c_{order_item.order_id}"}],
+                                                                [{"text": "🔙 بازگشت به لیست دوره‌ها", "callback_data": "bale:courses_list"}]
+                                                            ]
+                                                        }
                                                         await bale.send_invoice(
                                                             chat_id=chat_id,
                                                             title=prod.name,
@@ -2043,7 +2123,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                             payload=order_item.order_id,
                                                             provider_token=bale_token,
                                                             amount_tomans=prod.price,
-                                                            photo_url=prod.photo_url or None
+                                                            photo_url=prod.photo_url or None,
+                                                            reply_markup=inv_kb
                                                         )
                                                         continue
                                                     else:
@@ -2066,6 +2147,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 )
                                                 bale_token = config.BALE_PAYMENT_TOKEN or await get_system_setting("bale_payment_token")
                                                 if bale_token:
+                                                    inv_kb = {
+                                                        "inline_keyboard": [
+                                                            [{"text": "💳 مشکل در پرداخت آنلاین؟ پرداخت کارت به کارت", "callback_data": f"c2c_{order.order_id}"}],
+                                                            [{"text": "🔙 بازگشت به لیست دوره‌ها", "callback_data": "bale:courses_list"}]
+                                                        ]
+                                                    }
                                                     await bale.send_invoice(
                                                         chat_id=chat_id,
                                                         title=prod.name,
@@ -2073,7 +2160,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                         payload=order.order_id,
                                                         provider_token=bale_token,
                                                         amount_tomans=prod.price,
-                                                        photo_url=prod.photo_url or None
+                                                        photo_url=prod.photo_url or None,
+                                                        reply_markup=inv_kb
                                                     )
                                                     continue
                                                 else:

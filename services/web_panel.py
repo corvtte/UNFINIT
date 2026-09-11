@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional
 
 from core.config import config
 from core.logger import get_logger
-from core.database import db_save_media_session, db_delete_media_session
+from core.database import db_save_media_session, db_delete_media_session, get_system_setting
 from core.formatters import human_size, format_duration
 from media.inspector import inspect_technical_metadata
 from services.store_service import StoreService
@@ -4460,28 +4460,7 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
     elif not clean_oid.startswith("ord_"):
         clean_oid = f"ord_{clean_oid}"
 
-    # Generate direct invoice link with banner photo if available
-    inv_url = None
-    try:
-        inv_res = await bale.create_invoice_link(
-            title=prod.name,
-            description=prod.description or f"خرید آنلاین دوره {prod.name}",
-            payload=order_id,
-            provider_token=provider_token,
-            amount_tomans=order.total,
-            photo_url=prod.photo_url or None
-        )
-        if inv_res.get("ok") and inv_res.get("result"):
-            inv_url = inv_res["result"]
-    except Exception as e:
-        logger.warning(f"Error calling bale.create_invoice_link in web_panel: {e}")
-
-    if inv_url:
-        inv_url = str(inv_url).strip()
-        if not inv_url.startswith("http") and "invoice_id=" in inv_url:
-            inv_url = f"https://ble.ir/payment?{inv_url}"
-    else:
-        inv_url = f"https://ble.ir/abasmanesh365bot?start={clean_oid}"
+    inv_url = f"https://ble.ir/abasmanesh365bot?start={clean_oid}"
 
     return {
         "ok": True,
