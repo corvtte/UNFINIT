@@ -214,6 +214,18 @@ class BaleAdapter:
         async with session.post(url, json=payload) as resp:
             return await resp.json()
 
+    async def send_chat_action(self, chat_id: str | int, action: str = "typing") -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url = f"{self.base_url}/sendChatAction"
+        payload = {"chat_id": str(chat_id), "action": str(action)}
+        try:
+            session = await self.get_session()
+            async with session.post(url, json=payload) as resp:
+                return await resp.json()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     async def send_photo(
         self,
         chat_id: str | int,
@@ -1585,14 +1597,18 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     await bale.edit_message_text(chat_id, status_msg_id, stage_text)
                                             except Exception: pass
 
-                                        from services.ai_agent_service import ai_agent_service
-                                        res = await ai_agent_service.transcribe_and_summarize_audio(
-                                            Path(str(local_p)),
-                                            metadata=drop,
-                                            progress_callback=_bale_progress,
-                                            style=style,
-                                            engine=engine
-                                        )
+                                        from services.ai_agent_service import ai_agent_service, ai_typing_action
+                                        async def _bale_audio_typing():
+                                            await bale.send_chat_action(chat_id, "typing")
+
+                                        async with ai_typing_action(_bale_audio_typing):
+                                            res = await ai_agent_service.transcribe_and_summarize_audio(
+                                                Path(str(local_p)),
+                                                metadata=drop,
+                                                progress_callback=_bale_progress,
+                                                style=style,
+                                                engine=engine
+                                            )
                                         if res.get("ok"):
                                             msg_text = res.get("formatted_message") or res.get("summary")
                                             if len(msg_text) > 4000:
@@ -2502,9 +2518,13 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     # Freeform User Text Message -> Invoke AI Sales Copilot!
                                     if text and not user_act and not media_item:
                                         try:
-                                            from services.ai_agent_service import ai_agent_service
-                                            ai_reply = await ai_agent_service.chat_course_support(text)
-                                            await bale.send_message(chat_id, ai_reply, reply_markup=get_bale_customer_keyboard())
+                                            from services.ai_agent_service import ai_agent_service, ai_typing_action
+                                            async def _bale_text_typing():
+                                                await bale.send_chat_action(chat_id, "typing")
+
+                                            async with ai_typing_action(_bale_text_typing):
+                                                ai_reply = await ai_agent_service.chat_course_support(text)
+                                                await bale.send_message(chat_id, ai_reply, reply_markup=get_bale_customer_keyboard())
                                         except Exception as ai_err:
                                             logger.warning(f"[bale_copilot] AI course support error: {ai_err}")
                                             await bale.send_message(

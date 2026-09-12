@@ -128,6 +128,7 @@ async def get_all_settings_async() -> dict:
     card_holder = _first_valid(os.environ.get("CARD_HOLDER"), config.CARD_HOLDER, await get_system_setting("CARD_HOLDER", ""))
     zarin_mid = _first_valid(os.environ.get("ZARINPAL_MERCHANT_ID"), getattr(config, "ZARINPAL_MERCHANT_ID", ""), await get_system_setting("zarinpal_merchant_id", ""))
     cd_note = await get_system_setting("COURSE_DELIVERY_NOTE", getattr(config, "COURSE_DELIVERY_NOTE", "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"))
+    ai_prov = _first_valid(os.environ.get("AI_PROVIDER"), getattr(config, "AI_PROVIDER", "gemini"), await get_system_setting("ai_provider", "gemini"))
 
     return {
         "STORE_NAME": fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME)),
@@ -145,6 +146,7 @@ async def get_all_settings_async() -> dict:
         "CARD_HOLDER": card_holder,
         "DEFAULT_ARTIST": fix_mojibake(await get_system_setting("DEFAULT_ARTIST", config.DEFAULT_ARTIST), default=config.DEFAULT_ARTIST),
         "COURSE_DESC_MAX_LEN": await get_system_setting("COURSE_DESC_MAX_LEN", str(getattr(config, "COURSE_DESC_MAX_LEN", 255))),
+        "AI_PROVIDER": ai_prov,
         "NARA_API_KEY": mask_secret(nara_key),
         "NARA_MODEL": await get_system_setting("nara_model", config.NARA_MODEL),
         "GEMINI_API_KEY": mask_secret(gemini_key),
@@ -1076,6 +1078,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "CARD_HOLDER": "CARD_HOLDER",
                         "DEFAULT_ARTIST": "DEFAULT_ARTIST",
                         "COURSE_DESC_MAX_LEN": "COURSE_DESC_MAX_LEN",
+                        "AI_PROVIDER": "ai_provider",
                         "NARA_API_KEY": "nara_api_key",
                         "NARA_MODEL": "nara_model",
                         "GEMINI_API_KEY": "gemini_api_key",
@@ -1119,6 +1122,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 config.WELCOME_TEXT = val_str
                             elif k == "BALE_PAYMENT_TOKEN":
                                 config.BALE_PAYMENT_TOKEN = val_str
+                            elif k == "AI_PROVIDER":
+                                config.AI_PROVIDER = val_str
                             elif k == "NARA_API_KEY":
                                 config.NARA_API_KEY = val_str
                             elif k == "NARA_MODEL":

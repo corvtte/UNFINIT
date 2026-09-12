@@ -1030,14 +1030,18 @@ class TelegramAdapter:
                 except Exception:
                     pass
 
-            from services.ai_agent_service import ai_agent_service
-            res = await ai_agent_service.transcribe_and_summarize_audio(
-                Path(str(local_p)),
-                metadata=drop,
-                progress_callback=_tg_progress,
-                style=style,
-                engine=engine
-            )
+            from services.ai_agent_service import ai_agent_service, ai_typing_action
+            async def _tg_audio_typing():
+                await client.send_chat_action(chat_id, enums.ChatAction.TYPING)
+
+            async with ai_typing_action(_tg_audio_typing):
+                res = await ai_agent_service.transcribe_and_summarize_audio(
+                    Path(str(local_p)),
+                    metadata=drop,
+                    progress_callback=_tg_progress,
+                    style=style,
+                    engine=engine
+                )
             if res.get("ok"):
                 msg_text = res.get("formatted_message") or res.get("summary")
                 if len(msg_text) > 4000:
@@ -1840,13 +1844,17 @@ class TelegramAdapter:
                         except Exception:
                             pass
 
-                    from services.ai_agent_service import ai_agent_service
-                    res = await ai_agent_service.transcribe_and_summarize_audio(
-                        Path(str(local_p)),
-                        metadata=drop,
-                        progress_callback=_tg_progress,
-                        style=style
-                    )
+                    from services.ai_agent_service import ai_agent_service, ai_typing_action
+                    async def _tg_audio_typing_2():
+                        await client.send_chat_action(chat_id, enums.ChatAction.TYPING)
+
+                    async with ai_typing_action(_tg_audio_typing_2):
+                        res = await ai_agent_service.transcribe_and_summarize_audio(
+                            Path(str(local_p)),
+                            metadata=drop,
+                            progress_callback=_tg_progress,
+                            style=style
+                        )
                     if res.get("ok"):
                         msg_text = res.get("formatted_message") or res.get("summary")
                         if len(msg_text) > 4000:
@@ -2409,9 +2417,13 @@ class TelegramAdapter:
                     return
                 # User sent freeform text message -> Invoke AI Sales Copilot!
                 try:
-                    from services.ai_agent_service import ai_agent_service
-                    ai_reply = await ai_agent_service.chat_course_support(text)
-                    await message.reply_text(ai_reply, reply_markup=get_customer_keyboard())
+                    from services.ai_agent_service import ai_agent_service, ai_typing_action
+                    async def _tg_copilot_typing():
+                        await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
+
+                    async with ai_typing_action(_tg_copilot_typing):
+                        ai_reply = await ai_agent_service.chat_course_support(text)
+                        await message.reply_text(ai_reply, reply_markup=get_customer_keyboard())
                 except Exception as ai_err:
                     logger.warning(f"[tg_copilot] AI course support failed: {ai_err}")
                     await message.reply_text(

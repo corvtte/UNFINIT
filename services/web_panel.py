@@ -47,7 +47,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": "UNFINIT Engine v0.1.0",
+        "engine_version": "UNFINIT Engine v0.2.0",
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -1323,46 +1323,85 @@ def render_dashboard_html() -> str:
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>🧠</span> تنظیمات هوش مصنوعی (Google Gemini & Nara Router)
-                                    <span class="hidden" style="display:none;">تنظیمات موتورهای هوش مصنوعی</span>
                                 </h4>
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API اختصاصی Nara Router (NARA_API_KEY)</label>
-                                    <div class="relative">
-                                        <input type="password" id="cfg_NARA_API_KEY" autocomplete="new-password" placeholder="sk-..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                <!-- انتخاب پرووایدر فعال هوش مصنوعی -->
+                                <div class="md:col-span-2 bg-slate-900/60 p-3.5 rounded-xl border border-teal-500/30">
+                                    <label class="text-teal-300 font-bold text-xs mb-2 block flex items-center gap-2">
+                                        <span>⚡</span> انتخاب سرویس‌دهنده و پرووایدر فعال هوش مصنوعی (AI_PROVIDER)
+                                    </label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/80 cursor-pointer hover:border-cyan-500 transition">
+                                            <input type="radio" name="ai_provider_radio" value="gemini" id="provider_gemini" onchange="updateAiProviderView('gemini')" class="text-cyan-500 focus:ring-0">
+                                            <div class="text-xs">
+                                                <span class="font-bold text-slate-100 block">پرووایدر ۱: گوگل جمینای مستقیم (Google Gemini)</span>
+                                                <span class="text-[11px] text-slate-400">پیش‌فرض اصلی - فوق‌سریع، هوشمند و بدون واسطه</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/80 cursor-pointer hover:border-teal-500 transition">
+                                            <input type="radio" name="ai_provider_radio" value="nara" id="provider_nara" onchange="updateAiProviderView('nara')" class="text-teal-500 focus:ring-0">
+                                            <div class="text-xs">
+                                                <span class="font-bold text-slate-100 block">پرووایدر ۲: نارا روتر (Nara Router)</span>
+                                                <span class="text-[11px] text-slate-400">مدل‌های قطعی و کاملاً رایگان سهمیه‌ای Free Plan نارا</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <input type="hidden" id="cfg_AI_PROVIDER" value="gemini">
+                                </div>
+
+                                <!-- بخش ۱: گوگل جمینای مستقیم -->
+                                <div id="box_gemini_settings" class="space-y-3 p-3.5 rounded-xl bg-slate-900/40 border border-cyan-500/20 transition">
+                                    <div class="flex items-center justify-between pb-1 border-b border-cyan-500/10">
+                                        <span class="text-xs font-bold text-cyan-300">🌟 پرووایدر ۱: گوگل جمینای مستقیم (Google Gemini)</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-700/50">پیش‌فرض سیستم</span>
+                                    </div>
+                                    <div>
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API اختصاصی گوگل جمینای (GEMINI_API_KEY)</label>
+                                        <div class="relative">
+                                            <input type="password" id="cfg_GEMINI_API_KEY" autocomplete="new-password" placeholder="AIzaSy..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی گوگل جمینای (GEMINI_MODEL)</label>
+                                        <select id="cfg_GEMINI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                            <option value="gemini-3.8-flash">gemini-3.8-flash (مدل پیش‌فرض اصلی سیستم / فوق‌سریع و هوشمند)</option>
+                                            <option value="gemini-3.7-flash">gemini-3.7-flash (موتور تفکر پیشرفته و تحلیل عمیق)</option>
+                                            <option value="gemini-3.6-flash">gemini-3.6-flash (پایدار و بهینه پردازش صوت)</option>
+                                            <option value="gemini-3.1-pro">gemini-3.1-pro (استدلال عمیق و هوشمند)</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی نورا روتر (NARA_MODEL)</label>
-                                    <select id="cfg_NARA_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                        <option value="stepfun-3.7-flash">stepfun-3.7-flash (پیش‌فرض هوشمند و قوی متون فارسی)</option>
-                                        <option value="mimo-v2.5-free">mimo-v2.5-free (فوق‌سریع و رایگان)</option>
-                                        <option value="qwen2.5-72b">qwen2.5-72b (دقت نگارش بالا)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API گوگل جمینای برای پردازش مستقیم صوت (GEMINI_API_KEY)</label>
-                                    <div class="relative">
-                                        <input type="password" id="cfg_GEMINI_API_KEY" autocomplete="new-password" placeholder="AIzaSy..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+
+                                <!-- بخش ۲: نارا روتر -->
+                                <div id="box_nara_settings" class="space-y-3 p-3.5 rounded-xl bg-slate-900/40 border border-teal-500/20 transition">
+                                    <div class="flex items-center justify-between pb-1 border-b border-teal-500/10">
+                                        <span class="text-xs font-bold text-teal-300">🚀 پرووایدر ۲: نارا روتر (Nara Router Free Models)</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-teal-950 text-teal-300 border border-teal-700/50">پل رایگان سهمیه‌ای</span>
+                                    </div>
+                                    <div>
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API نارا روتر (NARA_API_KEY)</label>
+                                        <div class="relative">
+                                            <input type="password" id="cfg_NARA_API_KEY" autocomplete="new-password" placeholder="sk-..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل‌های مجاز و رایگان نارا روتر (NARA_MODEL)</label>
+                                        <select id="cfg_NARA_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                            <option value="stepfun-3.7-flash">stepfun-3.7-flash (بهترین فهم فارسی و پشتیبانی از Vision)</option>
+                                            <option value="nemotron-3.5-lightning-free">nemotron-3.5-lightning-free (فوق‌سریع - پاسخ‌های کوتاه)</option>
+                                            <option value="ling-3.0-flash-fin-free">ling-3.0-flash-fin-free (محاسبات مالی و فاکتور)</option>
+                                            <option value="agnes-2.5-flash">agnes-2.5-flash (کانتکست بالا 512K)</option>
+                                            <option value="laguna-s-2.1">laguna-s-2.1 (متنی سبک و سریع)</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل انتخابی گوگل جمینای (GEMINI_MODEL)</label>
-                                    <select id="cfg_GEMINI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                        <option value="gemini-3.6-flash">gemini-3.6-flash (پیش‌فرض هوشمند پردازش صوت)</option>
-                                        <option value="gemini-2.5-flash">gemini-2.5-flash (فوق‌العاده سریع)</option>
-                                        <option value="gemini-3.7-flash">gemini-3.7-flash (موتور تفکر پیشرفته)</option>
-                                        <option value="gemini-3.8-flash">gemini-3.8-flash (نسل جدید پردازش چندرسانه‌ای)</option>
-                                        <option value="gemini-3.1-pro">gemini-3.1-pro (استدلال عمیق و هوشمند)</option>
-                                        <option value="gemini-1.5-pro">gemini-1.5-pro (دقت بالا و جامع)</option>
-                                    </select>
-                                </div>
+
                                 <div class="md:col-span-2">
-                                    <span class="text-[11px] text-slate-400 block">فایل‌های صوتی ابتدا توسط FFmpeg به فرمت بسیار کم‌حجم مونو فشرده و سپس به جمینای ارسال می‌شوند. در صورت عدم پاسخ‌دهی مدل انتخابی، چرخه سوئیچ هوشمند سایر مدل‌های Flash و Pro را امتحان می‌کند.</span>
+                                    <span class="text-[11px] text-slate-400 block">💡 <b>نکته مهندسی:</b> سیستم کوپایلوت استودیو و مشاور فروش به صورت خودکار بر اساس پرووایدر انتخابی پاسخ می‌دهد. در صورت بروز هرگونه اختلال یا نبود کلید، فوراً چرخه سوئیچ هوشمند فعال شده و پیام را از پرووایدر دوم دریافت می‌کند. تنظیمات بلافاصله و بدون ری‌استارت سرور ذخیره و اعمال می‌شوند.</span>
                                 </div>
                             </div>
                         </details>
@@ -2267,6 +2306,27 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        function updateAiProviderView(provider) {{
+            const p = (provider || 'gemini').toLowerCase();
+            const hid = document.getElementById('cfg_AI_PROVIDER');
+            if (hid) hid.value = p;
+            const rGem = document.getElementById('provider_gemini');
+            const rNara = document.getElementById('provider_nara');
+            if (rGem) rGem.checked = (p === 'gemini');
+            if (rNara) rNara.checked = (p === 'nara');
+            const boxGem = document.getElementById('box_gemini_settings');
+            const boxNara = document.getElementById('box_nara_settings');
+            if (boxGem && boxNara) {{
+                if (p === 'gemini') {{
+                    boxGem.style.opacity = '1';
+                    boxNara.style.opacity = '0.65';
+                }} else {{
+                    boxNara.style.opacity = '1';
+                    boxGem.style.opacity = '0.65';
+                }}
+            }}
+        }}
+
         function populateSettingsForm(s) {{
             const fields = [
                 'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
@@ -2278,6 +2338,7 @@ def render_dashboard_html() -> str:
                 'CARD_NUMBER', 'CARD_HOLDER',
                 'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
                 'COURSE_DESC_MAX_LEN',
+                'AI_PROVIDER',
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID'
@@ -2297,6 +2358,11 @@ def render_dashboard_html() -> str:
                     el.value = s[f];
                 }}
             }});
+            if (s.AI_PROVIDER) {{
+                updateAiProviderView(s.AI_PROVIDER);
+            }} else {{
+                updateAiProviderView('gemini');
+            }}
             const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
             const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
             if (p1) p1.value = '';
@@ -2391,6 +2457,7 @@ def render_dashboard_html() -> str:
                 'CARD_NUMBER', 'CARD_HOLDER',
                 'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
                 'COURSE_DESC_MAX_LEN',
+                'AI_PROVIDER',
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID'

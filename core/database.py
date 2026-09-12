@@ -133,6 +133,7 @@ def sync_settings_to_json_and_env() -> None:
         "CARD_NUMBER": config.CARD_NUMBER,
         "CARD_HOLDER": config.CARD_HOLDER,
         "ADMIN_PANEL_PASSWORD": config.ADMIN_PANEL_PASSWORD,
+        "AI_PROVIDER": getattr(config, "AI_PROVIDER", "gemini"),
         "NARA_API_KEY": config.NARA_API_KEY,
         "NARA_MODEL": config.NARA_MODEL,
         "NARA_BASE_URL": config.NARA_BASE_URL,
@@ -553,8 +554,8 @@ async def init_db():
 
                     if hasattr(config, k) and v_str:
                         try:
-                            if k in ("NARA_MODEL", "nara_model") and v_str == "mistral-large":
-                                v_str = "mimo-v2.5-free"
+                            if k in ("NARA_MODEL", "nara_model") and v_str in ("mistral-large", "mimo-v2.5-free"):
+                                v_str = "stepfun-3.7-flash"
                             # CRITICAL: Environment variable absolute priority!
                             # If key exists in os.environ with a non-empty value, do not override config attribute
                             if os.environ.get(k):
@@ -576,21 +577,24 @@ async def init_db():
             except Exception:
                 pass
 
-        # Load admin_password, Nara, Gemini, and Default Artist settings from DB if configured (only if not set in os.environ)
-        cur.execute("SELECT key, value FROM system_settings WHERE key IN ('admin_password', 'nara_api_key', 'nara_model', 'nara_base_url', 'gemini_api_key', 'GEMINI_API_KEY', 'gemini_model', 'GEMINI_MODEL', 'DEFAULT_ARTIST', 'default_artist')")
+        # Load admin_password, ai_provider, Nara, Gemini, and Default Artist settings from DB if configured (only if not set in os.environ)
+        cur.execute("SELECT key, value FROM system_settings WHERE key IN ('admin_password', 'ai_provider', 'AI_PROVIDER', 'nara_api_key', 'nara_model', 'nara_base_url', 'gemini_api_key', 'GEMINI_API_KEY', 'gemini_model', 'GEMINI_MODEL', 'DEFAULT_ARTIST', 'default_artist')")
         for s_row in cur.fetchall():
             k, v = s_row[0], s_row[1]
             if k == 'admin_password' and v:
                 if not os.environ.get("ADMIN_PANEL_PASSWORD"):
                     config.ADMIN_PANEL_PASSWORD = str(v).strip()
+            elif k in ('ai_provider', 'AI_PROVIDER') and v:
+                if not os.environ.get("AI_PROVIDER"):
+                    config.AI_PROVIDER = str(v).strip()
             elif k == 'nara_api_key' and v:
                 if not os.environ.get("NARA_API_KEY"):
                     config.NARA_API_KEY = str(v).strip()
             elif k == 'nara_model' and v:
                 if not os.environ.get("NARA_MODEL"):
                     m_val = str(v).strip()
-                    if m_val == "mistral-large":
-                        m_val = "mimo-v2.5-free"
+                    if m_val in ("mistral-large", "mimo-v2.5-free"):
+                        m_val = "stepfun-3.7-flash"
                     config.NARA_MODEL = m_val
             elif k == 'nara_base_url' and v:
                 if not os.environ.get("NARA_BASE_URL"):
@@ -708,8 +712,8 @@ async def init_db():
             WHERE key = 'STORE_NAME' OR value LIKE '%Ù%' OR value LIKE '%Ø%'
             """)
             cur.execute("""
-            UPDATE system_settings SET value = 'mimo-v2.5-free'
-            WHERE key = 'nara_model' AND value = 'mistral-large'
+            UPDATE system_settings SET value = 'stepfun-3.7-flash'
+            WHERE key = 'nara_model' AND value IN ('mistral-large', 'mimo-v2.5-free')
             """)
             config.STORE_NAME = fix_mojibake(config.STORE_NAME)
             config.WELCOME_TEXT = fix_mojibake(config.WELCOME_TEXT, default="به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.")

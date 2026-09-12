@@ -11,12 +11,45 @@ import logging
 import subprocess
 import uuid
 import aiohttp
+from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from openai import OpenAI
 from core.config import config
 
 logger = logging.getLogger("ai_agent")
+
+@asynccontextmanager
+async def ai_typing_action(action_coro_fn, interval: float = 4.0):
+    """
+    Context manager that calls action_coro_fn() every `interval` seconds
+    in a background task until the block finishes, providing continuous typing indicator.
+    """
+    stop_event = asyncio.Event()
+
+    async def _loop():
+        while not stop_event.is_set():
+            try:
+                await action_coro_fn()
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=interval)
+            except asyncio.TimeoutError:
+                pass
+            except Exception:
+                break
+
+    task = asyncio.create_task(_loop())
+    try:
+        yield
+    finally:
+        stop_event.set()
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
 
 STUDIO_SYSTEM_PROMPT = (
     "شما در نقش «مربی ارشد موفقیت، تحلیلگر ارشد محتوا و متخصص تحول و رشد فردی/کسب‌وکار و دستیار هوشمند استودیوی رسانه UNFINIT» هستید. "
@@ -29,43 +62,74 @@ STUDIO_SYSTEM_PROMPT = (
 
 class AIAgentService:
     """
-    Studio & Course Copilot service connected to Nara Router.
+    Multi-Provider AI Copilot Service supporting:
+    1. Google Gemini Direct (gemini-3.8-flash default, gemini-3.7-flash, gemini-3.6-flash, gemini-3.1-pro)
+    2. Nara Router (Free plan models: nemotron-3.5-lightning-free, stepfun-3.7-flash, ling-3.0-flash-fin-free, agnes-2.5-flash, laguna-s-2.1)
     """
 
-    SUPPORTED_FREE_MODELS = [
-        "mimo-v2.5-free",
-        "stepfun-3.7-flash",
-        "muse-spark-1.2-contributor-free",
-        "qwen3.8-27b"
+    # Provider 1: Google Gemini Models
+    GEMINI_ALLOWED_MODELS = [
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.1-pro"
     ]
 
-    def __init__(self):
-        self._client: Optional[OpenAI] = None
-        self._last_key = None
-        self._last_url = None
+    GEMINI_MODEL_LABELS = {
+        "gemini-3.8-flash": "gemini-3.8-flash (مدل پیش‌فرض اصلی سیستم / فوق‌سریع و هوشمند)",
+        "gemini-3.7-flash": "gemini-3.7-flash (موتور تفکر پیشرفته و تحلیل عمیق)",
+        "gemini-3.6-flash": "gemini-3.6-flash (پایدار و بهینه پردازش صوت)",
+        "gemini-3.1-pro": "gemini-3.1-pro (استدلال عمیق و هوشمند)"
+    }
 
-    def _get_client(self) -> Optional[OpenAI]:
+    # Provider 2: Nara Router Models (Official Free Plan)
+    NARA_FREE_MODELS = [
+        "nemotron-3.5-lightning-free",
+        "stepfun-3.7-flash",
+        "ling-3.0-flash-fin-free",
+        "agnes-2.5-flash",
+        "laguna-s-2.1"
+    ]
+
+    NARA_MODEL_LABELS = {
+        "nemotron-3.5-lightning-free": "nemotron-3.5-lightning-free (فوق‌سریع - پاسخ‌های کوتاه)",
+        "stepfun-3.7-flash": "stepfun-3.7-flash (بهترین فهم فارسی و پشتیبانی از Vision)",
+        "ling-3.0-flash-fin-free": "ling-3.0-flash-fin-free (محاسبات مالی و فاکتور)",
+        "agnes-2.5-flash": "agnes-2.5-flash (کانتکست بالا 512K)",
+        "laguna-s-2.1": "laguna-s-2.1 (متنی سبک و سریع)"
+    }
+
+    SUPPORTED_FREE_MODELS = NARA_FREE_MODELS
+
+    def __init__(self):
+        self._nara_client: Optional[OpenAI] = None
+        self._last_nara_key = None
+        self._last_nara_url = None
+
+    def _get_nara_client(self) -> Optional[OpenAI]:
         curr_key = (config.NARA_API_KEY or "").strip()
         curr_url = (config.NARA_BASE_URL or "https://router.bynara.id/v1").strip()
 
-        if self._client is None or self._last_key != curr_key or self._last_url != curr_url:
+        if self._nara_client is None or self._last_nara_key != curr_key or self._last_nara_url != curr_url:
             if not curr_key:
                 return None
             try:
-                self._client = OpenAI(
+                self._nara_client = OpenAI(
                     api_key=curr_key,
                     base_url=curr_url,
                     timeout=180.0,
                     max_retries=1
                 )
-                self._last_key = curr_key
-                self._last_url = curr_url
+                self._last_nara_key = curr_key
+                self._last_nara_url = curr_url
             except Exception as e:
-                logger.error(f"[ai_agent] Error initializing OpenAI client: {e}")
-                self._client = None
-        return self._client
+                logger.error(f"[ai_agent] Error initializing Nara OpenAI client: {e}")
+                self._nara_client = None
+        return self._nara_client
 
-    async def chat(
+    _get_client = _get_nara_client
+
+    async def chat_gemini(
         self,
         user_message: str,
         history: Optional[List[Dict[str, Any]]] = None,
@@ -73,12 +137,101 @@ class AIAgentService:
         system_prompt: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Processes chat requests with Nara Router using standard OpenAI completions protocol.
+        Direct chat completion with Google Gemini REST API v1beta.
         """
-        user_message = (user_message or "").strip()
-        if not user_message:
-            return {"ok": False, "reply": "لطفاً پیام خود را وارد فرمایید.", "error": "Empty message"}
+        api_key = (config.GEMINI_API_KEY or "").strip()
+        if not api_key:
+            return {
+                "ok": False,
+                "reply": "⚠️ **کلید دسترسی Google Gemini تنظیم نشده است.**\nلطفاً در تب «تنظیمات سیستم» کلید GEMINI_API_KEY را ذخیره فرمایید.",
+                "error": "GEMINI_API_KEY is empty"
+            }
 
+        contents = []
+        if history:
+            for h in history[-8:]:
+                role = h.get("role", "user")
+                content = h.get("content", "")
+                if role in ("user", "assistant", "system") and content:
+                    gem_role = "user" if role == "user" else "model"
+                    contents.append({
+                        "role": gem_role,
+                        "parts": [{"text": str(content)}]
+                    })
+
+        contents.append({
+            "role": "user",
+            "parts": [{"text": user_message}]
+        })
+
+        payload: Dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 1500
+            }
+        }
+        sys_instruction = system_prompt or STUDIO_SYSTEM_PROMPT
+        if sys_instruction:
+            payload["system_instruction"] = {
+                "parts": [{"text": sys_instruction}]
+            }
+
+        target_model = (model or config.GEMINI_MODEL or "gemini-3.8-flash").strip()
+        if target_model not in self.GEMINI_ALLOWED_MODELS:
+            target_model = "gemini-3.8-flash"
+
+        models_to_try = [target_model]
+        for m in self.GEMINI_ALLOWED_MODELS:
+            if m not in models_to_try:
+                models_to_try.append(m)
+
+        timeout = aiohttp.ClientTimeout(total=45)
+        last_error = None
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            for current_model in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={api_key}"
+                try:
+                    async with session.post(url, json=payload) as resp:
+                        if resp.status == 200:
+                            res_json = await resp.json()
+                            candidates = res_json.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                if parts and "text" in parts[0]:
+                                    reply_content = parts[0]["text"].strip()
+                                    if reply_content:
+                                        return {
+                                            "ok": True,
+                                            "reply": reply_content,
+                                            "provider": "Google Gemini",
+                                            "model": current_model
+                                        }
+                        else:
+                            err_body = await resp.text()
+                            logger.warning(f"[ai_agent] Gemini model {current_model} HTTP {resp.status}: {err_body[:200]}")
+                            last_error = f"HTTP {resp.status}: {err_body[:120]}"
+                except Exception as e:
+                    last_error = str(e)
+                    logger.warning(f"[ai_agent] Gemini model {current_model} call error: {e}")
+                    continue
+
+        return {
+            "ok": False,
+            "reply": f"❌ خطا در پردازش با مدل‌های Google Gemini: {last_error or 'عدم پاسخ‌دهی'}",
+            "error": str(last_error)
+        }
+
+    async def chat_nara(
+        self,
+        user_message: str,
+        history: Optional[List[Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Processes chat requests with Nara Router using official Free Plan models.
+        """
         if not config.NARA_API_KEY or not config.NARA_API_KEY.strip():
             return {
                 "ok": False,
@@ -89,11 +242,11 @@ class AIAgentService:
                 "error": "NARA_API_KEY is empty"
             }
 
-        client = self._get_client()
+        client = self._get_nara_client()
         if not client:
             return {
                 "ok": False,
-                "reply": "❌ خطا در راه‌اندازی کلاینت OpenAI. لطفاً کلید API را بررسی فرمایید.",
+                "reply": "❌ خطا در راه‌اندازی کلاینت Nara Router. لطفاً کلید API را بررسی فرمایید.",
                 "error": "Client init failed"
             }
 
@@ -110,13 +263,14 @@ class AIAgentService:
 
         messages.append({"role": "user", "content": user_message})
 
-        target_model = (model or config.NARA_MODEL or "mistral-large").strip()
+        target_model = (model or config.NARA_MODEL or "stepfun-3.7-flash").strip()
+        if target_model not in self.NARA_FREE_MODELS:
+            target_model = "stepfun-3.7-flash"
 
-        # Primary attempt with target_model
         models_to_try = [target_model]
-        # Add fallback to stepfun-3.7-flash if target_model is different
-        if target_model != "stepfun-3.7-flash":
-            models_to_try.append("stepfun-3.7-flash")
+        for m in self.NARA_FREE_MODELS:
+            if m not in models_to_try:
+                models_to_try.append(m)
 
         last_error = None
         for current_model in models_to_try:
@@ -138,38 +292,89 @@ class AIAgentService:
 
                 return {
                     "ok": True,
-                    "reply": reply_content,
+                    "reply": reply_content.strip(),
                     "provider": "Nara Router",
                     "model": current_model
                 }
 
             except Exception as e:
                 last_error = e
-                logger.warning(f"[ai_agent] Model {current_model} failed: {e}")
-                # If error is rate limit or payment, breaking early
+                logger.warning(f"[ai_agent] Nara model {current_model} failed: {e}")
                 error_str = str(e)
                 if "payment_required" in error_str or "402" in error_str:
                     break
                 continue
 
-        # Handle final error
         error_name = type(last_error).__name__ if last_error else "UnknownError"
         error_str = str(last_error) if last_error else "No response"
-        logger.error(f"[ai_agent] All model attempts failed: {error_name}: {error_str}")
+        logger.error(f"[ai_agent] All Nara model attempts failed: {error_name}: {error_str}")
 
         if "payment_required" in error_str or "Insufficient credits" in error_str or "402" in error_str:
             user_friendly_error = (
                 "💳 **اعتبار حساب کاربری Nara Router ناکافی است.**\n\n"
-                "برای استفاده از مدل‌های دارای هزینه، نیاز به شارژ اعتبار در پنل نارا دارید؛ یا می‌توانید از مدل‌های رایگان سهمیه‌ای مانند `stepfun-3.7-flash` استفاده نمایید."
+                "لطفاً از مدل‌های کاملاً رایگان سهمیه‌ای مانند `stepfun-3.7-flash` یا `nemotron-3.5-lightning-free` استفاده فرمایید."
             )
         else:
-            user_friendly_error = f"❌ **خطای ارتباط با سرور هوش مصنوعی ({error_name}):**\n\n{error_str}"
+            user_friendly_error = f"❌ **خطای ارتباط با سرور Nara Router ({error_name}):**\n\n{error_str}"
 
         return {
             "ok": False,
             "reply": user_friendly_error,
             "error": error_str
         }
+
+    async def chat(
+        self,
+        user_message: str,
+        history: Optional[List[Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        provider: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Unified AI Chat method routing to either Google Gemini (direct) or Nara Router.
+        Falls back to the secondary provider if the primary encounters an issue.
+        """
+        user_message = (user_message or "").strip()
+        if not user_message:
+            return {"ok": False, "reply": "لطفاً پیام خود را وارد فرمایید.", "error": "Empty message"}
+
+        active_provider = (provider or getattr(config, "AI_PROVIDER", "gemini") or "gemini").strip().lower()
+
+        if active_provider == "gemini":
+            # Primary: Google Gemini Direct
+            if config.GEMINI_API_KEY and config.GEMINI_API_KEY.strip():
+                res = await self.chat_gemini(user_message, history=history, model=model, system_prompt=system_prompt)
+                if res.get("ok"):
+                    return res
+                logger.warning(f"[ai_agent] Gemini primary failed ({res.get('error')}), falling back to Nara Router...")
+
+            # Fallback: Nara Router
+            if config.NARA_API_KEY and config.NARA_API_KEY.strip():
+                return await self.chat_nara(user_message, history=history, system_prompt=system_prompt)
+
+            return {
+                "ok": False,
+                "reply": "⚠️ کلید Google Gemini یا Nara Router تنظیم نشده است. لطفاً از پنل مدیریت کلید را وارد نمایید.",
+                "error": "No AI API keys configured"
+            }
+        else:
+            # Primary: Nara Router
+            if config.NARA_API_KEY and config.NARA_API_KEY.strip():
+                res = await self.chat_nara(user_message, history=history, model=model, system_prompt=system_prompt)
+                if res.get("ok"):
+                    return res
+                logger.warning(f"[ai_agent] Nara primary failed ({res.get('error')}), falling back to Google Gemini...")
+
+            # Fallback: Google Gemini Direct
+            if config.GEMINI_API_KEY and config.GEMINI_API_KEY.strip():
+                return await self.chat_gemini(user_message, history=history, system_prompt=system_prompt)
+
+            return {
+                "ok": False,
+                "reply": "⚠️ کلید Nara Router یا Google Gemini تنظیم نشده است. لطفاً از پنل مدیریت کلید را وارد نمایید.",
+                "error": "No AI API keys configured"
+            }
 
     async def transcribe_audio(self, audio_path: str | Path) -> str:
         """
@@ -316,18 +521,11 @@ class AIAgentService:
                 }
             }
 
-            user_configured_model = (getattr(config, "GEMINI_MODEL", "") or "gemini-3.6-flash").strip()
-            fallback_models = [
-                "gemini-3.6-flash",
-                "gemini-3.7-flash",
-                "gemini-3.8-flash",
-                "gemini-3.6-pro",
-                "gemini-2.5-pro",
-                "gemini-1.5-flash",
-                "gemini-2.0-flash"
-            ]
+            user_configured_model = (getattr(config, "GEMINI_MODEL", "") or "gemini-3.8-flash").strip()
+            if user_configured_model not in self.GEMINI_ALLOWED_MODELS:
+                user_configured_model = "gemini-3.8-flash"
             models_to_try = [user_configured_model]
-            for m in fallback_models:
+            for m in self.GEMINI_ALLOWED_MODELS:
                 if m not in models_to_try:
                     models_to_try.append(m)
 
@@ -425,7 +623,7 @@ class AIAgentService:
                 gemini_res = await self.analyze_audio_with_gemini(audio_path, gemini_prompt)
                 if gemini_res and gemini_res.strip():
                     summary_text = gemini_res.strip()
-                    g_mod = (getattr(config, "GEMINI_MODEL", "") or "gemini-3.6-flash").strip()
+                    g_mod = (getattr(config, "GEMINI_MODEL", "") or "gemini-3.8-flash").strip()
                     source_label = f"Google Gemini ({g_mod}) Audio"
                     transcript = f"[استماع مستقیم فایل صوتی توسط Google Gemini ({g_mod})]"
             except Exception as ex_gem:
@@ -495,13 +693,11 @@ class AIAgentService:
                 transcript = f"[اطلاعات فایل: {title} | {artist} | {album}]"
 
             try:
-                res = await self.chat(user_message=prompt, model="stepfun-3.7-flash")
-                if not res.get("ok"):
-                    res = await self.chat(user_message=prompt, model=config.NARA_MODEL or "mimo-v2.5-free")
+                res = await self.chat(user_message=prompt, model=config.NARA_MODEL or "stepfun-3.7-flash")
                 if res.get("ok"):
                     summary_text = res.get("reply", "").strip()
             except Exception as ex_ai:
-                logger.warning(f"[ai_agent] Nara Router chat warning: {ex_ai}")
+                logger.warning(f"[ai_agent] AI chat warning: {ex_ai}")
 
         if progress_callback:
             try:
@@ -695,39 +891,13 @@ class AIAgentService:
             f"۵. به پیام‌های احوال‌پرسی یا عمومی با انرژی بسیار بالا و پیام مثبت پاسخ دهید و سپس خدمات آکادمی را با افتخار معرفی نمایید."
         )
 
-        # 1. Try Nara Router first if configured
-        if config.NARA_API_KEY and config.NARA_API_KEY.strip():
-            res = await self.chat(user_message, history=history, system_prompt=sys_prompt)
+        # 1. Invoke unified chat router (supports Google Gemini & Nara Router with automatic fallback)
+        try:
+            res = await self.chat(user_message=user_message, history=history, system_prompt=sys_prompt)
             if res.get("ok") and res.get("reply"):
-                return res["reply"]
-
-        # 2. Try Gemini fallback if configured
-        gemini_key = (config.GEMINI_API_KEY or "").strip()
-        if gemini_key:
-            try:
-                g_model = (config.GEMINI_MODEL or "gemini-2.5-flash").strip()
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={gemini_key}"
-                g_payload = {
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": f"{sys_prompt}\n\nپیام مخاطب:\n{user_message}"}
-                            ]
-                        }
-                    ],
-                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1000}
-                }
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
-                    async with session.post(url, json=g_payload) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            cands = data.get("candidates", [])
-                            if cands:
-                                parts = cands[0].get("content", {}).get("parts", [])
-                                if parts and "text" in parts[0]:
-                                    return parts[0]["text"].strip()
-            except Exception as e:
-                logger.warning(f"[ai_agent] Gemini fallback failed: {e}")
+                return res["reply"].strip()
+        except Exception as e:
+            logger.warning(f"[ai_agent] Unified chat course support error: {e}")
 
         # 3. Intelligent polite Persian greeting fallback
         return (
