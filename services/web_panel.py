@@ -47,7 +47,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": "UNFINIT Engine v0.2.0",
+        "engine_version": "UNFINIT Engine v0.2.1",
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -473,7 +473,7 @@ def render_dashboard_html() -> str:
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">رمز عبور مدیریت</label>
                     <div class="relative">
-                        <input type="password" id="adminPasswordInput" placeholder="رمز عبور مدیریت..." onkeydown="if(event.key==='Enter') executeAdminLogin()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition pl-10 text-left" dir="ltr">
+                        <input type="password" id="adminPasswordInput" autocomplete="current-password" placeholder="رمز عبور مدیریت..." onkeydown="if(event.key==='Enter') executeAdminLogin()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition pl-10 text-left" dir="ltr">
                         <button type="button" onclick="toggleAdminLoginPwd()" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-sm" title="نمایش/مخفی‌سازی رمز">
                             👁
                         </button>
@@ -1179,7 +1179,13 @@ def render_dashboard_html() -> str:
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">لیست کلیه سفارش‌های ثبت‌شده از طریق درگاه آنلاین بله و کارت‌به‌کارت با امکان بررسی فیش، تایید و تحویل لینک دانلود</p>
                     </div>
-                    <div class="flex items-center gap-2 self-start sm:self-auto">
+                    <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                        <button onclick="deleteSelectedOrders()" id="btnDeleteSelectedOrders" class="hidden px-3.5 py-2 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold border border-rose-700 transition flex items-center gap-1.5 shadow-sm">
+                            <span>🗑</span> حذف موارد انتخاب‌شده (<span id="selectedOrdersCount">0</span>)
+                        </button>
+                        <button onclick="clearAllOrders()" class="px-3.5 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 text-xs font-bold border border-red-800/80 transition flex items-center gap-1.5 shadow-sm" title="پاکسازی تمامی سفارشات تستی">
+                            <span>🗑</span> پاکسازی تمامی سفارشات
+                        </button>
                         <button onclick="cleanupRejectedOrders()" class="px-3.5 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/80 transition flex items-center gap-1.5 shadow-sm" title="حذف یکباره کلیه سفارش‌های رد شده">
                             <span>🧹</span> پاکسازی سفارشات رد شده
                         </button>
@@ -1192,6 +1198,9 @@ def render_dashboard_html() -> str:
                     <table class="w-full text-right border-collapse text-xs">
                         <thead>
                             <tr class="border-b border-slate-700 text-slate-400">
+                                <th class="py-3 px-3 w-8 text-center">
+                                    <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders(this)" class="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" title="انتخاب همه سفارشات">
+                                </th>
                                 <th class="py-3 px-3">شناسه سفارش</th>
                                 <th class="py-3 px-3">مشتری و تماس</th>
                                 <th class="py-3 px-3">دوره و مبلغ</th>
@@ -1204,7 +1213,7 @@ def render_dashboard_html() -> str:
                         </thead>
                         <tbody id="storeOrdersTableBody">
                             <tr>
-                                <td colspan="8" class="py-8 text-center text-slate-500 font-sans">در حال دریافت لیست سفارش‌ها...</td>
+                                <td colspan="9" class="py-8 text-center text-slate-500 font-sans">در حال دریافت لیست سفارش‌ها...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1276,35 +1285,35 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات تلگرام (TELEGRAM_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_TELEGRAM_BOT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-sky-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_TELEGRAM_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-sky-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_TELEGRAM_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات بله (BALE_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_BALE_BOT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_BALE_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن درگاه پرداخت آنلاین بله (BALE_PAYMENT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_BALE_PAYMENT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_BALE_PAYMENT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_PAYMENT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن بات رسمی روبیکا (RUBIKA_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_RUBIKA_BOT_TOKEN" autocomplete="new-password" class="w-full bg-slate-800/80 border border-purple-500/80 text-purple-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-purple-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_RUBIKA_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-purple-500/80 text-purple-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-purple-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_RUBIKA_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">مرچنت آیدی زرین‌پال (ZARINPAL_MERCHANT_ID)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_ZARINPAL_MERCHANT_ID" autocomplete="new-password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
+                                        <input type="text" id="cfg_ZARINPAL_MERCHANT_ID" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_ZARINPAL_MERCHANT_ID', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1360,7 +1369,7 @@ def render_dashboard_html() -> str:
                                     <div>
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API اختصاصی گوگل جمینای (GEMINI_API_KEY)</label>
                                         <div class="relative">
-                                            <input type="password" id="cfg_GEMINI_API_KEY" autocomplete="new-password" placeholder="AIzaSy..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <input type="text" id="cfg_GEMINI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="AIzaSy..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                             <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                         </div>
                                     </div>
@@ -1384,7 +1393,7 @@ def render_dashboard_html() -> str:
                                     <div>
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API نارا روتر (NARA_API_KEY)</label>
                                         <div class="relative">
-                                            <input type="password" id="cfg_NARA_API_KEY" autocomplete="new-password" placeholder="sk-..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <input type="text" id="cfg_NARA_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                             <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                         </div>
                                     </div>
@@ -1418,7 +1427,7 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن دسترسی هاگینگ فیس (HF_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_HF_TOKEN" autocomplete="new-password" placeholder="hf_..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                        <input type="text" id="cfg_HF_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="hf_..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_HF_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
@@ -1982,11 +1991,18 @@ def render_dashboard_html() -> str:
         function togglePasswordVisibility(inputId, btn) {{
             const inp = document.getElementById(inputId);
             if (!inp) return;
-            if (inp.type === 'password') {{
+            const isMasked = (inp.type === 'password' || inp.style.webkitTextSecurity === 'disc');
+            if (isMasked) {{
                 inp.type = 'text';
+                inp.style.webkitTextSecurity = 'none';
                 btn.innerText = '🔓';
             }} else {{
-                inp.type = 'password';
+                if (inp.hasAttribute('data-token-field')) {{
+                    inp.type = 'text';
+                    inp.style.webkitTextSecurity = 'disc';
+                }} else {{
+                    inp.type = 'password';
+                }}
                 btn.innerText = '👁';
             }}
         }}
@@ -2666,14 +2682,90 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        function toggleSelectAllOrders(master) {{
+            const chks = document.querySelectorAll('.order-chk');
+            chks.forEach(c => c.checked = master.checked);
+            updateSelectedOrdersCount();
+        }}
+
+        function updateSelectedOrdersCount() {{
+            const chks = document.querySelectorAll('.order-chk:checked');
+            const cnt = chks.length;
+            const btn = document.getElementById('btnDeleteSelectedOrders');
+            const cntSpan = document.getElementById('selectedOrdersCount');
+            if (cntSpan) cntSpan.innerText = cnt;
+            if (btn) {{
+                if (cnt > 0) {{
+                    btn.classList.remove('hidden');
+                }} else {{
+                    btn.classList.add('hidden');
+                }}
+            }}
+            const allChks = document.querySelectorAll('.order-chk');
+            const master = document.getElementById('selectAllOrders');
+            if (master && allChks.length > 0) {{
+                master.checked = (cnt === allChks.length);
+            }} else if (master && allChks.length === 0) {{
+                master.checked = false;
+            }}
+        }}
+
+        async function deleteSelectedOrders() {{
+            const checked = Array.from(document.querySelectorAll('.order-chk:checked')).map(c => c.value);
+            if (!checked || checked.length === 0) {{
+                alert('لطفاً حداقل یک سفارش را برای حذف انتخاب کنید.');
+                return;
+            }}
+            if (!confirm('آیا از حذف دسته‌جمعی ' + checked.length + ' سفارش انتخاب‌شده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/bulk_delete', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ order_ids: checked }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || (checked.length + ' سفارش با موفقیت حذف شدند.')));
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در حذف سفارش‌ها: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function clearAllOrders() {{
+            if (!confirm('⚠️ هشدار جدی!\nآیا از پاکسازی تمامی سفارشات موجود در سیستم اطمینان دارید؟\nاین عملیات کلیه سفارشات ثبت‌شده (تستی و واقعی) را به طور کامل حذف می‌کند و غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/clear_all', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }}
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || 'تمامی سفارشات با موفقیت پاکسازی شدند.'));
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در پاکسازی سفارشات: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
         async function loadStoreOrders() {{
             const tbody = document.getElementById('storeOrdersTableBody');
             if (!tbody) return;
+            const master = document.getElementById('selectAllOrders');
+            if (master) master.checked = false;
+            updateSelectedOrdersCount();
+
             try {{
                 const res = await fetch('/api/store/orders');
                 const data = await res.json();
                 if (!data.ok || !data.orders || data.orders.length === 0) {{
-                    tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-500">هیچ سفارشی در سیستم ثبت نشده است.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-slate-500">هیچ سفارشی در سیستم ثبت نشده است.</td></tr>';
                     return;
                 }}
                 tbody.innerHTML = data.orders.map(ord => {{
@@ -2719,6 +2811,7 @@ def render_dashboard_html() -> str:
                     const amountStr = (ord.amount || 0).toLocaleString() + ' تومان';
 
                     return '<tr class="border-b border-slate-800 hover:bg-slate-800/30 transition">' +
+                        '<td class="py-3 px-3 text-center"><input type="checkbox" class="order-chk rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" value="' + escapeHtml(ord.order_id) + '" onchange="updateSelectedOrdersCount()"></td>' +
                         '<td class="py-3 px-3 font-mono text-cyan-400 font-bold">' + escapeHtml(ord.order_id) + '</td>' +
                         '<td class="py-3 px-3">' +
                             '<div class="font-bold text-slate-200">' + escapeHtml(ord.customer_name || 'کاربر') + '</div>' +
@@ -2739,7 +2832,7 @@ def render_dashboard_html() -> str:
                     '</tr>';
                 }}).join('');
             }} catch (err) {{
-                tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-rose-400">خطا در دریافت سفارش‌ها: ' + err.message + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="py-6 text-center text-rose-400">خطا در دریافت سفارش‌ها: ' + err.message + '</td></tr>';
             }}
         }}
 
@@ -4744,6 +4837,27 @@ async def handle_store_cleanup_rejected_orders_async() -> dict:
 
 def handle_store_cleanup_rejected_orders() -> dict:
     return _run_sync(handle_store_cleanup_rejected_orders_async())
+
+
+async def handle_store_bulk_delete_orders_async(order_ids: list) -> dict:
+    if not isinstance(order_ids, list) or not order_ids:
+        return {"ok": False, "error": "لیست شناسه‌های سفارش نامعتبر است."}
+    count = await StoreService.bulk_delete_orders(order_ids)
+    return {"ok": True, "count": count, "message": f"تعداد {count} سفارش با موفقیت حذف شدند."}
+
+
+def handle_store_bulk_delete_orders(order_ids: list) -> dict:
+    return _run_sync(handle_store_bulk_delete_orders_async(order_ids))
+
+
+async def handle_store_clear_all_orders_async() -> dict:
+    count = await StoreService.clear_all_orders()
+    return {"ok": True, "count": count, "message": f"تمامی سفارشات ({count} سفارش) با موفقیت پاکسازی شدند."}
+
+
+def handle_store_clear_all_orders() -> dict:
+    return _run_sync(handle_store_clear_all_orders_async())
+
 
 
 async def handle_store_get_order_status_async(query_str: str) -> dict:

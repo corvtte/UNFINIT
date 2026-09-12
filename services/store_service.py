@@ -340,6 +340,17 @@ class StoreService:
         return count
 
     @staticmethod
+    async def bulk_delete_orders(order_ids: List[str]) -> int:
+        from core.database import db_bulk_delete_orders
+        return await db_bulk_delete_orders(order_ids)
+
+    @staticmethod
+    async def clear_all_orders() -> int:
+        from core.database import db_clear_all_orders
+        return await db_clear_all_orders()
+
+
+    @staticmethod
     async def get_order(order_id: str) -> Optional[OrderItem]:
         if not order_id:
             return None

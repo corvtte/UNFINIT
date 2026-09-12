@@ -38,6 +38,8 @@ from services.web_panel import (
     handle_store_reject_order,
     handle_store_delete_order,
     handle_store_cleanup_rejected_orders,
+    handle_store_bulk_delete_orders,
+    handle_store_clear_all_orders,
     handle_store_get_order_status
 )
 from services.store_service import StoreService
@@ -694,6 +696,33 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
         elif path == "/api/store/orders/cleanup_rejected":
             try:
                 res = handle_store_cleanup_rejected_orders()
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path in ("/api/store/orders/bulk_delete", "/api/orders/bulk-delete"):
+            try:
+                order_ids = payload.get("order_ids") or []
+                res = handle_store_bulk_delete_orders(order_ids)
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path in ("/api/store/orders/clear_all", "/api/orders/clear-all"):
+            try:
+                res = handle_store_clear_all_orders()
                 self.send_response(200 if res.get("ok") else 400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

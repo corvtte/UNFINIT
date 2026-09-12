@@ -782,3 +782,25 @@ async def db_increment_coupon_usage(code: str) -> bool:
         return False
     await execute_write("UPDATE coupons SET used_count = used_count + 1 WHERE UPPER(code) = ?", (code_clean,))
     return True
+
+async def db_bulk_delete_orders(order_ids: List[str]) -> int:
+    """Deletes multiple orders by their order_id."""
+    if not order_ids:
+        return 0
+    clean_ids = [str(oid).strip() for oid in order_ids if str(oid).strip()]
+    if not clean_ids:
+        return 0
+    placeholders = ",".join("?" for _ in clean_ids)
+    await execute_query(f"DELETE FROM orders WHERE order_id IN ({placeholders})", tuple(clean_ids))
+    return len(clean_ids)
+
+async def db_clear_all_orders() -> int:
+    """Deletes all orders from the database and returns deleted count."""
+    rows = await fetch_all("SELECT COUNT(*) as cnt FROM orders")
+    count = 0
+    if rows and len(rows) > 0:
+        row = rows[0]
+        count = row.get("cnt", 0) if isinstance(row, dict) else (row[0] if len(row) > 0 else 0)
+    await execute_query("DELETE FROM orders")
+    return int(count)
+
