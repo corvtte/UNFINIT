@@ -38,7 +38,7 @@ class VersionStr(str):
         return False
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.1.0").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.1.4").strip())
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
     API_HASH: str = (os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or "").strip()
