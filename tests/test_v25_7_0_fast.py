@@ -46,7 +46,7 @@ class TestV2570Fast(unittest.TestCase):
         for env_file in [".env.example"]:
             env_content = Path(env_file).read_text(encoding="utf-8")
             self.assertIn("v0.1.0", env_content)
-            self.assertIn("ZARINPAL_MERCHANT_ID=", env_content)
+            self.assertIn("BALE_PAYMENT_TOKEN=", env_content)
             self.assertIn("TELEGRAM_FORUM_GROUP_ID=", env_content)
             self.assertIn("ADMIN_USER_IDS=", env_content)
 

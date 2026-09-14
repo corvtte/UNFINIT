@@ -20,7 +20,7 @@ class UrlService:
             "filename": "downloaded_file.bin",
             "file_size": 0,
             "content_type": "",
-            "is_valid": True,
+            "is_valid": False,
             "media_type": "document"
         }
 
@@ -31,45 +31,62 @@ class UrlService:
             result["filename"] = clean_display_filename(path_name)
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "*/*",
+            "Accept-Encoding": "identity",
         }
 
         try:
             import aiohttp
-            timeout = aiohttp.ClientTimeout(total=15, connect=10)
+            timeout = aiohttp.ClientTimeout(total=20, connect=10)
             async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
-                async with session.head(clean_url, allow_redirects=True) as resp:
-                    if resp.status in (200, 206):
-                        result["is_valid"] = True
-                        result["file_size"] = int(resp.headers.get("Content-Length", 0) or 0)
-                        result["content_type"] = resp.headers.get("Content-Type", "")
-                        
-                        cd = resp.headers.get("Content-Disposition", "")
-                        if cd and "filename=" in cd:
-                            match = re.search(r'filename\*?=(?:UTF-8\'\')?["\']?([^"\';]+)["\']?', cd, re.IGNORECASE)
-                            if match:
-                                result["filename"] = clean_display_filename(urllib.parse.unquote(match.group(1).strip()))
-
-                if result["file_size"] == 0:
-                    range_headers = {**headers, "Range": "bytes=0-10"}
-                    async with session.get(clean_url, headers=range_headers, allow_redirects=True) as g_resp:
-                        if g_resp.status in (200, 206):
-                            cr = g_resp.headers.get("Content-Range", "")
-                            if cr and "/" in cr:
-                                total_str = cr.split("/")[1]
-                                if total_str.isdigit():
-                                    result["file_size"] = int(total_str)
-                            if result["file_size"] == 0:
-                                result["file_size"] = int(g_resp.headers.get("Content-Length", 0) or 0)
+                head_ok = False
+                try:
+                    async with session.head(clean_url, allow_redirects=True) as resp:
+                        if resp.status in (200, 206):
+                            head_ok = True
+                            result["is_valid"] = True
+                            result["file_size"] = int(resp.headers.get("Content-Length", 0) or 0)
+                            result["content_type"] = resp.headers.get("Content-Type", "")
                             
-                            cd = g_resp.headers.get("Content-Disposition", "")
+                            cd = resp.headers.get("Content-Disposition", "")
                             if cd and "filename=" in cd:
                                 match = re.search(r'filename\*?=(?:UTF-8\'\')?["\']?([^"\';]+)["\']?', cd, re.IGNORECASE)
                                 if match:
                                     result["filename"] = clean_display_filename(urllib.parse.unquote(match.group(1).strip()))
+                except Exception as head_err:
+                    logger.debug(f"HEAD probe failed for {clean_url}: {head_err}")
+
+                # Fallback GET request if HEAD failed or file_size was 0 (many CDNs block HEAD or omit Content-Length)
+                if not head_ok or result["file_size"] == 0:
+                    range_headers = {**headers, "Range": "bytes=0-1024"}
+                    try:
+                        async with session.get(clean_url, headers=range_headers, allow_redirects=True) as g_resp:
+                            if g_resp.status in (200, 206):
+                                result["is_valid"] = True
+                                cr = g_resp.headers.get("Content-Range", "")
+                                if cr and "/" in cr:
+                                    total_str = cr.split("/")[1]
+                                    if total_str.isdigit():
+                                        result["file_size"] = int(total_str)
+                                if result["file_size"] == 0:
+                                    result["file_size"] = int(g_resp.headers.get("Content-Length", 0) or 0)
+                                if not result["content_type"]:
+                                    result["content_type"] = g_resp.headers.get("Content-Type", "")
+                                
+                                cd = g_resp.headers.get("Content-Disposition", "")
+                                if cd and "filename=" in cd:
+                                    match = re.search(r'filename\*?=(?:UTF-8\'\')?["\']?([^"\';]+)["\']?', cd, re.IGNORECASE)
+                                    if match:
+                                        result["filename"] = clean_display_filename(urllib.parse.unquote(match.group(1).strip()))
+                    except Exception as get_err:
+                        logger.warning(f"Fallback GET probe failed for {clean_url}: {get_err}")
 
         except Exception as e:
             logger.warning(f"URL probe notice for {clean_url}: {e}")
+
+        if not result["is_valid"]:
+            result["error"] = "سرور مبدا اجازه دسترسی به این فایل را نداد یا لینک نامعتبر است."
 
         fn_lower = result["filename"].lower()
         if fn_lower.endswith((".mp3", ".m4a", ".wav", ".aac", ".ogg", ".flac", ".opus")):
@@ -92,7 +109,8 @@ class UrlService:
         """
         import aiohttp
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "*/*"
         }
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         temp_dest = dest_path.with_suffix(dest_path.suffix + ".part")

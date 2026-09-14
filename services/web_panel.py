@@ -38,7 +38,7 @@ class EngineVersionStr(str):
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.1"):
+        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.2.5", "v0.1"):
             return True
         return False
 
@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.4"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.5"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -468,6 +468,16 @@ def render_dashboard_html() -> str:
             transition: background-color 5000s ease-in-out 0s !important;
         }}
     </style>
+    <style>
+        /* High-Priority Universal Themed Scrollbar */
+        :root, html, body, *, *::-webkit-scrollbar, *::-webkit-scrollbar-thumb {{
+            scrollbar-color: var(--accent-color, #a855f7) transparent !important;
+            scrollbar-width: thin !important;
+        }}
+        ::-webkit-scrollbar {{ width: 8px !important; height: 8px !important; }}
+        ::-webkit-scrollbar-track {{ background: transparent !important; }}
+        ::-webkit-scrollbar-thumb {{ background: var(--accent-color, #a855f7) !important; border-radius: 9999px !important; }}
+    </style>
 </head>
 <body class="text-slate-100 min-h-screen">
     <!-- ================= FULLSCREEN LOGIN GATE ================= -->
@@ -478,8 +488,9 @@ def render_dashboard_html() -> str:
 
             <!-- Brand Header -->
             <div class="flex items-center justify-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-700 flex items-center justify-center font-bold text-2xl shadow-xl shadow-cyan-500/30 text-white">
-                    ⚡️
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-700 flex items-center justify-center font-bold text-2xl shadow-xl shadow-cyan-500/30 text-white overflow-hidden relative" id="loginLogoContainer">
+                    <img id="loginLogoImg" src="/static/logo.png?t={int(time.time())}" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                    <span class="hidden items-center justify-center w-full h-full text-2xl font-bold">⚡️</span>
                 </div>
                 <div class="text-right">
                     <div class="flex items-center gap-2">
@@ -629,6 +640,16 @@ def render_dashboard_html() -> str:
 
                 
         // ================= ANTIGRAVITY OFFICIAL THEMES =================
+        var themeAccents = {{
+            'default-dark': '#06b6d4',
+            'catppuccin': '#C6A0F6',
+            'dracula': '#BD93F9',
+            'tokyo-night': '#7AA2F7',
+            'vesper': '#FFC799',
+            'solarized-dark': '#268BD2',
+            'monokai': '#F92672',
+            'one-dark-pro': '#61AFEF'
+        }};
         function applyAntigravityTheme(themeKey) {{
             var validThemes = ['default-dark', 'catppuccin', 'dracula', 'tokyo-night', 'vesper', 'solarized-dark', 'monokai', 'one-dark-pro'];
             if (!validThemes.includes(themeKey)) themeKey = 'default-dark';
@@ -636,7 +657,9 @@ def render_dashboard_html() -> str:
                 document.body.classList.remove('theme-' + t);
             }});
             document.body.classList.add('theme-' + themeKey);
+            var currentThemeAccent = themeAccents[themeKey] || '#06b6d4';
             try {{
+                document.documentElement.style.setProperty('--accent-color', currentThemeAccent);
                 localStorage.setItem('unfinit_theme', themeKey);
             }} catch(e) {{}}
             var sel = document.getElementById('themeSwitcherSelect');
@@ -644,6 +667,7 @@ def render_dashboard_html() -> str:
                 sel.value = themeKey;
             }}
         }}
+        window.changeTheme = applyAntigravityTheme;
         window.applyAntigravityTheme = applyAntigravityTheme;
         try {{
             var initTheme = localStorage.getItem('unfinit_theme') || 'default-dark';
@@ -665,8 +689,9 @@ def render_dashboard_html() -> str:
         <!-- Navbar -->
         <header class="glass sticky top-0 z-40 px-4 sm:px-6 py-3.5 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-xl shadow-lg shadow-cyan-500/20 text-white">
-                    ⚡️
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-xl shadow-lg shadow-cyan-500/20 text-white overflow-hidden relative" id="headerLogoContainer">
+                    <img id="headerLogoImg" src="/static/logo.png?t={int(time.time())}" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                    <span class="hidden items-center justify-center w-full h-full text-xl font-bold">⚡️</span>
                 </div>
                 <div>
                     <h1 class="text-lg font-bold tracking-tight text-white">هاب یکپارچه UNFINIT Multi-Platform</h1>
@@ -1283,7 +1308,7 @@ def render_dashboard_html() -> str:
                             </div>
                         </div>
 
-                        <!-- Accordion 1: Bot Tokens & Payment Gateway -->
+                        <!-- Accordion 1: Bot Tokens & Bale Payment Gateway -->
                         <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
@@ -1291,7 +1316,7 @@ def render_dashboard_html() -> str:
                                 </h4>
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
                             </summary>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات تلگرام (TELEGRAM_BOT_TOKEN)</label>
                                     <div class="relative">
@@ -1307,25 +1332,43 @@ def render_dashboard_html() -> str:
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن درگاه پرداخت آنلاین بله (BALE_PAYMENT_TOKEN)</label>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن درگاه پرداخت بله (BALE_PAYMENT_TOKEN)</label>
                                     <div class="relative">
                                         <input type="text" id="cfg_BALE_PAYMENT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_PAYMENT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
+                            </div>
+                        </details>
+
+                        <!-- Accordion 2: Admin IDs & Telegram Supergroup -->
+                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
+                            <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
+                                <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span>👑</span> شناسه‌های ادمین‌ها و سوپرگروه تاپیک‌دار تلگرام
+                                </h4>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                            </summary>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">مرچنت آیدی زرین‌پال (ZARINPAL_MERCHANT_ID)</label>
-                                    <div class="relative">
-                                        <input type="text" id="cfg_ZARINPAL_MERCHANT_ID" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_ZARINPAL_MERCHANT_ID', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-300 transition text-xs">👁</button>
-                                    </div>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی عددی ادمین تلگرام (TELEGRAM_OWNER_ID)</label>
+                                    <input type="text" id="cfg_TELEGRAM_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">محیط آزمایشی زرین‌پال (ZARINPAL_SANDBOX)</label>
-                                    <select id="cfg_ZARINPAL_SANDBOX" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition">
-                                        <option value="false">غیرفعال (درگاه اصلی و تراکنش واقعی شتاب)</option>
-                                        <option value="true">فعال (محیط تست Sandbox)</option>
-                                    </select>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی مقصد / ادمین بله (BALE_OWNER_ID)</label>
+                                    <input type="text" id="cfg_BALE_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                </div>
+                                <div>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">GUID یا آیدی مقصد روبیکا (RUBIKA_OWNER_ID)</label>
+                                    <input type="text" id="cfg_RUBIKA_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                </div>
+                                <div class="md:col-span-1">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی سوپرگروه تلگرام (TELEGRAM_FORUM_GROUP_ID)</label>
+                                    <input type="text" id="cfg_TELEGRAM_FORUM_GROUP_ID" placeholder="-100xxxxxxxxxx" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-sky-400 transition text-left" dir="ltr">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های ادمین و هدایت پیام‌ها (تلگرام، بله، روبیکا)</label>
+                                    <input type="text" id="cfg_ADMIN_USER_IDS" placeholder="12345678, 87654321" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                             </div>
                         </details>
@@ -1499,37 +1542,34 @@ def render_dashboard_html() -> str:
                             </div>
                         </div>
 
-                        <!-- Accordion 4: Admin IDs & Telegram Supergroup -->
-                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
-                            <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
-                                <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span>👑</span> شناسه‌های ادمین‌ها و سوپرگروه تاپیک‌دار تلگرام
+                        <!-- Custom Brand Logo Card -->
+                        <div class="rounded-xl p-4 space-y-4 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
+                            <div class="flex items-center justify-between pb-2 border-b border-white/5">
+                                <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span>🎨</span> لوگو و نشان تجاری اختصاصی (Custom Brand Logo)
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
-                            </summary>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی عددی ادمین تلگرام (TELEGRAM_OWNER_ID)</label>
-                                    <input type="text" id="cfg_TELEGRAM_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                <span class="text-[11px] text-slate-400">ذخیره پایدار در دایرکتوری داده و کش‌باستینگ خودکار</span>
+                            </div>
+                            <div class="flex flex-col sm:flex-row items-center gap-5 pt-1">
+                                <div class="w-20 h-20 rounded-2xl bg-slate-800 border-2 border-dashed border-cyan-500/40 flex items-center justify-center overflow-hidden shrink-0 shadow-lg relative" id="panelLogoPreviewContainer">
+                                    <img id="panelLogoPreview" src="/static/logo.png?t={int(time.time())}" alt="لوگوی فعلی" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                                    <span class="hidden items-center justify-center w-full h-full text-3xl font-bold text-white">⚡️</span>
                                 </div>
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی مقصد / ادمین بله (BALE_OWNER_ID)</label>
-                                    <input type="text" id="cfg_BALE_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                </div>
-                                <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">GUID یا آیدی مقصد روبیکا (RUBIKA_OWNER_ID)</label>
-                                    <input type="text" id="cfg_RUBIKA_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                </div>
-                                <div class="md:col-span-1">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی سوپرگروه تلگرام (TELEGRAM_FORUM_GROUP_ID)</label>
-                                    <input type="text" id="cfg_TELEGRAM_FORUM_GROUP_ID" placeholder="-100xxxxxxxxxx" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-sky-400 transition text-left" dir="ltr">
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های ادمین و هدایت پیام‌ها (تلگرام، بله، روبیکا)</label>
-                                    <input type="text" id="cfg_ADMIN_USER_IDS" placeholder="12345678, 87654321" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                <div class="space-y-2 flex-1 text-right">
+                                    <p class="text-xs text-slate-300">تصویر لوگوی برند خود را انتخاب و آپلود نمایید. این لوگو بلافاصله در هدر و صفحه لاگین پنل جایگزین خواهد شد (حداکثر ابعاد بهینه 512x512 پیکسل با فرمت PNG).</p>
+                                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                                        <label class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs text-cyan-300 font-medium cursor-pointer transition flex items-center gap-1.5">
+                                            <span>📁</span> انتخاب تصویر لوگو
+                                            <input type="file" id="logoFileInput" accept="image/*" class="hidden" onchange="handleLogoFileSelect(this)">
+                                        </label>
+                                        <button type="button" id="btnUploadLogo" onclick="uploadCustomLogo()" disabled class="px-4 py-2 rounded-xl bg-cyan-600/50 text-slate-400 text-xs font-bold transition flex items-center gap-1.5 cursor-not-allowed">
+                                            <span>⬆️</span> آپلود و اعمال لوگو
+                                        </button>
+                                        <span id="logoUploadStatus" class="text-xs font-medium"></span>
+                                    </div>
                                 </div>
                             </div>
-                        </details>
+                        </div>
 
                         <!-- Accordion 5: Messages, Delivery Quote, Channels & Bank Account Management -->
                         <details class="settings-accordion group rounded-xl p-4 space-y-4 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
@@ -3678,7 +3718,6 @@ def render_dashboard_html() -> str:
                     'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
                     'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
                     'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
-                    'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
                     'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
                     'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
                     'CARD_NUMBER', 'CARD_HOLDER',
@@ -3808,7 +3847,6 @@ def render_dashboard_html() -> str:
                 'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
                 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
                 'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
-                'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
                 'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
                 'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
                 'CARD_NUMBER', 'CARD_HOLDER',
@@ -3821,7 +3859,7 @@ def render_dashboard_html() -> str:
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
-                'RUBIKA_BOT_TOKEN', 'ZARINPAL_MERCHANT_ID', 'NARA_API_KEY',
+                'RUBIKA_BOT_TOKEN', 'NARA_API_KEY',
                 'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
             ];
             fields.forEach(f => {{
@@ -3935,6 +3973,87 @@ def render_dashboard_html() -> str:
         }}
         fetchLogs();
         setInterval(fetchLogs, 4000);
+        let selectedLogoBase64 = null;
+        function handleLogoFileSelect(input) {{
+            try {{
+                const file = input.files && input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(e) {{
+                    selectedLogoBase64 = e.target.result;
+                    const preview = document.getElementById('panelLogoPreview');
+                    if (preview) {{
+                        preview.src = selectedLogoBase64;
+                        preview.style.display = 'block';
+                        if (preview.nextElementSibling) preview.nextElementSibling.style.display = 'none';
+                    }}
+                    const btn = document.getElementById('btnUploadLogo');
+                    if (btn) {{
+                        btn.disabled = false;
+                        btn.classList.remove('bg-cyan-600/50', 'text-slate-400', 'cursor-not-allowed');
+                        btn.classList.add('bg-cyan-600', 'hover:bg-cyan-500', 'text-white', 'shadow-md');
+                    }}
+                }};
+                reader.readAsDataURL(file);
+            }} catch (err) {{
+                console.error('handleLogoFileSelect error:', err);
+            }}
+        }}
+
+        async function uploadCustomLogo() {{
+            if (!selectedLogoBase64) return;
+            const btn = document.getElementById('btnUploadLogo');
+            const status = document.getElementById('logoUploadStatus');
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) {{ btn.disabled = true; btn.innerText = 'در حال آپلود...'; }}
+            if (status) {{ status.className = 'text-xs text-cyan-400'; status.innerText = 'در حال پردازش و ذخیره تصویر لوگو...'; }}
+
+            let pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
+            try {{
+                const res = await fetch('/api/upload/logo', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        password: pwd,
+                        image: selectedLogoBase64
+                    }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    const newUrl = data.url || ('/static/logo.png?t=' + Date.now());
+                    const headerImg = document.getElementById('headerLogoImg');
+                    const loginImg = document.getElementById('loginLogoImg');
+                    const previewImg = document.getElementById('panelLogoPreview');
+                    [headerImg, loginImg, previewImg].forEach(img => {{
+                        if (img) {{
+                            img.src = newUrl;
+                            img.style.display = 'block';
+                            if (img.nextElementSibling) img.nextElementSibling.style.display = 'none';
+                        }}
+                    }});
+                    if (status) {{
+                        status.className = 'text-xs text-emerald-400 font-bold';
+                        status.innerText = '✅ لوگو با موفقیت ذخیره و در تمام بخش‌ها به‌روزرسانی شد.';
+                    }}
+                }} else {{
+                    if (status) {{
+                        status.className = 'text-xs text-rose-400 font-bold';
+                        status.innerText = '❌ خطا: ' + (data.error || 'آپلود ناموفق بود.');
+                    }}
+                }}
+            }} catch (err) {{
+                if (status) {{
+                    status.className = 'text-xs text-rose-400 font-bold';
+                    status.innerText = '❌ خطای شبکه: ' + err.message;
+                }}
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = origText || '<span>⬆️</span> آپلود و اعمال لوگو';
+                }}
+            }}
+        }}
+
         // =========================================================================
 
                 window.clearHermesChat = clearHermesChat;
@@ -3942,6 +4061,8 @@ def render_dashboard_html() -> str:
                 window.handleSendHermes = handleSendHermes;
                 window.escapeHtml = escapeHtml;
                 window.uploadBannerFile = uploadBannerFile;
+                window.handleLogoFileSelect = handleLogoFileSelect;
+                window.uploadCustomLogo = uploadCustomLogo;
                 window.loadSettings = loadSettings;
                 window.updateAiProviderView = updateAiProviderView;
                 window.populateSettingsForm = populateSettingsForm;

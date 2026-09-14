@@ -38,7 +38,7 @@ class VersionStr(str):
         return False
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.4").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.5").strip())
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
     API_HASH: str = (os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or "").strip()
@@ -161,7 +161,7 @@ class Config:
         self.COURSE_DELIVERY_NOTE = _clean_text(os.environ.get("COURSE_DELIVERY_NOTE") or "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨", default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨")
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.4").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.5").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -195,6 +195,7 @@ class Config:
             self.COURSES_BACKUP_FILE = self.COURSES_JSON_FILE
             self.UPLOADS_DIR = self.DATA_DIR / "uploads"
             self.BANNERS_DIR = self.DATA_DIR / "uploads" / "banners"
+            self.ASSETS_DIR = self.DATA_DIR / "assets"
         else:
             self.DATA_DIR = (self.BASE_DIR / "data").resolve()
             self.DB_PATH = (self.BASE_DIR / "store_database.db").resolve()
@@ -203,10 +204,12 @@ class Config:
             self.COURSES_BACKUP_FILE = self.COURSES_JSON_FILE
             self.UPLOADS_DIR = (self.BASE_DIR / "uploads").resolve()
             self.BANNERS_DIR = (self.BASE_DIR / "uploads" / "banners").resolve()
+            self.ASSETS_DIR = (self.DATA_DIR / "assets").resolve()
 
         self.DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite+aiosqlite:///{self.DB_PATH}").strip()
         try:
             self.DATA_DIR.mkdir(parents=True, exist_ok=True)
+            self.ASSETS_DIR.mkdir(parents=True, exist_ok=True)
             self.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
             self.BANNERS_DIR.mkdir(parents=True, exist_ok=True)
         except Exception:
@@ -229,13 +232,14 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.4").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.5").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)
 config.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 config.BANNERS_DIR.mkdir(parents=True, exist_ok=True)
 config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+config.ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # First-time seed of courses.json and settings.json into persistent volume if missing
 if getattr(config, "_use_persistent", False):

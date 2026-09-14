@@ -2309,10 +2309,10 @@ class TelegramAdapter:
                     await status_msg.edit_text(f"❌ <b>خطا در ارتباط با سرورهای بله:</b>\n<code>{escape(str(e))}</code>", parse_mode=enums.ParseMode.HTML)
 
         # Text input handler for Metadata, Trimming, URLs, Support, and Force Join
-        @self.app.on_message(filters.private & filters.text)
+        @self.app.on_message(filters.private & (filters.text | filters.caption))
         async def text_handler(client: Client, message: Message):
             user_id = message.from_user.id
-            text = message.text.strip()
+            text = (message.text or message.caption or "").strip()
             user_act = session_manager.get_user_action(f"tg_{user_id}")
             if user_act and text == "/cancel":
                 session_manager.clear_user_action(f"tg_{user_id}")
@@ -2433,7 +2433,11 @@ class TelegramAdapter:
 
             # Direct Download Link (URL Uploader Gate)
             link_match = re.search(r"https?://[^\s]+", text)
-            if link_match and not user_act:
+            if link_match:
+                if user_act:
+                    session_manager.clear_user_action(f"tg_{user_id}")
+                    user_act = None
+
                 if not self.is_admin(user_id):
                     logger.warning(f"Unauthorized link download attempt by non-admin user {user_id}: {text[:100]}")
                     await message.reply_text(
@@ -2444,7 +2448,7 @@ class TelegramAdapter:
 
                 clean_url = link_match.group(0).strip()
                 probe = await UrlService.probe_url(clean_url)
-                if probe["is_valid"]:
+                if probe.get("is_valid"):
                     url_id = uuid.uuid4().hex[:8]
                     session_manager.create_session(f"url_{url_id}", {**probe, "url_id": url_id, "url": clean_url})
                     
@@ -2477,6 +2481,13 @@ class TelegramAdapter:
                         "لطفاً نحوه دریافت و پردازش فایل را انتخاب فرمایید:"
                     )
                     await message.reply_text(card_txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb_url)
+                    return
+                else:
+                    err_reason = probe.get("error") or "سرور مبدا اجازه دسترسی به این فایل را نداد یا لینک نامعتبر است."
+                    await message.reply_text(
+                        f"❌ <b>خطا در بررسی لینک دانلود:</b> {escape(err_reason)}",
+                        parse_mode=enums.ParseMode.HTML
+                    )
                     return
 
             if not user_act:

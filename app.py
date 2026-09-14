@@ -434,6 +434,24 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
             return
+        elif path.startswith("/static/logo.png") or path == "/static/logo.png":
+            logo_file = getattr(config, "ASSETS_DIR", config.DATA_DIR / "assets") / "logo.png"
+            if not logo_file.exists():
+                self.send_response(404)
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(logo_file.stat().st_size))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            try:
+                with open(logo_file, "rb") as f:
+                    while chunk := f.read(64 * 1024):
+                        self.wfile.write(chunk)
+            except Exception:
+                pass
+            return
         elif path.startswith("/api/studio/specs"):
             # Support both /api/studio/specs/<drop_id> and /api/studio/specs?drop_id=<drop_id>
             drop_id = ""
@@ -1019,6 +1037,45 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path in ("/api/upload/logo", "/api/upload-logo"):
+            try:
+                data_b64 = payload.get("data", "").strip()
+                if not data_b64:
+                    raise ValueError("داده تصویر لوگو ارسال نشده است.")
+
+                if "," in data_b64:
+                    data_b64 = data_b64.split(",", 1)[1]
+
+                import base64
+                import io
+                from PIL import Image
+
+                img_bytes = base64.b64decode(data_b64)
+
+                with Image.open(io.BytesIO(img_bytes)) as img:
+                    if img.mode not in ("RGBA", "RGB"):
+                        img = img.convert("RGBA")
+                    max_dim = 512
+                    if img.width > max_dim or img.height > max_dim:
+                        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+
+                    assets_dir = getattr(config, "ASSETS_DIR", config.DATA_DIR / "assets")
+                    assets_dir.mkdir(parents=True, exist_ok=True)
+                    dest_path = assets_dir / "logo.png"
+                    img.save(dest_path, format="PNG", optimize=True)
+
+                logo_url = f"/static/logo.png?t={int(time.time())}"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "url": logo_url}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
         elif path == "/api/login":
             pwd = (payload.get("password") or "").strip()
             if verify_admin_password(pwd):
