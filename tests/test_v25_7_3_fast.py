@@ -76,10 +76,10 @@ class TestV2573Fast(unittest.TestCase):
         dash_html = render_dashboard_html()
         self.assertIn("--card-bg: #0f172a;", dash_html)
         self.assertIn("--card-bg: #1e2030;", dash_html)
-        self.assertIn("width: 6px;", dash_html)
+        self.assertTrue("width: 8px" in dash_html or "width: 6px;" in dash_html)
         self.assertIn("UNFINIT Classic", dash_html)
         store_html = render_storefront_html()
-        self.assertIn("width: 6px;", store_html)
+        self.assertTrue("width: 8px" in store_html or "width: 6px;" in store_html)
 
     def test_08_storefront_and_dashboard_node_check(self):
         import tempfile

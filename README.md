@@ -8,9 +8,9 @@ app_file: app.py
 pinned: false
 ---
 
-# ⚡ هاب چندپلتفرمه و موتور رسانه‌ای و فروشگاهی UNFINIT (v0.2.3)
+# ⚡ هاب چندپلتفرمه و موتور رسانه‌ای و فروشگاهی UNFINIT (v0.2.4)
 
-[![Engine Version](https://img.shields.io/badge/version-v0.2.3-blue.svg)](https://github.com/corvtte/UNFINIT)
+[![Engine Version](https://img.shields.io/badge/version-v0.2.4-blue.svg)](https://github.com/corvtte/UNFINIT)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-brightgreen.svg)](https://python.org)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces/Foadian/UNFINIT)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -19,9 +19,18 @@ pinned: false
 
 ---
 
-## 🌟 قابلیت‌های برجسته در نگارش v0.2.3
+## 🌟 قابلیت‌های برجسته در نگارش v0.2.4
 
-### ۱. معماری ماژولار و ضدگلوله جاوااسکریپت (Sandboxed JavaScript Architecture)
+### ۱. احراز هویت امن و بازخورد هوشمند در شکار لینک تلگرام
+- **رفع سکوت ناخواسته با حفظ امنیت کامل:** چنانچه کاربری لینک دانلود مستقیم به ربات تلگرام ارسال کند و شناسه او در لیست ادمین‌ها نباشد، ربات در سکوت نمی‌ماند و دسترسی غیرمجاز نیز نمی‌دهد؛ بلکه با ثبت لاگ هشدار، پیام راهنمای امنیتی شامل شناسه عددی (`user_id`) کاربر را برای او ارسال می‌کند تا در صورت نیاز به سرعت در پنل تنظیمات ثبت شود:
+  `⛔ دسترسی غیرمجاز! شناسه عددی تلگرام شما جهت ثبت در پنل: {user_id}`
+
+### ۲. اسکرول‌بار سراسری بدون استثنا (Universal 8px Themed Scrollbar)
+- بازنویسی جامع کدهای CSS اسکرول‌بار به صورت کاملاً سراسری با پوشش تمامی لایه‌های والد، آیفریم‌ها، پنل و المنتهای دارای اسکرول داخلی.
+- تنظیم ضخامت استاندارد ۸ پیکسل و لبه‌های کاملاً گرد (`rounded-full / 9999px`).
+- پشتیبانی از رنگ پشتیبان فالبک (`var(--accent-color, #3b82f6)`) در کلیه صفحات و بخش‌ها.
+
+### ۳. معماری ماژولار و ضدگلوله جاوااسکریپت (Sandboxed JavaScript Architecture)
 - تفکیک کدهای کلاینت وب‌پنل به ۴ بلوک خوداجرا (IIFE) و مجزا همراه با بلوک‌های ایزوله try...catch:
   1. **ماژول ناوبری و سوئیچ تب‌ها (Navigation Module)** با مکانیزم Event Delegation و حذف وابستگی‌های آسیب‌پذیر inline onclick
   2. **ماژول استودیوی رسانه و ویرایشگر متادیتا (Studio & Media Hub Module)**
@@ -29,12 +38,7 @@ pinned: false
   4. **ماژول هوش مصنوعی، تنظیمات و لاگ‌های زنده (AI & Settings Module)**
 - مدیریت سوئیچ تب‌ها با اتریبیوت‌های استاندارد data-tab و همگام‌سازی کامل در لود صفحه با ذخیره‌سازی وضعیت در localStorage.
 
-### ۲. رابط کاربری مدرن با اسکرول‌بار داینامیک و پشتیبانی از تم‌های محبوب
-- اتصال مستقیم رنگ اسکرول‌بار به متغیرهای CSS تم.
-- پالایش کامل رنگ‌های هاردکد شده و هماهنگی بی‌نقص با انواع تم‌ها: UNFINIT Classic، Catppuccin، Dracula، Tokyo Night، Vesper، Solarized Dark، Monokai و One Dark Pro.
-- طراحی کاملاً واکنش‌گرا (Responsive) سازگار با انواع ابعاد نمایشگرها، تبلت و موبایل.
-
-### ۳. پردازش و آپلودر هوشمند لینک‌های مستقیم در تلگرام (URL Sniffer Gate)
+### ۴. پردازش و آپلودر هوشمند لینک‌های مستقیم در تلگرام (URL Sniffer Gate)
 - پشتیبانی از تشخیص هوشمند انواع لینک‌های مستقیم دانلود با الگوهای پیشرفته Regex.
 - احراز هویت ادمین به صورت Type-safe و بررسی ترکیبی ADMIN_USER_IDS و TELEGRAM_OWNER_ID.
 - منوی شیشه‌ای کامل تعاملی:

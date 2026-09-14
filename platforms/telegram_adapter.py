@@ -321,9 +321,11 @@ class TelegramAdapter:
         u_str = str(user_id).strip()
         admin_ids = [str(x).strip() for x in (getattr(config, "ADMIN_USER_IDS", []) or []) if str(x).strip()]
         owner_id = str(getattr(config, "TELEGRAM_OWNER_ID", "") or getattr(config, "OWNER_ID", "")).strip()
-        if u_str in admin_ids or (owner_id and u_str == owner_id):
+        if u_str in admin_ids or (owner_id and owner_id != "0" and u_str == owner_id):
             return True
-        return config.is_admin(user_id)
+        if hasattr(config, "is_admin") and callable(config.is_admin):
+            return config.is_admin(user_id)
+        return False
 
     async def ensure_forum_topics(self) -> Dict[str, int]:
         """Ensures 3 automatic forum topics exist in TELEGRAM_FORUM_GROUP_ID supergroup."""
@@ -2431,7 +2433,15 @@ class TelegramAdapter:
 
             # Direct Download Link (URL Uploader Gate)
             link_match = re.search(r"https?://[^\s]+", text)
-            if link_match and self.is_admin(user_id) and not user_act:
+            if link_match and not user_act:
+                if not self.is_admin(user_id):
+                    logger.warning(f"Unauthorized link download attempt by non-admin user {user_id}: {text[:100]}")
+                    await message.reply_text(
+                        f"⛔ دسترسی غیرمجاز! شناسه عددی تلگرام شما جهت ثبت در پنل: <code>{user_id}</code>",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    return
+
                 clean_url = link_match.group(0).strip()
                 probe = await UrlService.probe_url(clean_url)
                 if probe["is_valid"]:

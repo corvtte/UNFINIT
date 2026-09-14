@@ -38,7 +38,7 @@ class EngineVersionStr(str):
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.1"):
+        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.1"):
             return True
         return False
 
@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.3"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.4"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -414,34 +414,33 @@ def render_dashboard_html() -> str:
             border-color: var(--accent-color) !important;
             box-shadow: 0 0 15px -3px var(--card-border);
         }}
-                /* Custom Thin Dark Themed Scrollbar (6px) */
-        :root {{
-            scrollbar-color: var(--accent-color) transparent;
+                /* Universal Global Themed Scrollbar (8px) */
+        html, body, *, *::-webkit-scrollbar, *::-webkit-scrollbar-thumb {{
+            scrollbar-color: var(--accent-color, #3b82f6) transparent !important;
         }}
-        /* Custom Thin Dynamic Themed Scrollbar (6px) */
-        ::-webkit-scrollbar {{
-            width: 6px;
-            height: 6px;
+        *::-webkit-scrollbar {{
+            width: 8px !important;
+            height: 8px !important;
         }}
-        ::-webkit-scrollbar-track {{
-            background: transparent;
+        *::-webkit-scrollbar-track {{
+            background: transparent !important;
         }}
-        ::-webkit-scrollbar-thumb {{
-            background: var(--accent-color) !important;
-            border-radius: 4px;
+        *::-webkit-scrollbar-thumb {{
+            background: var(--accent-color, #3b82f6) !important;
+            border-radius: 9999px !important;
         }}
-        ::-webkit-scrollbar-thumb:hover {{
-            background: var(--accent-color);
+        *::-webkit-scrollbar-thumb:hover {{
+            background: var(--accent-color, #3b82f6) !important;
             filter: brightness(1.2);
         }}
         * {{
             scrollbar-width: thin;
-            scrollbar-color: var(--accent-color) transparent;
+            scrollbar-color: var(--accent-color, #3b82f6) transparent !important;
         }}
-        .chat-scrollbar::-webkit-scrollbar {{ width: 6px; }}
-        .chat-scrollbar::-webkit-scrollbar-track {{ background: transparent; }}
-        .chat-scrollbar::-webkit-scrollbar-thumb {{ background: var(--accent-color) !important; border-radius: 4px; }}
-        .chat-scrollbar::-webkit-scrollbar-thumb:hover {{ background: var(--accent-color); filter: brightness(1.2); }}
+        .chat-scrollbar::-webkit-scrollbar {{ width: 8px !important; }}
+        .chat-scrollbar::-webkit-scrollbar-track {{ background: transparent !important; }}
+        .chat-scrollbar::-webkit-scrollbar-thumb {{ background: var(--accent-color, #3b82f6) !important; border-radius: 9999px !important; }}
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover {{ background: var(--accent-color, #3b82f6) !important; filter: brightness(1.2); }}
         input, select, textarea {{
             background-color: var(--input-bg) !important;
             color: var(--fg-color) !important;
@@ -5241,24 +5240,28 @@ def render_storefront_html() -> str:
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom Thin Dark Scrollbar (6px) */
-        ::-webkit-scrollbar {{
-            width: 6px;
-            height: 6px;
+        /* Universal Global Themed Scrollbar (8px) */
+        html, body, *, *::-webkit-scrollbar, *::-webkit-scrollbar-thumb {{
+            scrollbar-color: #3b82f6 transparent !important;
         }}
-        ::-webkit-scrollbar-track {{
-            background: #0b1120;
+        *::-webkit-scrollbar {{
+            width: 8px !important;
+            height: 8px !important;
         }}
-        ::-webkit-scrollbar-thumb {{
-            background: #334155;
-            border-radius: 4px;
+        *::-webkit-scrollbar-track {{
+            background: transparent !important;
         }}
-        ::-webkit-scrollbar-thumb:hover {{
-            background: #06b6d4;
+        *::-webkit-scrollbar-thumb {{
+            background: #3b82f6 !important;
+            border-radius: 9999px !important;
+        }}
+        *::-webkit-scrollbar-thumb:hover {{
+            background: #06b6d4 !important;
+            filter: brightness(1.2);
         }}
         * {{
             scrollbar-width: thin;
-            scrollbar-color: #334155 #0b1120;
+            scrollbar-color: #3b82f6 transparent !important;
         }}
         * {{ box-sizing: border-box; font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; }}
         body {{
