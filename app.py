@@ -1552,14 +1552,9 @@ async def main():
         threading.Thread(target=run_bale_thread, daemon=True).start()
         logger.info("Bale polling listener engine started.")
 
-    # 6. Start Rubika Bot API Polling (if configured)
-    if rubika_adapter and config.RUBIKA_BOT_TOKEN:
-        def run_rubika_thread():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(run_rubika_polling_engine(telegram_adapter_instance=tg_adapter, bale_adapter_instance=bale_adapter))
-        threading.Thread(target=run_rubika_thread, daemon=True).start()
-        logger.info("Rubika Bot API polling listener engine started.")
+    # 6. Rubika Official Bot API Polling (Disabled to eliminate upstream 502 Bad Gateway errors)
+    # The Rubika user session worker (rubika_worker.py) remains active for 2GB file processing.
+    logger.info("Rubika Bot API polling engine is permanently disabled to eliminate upstream 502 Bad Gateway errors.")
 
     # 7. Instagram Listener loop disabled temporarily as per user request to clean up server logs
     # if instagram_adapter and (instagram_adapter.has_session() or (config.INSTAGRAM_USERNAME and config.INSTAGRAM_PASSWORD)):
@@ -1576,8 +1571,11 @@ async def main():
             from pyrogram.errors import FloodWait
             while True:
                 try:
-                    logger.info("Starting Telegram MTProto Client...")
-                    await tg_adapter.app.start()
+                    logger.info("Starting Telegram MTProto Client (enforcing PID Lock)...")
+                    if hasattr(tg_adapter, "start_client"):
+                        await tg_adapter.start_client()
+                    else:
+                        await tg_adapter.app.start()
                     logger.info("Telegram MTProto Client is ONLINE and listening!")
                     break
                 except FloodWait as fw:
@@ -1594,14 +1592,15 @@ async def main():
                     else:
                         err_str_lower = err_str.lower()
                         if "auth_key_duplicated" in err_str_lower or getattr(e, "ID", None) == "AUTH_KEY_DUPLICATED" or getattr(e, "CODE", None) == 406 or "406" in err_str:
+                            logger.warning("[TG] AUTH_KEY_DUPLICATED detected. Another container may be disconnecting. Waiting 5s...")
+                            await asyncio.sleep(5)
                             session_file = config.DATA_DIR / "unfinit_store_session.session"
                             try:
                                 session_file.unlink(missing_ok=True)
-                                logger.warning(f"[TG] AUTH_KEY_DUPLICATED: deleted stale session file '{session_file}'. Reconnecting in 2s...")
+                                logger.warning(f"[TG] Resetting stale session file '{session_file}'. Reconnecting in 2s...")
                             except Exception as del_err:
                                 logger.warning(f"[TG] Could not delete session file: {del_err}")
                             await asyncio.sleep(2)
-                            # loop continues → fresh session will be created
                         else:
                             logger.error(f"Telegram client start error: {e}")
                             break

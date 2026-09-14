@@ -47,7 +47,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": "UNFINIT Engine v0.2.1",
+        "engine_version": "UNFINIT Engine v0.2.2",
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -64,9 +64,9 @@ def get_system_health() -> Dict[str, Any]:
             },
             "rubika_bot": {
                 "name": "روبیکا (Official Bot API)",
-                "status": "ONLINE" if config.RUBIKA_BOT_TOKEN else "OFFLINE",
+                "status": "DISABLED (502 BYPASS)",
                 "owner_id": config.RUBIKA_OWNER_ID,
-                "badge": "bg-purple-600"
+                "badge": "bg-slate-700"
             },
             "rubika_user": {
                 "name": "روبیکا سشن کاربری (Saved Messages)",
@@ -389,6 +389,23 @@ def render_dashboard_html() -> str:
             border-color: transparent !important;
             box-shadow: 0 4px 20px -2px rgba(0, 122, 204, 0.35);
         }}
+        .theme-accent-btn {{
+            background: var(--accent-color) !important;
+            color: #ffffff !important;
+        }}
+        .theme-accent-btn:hover {{
+            filter: brightness(1.15);
+        }}
+        #studioDropzone {{
+            background-color: var(--input-bg) !important;
+            border-color: var(--card-border) !important;
+            color: var(--fg-color) !important;
+            transition: all 0.2s ease-in-out;
+        }}
+        #studioDropzone:hover, #studioDropzone.dragover {{
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 15px -3px var(--card-border);
+        }}
                 /* Custom Thin Dark Themed Scrollbar (6px) */
         ::-webkit-scrollbar {{
             width: 6px;
@@ -634,7 +651,7 @@ def render_dashboard_html() -> str:
     <!-- ================= MAIN APP WRAPPER ================= -->
     <div id="appMain" data-id="mainDashboard" class="hidden min-h-screen" style="display: none !important;">
         <!-- Navbar -->
-        <header class="glass sticky top-0 z-40 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+        <header class="glass sticky top-0 z-40 px-4 sm:px-6 py-3.5 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-xl shadow-lg shadow-cyan-500/20 text-white">
                     ⚡️
@@ -644,7 +661,7 @@ def render_dashboard_html() -> str:
                     <p class="text-xs text-slate-400">Telegram • Bale • Rubika Engine {health['engine_version']}</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <!-- Antigravity Theme Switcher -->
                 <div class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs shadow-inner">
                     <span>🎨</span>
@@ -680,11 +697,17 @@ def render_dashboard_html() -> str:
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
                 <button onclick="switchTab('tab-courses')" id="btn-tab-courses" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>🎓</span> دوره‌ها و فروشگاه آنلاین
+                    <span>🎓</span> دوره‌ها
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
+                <button onclick="switchTab('tab-orders')" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🧾</span> سفارشات و تراکنش‌ها
+                </button>
+                <button onclick="switchTab('tab-tokens')" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🔐</span> سکرت‌ها و توکن‌ها
+                </button>
                 <button onclick="switchTab('tab-settings')" id="btn-tab-settings" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>⚙️</span> تنظیمات سیستم و توکن‌ها
+                    <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
                 </button>
             </div>
 
@@ -695,11 +718,17 @@ def render_dashboard_html() -> str:
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
                 <button onclick="switchTab('tab-courses'); toggleMobileMenu(false);" id="m-btn-tab-courses" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span class="flex items-center gap-2"><span>🎓</span> دوره‌ها و فروشگاه آنلاین</span>
+                    <span class="flex items-center gap-2"><span>🎓</span> دوره‌ها</span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
+                <button onclick="switchTab('tab-orders'); toggleMobileMenu(false);" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🧾</span> سفارشات و تراکنش‌ها
+                </button>
+                <button onclick="switchTab('tab-tokens'); toggleMobileMenu(false);" id="m-btn-tab-tokens" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🔐</span> سکرت‌ها و توکن‌ها
+                </button>
                 <button onclick="switchTab('tab-settings'); toggleMobileMenu(false);" id="m-btn-tab-settings" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>⚙️</span> تنظیمات سیستم و توکن‌ها
+                    <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
                 </button>
             </div>
 
@@ -816,7 +845,7 @@ def render_dashboard_html() -> str:
                 </div>
 
                 <!-- Drag & Drop Upload Zone -->
-                <div id="studioDropzone" onclick="document.getElementById('studioFileInput').click()" class="border-2 border-dashed border-cyan-500/40 hover:border-cyan-400 bg-slate-900/40 hover:bg-slate-900/70 p-6 rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group">
+                <div id="studioDropzone" onclick="document.getElementById('studioFileInput').click()" class="border-2 border-dashed p-6 rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group">
                     <input type="file" id="studioFileInput" multiple accept="audio/*,video/*" class="hidden" onchange="handleStudioFilesSelect(this.files)">
                     <div class="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center text-2xl text-cyan-300 group-hover:scale-110 transition">
                         📂
@@ -1094,9 +1123,62 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- ================= TAB 3: ORDERS & TRANSACTIONS ================= -->
+        <div id="tab-orders" class="hidden space-y-6">
+            <!-- Orders Management Card -->
+            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4" id="ordersCard">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>🧾</span> مدیریت سفارش‌ها و تراکنش‌های فروشگاه (/store)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">لیست کلیه سفارش‌های ثبت‌شده از طریق درگاه آنلاین بله و کارت‌به‌کارت با امکان بررسی فیش، تایید و تحویل لینک دانلود</p>
+                    </div>
+                    <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                        <button onclick="deleteSelectedOrders()" id="btnDeleteSelectedOrders" class="hidden px-3.5 py-2 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold border border-rose-700 transition flex items-center gap-1.5 shadow-sm">
+                            <span>🗑</span> حذف موارد انتخاب‌شده (<span id="selectedOrdersCount">0</span>)
+                        </button>
+                        <button onclick="clearAllOrders()" class="px-3.5 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 text-xs font-bold border border-red-800/80 transition flex items-center gap-1.5 shadow-sm" title="پاکسازی تمامی سفارشات تستی">
+                            <span>🗑</span> پاکسازی تمامی سفارشات
+                        </button>
+                        <button onclick="cleanupRejectedOrders()" class="px-3.5 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/80 transition flex items-center gap-1.5 shadow-sm" title="حذف یکباره کلیه سفارش‌های رد شده">
+                            <span>🧹</span> پاکسازی سفارشات رد شده
+                        </button>
+                        <button onclick="loadStoreOrders()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                            <span>🔄</span> به‌روزرسانی لیست سفارش‌ها
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-400">
+                                <th class="py-3 px-3 w-8 text-center">
+                                    <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders(this)" class="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" title="انتخاب همه سفارشات">
+                                </th>
+                                <th class="py-3 px-3">شناسه سفارش</th>
+                                <th class="py-3 px-3">مشتری و تماس</th>
+                                <th class="py-3 px-3">دوره و مبلغ</th>
+                                <th class="py-3 px-3">بستر سفارش</th>
+                                <th class="py-3 px-3">روش پرداخت</th>
+                                <th class="py-3 px-3">رسید / تاریخ</th>
+                                <th class="py-3 px-3">وضعیت</th>
+                                <th class="py-3 px-3 text-left">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="storeOrdersTableBody">
+                            <tr>
+                                <td colspan="9" class="py-8 text-center text-slate-500 font-sans">در حال دریافت لیست سفارش‌ها...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             <!-- Coupons & Discounts Engine -->
-            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4 mt-8" id="couponsCard">
+            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4" id="couponsCard">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
                     <div>
                         <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
@@ -1169,80 +1251,11 @@ def render_dashboard_html() -> str:
                     </table>
                 </div>
             </div>
-
-            <!-- Orders Management Card -->
-            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4 mt-8" id="ordersCard">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>🧾</span> مدیریت سفارش‌ها و تراکنش‌های فروشگاه (/store)
-                        </h2>
-                        <p class="text-xs text-slate-400 mt-1">لیست کلیه سفارش‌های ثبت‌شده از طریق درگاه آنلاین بله و کارت‌به‌کارت با امکان بررسی فیش، تایید و تحویل لینک دانلود</p>
-                    </div>
-                    <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                        <button onclick="deleteSelectedOrders()" id="btnDeleteSelectedOrders" class="hidden px-3.5 py-2 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold border border-rose-700 transition flex items-center gap-1.5 shadow-sm">
-                            <span>🗑</span> حذف موارد انتخاب‌شده (<span id="selectedOrdersCount">0</span>)
-                        </button>
-                        <button onclick="clearAllOrders()" class="px-3.5 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 text-xs font-bold border border-red-800/80 transition flex items-center gap-1.5 shadow-sm" title="پاکسازی تمامی سفارشات تستی">
-                            <span>🗑</span> پاکسازی تمامی سفارشات
-                        </button>
-                        <button onclick="cleanupRejectedOrders()" class="px-3.5 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/80 transition flex items-center gap-1.5 shadow-sm" title="حذف یکباره کلیه سفارش‌های رد شده">
-                            <span>🧹</span> پاکسازی سفارشات رد شده
-                        </button>
-                        <button onclick="loadStoreOrders()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
-                            <span>🔄</span> به‌روزرسانی لیست سفارش‌ها
-                        </button>
-                    </div>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right border-collapse text-xs">
-                        <thead>
-                            <tr class="border-b border-slate-700 text-slate-400">
-                                <th class="py-3 px-3 w-8 text-center">
-                                    <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders(this)" class="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" title="انتخاب همه سفارشات">
-                                </th>
-                                <th class="py-3 px-3">شناسه سفارش</th>
-                                <th class="py-3 px-3">مشتری و تماس</th>
-                                <th class="py-3 px-3">دوره و مبلغ</th>
-                                <th class="py-3 px-3">بستر سفارش</th>
-                                <th class="py-3 px-3">روش پرداخت</th>
-                                <th class="py-3 px-3">رسید / تاریخ</th>
-                                <th class="py-3 px-3">وضعیت</th>
-                                <th class="py-3 px-3 text-left">عملیات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="storeOrdersTableBody">
-                            <tr>
-                                <td colspan="9" class="py-8 text-center text-slate-500 font-sans">در حال دریافت لیست سفارش‌ها...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
 
-        <!-- ================= TAB 5: SYSTEM SETTINGS ================= -->
-        <div id="tab-settings" class="hidden space-y-6">
-            <!-- Settings Form (Directly accessible inside authenticated dashboard) -->
-            <div id="settingsContent" class="glass p-6 rounded-2xl space-y-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>⚙️</span> تنظیمات سیستم، توکن‌ها و اتصال پایدار دیتابیس
-                        </h2>
-                        <p class="text-xs text-slate-400 mt-1">تغییرات در data/settings.json و دیتابیس پایدار ذخیره شده و پس از ریستارت سرور نیز پایدار خواهند ماند.</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="handleExportSettings()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 font-medium flex items-center gap-1.5 transition shadow-sm">
-                            <span>📤</span> خروجی و پشتیبان‌گیری تنظیمات (.json)
-                        </button>
-                        <label class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-emerald-300 font-medium flex items-center gap-1.5 transition shadow-sm cursor-pointer">
-                            <span>📥</span> درون‌ریزی و بازیابی تنظیمات
-                            <input type="file" accept=".json,application/json" class="hidden" onchange="handleImportSettingsFile(this)">
-                        </label>
-                    </div>
-                </div>
-
+        <!-- ================= TAB 4: SECRETS & TOKENS ================= -->
+        <div id="tab-tokens" class="hidden space-y-6">
+            <div class="glass p-6 rounded-2xl space-y-6">
                 <!-- Cloud Secrets Sync Hub -->
                 <div class="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/60 via-slate-900/80 to-blue-950/60 border border-cyan-500/40 text-xs text-slate-200 space-y-2.5 leading-relaxed shadow-lg">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1258,11 +1271,11 @@ def render_dashboard_html() -> str:
                         </div>
                     </div>
                     <p class="text-slate-300 text-xs">
-                        تمامی کلیدهای حساس (توکن‌های تلگرام، بله، روبیکا، رمز پنل، کلیدهای هوش مصنوعی و درگاه‌ها) در این بخش با کلیک روی آیکون <b class="text-cyan-300">👁</b> قابل مشاهده و ویرایش هستند. با کلیک بر روی <b>«ذخیره و اعمال آنی تنظیمات»</b>، مقادیر جدید به طور خودکار به <b>Hugging Face Space Secrets</b> تزریق شده و بدون ثبت در فایل‌های متنی گیت‌هاب، در محیط ابری پایدار می‌مانند.
+                        تمامی کلیدهای حساس (توکن‌های تلگرام، بله، روبیکا، رمز پنل، کلیدهای هوش مصنوعی و درگاه‌ها) در این بخش با کلیک روی آیکون <b class="text-cyan-300">👁</b> قابل مشاهده و ویرایش هستند. با کلیک بر روی <b>«ذخیره سکرت‌ها و توکن‌ها»</b>، مقادیر جدید به طور خودکار به <b>Hugging Face Space Secrets</b> تزریق شده و بدون ثبت در فایل‌های متنی گیت‌هاب، در محیط ابری پایدار می‌مانند.
                     </p>
                 </div>
 
-                <form id="systemSettingsForm" onsubmit="handleSaveSettings(event)" class="space-y-8">
+                <form id="tokenSettingsForm" onsubmit="handleSaveSettings(event)" class="space-y-6">
                     <!-- ================= SECTION A: CLOUD SECRETS & SECURITY HUB ================= -->
                     <div class="p-5 rounded-2xl border border-cyan-500/30 bg-slate-900/40 space-y-4 shadow-xl">
                         <div class="flex items-center gap-2.5 pb-3 border-b border-cyan-500/20">
@@ -1453,6 +1466,39 @@ def render_dashboard_html() -> str:
                         </details>
                     </div>
 
+                    <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+                        <span id="tokensSaveStatus" class="text-xs font-semibold text-emerald-400"></span>
+                        <button type="submit" id="btnSaveTokens" class="theme-accent-btn px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg transition">
+                            💾 ذخیره سکرت‌ها و توکن‌ها
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: SYSTEM SETTINGS ================= -->
+        <div id="tab-settings" class="hidden space-y-6">
+            <!-- Settings Form (Directly accessible inside authenticated dashboard) -->
+            <div id="settingsContent" class="glass p-6 rounded-2xl space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>⚙️</span> تنظیمات سیستم، پیام‌رسان‌ها و اتصال پایدار دیتابیس
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">تغییرات در data/settings.json و دیتابیس پایدار ذخیره شده و پس از ریستارت سرور نیز پایدار خواهند ماند.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="handleExportSettings()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 font-medium flex items-center gap-1.5 transition shadow-sm">
+                            <span>📤</span> خروجی و پشتیبان‌گیری تنظیمات (.json)
+                        </button>
+                        <label class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-emerald-300 font-medium flex items-center gap-1.5 transition shadow-sm cursor-pointer">
+                            <span>📥</span> درون‌ریزی و بازیابی تنظیمات
+                            <input type="file" accept=".json,application/json" class="hidden" onchange="handleImportSettingsFile(this)">
+                        </label>
+                    </div>
+                </div>
+
+                <form id="systemSettingsForm" onsubmit="handleSaveSettings(event)" class="space-y-6">
                     <!-- ================= SECTION B: STORE & MESSAGING SETTINGS ================= -->
                     <div class="p-5 rounded-2xl border border-blue-500/30 bg-slate-900/40 space-y-4 shadow-xl">
                         <div class="flex items-center gap-2.5 pb-3 border-b border-blue-500/20">
@@ -1563,7 +1609,7 @@ def render_dashboard_html() -> str:
 
                     <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
                         <span id="settingsSaveStatus" class="text-xs font-semibold text-emerald-400"></span>
-                        <button type="submit" id="btnSaveSettings" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-bold text-white shadow-lg shadow-cyan-600/20 transition">
+                        <button type="submit" id="btnSaveSettings" class="theme-accent-btn px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg transition">
                             💾 ذخیره و اعمال آنی تنظیمات
                         </button>
                     </div>
@@ -2106,33 +2152,58 @@ def render_dashboard_html() -> str:
         }}
 
         function switchTab(tabId) {{
-            if (tabId) {{
-                localStorage.setItem('unfinit_active_tab', tabId);
-            }}
-            document.querySelectorAll('#tab-studio, #tab-courses, #tab-settings').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(btn => {{
-                btn.classList.remove('active', 'bg-gradient-to-r', 'from-blue-600', 'to-cyan-600', 'text-white');
-                btn.classList.add('bg-slate-800/80', 'text-slate-300');
-            }});
-            const targetTab = document.getElementById(tabId);
-            if (targetTab) targetTab.classList.remove('hidden');
-            const targetBtn = document.getElementById('btn-' + tabId);
-            if (targetBtn) {{
-                targetBtn.classList.add('active', 'bg-gradient-to-r', 'from-blue-600', 'to-cyan-600', 'text-white');
-                targetBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
-            }}
-            const mobileBtn = document.getElementById('m-btn-' + tabId);
-            if (mobileBtn) {{
-                mobileBtn.classList.add('active', 'bg-gradient-to-r', 'from-blue-600', 'to-cyan-600', 'text-white');
-                mobileBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
-            }}
-            if (tabId === 'tab-settings') {{
-                loadSettings();
-            }}
-            if (tabId === 'tab-courses') {{
-                loadStoreOrders();
-                loadStoreAnalytics();
-                loadStoreCoupons();
+            try {{
+                if (!tabId) tabId = 'tab-studio';
+                if (!tabId.startsWith('tab-')) {{
+                    tabId = 'tab-' + tabId;
+                }}
+                const validTabs = ['tab-studio', 'tab-courses', 'tab-orders', 'tab-tokens', 'tab-settings'];
+                if (!validTabs.includes(tabId)) {{
+                    tabId = 'tab-studio';
+                }}
+                try {{
+                    localStorage.setItem('unfinit_active_tab', tabId);
+                }} catch (_) {{}}
+
+                validTabs.forEach(id => {{
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                }});
+
+                document.querySelectorAll('.tab-btn').forEach(btn => {{
+                    btn.classList.remove('active');
+                    btn.classList.add('bg-slate-800/80', 'text-slate-300');
+                }});
+
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {{
+                    targetTab.classList.remove('hidden');
+                }}
+
+                const targetBtn = document.getElementById('btn-' + tabId);
+                if (targetBtn) {{
+                    targetBtn.classList.add('active');
+                    targetBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+                }}
+                const mobileBtn = document.getElementById('m-btn-' + tabId);
+                if (mobileBtn) {{
+                    mobileBtn.classList.add('active');
+                    mobileBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+                }}
+
+                if (tabId === 'tab-settings' || tabId === 'tab-tokens') {{
+                    if (typeof loadSettings === 'function') loadSettings();
+                }}
+                if (tabId === 'tab-courses') {{
+                    if (typeof loadStoreAnalytics === 'function') loadStoreAnalytics();
+                }}
+                if (tabId === 'tab-orders') {{
+                    if (typeof loadStoreOrders === 'function') loadStoreOrders();
+                    if (typeof loadStoreCoupons === 'function') loadStoreCoupons();
+                    if (typeof loadStoreAnalytics === 'function') loadStoreAnalytics();
+                }}
+            }} catch (err) {{
+                console.error('switchTab error:', err);
             }}
         }}
 
@@ -2323,66 +2394,75 @@ def render_dashboard_html() -> str:
         }}
 
         function updateAiProviderView(provider) {{
-            const p = (provider || 'gemini').toLowerCase();
-            const hid = document.getElementById('cfg_AI_PROVIDER');
-            if (hid) hid.value = p;
-            const rGem = document.getElementById('provider_gemini');
-            const rNara = document.getElementById('provider_nara');
-            if (rGem) rGem.checked = (p === 'gemini');
-            if (rNara) rNara.checked = (p === 'nara');
-            const boxGem = document.getElementById('box_gemini_settings');
-            const boxNara = document.getElementById('box_nara_settings');
-            if (boxGem && boxNara) {{
-                if (p === 'gemini') {{
-                    boxGem.style.opacity = '1';
-                    boxNara.style.opacity = '0.65';
-                }} else {{
-                    boxNara.style.opacity = '1';
-                    boxGem.style.opacity = '0.65';
+            try {{
+                const p = (provider || 'gemini').toLowerCase();
+                const hid = document.getElementById('cfg_AI_PROVIDER');
+                if (hid) hid.value = p;
+                const rGem = document.getElementById('provider_gemini');
+                const rNara = document.getElementById('provider_nara');
+                if (rGem) rGem.checked = (p === 'gemini');
+                if (rNara) rNara.checked = (p === 'nara');
+                const boxGem = document.getElementById('box_gemini_settings');
+                const boxNara = document.getElementById('box_nara_settings');
+                if (boxGem && boxNara) {{
+                    if (p === 'gemini') {{
+                        boxGem.style.opacity = '1';
+                        boxNara.style.opacity = '0.65';
+                    }} else {{
+                        boxNara.style.opacity = '1';
+                        boxGem.style.opacity = '0.65';
+                    }}
                 }}
+            }} catch (err) {{
+                console.warn('updateAiProviderView notice:', err);
             }}
         }}
 
         function populateSettingsForm(s) {{
-            const fields = [
-                'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
-                'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
-                'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
-                'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
-                'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
-                'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
-                'CARD_NUMBER', 'CARD_HOLDER',
-                'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
-                'COURSE_DESC_MAX_LEN',
-                'AI_PROVIDER',
-                'NARA_API_KEY', 'NARA_MODEL',
-                'GEMINI_API_KEY', 'GEMINI_MODEL',
-                'HF_TOKEN', 'HF_SPACE_ID'
-            ];
-            fields.forEach(f => {{
-                const el = document.getElementById('cfg_' + f);
-                if (el && s[f] !== undefined) {{
-                    if (el.tagName === 'SELECT') {{
-                        let exists = Array.from(el.options).some(opt => opt.value === s[f]);
-                        if (!exists && s[f]) {{
-                            const opt = document.createElement('option');
-                            opt.value = s[f];
-                            opt.textContent = s[f] + ' (سفارشی)';
-                            el.appendChild(opt);
+            try {{
+                if (!s || typeof s !== 'object') return;
+                const fields = [
+                    'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
+                    'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
+                    'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
+                    'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
+                    'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
+                    'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
+                    'CARD_NUMBER', 'CARD_HOLDER',
+                    'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
+                    'COURSE_DESC_MAX_LEN',
+                    'AI_PROVIDER',
+                    'NARA_API_KEY', 'NARA_MODEL',
+                    'GEMINI_API_KEY', 'GEMINI_MODEL',
+                    'HF_TOKEN', 'HF_SPACE_ID'
+                ];
+                fields.forEach(f => {{
+                    const el = document.getElementById('cfg_' + f);
+                    if (el && s[f] !== undefined) {{
+                        if (el.tagName === 'SELECT') {{
+                            let exists = Array.from(el.options).some(opt => opt.value === s[f]);
+                            if (!exists && s[f]) {{
+                                const opt = document.createElement('option');
+                                opt.value = s[f];
+                                opt.textContent = s[f] + ' (سفارشی)';
+                                el.appendChild(opt);
+                            }}
                         }}
+                        el.value = s[f];
                     }}
-                    el.value = s[f];
+                }});
+                if (s.AI_PROVIDER) {{
+                    updateAiProviderView(s.AI_PROVIDER);
+                }} else {{
+                    updateAiProviderView('gemini');
                 }}
-            }});
-            if (s.AI_PROVIDER) {{
-                updateAiProviderView(s.AI_PROVIDER);
-            }} else {{
-                updateAiProviderView('gemini');
+                const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
+                const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
+                if (p1) p1.value = '';
+                if (p2) p2.value = '';
+            }} catch (err) {{
+                console.warn('populateSettingsForm notice:', err);
             }}
-            const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
-            const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
-            if (p1) p1.value = '';
-            if (p2) p2.value = '';
         }}
 
         function handleExportSettings() {{
@@ -2444,20 +2524,28 @@ def render_dashboard_html() -> str:
         }}
 
         async function handleSaveSettings(e) {{
-            e.preventDefault();
-            const btn = document.getElementById('btnSaveSettings');
-            const statusEl = document.getElementById('settingsSaveStatus');
-            btn.disabled = true;
-            btn.innerText = 'در حال ذخیره...';
-            statusEl.innerText = '';
+            if (e) e.preventDefault();
+            const btn = (e && e.submitter) ? e.submitter : (document.getElementById('btnSaveSettings') || document.getElementById('btnSaveTokens'));
+            const btn1 = document.getElementById('btnSaveSettings');
+            const btn2 = document.getElementById('btnSaveTokens');
+            const statusEl = document.getElementById('settingsSaveStatus') || document.getElementById('tokensSaveStatus');
+            const status1 = document.getElementById('settingsSaveStatus');
+            const status2 = document.getElementById('tokensSaveStatus');
+            
+            const orig1 = btn1 ? btn1.innerText : '💾 ذخیره و اعمال آنی تنظیمات';
+            const orig2 = btn2 ? btn2.innerText : '💾 ذخیره سکرت‌ها و توکن‌ها';
+            if (btn1) {{ btn1.disabled = true; btn1.innerText = 'در حال ذخیره...'; }}
+            if (btn2) {{ btn2.disabled = true; btn2.innerText = 'در حال ذخیره...'; }}
+            if (status1) status1.innerText = '';
+            if (status2) status2.innerText = '';
 
-            const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD').value.trim();
-            const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD').value.trim();
+            const p1 = (document.getElementById('cfg_NEW_ADMIN_PASSWORD')?.value || '').trim();
+            const p2 = (document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD')?.value || '').trim();
             if (p1) {{
                 if (p1 !== p2) {{
                     alert('❌ خطای تغییر رمز: تکرار رمز عبور جدید با رمز وارد شده همخوانی ندارد.');
-                    btn.disabled = false;
-                    btn.innerText = '💾 ذخیره و اعمال آنی تنظیمات';
+                    if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
+                    if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
                     return;
                 }}
             }}
@@ -2505,8 +2593,8 @@ def render_dashboard_html() -> str:
                 pwdToSend = prompt('جهت تایید و ذخیره تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
                 if (!pwdToSend) {{
                     alert('❌ ذخیره تنظیمات لغو شد: رمز عبور مدیریت وارد نشد.');
-                    btn.disabled = false;
-                    btn.innerText = '💾 ذخیره و اعمال آنی تنظیمات';
+                    if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
+                    if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
                     return;
                 }}
                 currentAdminPassword = pwdToSend;
@@ -2533,16 +2621,21 @@ def render_dashboard_html() -> str:
                         if (p1El) p1El.value = '';
                         if (p2El) p2El.value = '';
                     }}
-                    statusEl.innerText = '✅ ' + (data.message || 'تنظیمات و سکرت‌های ابری با موفقیت ذخیره و در Hugging Face اعمال شد!');
-                    setTimeout(() => {{ statusEl.innerText = ''; }}, 5000);
+                    const successMsg = '✅ ' + (data.message || 'تنظیمات و سکرت‌های ابری با موفقیت ذخیره و در Hugging Face اعمال شد!');
+                    if (status1) status1.innerText = successMsg;
+                    if (status2) status2.innerText = successMsg;
+                    setTimeout(() => {{
+                        if (status1) status1.innerText = '';
+                        if (status2) status2.innerText = '';
+                    }}, 5000);
                 }} else {{
                     alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || ''));
                 }}
             }} catch (err) {{
                 alert('❌ خطای ارتباط: ' + err.message);
             }} finally {{
-                btn.disabled = false;
-                btn.innerText = '💾 ذخیره و اعمال آنی تنظیمات';
+                if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
+                if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
             }}
         }}
 
@@ -3124,20 +3217,20 @@ def render_dashboard_html() -> str:
                 studioDropzone.addEventListener(name, (e) => {{
                     e.preventDefault();
                     e.stopPropagation();
-                    studioDropzone.classList.add('border-cyan-400', 'bg-slate-900/80');
+                    studioDropzone.classList.add('dragover');
                 }});
             }});
             ['dragleave', 'drop'].forEach(name => {{
                 studioDropzone.addEventListener(name, (e) => {{
                     e.preventDefault();
                     e.stopPropagation();
-                    studioDropzone.classList.remove('border-cyan-400', 'bg-slate-900/80');
+                    studioDropzone.classList.remove('dragover');
                 }});
             }});
             studioDropzone.addEventListener('drop', (e) => {{
                 e.preventDefault();
                 e.stopPropagation();
-                studioDropzone.classList.remove('border-cyan-400', 'bg-slate-900/80');
+                studioDropzone.classList.remove('dragover');
                 const dt = e.dataTransfer;
                 if (dt && dt.files && dt.files.length > 0) {{
                     handleStudioFilesSelect(dt.files);

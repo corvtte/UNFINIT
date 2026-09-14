@@ -1041,19 +1041,8 @@ def extract_universal_rubika_updates(data: Any) -> tuple[List[Dict[str, Any]], O
 
 
 async def run_rubika_polling_engine(telegram_adapter_instance=None, bale_adapter_instance=None):
-    global ACTIVE_RUBIKA_ADMIN_ID
-    bot_start_time = time.time()
-    token = config.RUBIKA_BOT_TOKEN
-    if not token:
-        logger.info("RUBIKA_BOT_TOKEN is not set. Rubika Bot API polling skipped.")
-        return
-
-    rubika = RubikaAdapter()
-    logger.info("Initializing Rubika Bot API connection test...")
-    me = await rubika.get_me()
-    logger.debug(f"Rubika Bot API connection response: {me}")
-
-    logger.info(f"Rubika Universal Polling listener active (bot_start_time={bot_start_time:.2f}).")
+    logger.info("Rubika Bot API polling engine is completely disabled to avoid upstream HTTP 502 Bad Gateway errors. Rubika user session worker remains active.")
+    return
     rubika_offset_file = config.DATA_DIR / "rubika_offset.txt"
     offset = None
     if rubika_offset_file.exists():

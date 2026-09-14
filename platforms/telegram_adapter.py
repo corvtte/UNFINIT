@@ -3,6 +3,7 @@ from platforms.instagram_adapter import InstagramAdapter
 from task_store import cleanup_local_file
 import time
 import re
+import atexit
 from platforms.rubika_adapter import RubikaAdapter
 import os
 import uuid
@@ -200,10 +201,100 @@ def resolve_telegram_course_photo(prod: Any) -> Optional[Dict[str, str]]:
                 base = f"https://{space_id.replace('/', '-').lower()}.hf.space"
             return {"type": "url", "value": f"{base}{p_url}"}
 
-    return None
+TG_LOCK_FILE = config.DATA_DIR / "telegram_worker.pid"
+
+
+def is_pid_alive(pid: int) -> bool:
+    """Checks if a process with given PID is currently active on the OS."""
+    if pid <= 0 or pid == os.getpid():
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except Exception:
+        return False
+
+
+def acquire_telegram_pid_lock(max_wait_sec: int = 30) -> bool:
+    """
+    Acquires a single-instance PID lock file before starting Telegram MTProto Client.
+    Prevents AUTH_KEY_DUPLICATED when Hugging Face Spaces restarts and old/new containers overlap.
+    """
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    my_pid = os.getpid()
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_sec:
+        if TG_LOCK_FILE.exists():
+            try:
+                content = TG_LOCK_FILE.read_text(encoding="utf-8").strip()
+                parts = content.split(":")
+                lock_pid = int(parts[0]) if parts and parts[0].isdigit() else 0
+                lock_time = float(parts[1]) if len(parts) > 1 else 0.0
+
+                if lock_pid == my_pid:
+                    return True
+
+                if is_pid_alive(lock_pid):
+                    if time.time() - lock_time > 60:
+                        logger.warning(f"[TG PID Lock] Stale lock from PID {lock_pid} (>60s). Overriding...")
+                        break
+                    logger.warning(f"[TG PID Lock] Another process (PID {lock_pid}) holds Telegram session. Waiting for shutdown ({int(time.time() - start_time)}s)...")
+                    time.sleep(2)
+                    continue
+                else:
+                    logger.info(f"[TG PID Lock] Previous process PID {lock_pid} is no longer active. Taking lock.")
+                    break
+            except Exception as e:
+                logger.warning(f"[TG PID Lock] Error reading lock file: {e}. Overriding...")
+                break
+        else:
+            break
+
+    try:
+        TG_LOCK_FILE.write_text(f"{my_pid}:{time.time()}", encoding="utf-8")
+        logger.info(f"[TG PID Lock] Acquired Telegram process lock for PID {my_pid}.")
+        return True
+    except Exception as e:
+        logger.error(f"[TG PID Lock] Could not write lock file: {e}")
+        return False
+
+
+def release_telegram_pid_lock():
+    """Releases the Telegram PID lock if held by the current process."""
+    try:
+        if TG_LOCK_FILE.exists():
+            content = TG_LOCK_FILE.read_text(encoding="utf-8").strip()
+            parts = content.split(":")
+            lock_pid = int(parts[0]) if parts and parts[0].isdigit() else 0
+            if lock_pid == os.getpid():
+                TG_LOCK_FILE.unlink(missing_ok=True)
+                logger.info(f"[TG PID Lock] Released Telegram process lock for PID {os.getpid()}.")
+    except Exception as e:
+        logger.warning(f"[TG PID Lock] Error releasing lock: {e}")
+
+
+atexit.register(release_telegram_pid_lock)
 
 
 class TelegramAdapter:
+    async def start_client(self):
+        """Safely acquires PID lock and starts Telegram MTProto Client."""
+        await asyncio.to_thread(acquire_telegram_pid_lock, 30)
+        await self.app.start()
+
+    async def stop_client(self):
+        """Stops Telegram Client and releases PID lock."""
+        try:
+            if self.app and getattr(self.app, "is_connected", False):
+                await self.app.stop()
+        finally:
+            release_telegram_pid_lock()
+
     def __init__(self):
         use_in_memory = os.getenv("TESTING") == "true" or os.getenv("PYTEST_CURRENT_TEST") is not None
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
