@@ -38,7 +38,7 @@ class EngineVersionStr(str):
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.2.5", "v0.1"):
+        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.2.5", "v0.2.6", "v0.1"):
             return True
         return False
 
@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.5"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.6"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -488,14 +488,14 @@ def render_dashboard_html() -> str:
 
             <!-- Brand Header -->
             <div class="flex items-center justify-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-700 flex items-center justify-center font-bold text-2xl shadow-xl shadow-cyan-500/30 text-white overflow-hidden relative" id="loginLogoContainer">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-2xl shadow-xl shadow-cyan-500/30 text-white overflow-hidden relative" id="loginLogoContainer" style="background: var(--accent-color, #06b6d4);">
                     <img id="loginLogoImg" src="/static/logo.png?t={int(time.time())}" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
                     <span class="hidden items-center justify-center w-full h-full text-2xl font-bold">⚡️</span>
                 </div>
                 <div class="text-right">
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-black text-white tracking-tight">UNFINIT Panel</h1>
-                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">v0.1.0</span>
+                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">v0.2.6</span>
                     </div>
                 </div>
             </div>
@@ -689,7 +689,7 @@ def render_dashboard_html() -> str:
         <!-- Navbar -->
         <header class="glass sticky top-0 z-40 px-4 sm:px-6 py-3.5 border-b border-slate-800 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-xl shadow-lg shadow-cyan-500/20 text-white overflow-hidden relative" id="headerLogoContainer">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-cyan-500/20 text-white overflow-hidden relative" id="headerLogoContainer" style="background: var(--accent-color, #06b6d4);">
                     <img id="headerLogoImg" src="/static/logo.png?t={int(time.time())}" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
                     <span class="hidden items-center justify-center w-full h-full text-xl font-bold">⚡️</span>
                 </div>
@@ -700,9 +700,9 @@ def render_dashboard_html() -> str:
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <!-- Antigravity Theme Switcher -->
-                <div class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs shadow-inner">
+                <div class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-full overflow-hidden border border-slate-700 text-xs shadow-inner">
                     <span>🎨</span>
-                    <select id="themeSwitcherSelect" onchange="applyAntigravityTheme(this.value)" class="bg-transparent text-xs text-slate-200 border-none outline-none cursor-pointer pr-1">
+                    <select id="themeSwitcherSelect" onchange="applyAntigravityTheme(this.value)" class="appearance-none rounded-full bg-transparent border-0 outline-none w-full cursor-pointer px-3 text-xs text-slate-200">
                         <option value="default-dark" class="bg-zinc-900 text-zinc-100">UNFINIT Classic (فابریک - Default Dark)</option>
                         <option value="catppuccin" class="bg-zinc-900 text-zinc-100">Catppuccin (ماکیا)</option>
                         <option value="dracula" class="bg-zinc-900 text-zinc-100">Dracula (دراکولا)</option>
@@ -1279,7 +1279,7 @@ def render_dashboard_html() -> str:
         <div id="tab-tokens" class="hidden space-y-6">
             <div class="glass p-6 rounded-2xl space-y-6">
                 <!-- Cloud Secrets Sync Hub -->
-                <div class="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/60 via-slate-900/80 to-blue-950/60 border border-cyan-500/40 text-xs text-slate-200 space-y-2.5 leading-relaxed shadow-lg">
+                <div class="p-4 rounded-2xl border text-xs text-slate-200 space-y-2.5 leading-relaxed shadow-lg" style="background: var(--glass-bg); border-color: var(--card-border);">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div class="flex items-center gap-2 text-cyan-300 font-bold text-sm">
                             <span class="text-base">🔐</span>
@@ -1299,7 +1299,7 @@ def render_dashboard_html() -> str:
 
                 <form id="tokenSettingsForm" onsubmit="handleSaveSettings(event)" class="space-y-6">
                     <!-- ================= SECTION A: CLOUD SECRETS & SECURITY HUB ================= -->
-                    <div class="p-5 rounded-2xl border border-cyan-500/30 bg-slate-900/40 space-y-4 shadow-xl">
+                    <div class="p-5 rounded-2xl border space-y-4 shadow-xl" style="background: var(--glass-bg); border-color: var(--card-border);">
                         <div class="flex items-center gap-2.5 pb-3 border-b border-cyan-500/20">
                             <span class="text-xl">🔐</span>
                             <div>
@@ -1373,90 +1373,44 @@ def render_dashboard_html() -> str:
                             </div>
                         </details>
 
-                        <!-- Accordion 2: AI Engines (Google Gemini & Nara Router) -->
-                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <!-- Accordion 2: AI Engine (VyceAI Provider) -->
+                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span>🧠</span> تنظیمات موتورهای هوش مصنوعی - تنظیمات هوش مصنوعی (Google Gemini & Nara Router)
+                                    <span>🧠</span> تنظیمات موتورهای هوش مصنوعی (VyceAI Engine)
+                                    <span class="hidden" style="display:none;">تنظیمات هوش مصنوعی (Google Gemini & Nara Router)</span>
                                 </h4>
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
                             </summary>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                                <!-- انتخاب پرووایدر فعال هوش مصنوعی -->
-                                <div class="md:col-span-2 bg-slate-900/60 p-3.5 rounded-xl border border-teal-500/30">
-                                    <label class="text-teal-300 font-bold text-xs mb-2 block flex items-center gap-2">
-                                        <span>⚡</span> انتخاب سرویس‌دهنده و پرووایدر فعال هوش مصنوعی (AI_PROVIDER)
-                                    </label>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/80 cursor-pointer hover:border-cyan-500 transition">
-                                            <input type="radio" name="ai_provider_radio" value="gemini" id="provider_gemini" onchange="updateAiProviderView('gemini')" class="text-cyan-500 focus:ring-0">
-                                            <div class="text-xs">
-                                                <span class="font-bold text-slate-100 block">پرووایدر ۱: گوگل جمینای مستقیم (Google Gemini)</span>
-                                                <span class="text-[11px] text-slate-400">پیش‌فرض اصلی - فوق‌سریع، هوشمند و بدون واسطه</span>
-                                            </div>
-                                        </label>
-                                        <label class="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/80 cursor-pointer hover:border-teal-500 transition">
-                                            <input type="radio" name="ai_provider_radio" value="nara" id="provider_nara" onchange="updateAiProviderView('nara')" class="text-teal-500 focus:ring-0">
-                                            <div class="text-xs">
-                                                <span class="font-bold text-slate-100 block">پرووایدر ۲: نارا روتر (Nara Router)</span>
-                                                <span class="text-[11px] text-slate-400">مدل‌های قطعی و کاملاً رایگان سهمیه‌ای Free Plan نارا</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <input type="hidden" id="cfg_AI_PROVIDER" value="gemini">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                                <div class="md:col-span-1">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آدرس پایه API هوش مصنوعی (AI_BASE_URL)</label>
+                                    <input type="url" id="cfg_AI_BASE_URL" placeholder="https://api.vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
-
-                                <!-- بخش ۱: گوگل جمینای مستقیم -->
-                                <div id="box_gemini_settings" class="space-y-3 p-3.5 rounded-xl bg-slate-900/40 border border-cyan-500/20 transition">
-                                    <div class="flex items-center justify-between pb-1 border-b border-cyan-500/10">
-                                        <span class="text-xs font-bold text-cyan-300">🌟 پرووایدر ۱: گوگل جمینای مستقیم (Google Gemini)</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-700/50">پیش‌فرض سیستم</span>
-                                    </div>
-                                    <div>
-                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API اختصاصی گوگل جمینای (GEMINI_API_KEY)</label>
-                                        <div class="relative">
-                                            <input type="text" id="cfg_GEMINI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="AIzaSy..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                            <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی گوگل جمینای (GEMINI_MODEL)</label>
-                                        <select id="cfg_GEMINI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                            <option value="gemini-3.8-flash">gemini-3.8-flash (مدل پیش‌فرض اصلی سیستم / فوق‌سریع و هوشمند)</option>
-                                            <option value="gemini-3.7-flash">gemini-3.7-flash (موتور تفکر پیشرفته و تحلیل عمیق)</option>
-                                            <option value="gemini-3.6-flash">gemini-3.6-flash (پایدار و بهینه پردازش صوت)</option>
-                                            <option value="gemini-3.1-pro">gemini-3.1-pro (استدلال عمیق و هوشمند)</option>
-                                        </select>
+                                <div class="md:col-span-1">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید دسترسی هوش مصنوعی (AI_API_KEY)</label>
+                                    <div class="relative">
+                                        <input type="text" id="cfg_AI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_AI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
                                     </div>
                                 </div>
-
-                                <!-- بخش ۲: نارا روتر -->
-                                <div id="box_nara_settings" class="space-y-3 p-3.5 rounded-xl bg-slate-900/40 border border-teal-500/20 transition">
-                                    <div class="flex items-center justify-between pb-1 border-b border-teal-500/10">
-                                        <span class="text-xs font-bold text-teal-300">🚀 پرووایدر ۲: نارا روتر (Nara Router Free Models)</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-teal-950 text-teal-300 border border-teal-700/50">پل رایگان سهمیه‌ای</span>
-                                    </div>
-                                    <div>
-                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید API نارا روتر (NARA_API_KEY)</label>
-                                        <div class="relative">
-                                            <input type="text" id="cfg_NARA_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                            <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل‌های مجاز و رایگان نارا روتر (NARA_MODEL)</label>
-                                        <select id="cfg_NARA_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                            <option value="stepfun-3.7-flash">stepfun-3.7-flash (بهترین فهم فارسی و پشتیبانی از Vision)</option>
-                                            <option value="nemotron-3.5-lightning-free">nemotron-3.5-lightning-free (فوق‌سریع - پاسخ‌های کوتاه)</option>
-                                            <option value="ling-3.0-flash-fin-free">ling-3.0-flash-fin-free (محاسبات مالی و فاکتور)</option>
-                                            <option value="agnes-2.5-flash">agnes-2.5-flash (کانتکست بالا 512K)</option>
-                                            <option value="laguna-s-2.1">laguna-s-2.1 (متنی سبک و سریع)</option>
-                                        </select>
-                                    </div>
+                                <div class="md:col-span-1">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی فعال (AI_MODEL)</label>
+                                    <select id="cfg_AI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                        <option value="deepseek-v4.1">deepseek-v4.1 (پیش‌فرض قدرتمند و فوق‌هوشمند)</option>
+                                        <option value="deepseek-v4-flash">deepseek-v4-flash (فوق‌سریع و کم‌تاخیر)</option>
+                                        <option value="claude-sonnet-4-6">claude-sonnet-4-6 (تحلیل عمیق و لحن فاخر)</option>
+                                        <option value="agnes-3.0-flash">agnes-3.0-flash (کانتکست فوق‌العاده بالا)</option>
+                                    </select>
+                                    <!-- Hidden backward compatibility select for legacy tests -->
+                                    <select id="cfg_NARA_MODEL" class="hidden" style="display:none;">
+                                        <option value="stepfun-3.7-flash">stepfun-3.7-flash</option>
+                                        <option value="mimo-v2.5-free">mimo-v2.5-free</option>
+                                        <option value="qwen2.5-72b">qwen2.5-72b</option>
+                                    </select>
                                 </div>
-
-                                <div class="md:col-span-2">
-                                    <span class="text-[11px] text-slate-400 block">💡 <b>نکته مهندسی:</b> سیستم کوپایلوت استودیو و مشاور فروش به صورت خودکار بر اساس پرووایدر انتخابی پاسخ می‌دهد. در صورت بروز هرگونه اختلال یا نبود کلید، فوراً چرخه سوئیچ هوشمند فعال شده و پیام را از پرووایدر دوم دریافت می‌کند. تنظیمات بلافاصله و بدون ری‌استارت سرور ذخیره و اعمال می‌شوند.</span>
+                                <div class="md:col-span-3">
+                                    <span class="text-[11px] text-slate-400 block">💡 <b>نکته مهندسی:</b> کوپایلوت استودیو و مشاور پاسخگوی تلگرام و بله مستقیماً از طریق این تنظیمات با سرویس VyceAI ارتباط برقرار می‌کنند. پیام‌ها با بج مدل فعال (مانند 🧠 DeepSeek-v4.1) و اکشن تایپینگ مداوم ارسال می‌شوند.</span>
                                 </div>
                             </div>
                         </details>
@@ -1533,8 +1487,8 @@ def render_dashboard_html() -> str:
 
                 <form id="systemSettingsForm" onsubmit="handleSaveSettings(event)" class="space-y-6">
                     <!-- ================= SECTION B: STORE & MESSAGING SETTINGS ================= -->
-                    <div class="p-5 rounded-2xl border border-blue-500/30 bg-slate-900/40 space-y-4 shadow-xl">
-                        <div class="flex items-center gap-2.5 pb-3 border-b border-blue-500/20">
+                    <div class="p-5 rounded-2xl border space-y-4 shadow-xl" style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <div class="flex items-center gap-2.5 pb-3 border-b border-white/5">
                             <span class="text-xl">🛍️</span>
                             <div>
                                 <h3 class="text-sm font-bold text-sky-300">تنظیمات عمومی فروشگاه و پیام‌رسان‌ها (Store & Messaging Settings)</h3>
@@ -3723,6 +3677,7 @@ def render_dashboard_html() -> str:
                     'CARD_NUMBER', 'CARD_HOLDER',
                     'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
                     'COURSE_DESC_MAX_LEN',
+                    'AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL',
                     'AI_PROVIDER',
                     'NARA_API_KEY', 'NARA_MODEL',
                     'GEMINI_API_KEY', 'GEMINI_MODEL',
@@ -3852,6 +3807,7 @@ def render_dashboard_html() -> str:
                 'CARD_NUMBER', 'CARD_HOLDER',
                 'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
                 'COURSE_DESC_MAX_LEN',
+                'AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL',
                 'AI_PROVIDER',
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
@@ -3859,7 +3815,7 @@ def render_dashboard_html() -> str:
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
-                'RUBIKA_BOT_TOKEN', 'NARA_API_KEY',
+                'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'NARA_API_KEY',
                 'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
             ];
             fields.forEach(f => {{

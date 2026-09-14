@@ -2539,12 +2539,12 @@ class TelegramAdapter:
                     return
                 # User sent freeform text message -> Invoke AI Sales Copilot!
                 try:
-                    from services.ai_agent_service import ai_agent_service, ai_typing_action
+                    from services.ai_service import ai_service, ai_typing_action
                     async def _tg_copilot_typing():
                         await client.send_chat_action(message.chat.id, enums.ChatAction.TYPING)
 
                     async with ai_typing_action(_tg_copilot_typing):
-                        ai_reply = await ai_agent_service.chat_course_support(text)
+                        ai_reply = await ai_service.chat_course_support(text)
                         await message.reply_text(ai_reply, reply_markup=get_customer_keyboard())
                 except Exception as ai_err:
                     logger.warning(f"[tg_copilot] AI course support failed: {ai_err}")

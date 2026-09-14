@@ -38,7 +38,7 @@ class VersionStr(str):
         return False
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.5").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.6").strip())
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
     API_HASH: str = (os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or "").strip()
@@ -150,6 +150,9 @@ class Config:
         self.ZARINPAL_MERCHANT_ID = (os.environ.get("ZARINPAL_MERCHANT_ID") or "").strip()
         self.ZARINPAL_SANDBOX = (os.environ.get("ZARINPAL_SANDBOX", "false").lower() in ("true", "1", "yes"))
 
+        self.AI_BASE_URL = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
+        self.AI_API_KEY = (os.environ.get("AI_API_KEY") or "").strip()
+        self.AI_MODEL = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
         self.AI_PROVIDER = (os.environ.get("AI_PROVIDER") or "gemini").strip()
         self.NARA_BASE_URL = (os.environ.get("NARA_BASE_URL") or "https://router.bynara.id/v1").strip()
         self.NARA_API_KEY = (os.environ.get("NARA_API_KEY") or "").strip()
@@ -161,7 +164,7 @@ class Config:
         self.COURSE_DELIVERY_NOTE = _clean_text(os.environ.get("COURSE_DELIVERY_NOTE") or "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨", default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨")
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.5").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.6").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -221,7 +224,10 @@ class Config:
     # 9. Admin Security
     ADMIN_PANEL_PASSWORD: str = (os.environ.get("ADMIN_PANEL_PASSWORD") or "").strip()
 
-    # 10. AI Agent Settings (Gemini & Nara Router)
+    # 10. AI Agent Settings (VyceAI / OpenAI Compatible)
+    AI_BASE_URL: str = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
+    AI_API_KEY: str = (os.environ.get("AI_API_KEY") or "").strip()
+    AI_MODEL: str = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
     AI_PROVIDER: str = (os.environ.get("AI_PROVIDER") or "gemini").strip()
     NARA_BASE_URL: str = (os.environ.get("NARA_BASE_URL") or "https://router.bynara.id/v1").strip()
     _raw_nara_m: str = (os.environ.get("NARA_MODEL") or "stepfun-3.7-flash").strip()
@@ -232,7 +238,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.5").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.6").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

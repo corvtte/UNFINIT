@@ -891,13 +891,28 @@ class AIAgentService:
             f"۵. به پیام‌های احوال‌پرسی یا عمومی با انرژی بسیار بالا و پیام مثبت پاسخ دهید و سپس خدمات آکادمی را با افتخار معرفی نمایید."
         )
 
-        # 1. Invoke unified chat router (supports Google Gemini & Nara Router with automatic fallback)
+        # 1. Invoke standard VyceAI / OpenAI service if AI_API_KEY is configured
+        if getattr(config, "AI_API_KEY", None):
+            try:
+                from services.ai_service import ai_service
+                return await ai_service.chat_course_support(user_message=user_message, history=history)
+            except Exception as e:
+                logger.warning(f"[ai_agent] Standard ai_service support notice: {e}")
+
+        # 2. Invoke unified chat router fallback
         try:
             res = await self.chat(user_message=user_message, history=history, system_prompt=sys_prompt)
             if res.get("ok") and res.get("reply"):
                 return res["reply"].strip()
         except Exception as e:
-            logger.warning(f"[ai_agent] Unified chat course support error: {e}")
+            logger.warning(f"[ai_agent] Chat router course support fallback notice: {e}")
+
+        # 3. Fallback catalog response
+        try:
+            from services.ai_service import ai_service
+            return ai_service._build_course_support_fallback(user_message)
+        except Exception as e:
+            logger.warning(f"[ai_agent] Fallback course support error: {e}")
 
         # 3. Intelligent polite Persian greeting fallback
         return (

@@ -131,6 +131,9 @@ async def get_all_settings_async() -> dict:
     zarin_mid = _first_valid(os.environ.get("ZARINPAL_MERCHANT_ID"), getattr(config, "ZARINPAL_MERCHANT_ID", ""), await get_system_setting("zarinpal_merchant_id", ""))
     cd_note = await get_system_setting("COURSE_DELIVERY_NOTE", getattr(config, "COURSE_DELIVERY_NOTE", "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"))
     ai_prov = _first_valid(os.environ.get("AI_PROVIDER"), getattr(config, "AI_PROVIDER", "gemini"), await get_system_setting("ai_provider", "gemini"))
+    ai_base_url = _first_valid(os.environ.get("AI_BASE_URL"), getattr(config, "AI_BASE_URL", "https://api.vyceai.com/v1"), await get_system_setting("AI_BASE_URL", "https://api.vyceai.com/v1"))
+    ai_api_key = _first_valid(os.environ.get("AI_API_KEY"), getattr(config, "AI_API_KEY", ""), await get_system_setting("AI_API_KEY", ""))
+    ai_model = _first_valid(os.environ.get("AI_MODEL"), getattr(config, "AI_MODEL", "deepseek-v4.1"), await get_system_setting("AI_MODEL", "deepseek-v4.1"))
 
     return {
         "STORE_NAME": fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME)),
@@ -148,6 +151,9 @@ async def get_all_settings_async() -> dict:
         "CARD_HOLDER": card_holder,
         "DEFAULT_ARTIST": fix_mojibake(await get_system_setting("DEFAULT_ARTIST", config.DEFAULT_ARTIST), default=config.DEFAULT_ARTIST),
         "COURSE_DESC_MAX_LEN": await get_system_setting("COURSE_DESC_MAX_LEN", str(getattr(config, "COURSE_DESC_MAX_LEN", 255))),
+        "AI_BASE_URL": ai_base_url or "https://api.vyceai.com/v1",
+        "AI_API_KEY": mask_secret(ai_api_key),
+        "AI_MODEL": ai_model or "deepseek-v4.1",
         "AI_PROVIDER": ai_prov,
         "NARA_API_KEY": mask_secret(nara_key),
         "NARA_MODEL": await get_system_setting("nara_model", config.NARA_MODEL),
@@ -550,6 +556,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "CARD_NUMBER": config.CARD_NUMBER,
                         "CARD_HOLDER": config.CARD_HOLDER,
                         "COURSE_DESC_MAX_LEN": str(getattr(config, "COURSE_DESC_MAX_LEN", 255)),
+                        "AI_BASE_URL": getattr(config, "AI_BASE_URL", "https://api.vyceai.com/v1"),
+                        "AI_API_KEY": getattr(config, "AI_API_KEY", ""),
+                        "AI_MODEL": getattr(config, "AI_MODEL", "deepseek-v4.1"),
                         "NARA_API_KEY": config.NARA_API_KEY,
                         "NARA_MODEL": config.NARA_MODEL,
                         "NARA_BASE_URL": config.NARA_BASE_URL,
@@ -564,6 +573,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     SENSITIVE_KEYS = {
                         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",
                         "BALE_PAYMENT_TOKEN", "bale_payment_token",
+                        "AI_API_KEY", "ai_api_key",
                         "NARA_API_KEY", "nara_api_key",
                         "GEMINI_API_KEY", "gemini_api_key",
                         "ADMIN_PANEL_PASSWORD", "admin_password"
@@ -1140,6 +1150,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     "RUBIKA_OWNER_ID": "RUBIKA_OWNER_ID",
                     "CARD_NUMBER": "CARD_NUMBER",
                     "CARD_HOLDER": "CARD_HOLDER",
+                    "AI_BASE_URL": "AI_BASE_URL",
+                    "AI_API_KEY": "AI_API_KEY",
+                    "AI_MODEL": "AI_MODEL",
                     "NARA_API_KEY": "NARA_API_KEY",
                     "GEMINI_API_KEY": "GEMINI_API_KEY",
                     "ZARINPAL_MERCHANT_ID": "ZARINPAL_MERCHANT_ID",
@@ -1164,6 +1177,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "CARD_HOLDER": "CARD_HOLDER",
                         "DEFAULT_ARTIST": "DEFAULT_ARTIST",
                         "COURSE_DESC_MAX_LEN": "COURSE_DESC_MAX_LEN",
+                        "AI_BASE_URL": "AI_BASE_URL",
+                        "AI_API_KEY": "AI_API_KEY",
+                        "AI_MODEL": "AI_MODEL",
                         "AI_PROVIDER": "ai_provider",
                         "NARA_API_KEY": "nara_api_key",
                         "NARA_MODEL": "nara_model",
@@ -1180,7 +1196,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     }
                     SENSITIVE_KEYS = {
                         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",
-                        "BALE_PAYMENT_TOKEN", "NARA_API_KEY", "GEMINI_API_KEY",
+                        "BALE_PAYMENT_TOKEN", "AI_API_KEY", "NARA_API_KEY", "GEMINI_API_KEY",
                         "HF_TOKEN", "CARD_NUMBER", "CARD_HOLDER"
                     }
                     for k, val in new_settings.items():
@@ -1200,6 +1216,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                         setattr(config, k, int(val_str or 0))
                                     else:
                                         setattr(config, k, val_str)
+                                    if k in ("AI_BASE_URL", "AI_API_KEY", "AI_MODEL"):
+                                        os.environ[k] = val_str
                                 except Exception:
                                     pass
                             if k == "STORE_NAME":
@@ -1208,6 +1226,12 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 config.WELCOME_TEXT = val_str
                             elif k == "BALE_PAYMENT_TOKEN":
                                 config.BALE_PAYMENT_TOKEN = val_str
+                            elif k == "AI_BASE_URL":
+                                config.AI_BASE_URL = val_str
+                            elif k == "AI_API_KEY":
+                                config.AI_API_KEY = val_str
+                            elif k == "AI_MODEL":
+                                config.AI_MODEL = val_str
                             elif k == "AI_PROVIDER":
                                 config.AI_PROVIDER = val_str
                             elif k == "NARA_API_KEY":

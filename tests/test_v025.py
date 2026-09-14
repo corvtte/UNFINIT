@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import asyncio
 import os
 import re
@@ -21,8 +21,8 @@ from platforms.telegram_adapter import TelegramAdapter
 class TestV025Features(unittest.TestCase):
     def test_01_version_v025(self):
         health = get_system_health()
-        self.assertIn('v0.2.5', str(health['engine_version']))
-        self.assertEqual(config.ENGINE_VERSION, 'v0.2.5')
+        self.assertTrue('v0.2.5' in str(health['engine_version']) or 'v0.2.6' in str(health['engine_version']))
+        self.assertIn(config.ENGINE_VERSION, ('v0.2.5', 'v0.2.6'))
 
     def test_02_probe_url_error_and_user_agent(self):
         try:

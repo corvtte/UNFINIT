@@ -51,6 +51,29 @@ def get_bale_admin_keyboard() -> dict:
     }
 
 
+def format_bale_transfer_progress(
+    current: int,
+    total: int,
+    elapsed_sec: float,
+    stage_title: str = "در حال انتقال فایل..."
+) -> str:
+    pct = int((current / total) * 100) if total > 0 else 0
+    pct = min(100, max(0, pct))
+    bar_len = 10
+    filled = int((pct / 100) * bar_len)
+    bar = "█" * filled + "░" * (bar_len - filled)
+    transferred_mb = f"{current / (1024 * 1024):.2f}"
+    total_mb = f"{total / (1024 * 1024):.2f}"
+    speed_mbps = f"{(current / max(0.01, elapsed_sec)) / (1024 * 1024):.2f}"
+
+    return (
+        f"⏳ <b>{stage_title}</b>\n\n"
+        f"<code>[{bar}] {pct}%</code>\n\n"
+        f"📦 <b>حجم:</b> <code>{transferred_mb} MB</code> از <code>{total_mb} MB</code>\n"
+        f"⚡️ <b>سرعت انتقال:</b> <code>{speed_mbps} MB/s</code>"
+    )
+
+
 def build_bale_admin_course_kb(p_id: str, is_active: bool):
     t_lbl = "🔴 غیرفعال‌سازی دوره" if is_active else "🟢 فعال‌سازی دوره"
     return {
@@ -923,9 +946,29 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         url = url_sess["url"]
                                         filename = url_sess["filename"]
                                         temp_dest = config.TEMP_DIR / f"burldl_{url_id}_{clean_display_filename(filename)}"
-                                        status_m = await bale.edit_message_text(chat_id, msg_id, "📥 <b>در حال دانلود استریم فایل از لینک مستقیم...</b>")
+                                        await bale.edit_message_text(chat_id, msg_id, "📥 <b>در حال شروع دانلود استریم فایل از لینک مستقیم...</b>")
 
-                                        ok = await UrlService.download_file_stream(url, temp_dest)
+                                        start_time = [time.time()]
+                                        last_edit_time = [time.time()]
+                                        last_percent = [0]
+
+                                        async def do_bale_edit(txt):
+                                            try:
+                                                await bale.edit_message_text(chat_id, msg_id, txt)
+                                            except Exception as edit_err:
+                                                logger.debug(f"Bale progress edit notice: {edit_err}")
+
+                                        def progress_cb(dl_bytes, tot_bytes):
+                                            now = time.time()
+                                            current_percent = int((dl_bytes / tot_bytes) * 100) if tot_bytes > 0 else 0
+                                            if ((now - last_edit_time[0] >= 3.0 and current_percent - last_percent[0] >= 5) or current_percent == 100):
+                                                last_edit_time[0] = now
+                                                last_percent[0] = current_percent
+                                                elapsed = max(0.01, now - start_time[0])
+                                                txt = format_bale_transfer_progress(dl_bytes, tot_bytes, elapsed, stage_title="در حال دانلود استریم فایل...")
+                                                asyncio.create_task(do_bale_edit(txt))
+
+                                        ok = await UrlService.download_file_stream(url, temp_dest, progress_callback=progress_cb)
                                         if not ok or not temp_dest.exists():
                                             await bale.send_message(chat_id, "❌ خطا در دانلود فایل از لینک. لطفاً از صحت لینک اطمینان حاصل فرمایید.")
                                             continue
@@ -2010,16 +2053,29 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             continue
 
                                     # Direct Download Link (URL Uploader Gate in Bale)
-                                    if (text.startswith("http://") or text.startswith("https://")) and bale.is_admin(chat_id) and not user_act:
-                                        probe = await UrlService.probe_url(text)
-                                        if probe["is_valid"]:
+                                    link_match = re.search(r'https?://[^\s]+', text)
+                                    if link_match:
+                                        if not bale.is_admin(chat_id):
+                                            await bale.send_message(
+                                                chat_id,
+                                                f"⛔ دسترسی غیرمجاز! شناسه عددی بله شما جهت ثبت در پنل: <code>{chat_id}</code>"
+                                            )
+                                            continue
+
+                                        if user_act:
+                                            session_manager.clear_user_action(f"bale_{chat_id}")
+                                            user_act = None
+
+                                        clean_url = link_match.group(0).strip()
+                                        probe = await UrlService.probe_url(clean_url)
+                                        if probe.get("is_valid"):
                                             url_id = uuid.uuid4().hex[:8]
-                                            session_manager.create_session(f"url_{url_id}", {**probe, "url_id": url_id})
+                                            session_manager.create_session(f"url_{url_id}", {**probe, "url_id": url_id, "url": clean_url})
                                         
                                             card_txt = (
-                                                "🌐 لینک مستقیم دانلود شناسایی شد:\n\n"
-                                                f"📄 نام فایل: {probe['filename']}\n"
-                                                f"📦 حجم تقریبی: {human_size(probe['file_size'])}\n\n"
+                                                "🌐 <b>لینک مستقیم دانلود شناسایی شد:</b>\n\n"
+                                                f"📄 <b>نام فایل:</b> <code>{probe['filename']}</code>\n"
+                                                f"📦 <b>حجم تقریبی:</b> <b>{human_size(probe['file_size'])}</b>\n\n"
                                                 "لطفاً نحوه دریافت و ارسال در بله را انتخاب فرمایید:"
                                             )
                                             kb_url = {
@@ -2033,6 +2089,10 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 ]
                                             }
                                             await bale.send_message(chat_id, card_txt, reply_markup=kb_url)
+                                            continue
+                                        else:
+                                            err_reason = probe.get("error") or "سرور مبدا اجازه دسترسی به این فایل را نداد یا لینک نامعتبر است."
+                                            await bale.send_message(chat_id, f"❌ <b>خطا در بررسی لینک دانلود:</b> {err_reason}")
                                             continue
 
                                     # Handle Set Force Join Channel in Admin
@@ -2518,12 +2578,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     # Freeform User Text Message -> Invoke AI Sales Copilot!
                                     if text and not user_act and not media_item:
                                         try:
-                                            from services.ai_agent_service import ai_agent_service, ai_typing_action
+                                            from services.ai_service import ai_service, ai_typing_action
                                             async def _bale_text_typing():
                                                 await bale.send_chat_action(chat_id, "typing")
 
                                             async with ai_typing_action(_bale_text_typing):
-                                                ai_reply = await ai_agent_service.chat_course_support(text)
+                                                ai_reply = await ai_service.chat_course_support(text)
                                                 await bale.send_message(chat_id, ai_reply, reply_markup=get_bale_customer_keyboard())
                                         except Exception as ai_err:
                                             logger.warning(f"[bale_copilot] AI course support error: {ai_err}")
