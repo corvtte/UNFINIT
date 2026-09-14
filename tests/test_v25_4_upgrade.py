@@ -234,8 +234,11 @@ class TestWebMp3tagStudio(unittest.TestCase):
             file_size=54321,
             media_type='audio'
         )
-        # Should return the first session rather than creating another
-        self.assertEqual(drop1['drop_id'], drop2['drop_id'])
+        # Each registration receives a fresh unique session to prevent stale attachments
+        self.assertIsNotNone(drop1)
+        self.assertIsNotNone(drop2)
+        self.assertEqual(drop1['drop_id'], 'unique_test_1')
+        self.assertEqual(drop2['drop_id'], 'unique_test_2')
 
     def test_10_permanent_course_delete(self):
         import asyncio
@@ -435,48 +438,12 @@ class TestWebMp3tagStudio(unittest.TestCase):
             loop.close()
 
     def test_18_v25_4_6_rubika_and_storage(self):
-        import time
         from core.config import config
-        from platforms.rubika_adapter import extract_universal_rubika_updates
 
         # 1. Verify storage directory existence
         self.assertTrue(config.TEMP_DIR.exists())
         self.assertTrue(config.UPLOADS_DIR.exists())
         self.assertTrue(config.BANNERS_DIR.exists())
-
-        # 2. Test Rubika update timestamp extraction
-        past_time = time.time() - 3600
-        sample_update_data = {
-            "data": {
-                "updates": [
-                    {
-                        "update_id": 101,
-                        "type": "NewMessage",
-                        "chat_id": "c12345",
-                        "message": {
-                            "message_id": "m101",
-                            "text": "سلام تست قدیمی",
-                            "time": int(past_time)
-                        }
-                    },
-                    {
-                        "update_id": 102,
-                        "type": "NewMessage",
-                        "chat_id": "c12345",
-                        "message": {
-                            "message_id": "m102",
-                            "text": "سلام تست جدید",
-                            "time": int(time.time())
-                        }
-                    }
-                ]
-            }
-        }
-        normalized, next_off = extract_universal_rubika_updates(sample_update_data)
-        self.assertEqual(len(normalized), 2)
-        self.assertAlmostEqual(normalized[0]["timestamp"], past_time, delta=2)
-        self.assertTrue(normalized[0]["timestamp"] < (time.time() - 100))
-        self.assertTrue(normalized[1]["timestamp"] > (time.time() - 10))
 
 if __name__ == '__main__':
     unittest.main()

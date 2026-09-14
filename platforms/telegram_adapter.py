@@ -318,6 +318,11 @@ class TelegramAdapter:
     def is_admin(self, user_id: int | str) -> bool:
         if not user_id:
             return False
+        u_str = str(user_id).strip()
+        admin_ids = [str(x).strip() for x in (getattr(config, "ADMIN_USER_IDS", []) or []) if str(x).strip()]
+        owner_id = str(getattr(config, "TELEGRAM_OWNER_ID", "") or getattr(config, "OWNER_ID", "")).strip()
+        if u_str in admin_ids or (owner_id and u_str == owner_id):
+            return True
         return config.is_admin(user_id)
 
     async def ensure_forum_topics(self) -> Dict[str, int]:
@@ -1767,7 +1772,7 @@ class TelegramAdapter:
             sz = temp_dest.stat().st_size
 
             try:
-                if media_type == "video" or temp_dest.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi", ".webm"):
+                if mode != "doc" and (media_type == "video" or temp_dest.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi", ".webm")):
                     media_type = "video"
                     tech = inspect_technical_metadata(temp_dest)
                     w = int(tech.get("width") or 0)
@@ -2425,11 +2430,13 @@ class TelegramAdapter:
                     return
 
             # Direct Download Link (URL Uploader Gate)
-            if (text.startswith("http://") or text.startswith("https://")) and self.is_admin(user_id) and not user_act:
-                probe = await UrlService.probe_url(text)
+            link_match = re.search(r"https?://[^\s]+", text)
+            if link_match and self.is_admin(user_id) and not user_act:
+                clean_url = link_match.group(0).strip()
+                probe = await UrlService.probe_url(clean_url)
                 if probe["is_valid"]:
                     url_id = uuid.uuid4().hex[:8]
-                    session_manager.create_session(f"url_{url_id}", {**probe, "url_id": url_id})
+                    session_manager.create_session(f"url_{url_id}", {**probe, "url_id": url_id, "url": clean_url})
                     
                     is_vid = probe["media_type"] == "video"
                     buttons = [
@@ -2439,6 +2446,9 @@ class TelegramAdapter:
                         buttons.append([
                             InlineKeyboardButton("🎥 دریافت در حالت ویدیو", callback_data=f"urldl:video:{url_id}"),
                             InlineKeyboardButton("🎵 استخراج و تبدیل به MP3", callback_data=f"urldl:audio:{url_id}")
+                        ])
+                        buttons.append([
+                            InlineKeyboardButton("📁 دریافت در حالت فایل", callback_data=f"urldl:doc:{url_id}")
                         ])
                     else:
                         buttons.append([

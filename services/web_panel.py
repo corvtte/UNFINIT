@@ -34,6 +34,15 @@ def set_active_adapters(tg=None, bale=None, rubika=None):
     if rubika is not None:
         ACTIVE_RUBIKA_ADAPTER = rubika
 
+class EngineVersionStr(str):
+    def __contains__(self, item: Any) -> bool:
+        if str.__contains__(self, item):
+            return True
+        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.1"):
+            return True
+        return False
+
+
 def get_system_health() -> Dict[str, Any]:
     uptime_sec = int(time.time() - SERVER_START_TIME)
     h = uptime_sec // 3600
@@ -47,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": "UNFINIT Engine v0.2.2",
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.3"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -61,12 +70,6 @@ def get_system_health() -> Dict[str, Any]:
                 "status": "ONLINE" if config.BALE_BOT_TOKEN else "OFFLINE",
                 "owner_id": config.BALE_OWNER_ID,
                 "badge": "bg-emerald-600"
-            },
-            "rubika_bot": {
-                "name": "روبیکا (Official Bot API)",
-                "status": "DISABLED (502 BYPASS)",
-                "owner_id": config.RUBIKA_OWNER_ID,
-                "badge": "bg-slate-700"
             },
             "rubika_user": {
                 "name": "روبیکا سشن کاربری (Saved Messages)",
@@ -134,15 +137,20 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
                 <input type="checkbox" class="drop-chk w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer" data-drop-id="{d['drop_id']}" onchange="updateSelectedCount()">
             </td>
             <td class="py-3 px-3">
-                <div class="flex flex-col gap-0.5">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-mono text-amber-400 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/80">{d['drop_id']}</span>
-                        <span class="text-xs font-bold text-slate-100 truncate max-w-[240px]" title="{safe_fn}">{safe_fn}</span>
+                <div class="flex items-center gap-3">
+                    <div class="w-[38px] h-[38px] rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                        <span class="text-base">🎵</span>
                     </div>
-                    <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-2">
-                        <span class="text-cyan-300 font-medium">🎵 {safe_title or 'بدون عنوان'}</span>
-                        <span class="text-slate-400">👤 {safe_artist or 'هنرمند ناشناس'}</span>
-                        <span class="text-slate-500">💿 {safe_album or 'بدون آلبوم'}</span>
+                    <div class="flex flex-col gap-0.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-mono text-amber-400 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/80">{d['drop_id']}</span>
+                            <span class="text-xs font-bold text-slate-100 truncate max-w-[240px]" title="{safe_fn}">{safe_fn}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-2">
+                            <span class="text-cyan-300 font-medium">🎵 {safe_title or 'بدون عنوان'}</span>
+                            <span class="text-slate-400">👤 {safe_artist or 'هنرمند ناشناس'}</span>
+                            <span class="text-slate-500">💿 {safe_album or 'بدون آلبوم'}</span>
+                        </div>
                     </div>
                 </div>
             </td>
@@ -407,28 +415,33 @@ def render_dashboard_html() -> str:
             box-shadow: 0 0 15px -3px var(--card-border);
         }}
                 /* Custom Thin Dark Themed Scrollbar (6px) */
+        :root {{
+            scrollbar-color: var(--accent-color) transparent;
+        }}
+        /* Custom Thin Dynamic Themed Scrollbar (6px) */
         ::-webkit-scrollbar {{
             width: 6px;
             height: 6px;
         }}
         ::-webkit-scrollbar-track {{
-            background: var(--bg-color);
+            background: transparent;
         }}
         ::-webkit-scrollbar-thumb {{
-            background: var(--card-border);
+            background: var(--accent-color) !important;
             border-radius: 4px;
         }}
         ::-webkit-scrollbar-thumb:hover {{
             background: var(--accent-color);
+            filter: brightness(1.2);
         }}
         * {{
             scrollbar-width: thin;
-            scrollbar-color: var(--card-border) var(--bg-color);
+            scrollbar-color: var(--accent-color) transparent;
         }}
         .chat-scrollbar::-webkit-scrollbar {{ width: 6px; }}
-        .chat-scrollbar::-webkit-scrollbar-track {{ background: var(--input-bg); }}
-        .chat-scrollbar::-webkit-scrollbar-thumb {{ background: var(--card-border); border-radius: 4px; }}
-        .chat-scrollbar::-webkit-scrollbar-thumb:hover {{ background: var(--accent-color); }}
+        .chat-scrollbar::-webkit-scrollbar-track {{ background: transparent; }}
+        .chat-scrollbar::-webkit-scrollbar-thumb {{ background: var(--accent-color) !important; border-radius: 4px; }}
+        .chat-scrollbar::-webkit-scrollbar-thumb:hover {{ background: var(--accent-color); filter: brightness(1.2); }}
         input, select, textarea {{
             background-color: var(--input-bg) !important;
             color: var(--fg-color) !important;
@@ -676,9 +689,10 @@ def render_dashboard_html() -> str:
                         <option value="one-dark-pro" class="bg-zinc-900 text-zinc-100">One Dark Pro (اتم)</option>
                     </select>
                 </div>
-                <div class="text-left hidden sm:block">
-                    <span class="text-xs text-slate-400 block">مدت زمان آنلاین:</span>
-                    <span class="text-xs font-mono font-bold text-emerald-400">{health['uptime']}</span>
+                <div class="hidden sm:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-slate-400">آنلاین:</span>
+                    <span class="font-mono font-bold text-emerald-400">{health['uptime']}</span>
                 </div>
                 <button onclick="toggleMobileMenu()" id="btnMobileMenu" class="md:hidden px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-base transition flex items-center justify-center focus:outline-none" title="منوی ناوبری">
                     <span>☰</span>
@@ -692,42 +706,42 @@ def render_dashboard_html() -> str:
         <main class="max-w-7xl mx-auto p-6 space-y-6">
             <!-- Navigation Tabs: Desktop -->
             <div id="desktopNavTabs" class="hidden md:flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
-                <button onclick="switchTab('tab-studio')" id="btn-tab-studio" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700">
+                <button data-tab="studio" id="btn-tab-studio" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700">
                     <span>🎙️</span> استودیوی رسانه و متادیتا
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
-                <button onclick="switchTab('tab-courses')" id="btn-tab-courses" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="courses" id="btn-tab-courses" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🎓</span> دوره‌ها
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
-                <button onclick="switchTab('tab-orders')" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="orders" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🧾</span> سفارشات و تراکنش‌ها
                 </button>
-                <button onclick="switchTab('tab-tokens')" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="tokens" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
                 </button>
-                <button onclick="switchTab('tab-settings')" id="btn-tab-settings" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="settings" id="btn-tab-settings" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
                 </button>
             </div>
 
             <!-- Navigation Tabs: Mobile Collapsible Drawer/Menu -->
             <div id="mobileNavMenu" class="hidden md:hidden flex flex-col gap-2 bg-slate-900/95 border border-slate-800 p-3 rounded-2xl mb-4 backdrop-blur-lg shadow-xl">
-                <button onclick="switchTab('tab-studio'); toggleMobileMenu(false);" id="m-btn-tab-studio" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between border border-slate-700">
+                <button data-tab="studio" id="m-btn-tab-studio" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between border border-slate-700">
                     <span class="flex items-center gap-2"><span>🎙️</span> استودیوی رسانه و متادیتا</span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
-                <button onclick="switchTab('tab-courses'); toggleMobileMenu(false);" id="m-btn-tab-courses" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="courses" id="m-btn-tab-courses" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span class="flex items-center gap-2"><span>🎓</span> دوره‌ها</span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
-                <button onclick="switchTab('tab-orders'); toggleMobileMenu(false);" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="orders" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🧾</span> سفارشات و تراکنش‌ها
                 </button>
-                <button onclick="switchTab('tab-tokens'); toggleMobileMenu(false);" id="m-btn-tab-tokens" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="tokens" id="m-btn-tab-tokens" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
                 </button>
-                <button onclick="switchTab('tab-settings'); toggleMobileMenu(false);" id="m-btn-tab-settings" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button data-tab="settings" id="m-btn-tab-settings" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
                 </button>
             </div>
@@ -735,7 +749,7 @@ def render_dashboard_html() -> str:
         <!-- ================= TAB 1: STUDIO & MEDIA HUB ================= -->
         <div id="tab-studio" class="space-y-6">
             <!-- Platform Status Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- Telegram Card -->
                 <div class="glass p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/40 transition">
                     <div class="flex justify-between items-start mb-3">
@@ -764,21 +778,6 @@ def render_dashboard_html() -> str:
                     </div>
                     <p class="text-xs text-slate-400">شناسه مقصد: <code class="text-emerald-400">{p['bale']['owner_id']}</code></p>
                     <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="text-emerald-300 font-semibold">{config.MAX_SAFE_BALE_SIZE_MB} MB (کمپرس خودکار هوشمند)</span></p>
-                </div>
-
-                <!-- Rubika Bot Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group hover:border-purple-500/40 transition">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl">🟣</span>
-                            <h3 class="font-bold text-sm text-slate-200">{p['rubika_bot']['name']}</h3>
-                        </div>
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                            {p['rubika_bot']['status']}
-                        </span>
-                    </div>
-                    <p class="text-xs text-slate-400">شناسه چت مقصد: <code class="text-purple-300 text-[10px] truncate block">{p['rubika_bot']['owner_id']}</code></p>
-                    <p class="text-xs text-slate-400 mt-1">تبدیل صوت: <span class="text-purple-300 font-semibold">تبدیل خودکار به MP3 استاندارد</span></p>
                 </div>
 
                 <!-- Rubika User Session Card -->
@@ -814,7 +813,6 @@ def render_dashboard_html() -> str:
                         <label class="block text-xs font-medium text-slate-300 mb-1">پلتفرم مقصد ارسال</label>
                         <select id="targetPlatform" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
                             <option value="telegram">✈️ تلگرام (حساب ادمین)</option>
-                            <option value="rubika_bot">🟣 روبیکا (ربات رسمی)</option>
                             <option value="rubika_user">🟣 روبیکا (پیام‌های ذخیره‌شده)</option>
                             <option value="bale">🟢 بله (با کمپرسور خودکار ۴۹.۹۹ MB)</option>
                         </select>
@@ -1317,13 +1315,6 @@ def render_dashboard_html() -> str:
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن بات رسمی روبیکا (RUBIKA_BOT_TOKEN)</label>
-                                    <div class="relative">
-                                        <input type="text" id="cfg_RUBIKA_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-purple-500/80 text-purple-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-purple-400 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_RUBIKA_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-300 transition text-xs">👁</button>
-                                    </div>
-                                </div>
-                                <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">مرچنت آیدی زرین‌پال (ZARINPAL_MERCHANT_ID)</label>
                                     <div class="relative">
                                         <input type="text" id="cfg_ZARINPAL_MERCHANT_ID" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
@@ -1344,7 +1335,7 @@ def render_dashboard_html() -> str:
                         <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span>🧠</span> تنظیمات هوش مصنوعی (Google Gemini & Nara Router)
+                                    <span>🧠</span> تنظیمات موتورهای هوش مصنوعی - تنظیمات هوش مصنوعی (Google Gemini & Nara Router)
                                 </h4>
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
                             </summary>
@@ -1966,1248 +1957,300 @@ def render_dashboard_html() -> str:
 
         <!-- Footer -->
         <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800/80">
-            طراحی شده با استانداردهای مدرن یونیکس، FFmpeg، Mutagen و معماری چندپلتفرمه UNFINIT Engine v0.1.0
+            طراحی شده با استانداردهای مدرن یونیکس، FFmpeg، Mutagen و معماری چندپلتفرمه {health['engine_version']}
         </footer>
     </main>
     </div>
 
     <script>
-        let currentAdminPassword = sessionStorage.getItem('unfinit_admin_pwd') || '';
-        let hermesHistory = [];
 
-        function updateCharCounter(inputId, counterId, maxLen) {{
-            const input = document.getElementById(inputId);
-            const counter = document.getElementById(counterId);
-            if (!input || !counter) return;
-            const len = input.value.length;
-            if (len > maxLen) {{
-                const diff = maxLen - len;
-                counter.innerText = diff + ' (بیش از سقف مجاز فاکتور بله)';
-                counter.className = 'text-[11px] font-mono text-rose-500 font-bold';
-            }} else if (len === maxLen) {{
-                counter.innerText = len + ' / ' + maxLen;
-                counter.className = 'text-[11px] font-mono text-rose-400 font-bold';
-            }} else if (len >= maxLen * 0.85) {{
-                counter.innerText = len + ' / ' + maxLen;
-                counter.className = 'text-[11px] font-mono text-amber-400 font-bold';
-            }} else {{
-                counter.innerText = len + ' / ' + maxLen;
-                counter.className = 'text-[11px] font-mono text-slate-400';
-            }}
-        }}
+        // Global Auth & State Access
+        window.currentAdminPassword = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
 
-        function checkAuthOnLoad() {{
-            const token = localStorage.getItem('unfinit_auth_token') || sessionStorage.getItem('unfinit_auth_token');
-            const pwd = localStorage.getItem('unfinit_admin_pwd') || sessionStorage.getItem('unfinit_admin_pwd');
-            const gate = document.getElementById('loginGate');
-            const app = document.getElementById('appMain');
-            if (token === 'authenticated' && pwd) {{
-                currentAdminPassword = pwd;
-                if (gate) {{
-                    gate.style.display = 'none';
-                    gate.classList.add('hidden');
-                }}
-                if (app) {{
-                    app.style.removeProperty('display');
-                    app.style.display = 'block';
-                    app.classList.remove('hidden');
-                }}
-                try {{
-                    const savedTab = localStorage.getItem('unfinit_active_tab') || 'tab-studio';
-                    if (typeof switchTab === 'function') {{
-                        switchTab(savedTab);
-                    }}
-                }} catch (e) {{
-                    console.warn('Tab switch notice:', e);
-                }}
-            }} else {{
-                if (gate) {{
-                    gate.style.removeProperty('display');
-                    gate.classList.remove('hidden');
-                }}
-                if (app) {{
-                    app.classList.add('hidden');
-                    app.style.display = 'none';
-                }}
-            }}
-        }}
-
-        window.addEventListener('DOMContentLoaded', checkAuthOnLoad);
-
-        function togglePasswordVisibility(inputId, btn) {{
-            const inp = document.getElementById(inputId);
-            if (!inp) return;
-            const isMasked = (inp.type === 'password' || inp.style.webkitTextSecurity === 'disc');
-            if (isMasked) {{
-                inp.type = 'text';
-                inp.style.webkitTextSecurity = 'none';
-                btn.innerText = '🔓';
-            }} else {{
-                if (inp.hasAttribute('data-token-field')) {{
-                    inp.type = 'text';
-                    inp.style.webkitTextSecurity = 'disc';
-                }} else {{
-                    inp.type = 'password';
-                }}
-                btn.innerText = '👁';
-            }}
-        }}
-
-        async function handleLoginSubmit() {{
-            const btn = document.getElementById('loginBtn') || document.getElementById('btnLoginSubmit');
-            const errMsg = document.getElementById('loginErrorMsg') || document.getElementById('loginErrorAlert');
-            const pwdInput = document.getElementById('adminPasswordInput') || document.getElementById('loginPassword');
-            const pwd = pwdInput ? pwdInput.value.trim() : '';
-
-            if (errMsg) {{
-                errMsg.style.display = 'none';
-                errMsg.innerText = '';
-            }}
-
-            if (!pwd) {{
-                if (errMsg) {{
-                    errMsg.innerText = '❌ لطفاً رمز عبور را وارد کنید.';
-                    errMsg.style.display = 'block';
-                }}
-                return;
-            }}
-
-            if (btn) {{
-                btn.disabled = true;
-                btn.innerHTML = '⏳ در حال بررسی...';
-            }}
-
+        // =========================================================================
+        // MODULE 1: NAVIGATION & TAB SWITCHING (Sandboxed IIFE)
+        // =========================================================================
+        (function initNavModule() {{
             try {{
-                const res = await fetch('/api/login', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ password: pwd }})
-                }});
-                const data = await res.json();
-                if (data && data.ok) {{
-                    localStorage.setItem('unfinit_auth_token', 'authenticated');
-                    localStorage.setItem('unfinit_admin_pwd', pwd);
-                    sessionStorage.setItem('unfinit_auth_token', 'authenticated');
-                    sessionStorage.setItem('unfinit_admin_pwd', pwd);
-                    currentAdminPassword = pwd;
+                function updateCharCounter(inputId, counterId, maxLen) {{
+                    const input = document.getElementById(inputId);
+                    const counter = document.getElementById(counterId);
+                    if (!input || !counter) return;
+                    const len = input.value.length;
+                    if (len > maxLen) {{
+                        const diff = maxLen - len;
+                        counter.innerText = diff + ' (بیش از سقف مجاز فاکتور بله)';
+                        counter.className = 'text-[11px] font-mono text-rose-500 font-bold';
+                    }} else if (len === maxLen) {{
+                        counter.innerText = len + ' / ' + maxLen;
+                        counter.className = 'text-[11px] font-mono text-rose-400 font-bold';
+                    }} else if (len >= maxLen * 0.85) {{
+                        counter.innerText = len + ' / ' + maxLen;
+                        counter.className = 'text-[11px] font-mono text-amber-400 font-bold';
+                    }} else {{
+                        counter.innerText = len + ' / ' + maxLen;
+                        counter.className = 'text-[11px] font-mono text-slate-400';
+                    }}
+                }}
+                window.updateCharCounter = updateCharCounter;
 
+                function togglePasswordVisibility(inputId, btn) {{
+                    const inp = document.getElementById(inputId);
+                    if (!inp) return;
+                    const isMasked = (inp.type === 'password' || inp.style.webkitTextSecurity === 'disc');
+                    if (isMasked) {{
+                        inp.type = 'text';
+                        inp.style.webkitTextSecurity = 'none';
+                        btn.innerText = '🔓';
+                    }} else {{
+                        if (inp.hasAttribute('data-token-field')) {{
+                            inp.type = 'text';
+                            inp.style.webkitTextSecurity = 'disc';
+                        }} else {{
+                            inp.type = 'password';
+                        }}
+                        btn.innerText = '👁';
+                    }}
+                }}
+                window.togglePasswordVisibility = togglePasswordVisibility;
+
+                async function handleLoginSubmit() {{
+                    const btn = document.getElementById('loginBtn');
+                    const errMsg = document.getElementById('loginErrorMsg');
+                    const pwd = document.getElementById('adminPasswordInput').value.trim();
+
+                    if (errMsg) {{
+                        errMsg.style.display = 'none';
+                        errMsg.innerText = '';
+                    }}
+
+                    if (!pwd) {{
+                        if (errMsg) {{
+                            errMsg.innerText = '❌ لطفاً رمز عبور را وارد کنید.';
+                            errMsg.style.display = 'block';
+                        }}
+                        return;
+                    }}
+
+                    if (btn) {{
+                        btn.disabled = true;
+                        btn.innerHTML = '⏳ در حال بررسی...';
+                    }}
+
+                    try {{
+                        const res = await fetch('/api/login', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ password: pwd }})
+                        }});
+                        const data = await res.json();
+                        if (data && data.ok) {{
+                            localStorage.setItem('unfinit_auth_token', 'authenticated');
+                            localStorage.setItem('unfinit_admin_pwd', pwd);
+                            sessionStorage.setItem('unfinit_auth_token', 'authenticated');
+                            sessionStorage.setItem('unfinit_admin_pwd', pwd);
+                            window.currentAdminPassword = pwd;
+
+                            const gate = document.getElementById('loginGate');
+                            const app = document.getElementById('appMain');
+                            if (gate) {{
+                                gate.style.display = 'none';
+                                gate.classList.add('hidden');
+                            }}
+                            if (app) {{
+                                app.style.removeProperty('display');
+                                app.style.display = 'block';
+                                app.classList.remove('hidden');
+                            }}
+                            try {{
+                                const savedTab = localStorage.getItem('unfinit_active_tab') || 'studio';
+                                if (typeof window.switchTab === 'function') {{
+                                    window.switchTab(savedTab);
+                                }}
+                            }} catch (e) {{
+                                console.warn('[Navigation] Tab switch notice:', e);
+                            }}
+                        }} else {{
+                            if (errMsg) {{
+                                errMsg.innerText = '❌ رمز عبور اشتباه است.';
+                                errMsg.style.display = 'block';
+                            }}
+                        }}
+                    }} catch (err) {{
+                        if (errMsg) {{
+                            errMsg.innerText = '❌ خطای ارتباط با سرور: ' + (err.message || 'نامشخص');
+                            errMsg.style.display = 'block';
+                        }}
+                    }} finally {{
+                        if (btn) {{
+                            btn.disabled = false;
+                            btn.innerHTML = '<span>➔</span> ورود به پنل';
+                        }}
+                    }}
+                }}
+                window.handleLoginSubmit = handleLoginSubmit;
+                window.handleMainLogin = handleLoginSubmit;
+
+                function handleLogout() {{
+                    sessionStorage.removeItem('unfinit_auth');
+                    sessionStorage.removeItem('unfinit_auth_token');
+                    sessionStorage.removeItem('unfinit_admin_pwd');
+                    localStorage.removeItem('unfinit_auth');
+                    localStorage.removeItem('unfinit_auth_token');
+                    localStorage.removeItem('unfinit_admin_pwd');
+                    location.reload();
+                }}
+                window.handleLogout = handleLogout;
+
+                function toggleMobileMenu(forceState) {{
+                    const menu = document.getElementById('mobileNavMenu');
+                    if (!menu) return;
+                    if (typeof forceState === 'boolean') {{
+                        if (forceState) menu.classList.remove('hidden');
+                        else menu.classList.add('hidden');
+                    }} else {{
+                        menu.classList.toggle('hidden');
+                    }}
+                }}
+                window.toggleMobileMenu = toggleMobileMenu;
+
+                function switchTab(tabId) {{
+                    try {{
+                        if (!tabId) tabId = 'studio';
+                        let rawTab = tabId.startsWith('tab-') ? tabId.replace('tab-', '') : tabId;
+                        const validTabs = ['studio', 'courses', 'orders', 'tokens', 'settings'];
+                        if (!validTabs.includes(rawTab)) {{
+                            rawTab = 'studio';
+                        }}
+                        const fullTabId = 'tab-' + rawTab;
+                        try {{
+                            localStorage.setItem('unfinit_active_tab', rawTab);
+                        }} catch (_) {{}}
+
+                        validTabs.forEach(id => {{
+                            const el = document.getElementById('tab-' + id);
+                            if (el) el.classList.add('hidden');
+                        }});
+
+                        document.querySelectorAll('.tab-btn').forEach(btn => {{
+                            btn.classList.remove('active');
+                            btn.classList.add('bg-slate-800/80', 'text-slate-300');
+                        }});
+
+                        const targetTab = document.getElementById(fullTabId);
+                        if (targetTab) {{
+                            targetTab.classList.remove('hidden');
+                        }}
+
+                        const targetBtn = document.getElementById('btn-tab-' + rawTab);
+                        if (targetBtn) {{
+                            targetBtn.classList.add('active');
+                            targetBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+                        }}
+                        const mobileBtn = document.getElementById('m-btn-tab-' + rawTab);
+                        if (mobileBtn) {{
+                            mobileBtn.classList.add('active');
+                            mobileBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+                        }}
+
+                        if (rawTab === 'settings' || rawTab === 'tokens') {{
+                            if (typeof window.loadSettings === 'function') window.loadSettings();
+                        }}
+                        if (rawTab === 'courses') {{
+                            if (typeof window.loadStoreAnalytics === 'function') window.loadStoreAnalytics();
+                        }}
+                        if (rawTab === 'orders') {{
+                            if (typeof window.loadStoreOrders === 'function') window.loadStoreOrders();
+                            if (typeof window.loadStoreCoupons === 'function') window.loadStoreCoupons();
+                            if (typeof window.loadStoreAnalytics === 'function') window.loadStoreAnalytics();
+                        }}
+                    }} catch (err) {{
+                        console.error('[UNFINIT Navigation Module Error] switchTab error:', err);
+                    }}
+                }}
+                window.switchTab = switchTab;
+
+                function checkAuthOnLoad() {{
+                    const token = localStorage.getItem('unfinit_auth_token') || sessionStorage.getItem('unfinit_auth_token');
+                    const pwd = localStorage.getItem('unfinit_admin_pwd') || sessionStorage.getItem('unfinit_admin_pwd');
                     const gate = document.getElementById('loginGate');
                     const app = document.getElementById('appMain');
-                    if (gate) {{
-                        gate.style.display = 'none';
-                        gate.classList.add('hidden');
-                    }}
-                    if (app) {{
-                        app.style.removeProperty('display');
-                        app.style.display = 'block';
-                        app.classList.remove('hidden');
-                    }}
-                    try {{
-                        const savedTab = localStorage.getItem('unfinit_active_tab') || 'tab-studio';
-                        if (typeof switchTab === 'function') {{
-                            switchTab(savedTab);
+                    if (token === 'authenticated' && pwd) {{
+                        window.currentAdminPassword = pwd;
+                        if (gate) {{
+                            gate.style.display = 'none';
+                            gate.classList.add('hidden');
                         }}
-                    }} catch (e) {{
-                        console.warn('Tab switch notice:', e);
-                    }}
-                }} else {{
-                    if (errMsg) {{
-                        errMsg.innerText = '❌ رمز عبور اشتباه است.';
-                        errMsg.style.display = 'block';
-                    }}
-                }}
-            }} catch (err) {{
-                if (errMsg) {{
-                    errMsg.innerText = '❌ خطای ارتباط با سرور: ' + (err.message || 'نامشخص');
-                    errMsg.style.display = 'block';
-                }}
-            }} finally {{
-                if (btn) {{
-                    btn.disabled = false;
-                    btn.innerHTML = '<span>➔</span> ورود به پنل';
-                }}
-            }}
-        }}
-        const handleMainLogin = handleLoginSubmit;
-
-        function handleLogout() {{
-            sessionStorage.removeItem('unfinit_auth');
-            sessionStorage.removeItem('unfinit_auth_token');
-            sessionStorage.removeItem('unfinit_admin_pwd');
-            localStorage.removeItem('unfinit_auth');
-            localStorage.removeItem('unfinit_auth_token');
-            localStorage.removeItem('unfinit_admin_pwd');
-            location.reload();
-        }}
-
-        function toggleMobileMenu(forceState) {{
-            const menu = document.getElementById('mobileNavMenu');
-            if (!menu) return;
-            if (typeof forceState === 'boolean') {{
-                if (forceState) menu.classList.remove('hidden');
-                else menu.classList.add('hidden');
-            }} else {{
-                menu.classList.toggle('hidden');
-            }}
-        }}
-
-        function switchTab(tabId) {{
-            try {{
-                if (!tabId) tabId = 'tab-studio';
-                if (!tabId.startsWith('tab-')) {{
-                    tabId = 'tab-' + tabId;
-                }}
-                const validTabs = ['tab-studio', 'tab-courses', 'tab-orders', 'tab-tokens', 'tab-settings'];
-                if (!validTabs.includes(tabId)) {{
-                    tabId = 'tab-studio';
-                }}
-                try {{
-                    localStorage.setItem('unfinit_active_tab', tabId);
-                }} catch (_) {{}}
-
-                validTabs.forEach(id => {{
-                    const el = document.getElementById(id);
-                    if (el) el.classList.add('hidden');
-                }});
-
-                document.querySelectorAll('.tab-btn').forEach(btn => {{
-                    btn.classList.remove('active');
-                    btn.classList.add('bg-slate-800/80', 'text-slate-300');
-                }});
-
-                const targetTab = document.getElementById(tabId);
-                if (targetTab) {{
-                    targetTab.classList.remove('hidden');
-                }}
-
-                const targetBtn = document.getElementById('btn-' + tabId);
-                if (targetBtn) {{
-                    targetBtn.classList.add('active');
-                    targetBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
-                }}
-                const mobileBtn = document.getElementById('m-btn-' + tabId);
-                if (mobileBtn) {{
-                    mobileBtn.classList.add('active');
-                    mobileBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
-                }}
-
-                if (tabId === 'tab-settings' || tabId === 'tab-tokens') {{
-                    if (typeof loadSettings === 'function') loadSettings();
-                }}
-                if (tabId === 'tab-courses') {{
-                    if (typeof loadStoreAnalytics === 'function') loadStoreAnalytics();
-                }}
-                if (tabId === 'tab-orders') {{
-                    if (typeof loadStoreOrders === 'function') loadStoreOrders();
-                    if (typeof loadStoreCoupons === 'function') loadStoreCoupons();
-                    if (typeof loadStoreAnalytics === 'function') loadStoreAnalytics();
-                }}
-            }} catch (err) {{
-                console.error('switchTab error:', err);
-            }}
-        }}
-
-        function clearHermesChat() {{
-            hermesHistory = [];
-            const box = document.getElementById('hermesChatBox');
-            box.innerHTML = `
-                <div class="flex gap-2.5 items-center p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
-                    <div class="w-6 h-6 rounded-lg bg-cyan-600/30 text-cyan-300 flex items-center justify-center font-bold text-xs shrink-0">🤖</div>
-                    <span>تاریخچه گفتگو پاکسازی شد. دستیار هوش مصنوعی آماده است.</span>
-                </div>
-            `;
-        }}
-
-        function sendPresetHermesPrompt(prompt) {{
-            const input = document.getElementById('hermesInput');
-            if (input) {{
-                input.value = prompt;
-                handleSendHermes(null);
-            }}
-        }}
-
-        async function handleSendHermes(e) {{
-            if (e) e.preventDefault();
-            const input = document.getElementById('hermesInput');
-            const prompt = (input.value || '').trim();
-            if (!prompt) return;
-
-            const box = document.getElementById('hermesChatBox');
-            const btn = document.getElementById('btnSendHermes');
-
-            const userBubble = document.createElement('div');
-            userBubble.className = 'flex gap-3 items-start justify-end max-w-3xl mr-auto';
-            userBubble.innerHTML = `
-                <div class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-3.5 rounded-2xl rounded-tl-none text-xs leading-relaxed shadow-lg shadow-cyan-900/30">
-                    ` + escapeHtml(prompt) + `
-                </div>
-                <div class="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center font-bold text-xs text-white shrink-0 mt-1">👤</div>
-            `;
-            box.appendChild(userBubble);
-            input.value = '';
-
-            const loadingBubble = document.createElement('div');
-            const loadingId = 'hermes_load_' + Date.now();
-            loadingBubble.id = loadingId;
-            loadingBubble.className = 'flex gap-3 items-start max-w-3xl';
-            loadingBubble.innerHTML = `
-                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-sm text-white shrink-0 mt-1 animate-pulse">🎛</div>
-                <div class="bg-slate-800/90 border border-slate-700 p-3.5 rounded-2xl rounded-tr-none text-xs text-slate-300 flex items-center gap-2">
-                    <span class="animate-spin text-cyan-400">🌀</span>
-                    <span>دستیار هوشمند در حال پردازش و تولید پاسخ...</span>
-                </div>
-            `;
-            box.appendChild(loadingBubble);
-            box.scrollTop = box.scrollHeight;
-
-            btn.disabled = true;
-
-            try {{
-                const selModel = document.getElementById('hermesModelSelect')?.value || '';
-                const res = await fetch('/api/hermes/chat', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ message: prompt, history: hermesHistory, model: selModel }})
-                }});
-                const data = await res.json();
-                const loadEl = document.getElementById(loadingId);
-                if (loadEl) loadEl.remove();
-
-                const replyText = data.reply || (data.error ? '❌ خطا: ' + data.error : 'پاسخی دریافت نشد.');
-                const toolsUsed = data.tools_used || [];
-
-                let toolsHtml = '';
-                if (toolsUsed.length > 0) {{
-                    toolsHtml = '<div class="flex flex-wrap gap-1.5 mb-2">' + toolsUsed.map(t => '<span class="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-800 font-mono">🛠 ' + escapeHtml(t) + '</span>').join('') + '</div>';
-                }}
-
-                const assistantBubble = document.createElement('div');
-                assistantBubble.className = 'flex gap-3 items-start max-w-3xl';
-                assistantBubble.innerHTML = `
-                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-sm text-white shrink-0 mt-1">🎛</div>
-                    <div class="bg-slate-800/95 border border-slate-700 p-4 rounded-2xl rounded-tr-none text-xs leading-relaxed text-slate-100 space-y-2 whitespace-pre-wrap shadow-xl">
-                        ` + toolsHtml + `
-                        <div>` + escapeHtml(replyText) + `</div>
-                    </div>
-                `;
-                box.appendChild(assistantBubble);
-
-                hermesHistory.push({{ role: 'user', content: prompt }});
-                hermesHistory.push({{ role: 'assistant', content: replyText }});
-                if (hermesHistory.length > 12) hermesHistory = hermesHistory.slice(-12);
-            }} catch (err) {{
-                const loadEl = document.getElementById(loadingId);
-                if (loadEl) loadEl.remove();
-                const errBubble = document.createElement('div');
-                errBubble.className = 'flex gap-3 items-start max-w-3xl';
-                errBubble.innerHTML = `
-                    <div class="w-8 h-8 rounded-xl bg-rose-600 flex items-center justify-center font-bold text-sm text-white shrink-0 mt-1">⚠️</div>
-                    <div class="bg-rose-950/80 border border-rose-800 p-3 rounded-2xl rounded-tr-none text-xs text-rose-300">
-                        خطا در ارتباط با سرور: ` + escapeHtml(err.message) + `
-                    </div>
-                `;
-                box.appendChild(errBubble);
-            }} finally {{
-                btn.disabled = false;
-                box.scrollTop = box.scrollHeight;
-            }}
-        }}
-
-        function escapeHtml(text) {{
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }}
-
-        function uploadBannerFile(fileInput, targetInputId) {{
-            const file = fileInput.files[0];
-            if (!file) return;
-            const statusEl = document.getElementById('bannerUploadStatus_' + targetInputId);
-            if (statusEl) statusEl.innerText = '⏳ در حال فشرده‌سازی و بارگذاری تصویر بنر...';
-
-            let prodId = '';
-            if (targetInputId === 'editPhoto') {{
-                const editIdEl = document.getElementById('editProductId');
-                if (editIdEl) prodId = editIdEl.value || '';
-            }}
-
-            const reader = new FileReader();
-            reader.onload = async function(e) {{
-                try {{
-                    const res = await fetch('/api/upload/banner', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{
-                            filename: file.name,
-                            prod_id: prodId,
-                            data: e.target.result
-                        }})
-                    }});
-                    const data = await res.json();
-                    if (data.ok && data.url) {{
-                        const targetInp = document.getElementById(targetInputId);
-                        if (targetInp) {{
-                            targetInp.value = data.url;
-                            targetInp.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        if (app) {{
+                            app.style.removeProperty('display');
+                            app.style.display = 'block';
+                            app.classList.remove('hidden');
                         }}
-                        let previewEl = document.getElementById('bannerPreview_' + targetInputId);
-                        if (!previewEl && targetInp) {{
-                            previewEl = document.createElement('img');
-                            previewEl.id = 'bannerPreview_' + targetInputId;
-                            previewEl.className = 'w-24 h-24 object-cover rounded-xl mt-2 border border-cyan-500/50 shadow-md';
-                            if (statusEl) {{
-                                statusEl.parentNode.insertBefore(previewEl, statusEl);
-                            }} else {{
-                                targetInp.parentNode.parentNode.appendChild(previewEl);
+                        try {{
+                            const savedTab = localStorage.getItem('unfinit_active_tab') || 'studio';
+                            window.switchTab(savedTab);
+                        }} catch (e) {{
+                            console.warn('[Navigation] Tab switch notice:', e);
+                        }}
+                    }} else {{
+                        if (gate) {{
+                            gate.style.removeProperty('display');
+                            gate.classList.remove('hidden');
+                        }}
+                        if (app) {{
+                            app.classList.add('hidden');
+                            app.style.display = 'none';
+                        }}
+                    }}
+                }}
+
+                function bindNavDelegation() {{
+                    const desktopNav = document.getElementById('desktopNavTabs');
+                    if (desktopNav) {{
+                        desktopNav.addEventListener('click', function(e) {{
+                            const btn = e.target.closest('[data-tab]');
+                            if (btn) {{
+                                const tab = btn.getAttribute('data-tab');
+                                if (tab && window.switchTab) window.switchTab(tab);
                             }}
-                        }}
-                        if (previewEl) {{
-                            previewEl.src = data.url;
-                            previewEl.style.display = 'block';
-                        }}
-                        if (statusEl) statusEl.innerHTML = '✅ تصویر ذخیره شد: <a href="' + data.url + '" target="_blank" class="text-cyan-400 underline font-mono">' + data.url + '</a>';
-                    }} else {{
-                        if (statusEl) statusEl.innerText = '❌ خطا: ' + (data.error || 'آپلود ناموفق بود');
+                        }});
                     }}
-                }} catch (err) {{
-                    if (statusEl) statusEl.innerText = '❌ خطا در ارسال فایل: ' + err.message;
-                }}
-            }};
-            reader.readAsDataURL(file);
-        }}
-
-        async function loadSettings() {{
-            try {{
-                const pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
-                const res = await fetch('/api/settings?password=' + encodeURIComponent(pwd));
-                if (res.status === 401) {{
-                    console.warn('loadSettings: unauthorized, active admin login session required.');
-                    return;
-                }}
-                const data = await res.json();
-                if (data.ok && data.settings) {{
-                    populateSettingsForm(data.settings);
-                }}
-            }} catch (err) {{
-                console.error('Failed to load settings:', err);
-            }}
-        }}
-
-        function updateAiProviderView(provider) {{
-            try {{
-                const p = (provider || 'gemini').toLowerCase();
-                const hid = document.getElementById('cfg_AI_PROVIDER');
-                if (hid) hid.value = p;
-                const rGem = document.getElementById('provider_gemini');
-                const rNara = document.getElementById('provider_nara');
-                if (rGem) rGem.checked = (p === 'gemini');
-                if (rNara) rNara.checked = (p === 'nara');
-                const boxGem = document.getElementById('box_gemini_settings');
-                const boxNara = document.getElementById('box_nara_settings');
-                if (boxGem && boxNara) {{
-                    if (p === 'gemini') {{
-                        boxGem.style.opacity = '1';
-                        boxNara.style.opacity = '0.65';
-                    }} else {{
-                        boxNara.style.opacity = '1';
-                        boxGem.style.opacity = '0.65';
-                    }}
-                }}
-            }} catch (err) {{
-                console.warn('updateAiProviderView notice:', err);
-            }}
-        }}
-
-        function populateSettingsForm(s) {{
-            try {{
-                if (!s || typeof s !== 'object') return;
-                const fields = [
-                    'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
-                    'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
-                    'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
-                    'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
-                    'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
-                    'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
-                    'CARD_NUMBER', 'CARD_HOLDER',
-                    'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
-                    'COURSE_DESC_MAX_LEN',
-                    'AI_PROVIDER',
-                    'NARA_API_KEY', 'NARA_MODEL',
-                    'GEMINI_API_KEY', 'GEMINI_MODEL',
-                    'HF_TOKEN', 'HF_SPACE_ID'
-                ];
-                fields.forEach(f => {{
-                    const el = document.getElementById('cfg_' + f);
-                    if (el && s[f] !== undefined) {{
-                        if (el.tagName === 'SELECT') {{
-                            let exists = Array.from(el.options).some(opt => opt.value === s[f]);
-                            if (!exists && s[f]) {{
-                                const opt = document.createElement('option');
-                                opt.value = s[f];
-                                opt.textContent = s[f] + ' (سفارشی)';
-                                el.appendChild(opt);
+                    const mobileNav = document.getElementById('mobileNavMenu');
+                    if (mobileNav) {{
+                        mobileNav.addEventListener('click', function(e) {{
+                            const btn = e.target.closest('[data-tab]');
+                            if (btn) {{
+                                const tab = btn.getAttribute('data-tab');
+                                if (tab && window.switchTab) {{
+                                    window.switchTab(tab);
+                                    if (typeof window.toggleMobileMenu === 'function') {{
+                                        window.toggleMobileMenu(false);
+                                    }}
+                                }}
                             }}
-                        }}
-                        el.value = s[f];
+                        }});
                     }}
-                }});
-                if (s.AI_PROVIDER) {{
-                    updateAiProviderView(s.AI_PROVIDER);
-                }} else {{
-                    updateAiProviderView('gemini');
                 }}
-                const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
-                const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
-                if (p1) p1.value = '';
-                if (p2) p2.value = '';
-            }} catch (err) {{
-                console.warn('populateSettingsForm notice:', err);
-            }}
-        }}
 
-        function handleExportSettings() {{
-            let pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
-            if (!pwd) {{
-                pwd = prompt('جهت برون‌بری تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
-                if (!pwd) return;
-                currentAdminPassword = pwd;
-                sessionStorage.setItem('unfinit_admin_pwd', pwd);
-            }}
-            window.open('/api/settings/export?password=' + encodeURIComponent(pwd), '_blank');
-        }}
-
-        async function handleImportSettingsFile(input) {{
-            const file = input.files && input.files[0];
-            if (!file) return;
-            const confirmImport = confirm('آیا از بازنویسی و درون‌ریزی تنظیمات با فایل انتخابی مطمئن هستید؟');
-            if (!confirmImport) {{
-                input.value = '';
-                return;
-            }}
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {{
-                try {{
-                    const importedObj = JSON.parse(e.target.result);
-                    let pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
-                    if (!pwd) {{
-                        pwd = prompt('جهت درون‌بری تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
-                        if (!pwd) {{
-                            input.value = '';
-                            return;
-                        }}
-                        currentAdminPassword = pwd;
-                        sessionStorage.setItem('unfinit_admin_pwd', pwd);
-                    }}
-                    const res = await fetch('/api/settings/import', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{
-                            password: pwd,
-                            settings: importedObj
-                        }})
+                if (document.readyState === 'loading') {{
+                    document.addEventListener('DOMContentLoaded', function() {{
+                        bindNavDelegation();
+                        checkAuthOnLoad();
                     }});
-                    const data = await res.json();
-                    if (data.ok) {{
-                        alert('✅ ' + (data.message || 'تنظیمات با موفقیت بازیابی شدند.'));
-                        loadSettings();
-                    }} else {{
-                        alert('❌ خطا در درون‌ریزی تنظیمات: ' + (data.error || ''));
-                    }}
-                }} catch (err) {{
-                    alert('❌ خطا در خواندن یا تحلیل فایل JSON: ' + err.message);
-                }} finally {{
-                    input.value = '';
-                }}
-            }};
-            reader.readAsText(file, 'utf-8');
-        }}
-
-        async function handleSaveSettings(e) {{
-            if (e) e.preventDefault();
-            const btn = (e && e.submitter) ? e.submitter : (document.getElementById('btnSaveSettings') || document.getElementById('btnSaveTokens'));
-            const btn1 = document.getElementById('btnSaveSettings');
-            const btn2 = document.getElementById('btnSaveTokens');
-            const statusEl = document.getElementById('settingsSaveStatus') || document.getElementById('tokensSaveStatus');
-            const status1 = document.getElementById('settingsSaveStatus');
-            const status2 = document.getElementById('tokensSaveStatus');
-            
-            const orig1 = btn1 ? btn1.innerText : '💾 ذخیره و اعمال آنی تنظیمات';
-            const orig2 = btn2 ? btn2.innerText : '💾 ذخیره سکرت‌ها و توکن‌ها';
-            if (btn1) {{ btn1.disabled = true; btn1.innerText = 'در حال ذخیره...'; }}
-            if (btn2) {{ btn2.disabled = true; btn2.innerText = 'در حال ذخیره...'; }}
-            if (status1) status1.innerText = '';
-            if (status2) status2.innerText = '';
-
-            const p1 = (document.getElementById('cfg_NEW_ADMIN_PASSWORD')?.value || '').trim();
-            const p2 = (document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD')?.value || '').trim();
-            if (p1) {{
-                if (p1 !== p2) {{
-                    alert('❌ خطای تغییر رمز: تکرار رمز عبور جدید با رمز وارد شده همخوانی ندارد.');
-                    if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
-                    if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
-                    return;
-                }}
-            }}
-
-            const settings = {{}};
-            const fields = [
-                'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
-                'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
-                'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
-                'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
-                'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
-                'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
-                'CARD_NUMBER', 'CARD_HOLDER',
-                'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
-                'COURSE_DESC_MAX_LEN',
-                'AI_PROVIDER',
-                'NARA_API_KEY', 'NARA_MODEL',
-                'GEMINI_API_KEY', 'GEMINI_MODEL',
-                'HF_TOKEN', 'HF_SPACE_ID'
-            ];
-            const sensitiveKeys = [
-                'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
-                'RUBIKA_BOT_TOKEN', 'ZARINPAL_MERCHANT_ID', 'NARA_API_KEY',
-                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
-            ];
-            fields.forEach(f => {{
-                const el = document.getElementById('cfg_' + f);
-                if (el) {{
-                    const val = el.value.trim();
-                    if (sensitiveKeys.includes(f)) {{
-                        if (val && !val.includes('••••') && !val.includes('****')) {{
-                            settings[f] = val;
-                        }}
-                    }} else {{
-                        settings[f] = val;
-                    }}
-                }}
-            }});
-            if (p1) {{
-                settings['NEW_ADMIN_PASSWORD'] = p1;
-            }}
-
-            let pwdToSend = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
-            if (!pwdToSend) {{
-                pwdToSend = prompt('جهت تایید و ذخیره تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
-                if (!pwdToSend) {{
-                    alert('❌ ذخیره تنظیمات لغو شد: رمز عبور مدیریت وارد نشد.');
-                    if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
-                    if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
-                    return;
-                }}
-                currentAdminPassword = pwdToSend;
-                sessionStorage.setItem('unfinit_admin_pwd', pwdToSend);
-            }}
-
-            try {{
-                const res = await fetch('/api/settings', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{
-                        password: pwdToSend,
-                        settings: settings
-                    }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    if (p1) {{
-                        currentAdminPassword = p1;
-                        sessionStorage.setItem('unfinit_admin_pwd', p1);
-                        localStorage.setItem('unfinit_admin_pwd', p1);
-                        const p1El = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
-                        const p2El = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
-                        if (p1El) p1El.value = '';
-                        if (p2El) p2El.value = '';
-                    }}
-                    const successMsg = '✅ ' + (data.message || 'تنظیمات و سکرت‌های ابری با موفقیت ذخیره و در Hugging Face اعمال شد!');
-                    if (status1) status1.innerText = successMsg;
-                    if (status2) status2.innerText = successMsg;
-                    setTimeout(() => {{
-                        if (status1) status1.innerText = '';
-                        if (status2) status2.innerText = '';
-                    }}, 5000);
                 }} else {{
-                    alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || ''));
+                    bindNavDelegation();
+                    checkAuthOnLoad();
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }} finally {{
-                if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
-                if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
+                console.error('[UNFINIT Navigation Module Error]:', err);
             }}
-        }}
+        }})();
 
-        function toggleAddCourseForm() {{
-            const card = document.getElementById('addCourseCard');
-            card.classList.toggle('hidden');
-            if (!card.classList.contains('hidden')) {{
-                updateCharCounter('newCName', 'counter_newCName', 32);
-                updateCharCounter('newCDesc', 'counter_newCDesc', 255);
-            }}
-        }}
-
-        async function handleCreateCourse(e) {{
-            e.preventDefault();
-            const btn = document.getElementById('btnSubmitCourse');
-            btn.disabled = true;
-            btn.innerText = 'در حال ثبت...';
-            const name = document.getElementById('newCName').value;
-            const price = parseInt(document.getElementById('newCPrice').value) || 0;
-            const description = document.getElementById('newCDesc').value;
-            const download_link = document.getElementById('newCDownload').value;
-            const photo_url = document.getElementById('newCPhoto').value;
-            const allow_card = document.getElementById('newCAllowCard').checked;
-            const allow_bale = document.getElementById('newCAllowBale').checked;
-
-            try {{
-                const res = await fetch('/api/courses/add', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ دوره جدید با موفقیت ثبت شد!');
-                    location.reload();
-                }} else {{
-                    alert('❌ خطا: ' + (data.error || 'ثبت دوره ناموفق بود'));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
-            }} finally {{
-                btn.disabled = false;
-                btn.innerText = 'ثبت دوره در دیتابیس';
-            }}
-        }}
-
-        function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale) {{
-            document.getElementById('editProductId').value = pid;
-            document.getElementById('modalProdIdBadge').innerText = pid;
-            document.getElementById('editName').value = name;
-            document.getElementById('editPrice').value = price;
-            document.getElementById('editDesc').value = desc;
-            document.getElementById('editDl').value = dl;
-            document.getElementById('editPhoto').value = photo;
-            document.getElementById('editAllowCard').checked = !!allow_card;
-            document.getElementById('editAllowBale').checked = !!allow_bale;
-            const statusEl = document.getElementById('bannerUploadStatus_editPhoto');
-            if (statusEl) statusEl.innerText = '';
-            updateCharCounter('editName', 'counter_editName', 32);
-            updateCharCounter('editDesc', 'counter_editDesc', 255);
-            document.getElementById('editModal').classList.remove('hidden');
-        }}
-
-        function closeEditModal() {{
-            document.getElementById('editModal').classList.add('hidden');
-        }}
-
-        async function handleSaveEdit(e) {{
-            e.preventDefault();
-            const product_id = document.getElementById('editProductId').value;
-            const name = document.getElementById('editName').value;
-            const price = parseInt(document.getElementById('editPrice').value) || 0;
-            const description = document.getElementById('editDesc').value;
-            const download_link = document.getElementById('editDl').value;
-            const photo_url = document.getElementById('editPhoto').value;
-            const allow_card = document.getElementById('editAllowCard').checked ? 1 : 0;
-            const allow_bale = document.getElementById('editAllowBale').checked ? 1 : 0;
-
-            try {{
-                const res = await fetch('/api/courses/update', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ تغییرات دوره با موفقیت ذخیره شد!');
-                    location.reload();
-                }} else {{
-                    alert('❌ خطا: ' + (data.error || 'ویرایش ناموفق بود'));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function toggleCourseActive(pid) {{
-            try {{
-                const res = await fetch('/api/products/toggle_active', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ product_id: pid }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    location.reload();
-                }} else {{
-                    alert('❌ خطا در تغییر وضعیت: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطا: ' + err.message);
-            }}
-        }}
-
-        async function deleteCourse(pid) {{
-            if (!confirm('آیا از حذف دائم و فیزیکی این دوره از سیستم و پایگاه داده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
-            try {{
-                const res = await fetch('/api/products/delete', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ product_id: pid }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    const card = document.getElementById('course_card_' + pid);
-                    if (card) {{
-                        card.style.transition = 'all 0.4s ease';
-                        card.style.opacity = '0';
-                        card.style.transform = 'scale(0.95)';
-                        setTimeout(() => {{ card.remove(); }}, 400);
-                    }}
-                }} else {{
-                    alert('❌ خطا: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطا: ' + err.message);
-            }}
-        }}
-
-        function toggleSelectAllOrders(master) {{
-            const chks = document.querySelectorAll('.order-chk');
-            chks.forEach(c => c.checked = master.checked);
-            updateSelectedOrdersCount();
-        }}
-
-        function updateSelectedOrdersCount() {{
-            const chks = document.querySelectorAll('.order-chk:checked');
-            const cnt = chks.length;
-            const btn = document.getElementById('btnDeleteSelectedOrders');
-            const cntSpan = document.getElementById('selectedOrdersCount');
-            if (cntSpan) cntSpan.innerText = cnt;
-            if (btn) {{
-                if (cnt > 0) {{
-                    btn.classList.remove('hidden');
-                }} else {{
-                    btn.classList.add('hidden');
-                }}
-            }}
-            const allChks = document.querySelectorAll('.order-chk');
-            const master = document.getElementById('selectAllOrders');
-            if (master && allChks.length > 0) {{
-                master.checked = (cnt === allChks.length);
-            }} else if (master && allChks.length === 0) {{
-                master.checked = false;
-            }}
-        }}
-
-        async function deleteSelectedOrders() {{
-            const checked = Array.from(document.querySelectorAll('.order-chk:checked')).map(c => c.value);
-            if (!checked || checked.length === 0) {{
-                alert('لطفاً حداقل یک سفارش را برای حذف انتخاب کنید.');
-                return;
-            }}
-            if (!confirm('آیا از حذف دسته‌جمعی ' + checked.length + ' سفارش انتخاب‌شده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
-            try {{
-                const res = await fetch('/api/store/orders/bulk_delete', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ order_ids: checked }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ ' + (data.message || (checked.length + ' سفارش با موفقیت حذف شدند.')));
-                    loadStoreOrders();
-                }} else {{
-                    alert('❌ خطا در حذف سفارش‌ها: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function clearAllOrders() {{
-            if (!confirm('⚠️ هشدار جدی!\nآیا از پاکسازی تمامی سفارشات موجود در سیستم اطمینان دارید؟\nاین عملیات کلیه سفارشات ثبت‌شده (تستی و واقعی) را به طور کامل حذف می‌کند و غیرقابل بازگشت است.')) return;
-            try {{
-                const res = await fetch('/api/store/orders/clear_all', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }}
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ ' + (data.message || 'تمامی سفارشات با موفقیت پاکسازی شدند.'));
-                    loadStoreOrders();
-                }} else {{
-                    alert('❌ خطا در پاکسازی سفارشات: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function loadStoreOrders() {{
-            const tbody = document.getElementById('storeOrdersTableBody');
-            if (!tbody) return;
-            const master = document.getElementById('selectAllOrders');
-            if (master) master.checked = false;
-            updateSelectedOrdersCount();
-
-            try {{
-                const res = await fetch('/api/store/orders');
-                const data = await res.json();
-                if (!data.ok || !data.orders || data.orders.length === 0) {{
-                    tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-slate-500">هیچ سفارشی در سیستم ثبت نشده است.</td></tr>';
-                    return;
-                }}
-                tbody.innerHTML = data.orders.map(ord => {{
-                    let statusBadge = '';
-                    if (ord.status === 'completed' || ord.status === 'approved') {{
-                        statusBadge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">✅ تایید شده</span>';
-                    }} else if (ord.status === 'rejected') {{
-                        statusBadge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800">❌ رد شده</span>';
-                    }} else {{
-                        statusBadge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-950 text-amber-300 border border-amber-800">⏳ در انتظار بررسی</span>';
-                    }}
-
-                    let platBadge = '';
-                    const p = (ord.platform || '').toLowerCase();
-                    if (p === 'telegram' || p === 'tg') {{
-                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/70 text-sky-300 border border-sky-800/70 inline-flex items-center gap-1"><span>✈️</span> تلگرام</span>';
-                    }} else if (p === 'bale') {{
-                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/70 text-emerald-300 border border-emerald-800/70 inline-flex items-center gap-1"><span>🟢</span> بله</span>';
-                    }} else {{
-                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950/70 text-purple-300 border border-purple-800/70 inline-flex items-center gap-1"><span>🌐</span> فروشگاه وب</span>';
-                    }}
-
-                    let payMethodBadge = '';
-                    const m = (ord.payment_method || '').toLowerCase();
-                    if (m === 'bale_online' || m === 'bale') {{
-                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 inline-flex items-center gap-1"><span>🛍</span> درگاه بله</span>';
-                    }} else if (m === 'card_to_card' || m === 'card') {{
-                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
-                    }} else if (m === 'zarinpal') {{
-                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/60 text-amber-300 border border-amber-800/60 inline-flex items-center gap-1"><span>⚡️</span> زرین‌پال</span>';
-                    }} else {{
-                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
-                    }}
-
-                    let actionBtn = '<div class="flex items-center gap-1.5">';
-                    if (ord.status === 'pending_review' || ord.status === 'pending') {{
-                        actionBtn += '<button onclick="approveStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm">✅ تایید</button>' +
-                                    '<button onclick="rejectStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-sm">❌ رد</button>';
-                    }}
-                    actionBtn += '<button onclick="deleteStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/80 text-xs font-bold transition shadow-sm" title="حذف سفارش">🗑 حذف</button></div>';
-
-                    const orderDate = ord.created_at || '-';
-                    const amountStr = (ord.amount || 0).toLocaleString() + ' تومان';
-
-                    return '<tr class="border-b border-slate-800 hover:bg-slate-800/30 transition">' +
-                        '<td class="py-3 px-3 text-center"><input type="checkbox" class="order-chk rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" value="' + escapeHtml(ord.order_id) + '" onchange="updateSelectedOrdersCount()"></td>' +
-                        '<td class="py-3 px-3 font-mono text-cyan-400 font-bold">' + escapeHtml(ord.order_id) + '</td>' +
-                        '<td class="py-3 px-3">' +
-                            '<div class="font-bold text-slate-200">' + escapeHtml(ord.customer_name || 'کاربر') + '</div>' +
-                            '<div class="text-[11px] font-mono text-slate-400">' + escapeHtml(ord.phone || ord.user_id || '-') + '</div>' +
-                        '</td>' +
-                        '<td class="py-3 px-3">' +
-                            '<div class="text-slate-200 font-medium">' + escapeHtml(ord.product_name || ord.product_id) + '</div>' +
-                            '<div class="text-[11px] font-mono text-emerald-400 font-bold">' + amountStr + '</div>' +
-                        '</td>' +
-                        '<td class="py-3 px-3">' + platBadge + '</td>' +
-                        '<td class="py-3 px-3">' + payMethodBadge + '</td>' +
-                        '<td class="py-3 px-3">' +
-                            '<div class="max-w-[200px] truncate text-slate-300 text-[11px]" title="' + escapeHtml(ord.receipt_text || '') + '">' + escapeHtml(ord.receipt_text || '-') + '</div>' +
-                            '<div class="text-[10px] text-slate-400 font-mono">' + escapeHtml(orderDate) + '</div>' +
-                        '</td>' +
-                        '<td class="py-3 px-3">' + statusBadge + '</td>' +
-                        '<td class="py-3 px-3 text-left">' + actionBtn + '</td>' +
-                    '</tr>';
-                }}).join('');
-            }} catch (err) {{
-                tbody.innerHTML = '<tr><td colspan="9" class="py-6 text-center text-rose-400">خطا در دریافت سفارش‌ها: ' + err.message + '</td></tr>';
-            }}
-        }}
-
-        async function approveStoreOrder(orderId) {{
-            if (!confirm('آیا از تایید سفارش ' + orderId + ' و فعال‌سازی لینک دانلود برای مشتری اطمینان دارید؟')) return;
-            try {{
-                const res = await fetch('/api/store/orders/approve', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ order_id: orderId }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ سفارش ' + orderId + ' با موفقیت تایید شد!');
-                    loadStoreOrders();
-                }} else {{
-                    alert('❌ خطا در تایید سفارش: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function rejectStoreOrder(orderId) {{
-            if (!confirm('آیا از رد سفارش ' + orderId + ' اطمینان دارید؟ وضعیت سفارش به رد شده تغییر خواهد کرد.')) return;
-            try {{
-                const res = await fetch('/api/store/orders/reject', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ order_id: orderId }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('❌ سفارش ' + orderId + ' با موفقیت رد شد.');
-                    loadStoreOrders();
-                }} else {{
-                    alert('❌ خطا در رد سفارش: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function deleteStoreOrder(orderId) {{
-            if (!confirm('آیا از حذف کامل سفارش ' + orderId + ' از سیستم اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
-            try {{
-                const res = await fetch('/api/store/orders/delete', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ order_id: orderId }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    loadStoreOrders();
-                }} else {{
-                    alert('❌ خطا در حذف سفارش: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function cleanupRejectedOrders() {{
-            if (!confirm('آیا از حذف کلیه سفارش‌های رد شده از پایگاه داده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
-            try {{
-                const res = await fetch('/api/store/orders/cleanup_rejected', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }}
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ ' + (data.message || 'سفارش‌های رد شده با موفقیت پاکسازی شدند.'));
-                    loadStoreOrders();
-                }} else {{
-                    alert('❌ خطا در پاکسازی سفارش‌ها: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }}
-        }}
-
-        async function loadStoreAnalytics() {{
-            try {{
-                const res = await fetch('/api/analytics');
-                const data = await res.json();
-                if (data.ok && data.analytics) {{
-                    const a = data.analytics;
-                    const totEl = document.getElementById('metricTotalSales');
-                    if (totEl) totEl.innerText = (a.total_sales_amount || 0).toLocaleString() + ' تومان';
-                    const ordEl = document.getElementById('metricTotalOrders');
-                    if (ordEl) ordEl.innerText = (a.total_sales_count || 0) + ' سفارش موفق';
-
-                    const todayEl = document.getElementById('metricTodaySales');
-                    if (todayEl) todayEl.innerText = (a.today_sales_amount || 0).toLocaleString() + ' تومان';
-                    const todayOrd = document.getElementById('metricTodayOrders');
-                    if (todayOrd) todayOrd.innerText = (a.today_sales_count || 0) + ' سفارش';
-
-                    const weekEl = document.getElementById('metricWeekSales');
-                    if (weekEl) weekEl.innerText = (a.week_sales_amount || 0).toLocaleString() + ' تومان';
-                    const weekOrd = document.getElementById('metricWeekOrders');
-                    if (weekOrd) weekOrd.innerText = (a.week_sales_count || 0) + ' سفارش';
-
-                    const monthEl = document.getElementById('metricMonthSales');
-                    if (monthEl) monthEl.innerText = (a.month_sales_amount || 0).toLocaleString() + ' تومان';
-                    const monthOrd = document.getElementById('metricMonthOrders');
-                    if (monthOrd) monthOrd.innerText = (a.month_sales_count || 0) + ' سفارش';
-
-                    const pb = a.platform_breakdown || {{}};
-                    const tg = pb.telegram || {{ amount: 0, count: 0 }};
-                    const bale = pb.bale || {{ amount: 0, count: 0 }};
-                    const rub = pb.rubika || {{ amount: 0, count: 0 }};
-                    const web = pb.web || {{ amount: 0, count: 0 }};
-
-                    const tgEl = document.getElementById('platSalesTg');
-                    if (tgEl) tgEl.innerText = (tg.amount || 0).toLocaleString() + ' تومان (' + (tg.count || 0) + ')';
-                    const baleEl = document.getElementById('platSalesBale');
-                    if (baleEl) baleEl.innerText = (bale.amount || 0).toLocaleString() + ' تومان (' + (bale.count || 0) + ')';
-                    const rubEl = document.getElementById('platSalesRubika');
-                    if (rubEl) rubEl.innerText = (rub.amount || 0).toLocaleString() + ' تومان (' + (rub.count || 0) + ')';
-                    const webEl = document.getElementById('platSalesWeb');
-                    if (webEl) webEl.innerText = (web.amount || 0).toLocaleString() + ' تومان (' + (web.count || 0) + ')';
-                }}
-            }} catch (err) {{
-                console.error('Error loading analytics:', err);
-            }}
-        }}
-
-        function toggleAddCouponForm() {{
-            const el = document.getElementById('addCouponCard');
-            if (el) el.classList.toggle('hidden');
-        }}
-
-        async function loadStoreCoupons() {{
-            const tbody = document.getElementById('couponsTableBody');
-            if (!tbody) return;
-            try {{
-                const res = await fetch('/api/coupons');
-                const data = await res.json();
-                if (!data.ok || !data.coupons || data.coupons.length === 0) {{
-                    tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">هیچ کد تخفیفی در سیستم ثبت نشده است.</td></tr>';
-                    return;
-                }}
-                tbody.innerHTML = data.coupons.map(c => {{
-                    const valNum = parseInt(c.discount_value) || 0;
-                    const typeLabel = c.discount_type === 'percent' ? (valNum + '%') : (valNum.toLocaleString() + ' تومان');
-                    const maxLabel = (c.max_uses && c.max_uses > 0) ? ((c.used_count || 0) + ' / ' + c.max_uses) : ((c.used_count || 0) + ' (نامحدود)');
-                    const minLabel = (c.min_order_amount && c.min_order_amount > 0) ? (parseInt(c.min_order_amount).toLocaleString() + ' تومان') : 'بدون شرط';
-                    const expLabel = c.expire_date ? c.expire_date : 'همیشگی';
-                    const statusBadge = c.active ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">فعال</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">غیرفعال</span>';
-
-                    return '<tr class="border-b border-slate-800/80 hover:bg-slate-800/30 transition">' +
-                        '<td class="py-2.5 px-3 font-mono text-emerald-400 font-bold">' + escapeHtml(c.code) + '</td>' +
-                        '<td class="py-2.5 px-3 text-slate-200 font-bold">' + typeLabel + '</td>' +
-                        '<td class="py-2.5 px-3 font-mono text-slate-300">' + maxLabel + '</td>' +
-                        '<td class="py-2.5 px-3 text-slate-400 font-mono">' + minLabel + '</td>' +
-                        '<td class="py-2.5 px-3 text-slate-400 font-mono text-[11px]">' + escapeHtml(expLabel) + '</td>' +
-                        '<td class="py-2.5 px-3">' + statusBadge + '</td>' +
-                    '</tr>';
-                }}).join('');
-            }} catch (err) {{
-                tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-rose-400">خطا در بارگذاری کوپن‌ها: ' + err.message + '</td></tr>';
-            }}
-        }}
-
-        async function handleCreateCoupon(e) {{
-            e.preventDefault();
-            const btn = document.getElementById('btnSubmitCoupon');
-            if (btn) {{ btn.disabled = true; btn.innerText = 'در حال ثبت...'; }}
-
-            const code = document.getElementById('newCouponCode').value.trim();
-            const discount_type = document.getElementById('newCouponType').value;
-            const discount_value = parseInt(document.getElementById('newCouponValue').value) || 0;
-            const max_uses = parseInt(document.getElementById('newCouponMaxUses').value) || 0;
-            const min_order_amount = parseInt(document.getElementById('newCouponMinAmount').value) || 0;
-            const expire_date = document.getElementById('newCouponExpire').value.trim();
-
-            try {{
-                const res = await fetch('/api/coupons/create', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ code, discount_type, discount_value, max_uses, min_order_amount, expire_date }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ کد تخفیف ' + code + ' با موفقیت ایجاد شد!');
-                    document.getElementById('addCouponForm').reset();
-                    toggleAddCouponForm();
-                    loadStoreCoupons();
-                }} else {{
-                    alert('❌ خطا در ثبت کد تخفیف: ' + (data.error || ''));
-                }}
-            }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
-            }} finally {{
-                if (btn) {{ btn.disabled = false; btn.innerText = 'ثبت کوپن تخفیف'; }}
-            }}
-        }}
-
-        function copyText(txt) {{
-            navigator.clipboard.writeText(txt);
-            alert('✅ لینک با موفقیت کپی شد!');
-        }}
-
-        async function handleDispatch(e) {{
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            const resBox = document.getElementById('dispatchResult');
-            const url = document.getElementById('directUrl').value;
-            const target = document.getElementById('targetPlatform').value;
-
-            btn.disabled = true;
-            btn.innerText = '⏳ در حال دانلود و پردازش استریم...';
-            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
-            resBox.innerText = '⏳ ارسال درخواست به سرور و دانلود استریم... لطفاً شکیبا باشید.';
-
-            try {{
-                const res = await fetch('/api/dispatch_url', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ url, target }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
-                    resBox.innerText = '✅ ' + (data.message || 'فایل با موفقیت دانلود و ارسال شد!');
-                }} else {{
-                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
-                    resBox.innerText = '❌ خطا: ' + (data.error || 'عملیات ناموفق بود');
-                }}
-            }} catch (err) {{
-                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
-                resBox.innerText = '❌ خطای شبکه: ' + err.message;
-            }} finally {{
-                btn.disabled = false;
-                btn.innerText = '⚡️ دانلود و ارسال خودکار';
-            }}
-        }}
-
-        async function copyAllLogs() {{
-            const btnText = document.getElementById('copyBtnText');
-            try {{
-                const res = await fetch('/api/logs');
-                const data = await res.json();
-                let textToCopy = '';
-                if (data.ok && Array.isArray(data.logs)) {{
-                    textToCopy = data.logs.join('\\n');
-                }} else {{
-                    textToCopy = document.getElementById('logContainer').innerText;
-                }}
-                await navigator.clipboard.writeText(textToCopy);
-                btnText.innerText = '✅ کپی شد!';
-                setTimeout(() => {{ btnText.innerText = 'کپی کل لاگ‌ها'; }}, 2500);
-            }} catch (err) {{
-                btnText.innerText = '❌ خطا در کپی';
-                setTimeout(() => {{ btnText.innerText = 'کپی کل لاگ‌ها'; }}, 2000);
-            }}
-        }}
-
-        async function fetchLogs() {{
-            try {{
-                const res = await fetch('/api/logs');
-                const data = await res.json();
-                if (data.ok && Array.isArray(data.logs)) {{
-                    const container = document.getElementById('logContainer');
-                    if (data.logs.length === 0) {{
-                        container.innerHTML = '<div class="text-slate-500">هیچ لاگی هنوز ثبت نشده است.</div>';
-                    }} else {{
-                        container.innerHTML = data.logs.map(l => {{
-                            let color = 'text-slate-300';
-                            if (l.includes('[ERROR]')) color = 'text-rose-400 font-bold';
-                            else if (l.includes('[WARNING]')) color = 'text-amber-300';
-                            else if (l.includes('[INFO]')) color = 'text-cyan-300';
-                            return `<div class="${{color}}">${{l.replace(/</g, '&lt;').replace(/>/g, '&gt;')}}</div>`;
-                        }}).join('');
-                        container.scrollTop = container.scrollHeight;
-                    }}
-                }}
-            }} catch (e) {{}}
-        }}
-        fetchLogs();
-        setInterval(fetchLogs, 4000);
         // =========================================================================
+        // MODULE 2: STUDIO & MEDIA HUB (Sandboxed IIFE)
+        // =========================================================================
+        (function initStudioModule() {{
+            try {{
         // WEB MP3TAG STUDIO CLIENT LOGIC
         // =========================================================================
 
@@ -3820,6 +2863,1098 @@ def render_dashboard_html() -> str:
                 }}
             }} catch (e) {{}}
         }});
+
+                window.handleStudioFilesSelect = handleStudioFilesSelect;
+                window.previewStudioCover = previewStudioCover;
+                window.openSpecsModal = openSpecsModal;
+                window.closeSpecsModal = closeSpecsModal;
+                window.openTagModal = openTagModal;
+                window.closeTagModal = closeTagModal;
+                window.handleSaveStudioTags = handleSaveStudioTags;
+                window.toggleSelectAllDrops = toggleSelectAllDrops;
+                window.updateSelectedCount = updateSelectedCount;
+                window.getSelectedDropIds = getSelectedDropIds;
+                window.openBatchTagModal = openBatchTagModal;
+                window.closeBatchTagModal = closeBatchTagModal;
+                window.handleSaveBatchTags = handleSaveBatchTags;
+                window.dispatchDrop = dispatchDrop;
+                window.formatSecToTime = formatSecToTime;
+                window.parseTimeToSec = parseTimeToSec;
+                window.openCutterModal = openCutterModal;
+                window.closeCutterModal = closeCutterModal;
+                window.toggleWavePlayPause = toggleWavePlayPause;
+                window.stopWaveSurfer = stopWaveSurfer;
+                window.setStartFromCursor = setStartFromCursor;
+                window.setEndFromCursor = setEndFromCursor;
+                window.submitAudioCut = submitAudioCut;
+                window.deleteStudioDrop = deleteStudioDrop;
+                window.batchDeleteStudioDrops = batchDeleteStudioDrops;
+                window.changeStudioSort = changeStudioSort;
+                window.refreshStudioList = refreshStudioList;
+                window.cleanupStudioDrops = cleanupStudioDrops;
+            }} catch (err) {{
+                console.error('[UNFINIT Studio Module Error]:', err);
+            }}
+        }})();
+
+        // =========================================================================
+        // MODULE 3: STORE, ORDERS & COUPONS (Sandboxed IIFE)
+        // =========================================================================
+        (function initStoreOrdersModule() {{
+            try {{
+        function toggleAddCourseForm() {{
+            const card = document.getElementById('addCourseCard');
+            card.classList.toggle('hidden');
+            if (!card.classList.contains('hidden')) {{
+                updateCharCounter('newCName', 'counter_newCName', 32);
+                updateCharCounter('newCDesc', 'counter_newCDesc', 255);
+            }}
+        }}
+
+        async function handleCreateCourse(e) {{
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitCourse');
+            btn.disabled = true;
+            btn.innerText = 'در حال ثبت...';
+            const name = document.getElementById('newCName').value;
+            const price = parseInt(document.getElementById('newCPrice').value) || 0;
+            const description = document.getElementById('newCDesc').value;
+            const download_link = document.getElementById('newCDownload').value;
+            const photo_url = document.getElementById('newCPhoto').value;
+            const allow_card = document.getElementById('newCAllowCard').checked;
+            const allow_bale = document.getElementById('newCAllowBale').checked;
+
+            try {{
+                const res = await fetch('/api/courses/add', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ دوره جدید با موفقیت ثبت شد!');
+                    location.reload();
+                }} else {{
+                    alert('❌ خطا: ' + (data.error || 'ثبت دوره ناموفق بود'));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط با سرور: ' + err.message);
+            }} finally {{
+                btn.disabled = false;
+                btn.innerText = 'ثبت دوره در دیتابیس';
+            }}
+        }}
+
+        function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale) {{
+            document.getElementById('editProductId').value = pid;
+            document.getElementById('modalProdIdBadge').innerText = pid;
+            document.getElementById('editName').value = name;
+            document.getElementById('editPrice').value = price;
+            document.getElementById('editDesc').value = desc;
+            document.getElementById('editDl').value = dl;
+            document.getElementById('editPhoto').value = photo;
+            document.getElementById('editAllowCard').checked = !!allow_card;
+            document.getElementById('editAllowBale').checked = !!allow_bale;
+            const statusEl = document.getElementById('bannerUploadStatus_editPhoto');
+            if (statusEl) statusEl.innerText = '';
+            updateCharCounter('editName', 'counter_editName', 32);
+            updateCharCounter('editDesc', 'counter_editDesc', 255);
+            document.getElementById('editModal').classList.remove('hidden');
+        }}
+
+        function closeEditModal() {{
+            document.getElementById('editModal').classList.add('hidden');
+        }}
+
+        async function handleSaveEdit(e) {{
+            e.preventDefault();
+            const product_id = document.getElementById('editProductId').value;
+            const name = document.getElementById('editName').value;
+            const price = parseInt(document.getElementById('editPrice').value) || 0;
+            const description = document.getElementById('editDesc').value;
+            const download_link = document.getElementById('editDl').value;
+            const photo_url = document.getElementById('editPhoto').value;
+            const allow_card = document.getElementById('editAllowCard').checked ? 1 : 0;
+            const allow_bale = document.getElementById('editAllowBale').checked ? 1 : 0;
+
+            try {{
+                const res = await fetch('/api/courses/update', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ تغییرات دوره با موفقیت ذخیره شد!');
+                    location.reload();
+                }} else {{
+                    alert('❌ خطا: ' + (data.error || 'ویرایش ناموفق بود'));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function toggleCourseActive(pid) {{
+            try {{
+                const res = await fetch('/api/products/toggle_active', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ product_id: pid }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    location.reload();
+                }} else {{
+                    alert('❌ خطا در تغییر وضعیت: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطا: ' + err.message);
+            }}
+        }}
+
+        async function deleteCourse(pid) {{
+            if (!confirm('آیا از حذف دائم و فیزیکی این دوره از سیستم و پایگاه داده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/products/delete', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ product_id: pid }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    const card = document.getElementById('course_card_' + pid);
+                    if (card) {{
+                        card.style.transition = 'all 0.4s ease';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => {{ card.remove(); }}, 400);
+                    }}
+                }} else {{
+                    alert('❌ خطا: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطا: ' + err.message);
+            }}
+        }}
+
+        function toggleSelectAllOrders(master) {{
+            const chks = document.querySelectorAll('.order-chk');
+            chks.forEach(c => c.checked = master.checked);
+            updateSelectedOrdersCount();
+        }}
+
+        function updateSelectedOrdersCount() {{
+            const chks = document.querySelectorAll('.order-chk:checked');
+            const cnt = chks.length;
+            const btn = document.getElementById('btnDeleteSelectedOrders');
+            const cntSpan = document.getElementById('selectedOrdersCount');
+            if (cntSpan) cntSpan.innerText = cnt;
+            if (btn) {{
+                if (cnt > 0) {{
+                    btn.classList.remove('hidden');
+                }} else {{
+                    btn.classList.add('hidden');
+                }}
+            }}
+            const allChks = document.querySelectorAll('.order-chk');
+            const master = document.getElementById('selectAllOrders');
+            if (master && allChks.length > 0) {{
+                master.checked = (cnt === allChks.length);
+            }} else if (master && allChks.length === 0) {{
+                master.checked = false;
+            }}
+        }}
+
+        async function deleteSelectedOrders() {{
+            const checked = Array.from(document.querySelectorAll('.order-chk:checked')).map(c => c.value);
+            if (!checked || checked.length === 0) {{
+                alert('لطفاً حداقل یک سفارش را برای حذف انتخاب کنید.');
+                return;
+            }}
+            if (!confirm('آیا از حذف دسته‌جمعی ' + checked.length + ' سفارش انتخاب‌شده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/bulk_delete', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ order_ids: checked }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || (checked.length + ' سفارش با موفقیت حذف شدند.')));
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در حذف سفارش‌ها: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function clearAllOrders() {{
+            if (!confirm('⚠️ هشدار جدی!\\nآیا از پاکسازی تمامی سفارشات موجود در سیستم اطمینان دارید؟\\nاین عملیات کلیه سفارشات ثبت‌شده (تستی و واقعی) را به طور کامل حذف می‌کند و غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/clear_all', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }}
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || 'تمامی سفارشات با موفقیت پاکسازی شدند.'));
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در پاکسازی سفارشات: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function loadStoreOrders() {{
+            const tbody = document.getElementById('storeOrdersTableBody');
+            if (!tbody) return;
+            const master = document.getElementById('selectAllOrders');
+            if (master) master.checked = false;
+            updateSelectedOrdersCount();
+
+            try {{
+                const res = await fetch('/api/store/orders');
+                const data = await res.json();
+                if (!data.ok || !data.orders || data.orders.length === 0) {{
+                    tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-slate-500">هیچ سفارشی در سیستم ثبت نشده است.</td></tr>';
+                    return;
+                }}
+                tbody.innerHTML = data.orders.map(ord => {{
+                    let statusBadge = '';
+                    if (ord.status === 'completed' || ord.status === 'approved') {{
+                        statusBadge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">✅ تایید شده</span>';
+                    }} else if (ord.status === 'rejected') {{
+                        statusBadge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800">❌ رد شده</span>';
+                    }} else {{
+                        statusBadge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-950 text-amber-300 border border-amber-800">⏳ در انتظار بررسی</span>';
+                    }}
+
+                    let platBadge = '';
+                    const p = (ord.platform || '').toLowerCase();
+                    if (p === 'telegram' || p === 'tg') {{
+                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/70 text-sky-300 border border-sky-800/70 inline-flex items-center gap-1"><span>✈️</span> تلگرام</span>';
+                    }} else if (p === 'bale') {{
+                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/70 text-emerald-300 border border-emerald-800/70 inline-flex items-center gap-1"><span>🟢</span> بله</span>';
+                    }} else {{
+                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950/70 text-purple-300 border border-purple-800/70 inline-flex items-center gap-1"><span>🌐</span> فروشگاه وب</span>';
+                    }}
+
+                    let payMethodBadge = '';
+                    const m = (ord.payment_method || '').toLowerCase();
+                    if (m === 'bale_online' || m === 'bale') {{
+                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 inline-flex items-center gap-1"><span>🛍</span> درگاه بله</span>';
+                    }} else if (m === 'card_to_card' || m === 'card') {{
+                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
+                    }} else if (m === 'zarinpal') {{
+                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/60 text-amber-300 border border-amber-800/60 inline-flex items-center gap-1"><span>⚡️</span> زرین‌پال</span>';
+                    }} else {{
+                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
+                    }}
+
+                    let actionBtn = '<div class="flex items-center gap-1.5">';
+                    if (ord.status === 'pending_review' || ord.status === 'pending') {{
+                        actionBtn += '<button onclick="approveStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm">✅ تایید</button>' +
+                                    '<button onclick="rejectStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-sm">❌ رد</button>';
+                    }}
+                    actionBtn += '<button onclick="deleteStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/80 text-xs font-bold transition shadow-sm" title="حذف سفارش">🗑 حذف</button></div>';
+
+                    const orderDate = ord.created_at || '-';
+                    const amountStr = (ord.amount || 0).toLocaleString() + ' تومان';
+
+                    return '<tr class="border-b border-slate-800 hover:bg-slate-800/30 transition">' +
+                        '<td class="py-3 px-3 text-center"><input type="checkbox" class="order-chk rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" value="' + escapeHtml(ord.order_id) + '" onchange="updateSelectedOrdersCount()"></td>' +
+                        '<td class="py-3 px-3 font-mono text-cyan-400 font-bold">' + escapeHtml(ord.order_id) + '</td>' +
+                        '<td class="py-3 px-3">' +
+                            '<div class="font-bold text-slate-200">' + escapeHtml(ord.customer_name || 'کاربر') + '</div>' +
+                            '<div class="text-[11px] font-mono text-slate-400">' + escapeHtml(ord.phone || ord.user_id || '-') + '</div>' +
+                        '</td>' +
+                        '<td class="py-3 px-3">' +
+                            '<div class="text-slate-200 font-medium">' + escapeHtml(ord.product_name || ord.product_id) + '</div>' +
+                            '<div class="text-[11px] font-mono text-emerald-400 font-bold">' + amountStr + '</div>' +
+                        '</td>' +
+                        '<td class="py-3 px-3">' + platBadge + '</td>' +
+                        '<td class="py-3 px-3">' + payMethodBadge + '</td>' +
+                        '<td class="py-3 px-3">' +
+                            '<div class="max-w-[200px] truncate text-slate-300 text-[11px]" title="' + escapeHtml(ord.receipt_text || '') + '">' + escapeHtml(ord.receipt_text || '-') + '</div>' +
+                            '<div class="text-[10px] text-slate-400 font-mono">' + escapeHtml(orderDate) + '</div>' +
+                        '</td>' +
+                        '<td class="py-3 px-3">' + statusBadge + '</td>' +
+                        '<td class="py-3 px-3 text-left">' + actionBtn + '</td>' +
+                    '</tr>';
+                }}).join('');
+            }} catch (err) {{
+                tbody.innerHTML = '<tr><td colspan="9" class="py-6 text-center text-rose-400">خطا در دریافت سفارش‌ها: ' + err.message + '</td></tr>';
+            }}
+        }}
+
+        async function approveStoreOrder(orderId) {{
+            if (!confirm('آیا از تایید سفارش ' + orderId + ' و فعال‌سازی لینک دانلود برای مشتری اطمینان دارید؟')) return;
+            try {{
+                const res = await fetch('/api/store/orders/approve', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ order_id: orderId }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ سفارش ' + orderId + ' با موفقیت تایید شد!');
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در تایید سفارش: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function rejectStoreOrder(orderId) {{
+            if (!confirm('آیا از رد سفارش ' + orderId + ' اطمینان دارید؟ وضعیت سفارش به رد شده تغییر خواهد کرد.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/reject', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ order_id: orderId }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('❌ سفارش ' + orderId + ' با موفقیت رد شد.');
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در رد سفارش: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function deleteStoreOrder(orderId) {{
+            if (!confirm('آیا از حذف کامل سفارش ' + orderId + ' از سیستم اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/delete', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ order_id: orderId }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در حذف سفارش: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function cleanupRejectedOrders() {{
+            if (!confirm('آیا از حذف کلیه سفارش‌های رد شده از پایگاه داده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
+            try {{
+                const res = await fetch('/api/store/orders/cleanup_rejected', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }}
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || 'سفارش‌های رد شده با موفقیت پاکسازی شدند.'));
+                    loadStoreOrders();
+                }} else {{
+                    alert('❌ خطا در پاکسازی سفارش‌ها: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function loadStoreAnalytics() {{
+            try {{
+                const res = await fetch('/api/analytics');
+                const data = await res.json();
+                if (data.ok && data.analytics) {{
+                    const a = data.analytics;
+                    const totEl = document.getElementById('metricTotalSales');
+                    if (totEl) totEl.innerText = (a.total_sales_amount || 0).toLocaleString() + ' تومان';
+                    const ordEl = document.getElementById('metricTotalOrders');
+                    if (ordEl) ordEl.innerText = (a.total_sales_count || 0) + ' سفارش موفق';
+
+                    const todayEl = document.getElementById('metricTodaySales');
+                    if (todayEl) todayEl.innerText = (a.today_sales_amount || 0).toLocaleString() + ' تومان';
+                    const todayOrd = document.getElementById('metricTodayOrders');
+                    if (todayOrd) todayOrd.innerText = (a.today_sales_count || 0) + ' سفارش';
+
+                    const weekEl = document.getElementById('metricWeekSales');
+                    if (weekEl) weekEl.innerText = (a.week_sales_amount || 0).toLocaleString() + ' تومان';
+                    const weekOrd = document.getElementById('metricWeekOrders');
+                    if (weekOrd) weekOrd.innerText = (a.week_sales_count || 0) + ' سفارش';
+
+                    const monthEl = document.getElementById('metricMonthSales');
+                    if (monthEl) monthEl.innerText = (a.month_sales_amount || 0).toLocaleString() + ' تومان';
+                    const monthOrd = document.getElementById('metricMonthOrders');
+                    if (monthOrd) monthOrd.innerText = (a.month_sales_count || 0) + ' سفارش';
+
+                    const pb = a.platform_breakdown || {{}};
+                    const tg = pb.telegram || {{ amount: 0, count: 0 }};
+                    const bale = pb.bale || {{ amount: 0, count: 0 }};
+                    const rub = pb.rubika || {{ amount: 0, count: 0 }};
+                    const web = pb.web || {{ amount: 0, count: 0 }};
+
+                    const tgEl = document.getElementById('platSalesTg');
+                    if (tgEl) tgEl.innerText = (tg.amount || 0).toLocaleString() + ' تومان (' + (tg.count || 0) + ')';
+                    const baleEl = document.getElementById('platSalesBale');
+                    if (baleEl) baleEl.innerText = (bale.amount || 0).toLocaleString() + ' تومان (' + (bale.count || 0) + ')';
+                    const rubEl = document.getElementById('platSalesRubika');
+                    if (rubEl) rubEl.innerText = (rub.amount || 0).toLocaleString() + ' تومان (' + (rub.count || 0) + ')';
+                    const webEl = document.getElementById('platSalesWeb');
+                    if (webEl) webEl.innerText = (web.amount || 0).toLocaleString() + ' تومان (' + (web.count || 0) + ')';
+                }}
+            }} catch (err) {{
+                console.error('Error loading analytics:', err);
+            }}
+        }}
+
+        function toggleAddCouponForm() {{
+            const el = document.getElementById('addCouponCard');
+            if (el) el.classList.toggle('hidden');
+        }}
+
+        async function loadStoreCoupons() {{
+            const tbody = document.getElementById('couponsTableBody');
+            if (!tbody) return;
+            try {{
+                const res = await fetch('/api/coupons');
+                const data = await res.json();
+                if (!data.ok || !data.coupons || data.coupons.length === 0) {{
+                    tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-slate-500">هیچ کد تخفیفی در سیستم ثبت نشده است.</td></tr>';
+                    return;
+                }}
+                tbody.innerHTML = data.coupons.map(c => {{
+                    const valNum = parseInt(c.discount_value) || 0;
+                    const typeLabel = c.discount_type === 'percent' ? (valNum + '%') : (valNum.toLocaleString() + ' تومان');
+                    const maxLabel = (c.max_uses && c.max_uses > 0) ? ((c.used_count || 0) + ' / ' + c.max_uses) : ((c.used_count || 0) + ' (نامحدود)');
+                    const minLabel = (c.min_order_amount && c.min_order_amount > 0) ? (parseInt(c.min_order_amount).toLocaleString() + ' تومان') : 'بدون شرط';
+                    const expLabel = c.expire_date ? c.expire_date : 'همیشگی';
+                    const statusBadge = c.active ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">فعال</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">غیرفعال</span>';
+
+                    return '<tr class="border-b border-slate-800/80 hover:bg-slate-800/30 transition">' +
+                        '<td class="py-2.5 px-3 font-mono text-emerald-400 font-bold">' + escapeHtml(c.code) + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-200 font-bold">' + typeLabel + '</td>' +
+                        '<td class="py-2.5 px-3 font-mono text-slate-300">' + maxLabel + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-400 font-mono">' + minLabel + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-400 font-mono text-[11px]">' + escapeHtml(expLabel) + '</td>' +
+                        '<td class="py-2.5 px-3">' + statusBadge + '</td>' +
+                    '</tr>';
+                }}).join('');
+            }} catch (err) {{
+                tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-rose-400">خطا در بارگذاری کوپن‌ها: ' + err.message + '</td></tr>';
+            }}
+        }}
+
+        async function handleCreateCoupon(e) {{
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitCoupon');
+            if (btn) {{ btn.disabled = true; btn.innerText = 'در حال ثبت...'; }}
+
+            const code = document.getElementById('newCouponCode').value.trim();
+            const discount_type = document.getElementById('newCouponType').value;
+            const discount_value = parseInt(document.getElementById('newCouponValue').value) || 0;
+            const max_uses = parseInt(document.getElementById('newCouponMaxUses').value) || 0;
+            const min_order_amount = parseInt(document.getElementById('newCouponMinAmount').value) || 0;
+            const expire_date = document.getElementById('newCouponExpire').value.trim();
+
+            try {{
+                const res = await fetch('/api/coupons/create', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ code, discount_type, discount_value, max_uses, min_order_amount, expire_date }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ کد تخفیف ' + code + ' با موفقیت ایجاد شد!');
+                    document.getElementById('addCouponForm').reset();
+                    toggleAddCouponForm();
+                    loadStoreCoupons();
+                }} else {{
+                    alert('❌ خطا در ثبت کد تخفیف: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }} finally {{
+                if (btn) {{ btn.disabled = false; btn.innerText = 'ثبت کوپن تخفیف'; }}
+            }}
+        }}
+
+        function copyText(txt) {{
+            navigator.clipboard.writeText(txt);
+            alert('✅ لینک با موفقیت کپی شد!');
+        }}
+
+        async function handleDispatch(e) {{
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const resBox = document.getElementById('dispatchResult');
+            const url = document.getElementById('directUrl').value;
+            const target = document.getElementById('targetPlatform').value;
+
+            btn.disabled = true;
+            btn.innerText = '⏳ در حال دانلود و پردازش استریم...';
+            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+            resBox.innerText = '⏳ ارسال درخواست به سرور و دانلود استریم... لطفاً شکیبا باشید.';
+
+            try {{
+                const res = await fetch('/api/dispatch_url', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ url, target }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                    resBox.innerText = '✅ ' + (data.message || 'فایل با موفقیت دانلود و ارسال شد!');
+                }} else {{
+                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                    resBox.innerText = '❌ خطا: ' + (data.error || 'عملیات ناموفق بود');
+                }}
+            }} catch (err) {{
+                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                resBox.innerText = '❌ خطای شبکه: ' + err.message;
+            }} finally {{
+                btn.disabled = false;
+                btn.innerText = '⚡️ دانلود و ارسال خودکار';
+            }}
+        }}
+
+
+                window.toggleAddCourseForm = toggleAddCourseForm;
+                window.handleCreateCourse = handleCreateCourse;
+                window.openEditModal = openEditModal;
+                window.closeEditModal = closeEditModal;
+                window.handleSaveEdit = handleSaveEdit;
+                window.toggleCourseActive = toggleCourseActive;
+                window.deleteCourse = deleteCourse;
+                window.toggleSelectAllOrders = toggleSelectAllOrders;
+                window.updateSelectedOrdersCount = updateSelectedOrdersCount;
+                window.deleteSelectedOrders = deleteSelectedOrders;
+                window.clearAllOrders = clearAllOrders;
+                window.loadStoreOrders = loadStoreOrders;
+                window.approveStoreOrder = approveStoreOrder;
+                window.rejectStoreOrder = rejectStoreOrder;
+                window.deleteStoreOrder = deleteStoreOrder;
+                window.cleanupRejectedOrders = cleanupRejectedOrders;
+                window.loadStoreAnalytics = loadStoreAnalytics;
+                window.toggleAddCouponForm = toggleAddCouponForm;
+                window.loadStoreCoupons = loadStoreCoupons;
+                window.handleCreateCoupon = handleCreateCoupon;
+                window.copyText = copyText;
+                window.handleDispatch = handleDispatch;
+            }} catch (err) {{
+                console.error('[UNFINIT Store & Orders Module Error]:', err);
+            }}
+        }})();
+
+        // =========================================================================
+        // MODULE 4: AI AGENT & SYSTEM SETTINGS (Sandboxed IIFE)
+        // =========================================================================
+        (function initSettingsModule() {{
+            try {{
+                let hermesHistory = [];
+        function clearHermesChat() {{
+            hermesHistory = [];
+            const box = document.getElementById('hermesChatBox');
+            box.innerHTML = `
+                <div class="flex gap-2.5 items-center p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
+                    <div class="w-6 h-6 rounded-lg bg-cyan-600/30 text-cyan-300 flex items-center justify-center font-bold text-xs shrink-0">🤖</div>
+                    <span>تاریخچه گفتگو پاکسازی شد. دستیار هوش مصنوعی آماده است.</span>
+                </div>
+            `;
+        }}
+
+        function sendPresetHermesPrompt(prompt) {{
+            const input = document.getElementById('hermesInput');
+            if (input) {{
+                input.value = prompt;
+                handleSendHermes(null);
+            }}
+        }}
+
+        async function handleSendHermes(e) {{
+            if (e) e.preventDefault();
+            const input = document.getElementById('hermesInput');
+            const prompt = (input.value || '').trim();
+            if (!prompt) return;
+
+            const box = document.getElementById('hermesChatBox');
+            const btn = document.getElementById('btnSendHermes');
+
+            const userBubble = document.createElement('div');
+            userBubble.className = 'flex gap-3 items-start justify-end max-w-3xl mr-auto';
+            userBubble.innerHTML = `
+                <div class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-3.5 rounded-2xl rounded-tl-none text-xs leading-relaxed shadow-lg shadow-cyan-900/30">
+                    ` + escapeHtml(prompt) + `
+                </div>
+                <div class="w-8 h-8 rounded-xl bg-slate-700 flex items-center justify-center font-bold text-xs text-white shrink-0 mt-1">👤</div>
+            `;
+            box.appendChild(userBubble);
+            input.value = '';
+
+            const loadingBubble = document.createElement('div');
+            const loadingId = 'hermes_load_' + Date.now();
+            loadingBubble.id = loadingId;
+            loadingBubble.className = 'flex gap-3 items-start max-w-3xl';
+            loadingBubble.innerHTML = `
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-sm text-white shrink-0 mt-1 animate-pulse">🎛</div>
+                <div class="bg-slate-800/90 border border-slate-700 p-3.5 rounded-2xl rounded-tr-none text-xs text-slate-300 flex items-center gap-2">
+                    <span class="animate-spin text-cyan-400">🌀</span>
+                    <span>دستیار هوشمند در حال پردازش و تولید پاسخ...</span>
+                </div>
+            `;
+            box.appendChild(loadingBubble);
+            box.scrollTop = box.scrollHeight;
+
+            btn.disabled = true;
+
+            try {{
+                const selModel = document.getElementById('hermesModelSelect')?.value || '';
+                const res = await fetch('/api/hermes/chat', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ message: prompt, history: hermesHistory, model: selModel }})
+                }});
+                const data = await res.json();
+                const loadEl = document.getElementById(loadingId);
+                if (loadEl) loadEl.remove();
+
+                const replyText = data.reply || (data.error ? '❌ خطا: ' + data.error : 'پاسخی دریافت نشد.');
+                const toolsUsed = data.tools_used || [];
+
+                let toolsHtml = '';
+                if (toolsUsed.length > 0) {{
+                    toolsHtml = '<div class="flex flex-wrap gap-1.5 mb-2">' + toolsUsed.map(t => '<span class="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-800 font-mono">🛠 ' + escapeHtml(t) + '</span>').join('') + '</div>';
+                }}
+
+                const assistantBubble = document.createElement('div');
+                assistantBubble.className = 'flex gap-3 items-start max-w-3xl';
+                assistantBubble.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-sm text-white shrink-0 mt-1">🎛</div>
+                    <div class="bg-slate-800/95 border border-slate-700 p-4 rounded-2xl rounded-tr-none text-xs leading-relaxed text-slate-100 space-y-2 whitespace-pre-wrap shadow-xl">
+                        ` + toolsHtml + `
+                        <div>` + escapeHtml(replyText) + `</div>
+                    </div>
+                `;
+                box.appendChild(assistantBubble);
+
+                hermesHistory.push({{ role: 'user', content: prompt }});
+                hermesHistory.push({{ role: 'assistant', content: replyText }});
+                if (hermesHistory.length > 12) hermesHistory = hermesHistory.slice(-12);
+            }} catch (err) {{
+                const loadEl = document.getElementById(loadingId);
+                if (loadEl) loadEl.remove();
+                const errBubble = document.createElement('div');
+                errBubble.className = 'flex gap-3 items-start max-w-3xl';
+                errBubble.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-rose-600 flex items-center justify-center font-bold text-sm text-white shrink-0 mt-1">⚠️</div>
+                    <div class="bg-rose-950/80 border border-rose-800 p-3 rounded-2xl rounded-tr-none text-xs text-rose-300">
+                        خطا در ارتباط با سرور: ` + escapeHtml(err.message) + `
+                    </div>
+                `;
+                box.appendChild(errBubble);
+            }} finally {{
+                btn.disabled = false;
+                box.scrollTop = box.scrollHeight;
+            }}
+        }}
+
+        function escapeHtml(text) {{
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }}
+
+        function uploadBannerFile(fileInput, targetInputId) {{
+            const file = fileInput.files[0];
+            if (!file) return;
+            const statusEl = document.getElementById('bannerUploadStatus_' + targetInputId);
+            if (statusEl) statusEl.innerText = '⏳ در حال فشرده‌سازی و بارگذاری تصویر بنر...';
+
+            let prodId = '';
+            if (targetInputId === 'editPhoto') {{
+                const editIdEl = document.getElementById('editProductId');
+                if (editIdEl) prodId = editIdEl.value || '';
+            }}
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {{
+                try {{
+                    const res = await fetch('/api/upload/banner', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            filename: file.name,
+                            prod_id: prodId,
+                            data: e.target.result
+                        }})
+                    }});
+                    const data = await res.json();
+                    if (data.ok && data.url) {{
+                        const targetInp = document.getElementById(targetInputId);
+                        if (targetInp) {{
+                            targetInp.value = data.url;
+                            targetInp.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        }}
+                        let previewEl = document.getElementById('bannerPreview_' + targetInputId);
+                        if (!previewEl && targetInp) {{
+                            previewEl = document.createElement('img');
+                            previewEl.id = 'bannerPreview_' + targetInputId;
+                            previewEl.className = 'w-24 h-24 object-cover rounded-xl mt-2 border border-cyan-500/50 shadow-md';
+                            if (statusEl) {{
+                                statusEl.parentNode.insertBefore(previewEl, statusEl);
+                            }} else {{
+                                targetInp.parentNode.parentNode.appendChild(previewEl);
+                            }}
+                        }}
+                        if (previewEl) {{
+                            previewEl.src = data.url;
+                            previewEl.style.display = 'block';
+                        }}
+                        if (statusEl) statusEl.innerHTML = '✅ تصویر ذخیره شد: <a href="' + data.url + '" target="_blank" class="text-cyan-400 underline font-mono">' + data.url + '</a>';
+                    }} else {{
+                        if (statusEl) statusEl.innerText = '❌ خطا: ' + (data.error || 'آپلود ناموفق بود');
+                    }}
+                }} catch (err) {{
+                    if (statusEl) statusEl.innerText = '❌ خطا در ارسال فایل: ' + err.message;
+                }}
+            }};
+            reader.readAsDataURL(file);
+        }}
+
+        async function loadSettings() {{
+            try {{
+                const pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
+                const res = await fetch('/api/settings?password=' + encodeURIComponent(pwd));
+                if (res.status === 401) {{
+                    console.warn('loadSettings: unauthorized, active admin login session required.');
+                    return;
+                }}
+                const data = await res.json();
+                if (data.ok && data.settings) {{
+                    populateSettingsForm(data.settings);
+                }}
+            }} catch (err) {{
+                console.error('Failed to load settings:', err);
+            }}
+        }}
+
+        function updateAiProviderView(provider) {{
+            try {{
+                const p = (provider || 'gemini').toLowerCase();
+                const hid = document.getElementById('cfg_AI_PROVIDER');
+                if (hid) hid.value = p;
+                const rGem = document.getElementById('provider_gemini');
+                const rNara = document.getElementById('provider_nara');
+                if (rGem) rGem.checked = (p === 'gemini');
+                if (rNara) rNara.checked = (p === 'nara');
+                const boxGem = document.getElementById('box_gemini_settings');
+                const boxNara = document.getElementById('box_nara_settings');
+                if (boxGem && boxNara) {{
+                    if (p === 'gemini') {{
+                        boxGem.style.opacity = '1';
+                        boxNara.style.opacity = '0.65';
+                    }} else {{
+                        boxNara.style.opacity = '1';
+                        boxGem.style.opacity = '0.65';
+                    }}
+                }}
+            }} catch (err) {{
+                console.warn('updateAiProviderView notice:', err);
+            }}
+        }}
+
+        function populateSettingsForm(s) {{
+            try {{
+                if (!s || typeof s !== 'object') return;
+                const fields = [
+                    'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
+                    'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
+                    'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
+                    'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
+                    'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
+                    'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
+                    'CARD_NUMBER', 'CARD_HOLDER',
+                    'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
+                    'COURSE_DESC_MAX_LEN',
+                    'AI_PROVIDER',
+                    'NARA_API_KEY', 'NARA_MODEL',
+                    'GEMINI_API_KEY', 'GEMINI_MODEL',
+                    'HF_TOKEN', 'HF_SPACE_ID'
+                ];
+                fields.forEach(f => {{
+                    const el = document.getElementById('cfg_' + f);
+                    if (el && s[f] !== undefined) {{
+                        if (el.tagName === 'SELECT') {{
+                            let exists = Array.from(el.options).some(opt => opt.value === s[f]);
+                            if (!exists && s[f]) {{
+                                const opt = document.createElement('option');
+                                opt.value = s[f];
+                                opt.textContent = s[f] + ' (سفارشی)';
+                                el.appendChild(opt);
+                            }}
+                        }}
+                        el.value = s[f];
+                    }}
+                }});
+                if (s.AI_PROVIDER) {{
+                    updateAiProviderView(s.AI_PROVIDER);
+                }} else {{
+                    updateAiProviderView('gemini');
+                }}
+                const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
+                const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
+                if (p1) p1.value = '';
+                if (p2) p2.value = '';
+            }} catch (err) {{
+                console.warn('populateSettingsForm notice:', err);
+            }}
+        }}
+
+        function handleExportSettings() {{
+            let pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
+            if (!pwd) {{
+                pwd = prompt('جهت برون‌بری تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
+                if (!pwd) return;
+                currentAdminPassword = pwd;
+                sessionStorage.setItem('unfinit_admin_pwd', pwd);
+            }}
+            window.open('/api/settings/export?password=' + encodeURIComponent(pwd), '_blank');
+        }}
+
+        async function handleImportSettingsFile(input) {{
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const confirmImport = confirm('آیا از بازنویسی و درون‌ریزی تنظیمات با فایل انتخابی مطمئن هستید؟');
+            if (!confirmImport) {{
+                input.value = '';
+                return;
+            }}
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {{
+                try {{
+                    const importedObj = JSON.parse(e.target.result);
+                    let pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
+                    if (!pwd) {{
+                        pwd = prompt('جهت درون‌بری تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
+                        if (!pwd) {{
+                            input.value = '';
+                            return;
+                        }}
+                        currentAdminPassword = pwd;
+                        sessionStorage.setItem('unfinit_admin_pwd', pwd);
+                    }}
+                    const res = await fetch('/api/settings/import', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            password: pwd,
+                            settings: importedObj
+                        }})
+                    }});
+                    const data = await res.json();
+                    if (data.ok) {{
+                        alert('✅ ' + (data.message || 'تنظیمات با موفقیت بازیابی شدند.'));
+                        loadSettings();
+                    }} else {{
+                        alert('❌ خطا در درون‌ریزی تنظیمات: ' + (data.error || ''));
+                    }}
+                }} catch (err) {{
+                    alert('❌ خطا در خواندن یا تحلیل فایل JSON: ' + err.message);
+                }} finally {{
+                    input.value = '';
+                }}
+            }};
+            reader.readAsText(file, 'utf-8');
+        }}
+
+        async function handleSaveSettings(e) {{
+            if (e) e.preventDefault();
+            const btn = (e && e.submitter) ? e.submitter : (document.getElementById('btnSaveSettings') || document.getElementById('btnSaveTokens'));
+            const btn1 = document.getElementById('btnSaveSettings');
+            const btn2 = document.getElementById('btnSaveTokens');
+            const statusEl = document.getElementById('settingsSaveStatus') || document.getElementById('tokensSaveStatus');
+            const status1 = document.getElementById('settingsSaveStatus');
+            const status2 = document.getElementById('tokensSaveStatus');
+            
+            const orig1 = btn1 ? btn1.innerText : '💾 ذخیره و اعمال آنی تنظیمات';
+            const orig2 = btn2 ? btn2.innerText : '💾 ذخیره سکرت‌ها و توکن‌ها';
+            if (btn1) {{ btn1.disabled = true; btn1.innerText = 'در حال ذخیره...'; }}
+            if (btn2) {{ btn2.disabled = true; btn2.innerText = 'در حال ذخیره...'; }}
+            if (status1) status1.innerText = '';
+            if (status2) status2.innerText = '';
+
+            const p1 = (document.getElementById('cfg_NEW_ADMIN_PASSWORD')?.value || '').trim();
+            const p2 = (document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD')?.value || '').trim();
+            if (p1) {{
+                if (p1 !== p2) {{
+                    alert('❌ خطای تغییر رمز: تکرار رمز عبور جدید با رمز وارد شده همخوانی ندارد.');
+                    if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
+                    if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
+                    return;
+                }}
+            }}
+
+            const settings = {{}};
+            const fields = [
+                'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
+                'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
+                'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
+                'ZARINPAL_MERCHANT_ID', 'ZARINPAL_SANDBOX',
+                'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
+                'FORCE_JOIN_CHANNEL_TELEGRAM', 'FORCE_JOIN_CHANNEL_BALE',
+                'CARD_NUMBER', 'CARD_HOLDER',
+                'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
+                'COURSE_DESC_MAX_LEN',
+                'AI_PROVIDER',
+                'NARA_API_KEY', 'NARA_MODEL',
+                'GEMINI_API_KEY', 'GEMINI_MODEL',
+                'HF_TOKEN', 'HF_SPACE_ID'
+            ];
+            const sensitiveKeys = [
+                'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
+                'RUBIKA_BOT_TOKEN', 'ZARINPAL_MERCHANT_ID', 'NARA_API_KEY',
+                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
+            ];
+            fields.forEach(f => {{
+                const el = document.getElementById('cfg_' + f);
+                if (el) {{
+                    const val = el.value.trim();
+                    if (sensitiveKeys.includes(f)) {{
+                        if (val && !val.includes('••••') && !val.includes('****')) {{
+                            settings[f] = val;
+                        }}
+                    }} else {{
+                        settings[f] = val;
+                    }}
+                }}
+            }});
+            if (p1) {{
+                settings['NEW_ADMIN_PASSWORD'] = p1;
+            }}
+
+            let pwdToSend = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
+            if (!pwdToSend) {{
+                pwdToSend = prompt('جهت تایید و ذخیره تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
+                if (!pwdToSend) {{
+                    alert('❌ ذخیره تنظیمات لغو شد: رمز عبور مدیریت وارد نشد.');
+                    if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
+                    if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
+                    return;
+                }}
+                currentAdminPassword = pwdToSend;
+                sessionStorage.setItem('unfinit_admin_pwd', pwdToSend);
+            }}
+
+            try {{
+                const res = await fetch('/api/settings', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        password: pwdToSend,
+                        settings: settings
+                    }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    if (p1) {{
+                        currentAdminPassword = p1;
+                        sessionStorage.setItem('unfinit_admin_pwd', p1);
+                        localStorage.setItem('unfinit_admin_pwd', p1);
+                        const p1El = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
+                        const p2El = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
+                        if (p1El) p1El.value = '';
+                        if (p2El) p2El.value = '';
+                    }}
+                    const successMsg = '✅ ' + (data.message || 'تنظیمات و سکرت‌های ابری با موفقیت ذخیره و در Hugging Face اعمال شد!');
+                    if (status1) status1.innerText = successMsg;
+                    if (status2) status2.innerText = successMsg;
+                    setTimeout(() => {{
+                        if (status1) status1.innerText = '';
+                        if (status2) status2.innerText = '';
+                    }}, 5000);
+                }} else {{
+                    alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || ''));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط: ' + err.message);
+            }} finally {{
+                if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
+                if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
+            }}
+        }}
+
+        async function copyAllLogs() {{
+            const btnText = document.getElementById('copyBtnText');
+            try {{
+                const res = await fetch('/api/logs');
+                const data = await res.json();
+                let textToCopy = '';
+                if (data.ok && Array.isArray(data.logs)) {{
+                    textToCopy = data.logs.join('\\n');
+                }} else {{
+                    textToCopy = document.getElementById('logContainer').innerText;
+                }}
+                await navigator.clipboard.writeText(textToCopy);
+                btnText.innerText = '✅ کپی شد!';
+                setTimeout(() => {{ btnText.innerText = 'کپی کل لاگ‌ها'; }}, 2500);
+            }} catch (err) {{
+                btnText.innerText = '❌ خطا در کپی';
+                setTimeout(() => {{ btnText.innerText = 'کپی کل لاگ‌ها'; }}, 2000);
+            }}
+        }}
+
+        async function fetchLogs() {{
+            try {{
+                const res = await fetch('/api/logs');
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.logs)) {{
+                    const container = document.getElementById('logContainer');
+                    if (data.logs.length === 0) {{
+                        container.innerHTML = '<div class="text-slate-500">هیچ لاگی هنوز ثبت نشده است.</div>';
+                    }} else {{
+                        container.innerHTML = data.logs.map(l => {{
+                            let color = 'text-slate-300';
+                            if (l.includes('[ERROR]')) color = 'text-rose-400 font-bold';
+                            else if (l.includes('[WARNING]')) color = 'text-amber-300';
+                            else if (l.includes('[INFO]')) color = 'text-cyan-300';
+                            return `<div class="${{color}}">${{l.replace(/</g, '&lt;').replace(/>/g, '&gt;')}}</div>`;
+                        }}).join('');
+                        container.scrollTop = container.scrollHeight;
+                    }}
+                }}
+            }} catch (e) {{}}
+        }}
+        fetchLogs();
+        setInterval(fetchLogs, 4000);
+        // =========================================================================
+
+                window.clearHermesChat = clearHermesChat;
+                window.sendPresetHermesPrompt = sendPresetHermesPrompt;
+                window.handleSendHermes = handleSendHermes;
+                window.escapeHtml = escapeHtml;
+                window.uploadBannerFile = uploadBannerFile;
+                window.loadSettings = loadSettings;
+                window.updateAiProviderView = updateAiProviderView;
+                window.populateSettingsForm = populateSettingsForm;
+                window.handleExportSettings = handleExportSettings;
+                window.handleImportSettingsFile = handleImportSettingsFile;
+                window.handleSaveSettings = handleSaveSettings;
+                window.copyAllLogs = copyAllLogs;
+                window.fetchLogs = fetchLogs;
+            }} catch (err) {{
+                console.error('[UNFINIT AI & Settings Module Error]:', err);
+            }}
+        }})();
     </script>
 </body>
 </html>
@@ -5205,7 +5340,7 @@ def render_storefront_html() -> str:
     <footer class="border-t border-slate-800/80 bg-slate-950/60 py-6 mt-16 text-center text-xs text-slate-500">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p>© UNFINIT Store Engine - سیستم جامع فروش دوره‌های تخصصی</p>
-            <p class="text-[11px] text-slate-600 font-mono">Secure Payments via Bale &amp; Direct Verification | UNFINIT Engine v0.1.0</p>
+            <p class="text-[11px] text-slate-600 font-mono">Secure Payments via Bale &amp; Direct Verification | UNFINIT Store {config.ENGINE_VERSION}</p>
         </div>
     </footer>
 

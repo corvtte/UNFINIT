@@ -1518,7 +1518,7 @@ async def main():
         logger.error(f"Bale adapter initialization error: {e}")
 
     try:
-        from platforms.rubika_adapter import RubikaAdapter, run_rubika_polling_engine
+        from platforms.rubika_adapter import RubikaAdapter
         rubika_adapter = RubikaAdapter()
     except Exception as e:
         logger.error(f"Rubika adapter initialization error: {e}")
@@ -1551,10 +1551,6 @@ async def main():
             loop.run_until_complete(run_bale_polling_engine(telegram_adapter_instance=tg_adapter, rubika_adapter_instance=rubika_adapter))
         threading.Thread(target=run_bale_thread, daemon=True).start()
         logger.info("Bale polling listener engine started.")
-
-    # 6. Rubika Official Bot API Polling (Disabled to eliminate upstream 502 Bad Gateway errors)
-    # The Rubika user session worker (rubika_worker.py) remains active for 2GB file processing.
-    logger.info("Rubika Bot API polling engine is permanently disabled to eliminate upstream 502 Bad Gateway errors.")
 
     # 7. Instagram Listener loop disabled temporarily as per user request to clean up server logs
     # if instagram_adapter and (instagram_adapter.has_session() or (config.INSTAGRAM_USERNAME and config.INSTAGRAM_PASSWORD)):
