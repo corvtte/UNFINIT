@@ -144,42 +144,52 @@ def cmd_sync(message: Optional[str] = None):
     msg = message or "deploy: sync update from UNFINIT Store Engine"
     print(f"🚀 Synchronizing local codebase to Hugging Face Space ({REPO_ID})...")
     
-    commit_info = api.upload_folder(
-        folder_path=str(ROOT_DIR),
-        repo_id=REPO_ID,
-        repo_type="space",
-        commit_message=msg,
-        ignore_patterns=[
-            ".git*",
-            ".venv*",
-            "venv*",
-            "ENV*",
-            "env*",
-            "__pycache__/*",
-            "*.pyc",
-            ".pytest_cache/*",
-            ".coverage",
-            "tests/*",
-            "tests_archive/*",
-            "scripts/*",
-            "scratch/*",
-            "temp_downloads/*",
-            "downloads/*",
-            "uploads/*",
-            "*.session",
-            "*.session-journal",
-            "*.rubpy",
-            "*.rp",
-            "unfinit_instagram.json",
-            "unfinit_session_cache.json",
-            "sessions/*",
-            "*.db",
-            "*.sqlite*",
-            ".env*"
-        ]
-    )
-    print("✅ Deployment complete!")
-    print(f"🌐 Commit URL: {commit_info.commit_url}")
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            commit_info = api.upload_folder(
+                folder_path=str(ROOT_DIR),
+                repo_id=REPO_ID,
+                repo_type="space",
+                commit_message=msg,
+                ignore_patterns=[
+                    ".git*",
+                    ".venv*",
+                    "venv*",
+                    "ENV*",
+                    "env*",
+                    "__pycache__/*",
+                    "*.pyc",
+                    ".pytest_cache/*",
+                    ".coverage",
+                    "tests/*",
+                    "tests_archive/*",
+                    "scripts/*",
+                    "scratch/*",
+                    "temp_downloads/*",
+                    "downloads/*",
+                    "uploads/*",
+                    "*.session",
+                    "*.session-journal",
+                    "*.rubpy",
+                    "*.rp",
+                    "unfinit_instagram.json",
+                    "unfinit_session_cache.json",
+                    "sessions/*",
+                    "*.db",
+                    "*.sqlite*",
+                    ".env*"
+                ]
+            )
+            print("✅ Deployment complete!")
+            print(f"🌐 Commit URL: {commit_info.commit_url}")
+            return
+        except Exception as e:
+            if attempt < max_retries and ("412" in str(e) or "Precondition Failed" in str(e) or "updated since" in str(e)):
+                print(f"⚠️ Remote branch conflict/412 on attempt {attempt}/{max_retries}. Refreshing in 3s...")
+                time.sleep(3.0)
+                continue
+            raise
 
 def main():
     if len(sys.argv) < 2:
