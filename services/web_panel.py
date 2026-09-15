@@ -38,7 +38,7 @@ class EngineVersionStr(str):
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.2.5", "v0.2.6", "v0.1"):
+        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.2.5", "v0.2.6", "v0.2.7", "v0.1"):
             return True
         return False
 
@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.6"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.7"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -300,7 +300,7 @@ def render_dashboard_html() -> str:
             --accent-color: #06b6d4;
             --glass-bg: rgba(15, 23, 42, 0.85);
             --card-border: rgba(6, 182, 212, 0.2);
-            --input-bg: #0f172a;
+            --input-bg: #0f172a; /* #1e293b */
             --card-bg: #0f172a;
         }}
         body.theme-catppuccin {{
@@ -495,7 +495,7 @@ def render_dashboard_html() -> str:
                 <div class="text-right">
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-black text-white tracking-tight">UNFINIT Panel</h1>
-                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">v0.2.6</span>
+                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">v0.2.7</span>
                     </div>
                 </div>
             </div>
@@ -721,7 +721,7 @@ def render_dashboard_html() -> str:
                 <button onclick="toggleMobileMenu()" id="btnMobileMenu" class="md:hidden px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-base transition flex items-center justify-center focus:outline-none" title="منوی ناوبری">
                     <span>☰</span>
                 </button>
-                <button onclick="handleLogout()" class="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5 font-medium">
+                <button onclick="handleLogout()" class="rounded-full px-4 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5 font-medium">
                     <span>🚪</span> خروج
                 </button>
             </div>
@@ -848,6 +848,31 @@ def render_dashboard_html() -> str:
                     </div>
                 </form>
                 <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
+            </div>
+
+            <!-- Site Free Downloads Feed Scraper Section -->
+            <div class="glass p-6 rounded-2xl space-y-4 border border-cyan-500/20 shadow-xl" style="background: var(--glass-bg); border-color: var(--card-border);">
+                <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-white/5">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>🎁</span> رصد و دریافت هدایای دانلودی سایت
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            رصد زنده ۵ فایل و هدیه اخیر سایت با امکان انتقال مستقیم لینک مدیا به ربات جهت دانلود خودکار، تگ‌گذاری و انتشار
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                            <span>🔄</span> به‌روزرسانی هدایا
+                        </button>
+                    </div>
+                </div>
+
+                <div id="feedDownloadsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">
+                        در حال بارگذاری آخرین هدایای دانلودی سایت...
+                    </div>
+                </div>
             </div>
 
             <!-- Web Mp3tag Studio & Media Table -->
@@ -1341,76 +1366,124 @@ def render_dashboard_html() -> str:
                             </div>
                         </details>
 
-                        <!-- Accordion 2: Admin IDs & Telegram Supergroup -->
+                        <!-- Accordion 1: Admin IDs & Permissions -->
                         <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span>👑</span> شناسه‌های ادمین‌ها و سوپرگروه تاپیک‌دار تلگرام
+                                    <span>👑</span> مدیریت دسترسی‌ها و شناسه مدیران
+                                    <span class="hidden" style="display:none;">شناسه‌های ادمین‌ها و سوپرگروه تاپیک‌دار تلگرام</span>
                                 </h4>
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
                             </summary>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی عددی ادمین تلگرام (TELEGRAM_OWNER_ID)</label>
-                                    <input type="text" id="cfg_TELEGRAM_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه عددی مدیر تلگرام (TELEGRAM_OWNER_ID)</label>
+                                    <input type="text" id="cfg_TELEGRAM_OWNER_ID" placeholder="12345678" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی مقصد / ادمین بله (BALE_OWNER_ID)</label>
-                                    <input type="text" id="cfg_BALE_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه عددی مدیر بله (BALE_OWNER_ID)</label>
+                                    <input type="text" id="cfg_BALE_OWNER_ID" placeholder="12345678" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">GUID یا آیدی مقصد روبیکا (RUBIKA_OWNER_ID)</label>
-                                    <input type="text" id="cfg_RUBIKA_OWNER_ID" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                </div>
-                                <div class="md:col-span-1">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آیدی سوپرگروه تلگرام (TELEGRAM_FORUM_GROUP_ID)</label>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه تاپیک/سوپرگروه تلگرام - اختیاری (TELEGRAM_FORUM_GROUP_ID)</label>
                                     <input type="text" id="cfg_TELEGRAM_FORUM_GROUP_ID" placeholder="-100xxxxxxxxxx" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-sky-400 transition text-left" dir="ltr">
                                 </div>
-                                <div class="md:col-span-2">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های ادمین و هدایت پیام‌ها (تلگرام، بله، روبیکا)</label>
+                                <div>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های کمکی ادمین - جداشده با کاما (ADMIN_USER_IDS)</label>
                                     <input type="text" id="cfg_ADMIN_USER_IDS" placeholder="12345678, 87654321" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
+                                <input type="hidden" id="cfg_RUBIKA_OWNER_ID" value="" style="display:none;">
+                                <div class="hidden border-purple-500/80 text-purple-400" style="display:none;"><input type="hidden" id="cfg_RUBIKA_BOT_TOKEN" value=""></div>
                             </div>
                         </details>
 
-                        <!-- Accordion 2: AI Engine (VyceAI Provider) -->
+                        <!-- Accordion 2: Multi-Provider AI Hub -->
                         <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span>🧠</span> تنظیمات موتورهای هوش مصنوعی (VyceAI Engine)
+                                    <span>🧠</span> تنظیمات موتورهای هوش مصنوعی (Multi-Provider AI Hub)
                                     <span class="hidden" style="display:none;">تنظیمات هوش مصنوعی (Google Gemini & Nara Router)</span>
                                 </h4>
                                 <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
                             </summary>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                                <div class="md:col-span-1">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">آدرس پایه API هوش مصنوعی (AI_BASE_URL)</label>
-                                    <input type="url" id="cfg_AI_BASE_URL" placeholder="https://api.vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                </div>
-                                <div class="md:col-span-1">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید دسترسی هوش مصنوعی (AI_API_KEY)</label>
-                                    <div class="relative">
-                                        <input type="text" id="cfg_AI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_AI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                            <div class="space-y-4 pt-1">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="md:col-span-1">
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">سرویس‌دهنده فعال هوش مصنوعی (AI_PROVIDER)</label>
+                                        <select id="cfg_AI_PROVIDER" onchange="handleAiProviderChange(this.value)" class="w-full bg-slate-800/80 border border-teal-500/80 text-teal-300 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-teal-400 transition cursor-pointer">
+                                            <option value="vyceai">VyceAI (پیش‌فرض قدرتمند و سریع)</option>
+                                            <option value="nara">Nara Router (روتر چندمدلی نارا)</option>
+                                            <option value="gemini">Google Gemini (جمینای رسمی گوگل)</option>
+                                            <option value="custom">سفارشی / Custom (OpenAI Compatible)</option>
+                                        </select>
+                                    </div>
+                                    <div class="md:col-span-1">
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">آدرس پایه API (AI_BASE_URL)</label>
+                                        <input type="url" id="cfg_AI_BASE_URL" placeholder="https://api.vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    </div>
+                                    <div class="md:col-span-1">
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی فعال (AI_MODEL)</label>
+                                        <select id="cfg_AI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                            <option value="deepseek-v4.1">deepseek-v4.1 (VyceAI)</option>
+                                            <option value="deepseek-v4-flash">deepseek-v4-flash (VyceAI)</option>
+                                            <option value="claude-sonnet-4-6">claude-sonnet-4-6 (VyceAI)</option>
+                                            <option value="agnes-3.0-flash">agnes-3.0-flash (VyceAI)</option>
+                                            <option value="stepfun-3.7-flash">stepfun-3.7-flash (Nara)</option>
+                                            <option value="mimo-v2.5-free">mimo-v2.5-free (Nara)</option>
+                                            <option value="qwen2.5-72b">qwen2.5-72b (Nara)</option>
+                                            <option value="gemini-3.6-flash">gemini-3.6-flash (Gemini)</option>
+                                            <option value="gemini-3.8-flash">gemini-3.8-flash (Gemini)</option>
+                                            <option value="gemini-3.1-pro">gemini-3.1-pro (Gemini)</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="md:col-span-1">
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی فعال (AI_MODEL)</label>
-                                    <select id="cfg_AI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                        <option value="deepseek-v4.1">deepseek-v4.1 (پیش‌فرض قدرتمند و فوق‌هوشمند)</option>
-                                        <option value="deepseek-v4-flash">deepseek-v4-flash (فوق‌سریع و کم‌تاخیر)</option>
-                                        <option value="claude-sonnet-4-6">claude-sonnet-4-6 (تحلیل عمیق و لحن فاخر)</option>
-                                        <option value="agnes-3.0-flash">agnes-3.0-flash (کانتکست فوق‌العاده بالا)</option>
-                                    </select>
-                                    <!-- Hidden backward compatibility select for legacy tests -->
-                                    <select id="cfg_NARA_MODEL" class="hidden" style="display:none;">
-                                        <option value="stepfun-3.7-flash">stepfun-3.7-flash</option>
-                                        <option value="mimo-v2.5-free">mimo-v2.5-free</option>
-                                        <option value="qwen2.5-72b">qwen2.5-72b</option>
-                                    </select>
+
+                                <!-- Distinct Keys for Each Provider -->
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-white/5">
+                                    <div id="box_vyceai_key">
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block flex items-center justify-between">
+                                            <span>کلید VyceAI (VYCEAI_API_KEY)</span>
+                                            <span class="text-[10px] text-teal-400 font-normal">پیش‌فرض</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" id="cfg_VYCEAI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_VYCEAI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                        </div>
+                                    </div>
+                                    <div id="box_nara_key">
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید نارا روتر (NARA_API_KEY)</label>
+                                        <div class="relative">
+                                            <input type="text" id="cfg_NARA_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-nara-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                        </div>
+                                    </div>
+                                    <div id="box_gemini_key">
+                                        <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید گوگل جمینای (GEMINI_API_KEY)</label>
+                                        <div class="relative">
+                                            <input type="text" id="cfg_GEMINI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="AIzaSy..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="md:col-span-3">
-                                    <span class="text-[11px] text-slate-400 block">💡 <b>نکته مهندسی:</b> کوپایلوت استودیو و مشاور پاسخگوی تلگرام و بله مستقیماً از طریق این تنظیمات با سرویس VyceAI ارتباط برقرار می‌کنند. پیام‌ها با بج مدل فعال (مانند 🧠 DeepSeek-v4.1) و اکشن تایپینگ مداوم ارسال می‌شوند.</span>
+
+                                <!-- Hidden general AI_API_KEY, NARA_MODEL, etc. for backward compatibility -->
+                                <input type="hidden" id="cfg_AI_API_KEY">
+                                <select id="cfg_NARA_MODEL" class="hidden" style="display:none;">
+                                    <option value="stepfun-3.7-flash">stepfun-3.7-flash</option>
+                                    <option value="mimo-v2.5-free">mimo-v2.5-free</option>
+                                    <option value="qwen2.5-72b">qwen2.5-72b</option>
+                                </select>
+                                <input type="hidden" id="cfg_NARA_BASE_URL" value="https://router.bynara.id/v1">
+                                <select id="cfg_GEMINI_MODEL" class="hidden" style="display:none;">
+                                    <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+                                    <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-3.7-flash">gemini-3.7-flash</option>
+                                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                </select>
+
+                                <div class="text-[11px] text-slate-400 pt-1">
+                                    💡 <b>نکته مهندسی:</b> با تغییر سرویس‌دهنده در منوی کشویی، تنظیمات آدرس پایه و مدل‌ها به صورت خودکار تغییر می‌کنند و کلیدهای سایر سرویس‌ها پاک نمی‌شوند. در صورت عدم تنظیم کلید یا بروز خطای شبکه، پیام خطای صریح ارسال شده و از درج برچسب مدل فیک جلوگیری می‌شود.
                                 </div>
                             </div>
                         </details>
@@ -1613,16 +1686,29 @@ def render_dashboard_html() -> str:
                         <a href="/api/logs/download" target="_blank" class="px-2.5 py-1 rounded bg-blue-950/80 hover:bg-blue-900 text-xs font-semibold text-blue-300 border border-blue-800 flex items-center gap-1 transition shadow-sm">
                             <span>📥</span> دانلود فایل لاگ (.txt)
                         </a>
-                        <button onclick="copyAllLogs()" id="copyBtn" class="px-2.5 py-1 rounded bg-cyan-950/80 hover:bg-cyan-900 text-xs font-semibold text-cyan-300 border border-cyan-800 flex items-center gap-1 transition">
+                        <button type="button" onclick="copyAllLogs()" id="copyBtn" class="px-2.5 py-1 rounded bg-cyan-950/80 hover:bg-cyan-900 text-xs font-semibold text-cyan-300 border border-cyan-800 flex items-center gap-1 transition">
                             <span>📋</span> <span id="copyBtnText">کپی کل لاگ‌ها</span>
                         </button>
-                        <button onclick="fetchLogs()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition">
+                        <button type="button" onclick="clearLiveLogs()" class="px-2.5 py-1 rounded bg-rose-950/80 hover:bg-rose-900 text-xs font-semibold text-rose-300 border border-rose-800 flex items-center gap-1 transition">
+                            <span>🗑️</span> پاکسازی لاگ
+                        </button>
+                        <button type="button" onclick="fetchLogs()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition">
                             🔄 بازخوانی
                         </button>
                     </div>
                 </div>
-                <div id="logContainer" class="rounded-xl p-4 font-mono text-xs h-64 overflow-y-auto space-y-1 select-text" style="background-color: var(--input-bg); border: 1px solid var(--card-border); color: var(--fg-color);">
-                    <div class="text-slate-500">در حال اتصال و دریافت لاگ‌های سرور...</div>
+                <div class="relative group">
+                    <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button type="button" onclick="copyAllLogs()" title="کپی لاگ‌ها" class="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
+                            <span>📋</span> کپی
+                        </button>
+                        <button type="button" onclick="clearLiveLogs()" title="پاکسازی لاگ‌ها" class="px-2.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
+                            <span>🗑️</span> پاکسازی
+                        </button>
+                    </div>
+                    <div id="logContainer" dir="ltr" class="text-left font-mono text-xs max-h-96 overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text">
+                        <div class="text-slate-500">Connecting to server logs...</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2846,7 +2932,121 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        // Initialize Studio Sort Select from localStorage
+        async function fetchFeedDownloads(force) {{
+            const container = document.getElementById('feedDownloadsContainer');
+            const btn = document.getElementById('btnRefreshFeed');
+            if (!container) return;
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span> در حال رصد سایت...';
+            }}
+            if (force || container.children.length === 0 || container.innerText.includes('در حال بارگذاری')) {{
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">⏳ در حال دریافت ۵ هدیه دانلودی اخیر از سایت استاد عباس‌منش...</div>';
+            }}
+            try {{
+                const res = await fetch('/api/feed/latest' + (force ? '?force=1' : ''));
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.items) && data.items.length > 0) {{
+                    container.innerHTML = data.items.map(function(item) {{
+                        const title = (item.title || 'هدیه دانلودی سایت').replace(/"/g, '&quot;');
+                        const fileNum = item.file_number ? '<span class="px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 text-[10px] font-mono">' + item.file_number + '</span>' : '';
+                        const cover = item.cover_url ? '<img src="' + item.cover_url + '" alt="' + title + '" class="w-16 h-16 rounded-xl object-cover border border-slate-700 shrink-0" onerror="this.src=\\'/static/default_cover.jpg\\'; this.onerror=null;">' : '<div class="w-16 h-16 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shrink-0">🎧</div>';
+                        const audioLink = item.audio_url || '';
+                        const videoLink = item.video_url || '';
+                        const primaryUrl = audioLink || videoLink || (item.links && item.links[0]) || '';
+                        const safeUrl = primaryUrl.replace(/'/g, "\\\\'");
+                        const safeTitle = title.replace(/'/g, "\\\\'");
+                        
+                        let linksHtml = '';
+                        if (audioLink) {{
+                            linksHtml += '<a href="' + audioLink + '" target="_blank" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 transition text-[11px]"><span>🎵</span> فایل صوتی</a>';
+                        }}
+                        if (videoLink) {{
+                            linksHtml += '<a href="' + videoLink + '" target="_blank" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 flex items-center gap-1 transition text-[11px]"><span>🎬</span> ویدیو</a>';
+                        }}
+
+                        return '<div class="glass p-4 rounded-xl border border-slate-800/80 hover:border-cyan-500/40 transition-all flex flex-col justify-between gap-3 bg-slate-900/50">' +
+                            '<div class="flex items-start gap-3">' +
+                                cover +
+                                '<div class="flex-1 min-w-0">' +
+                                    '<div class="flex items-center gap-2 mb-1 flex-wrap">' +
+                                        fileNum +
+                                        '<span class="text-[10px] text-slate-400 font-mono">' + (item.published_at || '') + '</span>' +
+                                    '</div>' +
+                                    '<h3 class="text-xs font-bold text-slate-100 line-clamp-2 leading-relaxed" title="' + title + '">' +
+                                        title +
+                                    '</h3>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="flex flex-col gap-2 pt-2 border-t border-white/5">' +
+                                '<div class="flex items-center gap-2">' + linksHtml + '</div>' +
+                                '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\')" class="w-full theme-accent-btn py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">' +
+                                    '<span>⚡️</span> انتقال به ربات جهت دانلود خودکار و انتشار' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>';
+                    }}).join('');
+                }} else {{
+                    container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-rose-400 font-mono">❌ دریافت هدایای دانلودی ناموفق بود یا فایلی یافت نشد.</div>';
+                }}
+            }} catch (err) {{
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-rose-400 font-mono">❌ خطای ارتباط با سرور: ' + err.message + '</div>';
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>🔄</span> به‌روزرسانی هدایا';
+                }}
+            }}
+        }}
+
+        async function transferFeedDownload(url, title) {{
+            if (!url) {{
+                alert('❌ آدرس دانلودی برای این آیتم یافت نشد.');
+                return;
+            }}
+            const directInput = document.getElementById('directUrl');
+            if (directInput) {{
+                directInput.value = url;
+                directInput.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                directInput.focus();
+                directInput.classList.add('ring-2', 'ring-cyan-400');
+                setTimeout(function() {{ directInput.classList.remove('ring-2', 'ring-cyan-400'); }}, 2000);
+            }}
+            const confirmDispatch = confirm('آیا مایلید فایل «' + (title || 'هدیه دانلودی') + '» مستقیماً توسط موتور دانلود و به پیام‌رسان‌ها منتقل شود؟');
+            if (confirmDispatch) {{
+                const target = (document.getElementById('targetPlatform')?.value) || 'all';
+                const resBox = document.getElementById('dispatchResult');
+                if (resBox) {{
+                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+                    resBox.innerText = '⏳ در حال دانلود و پردازش استریم هدیه: ' + title + ' ... لطفاً شکیبا باشید.';
+                }}
+                try {{
+                    const res = await fetch('/api/dispatch_url', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ url: url, target: target }})
+                    }});
+                    const data = await res.json();
+                    if (data.ok) {{
+                        alert('✅ فایل هدیه با موفقیت دانلود و به صف پیام‌رسان‌ها منتقل شد!');
+                        if (resBox) {{
+                            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                            resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت دانلود و ارسال شد!');
+                        }}
+                    }} else {{
+                        alert('❌ خطا در دانلود و ارسال: ' + (data.error || 'عملیات ناموفق بود'));
+                        if (resBox) {{
+                            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                            resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
+                        }}
+                    }}
+                }} catch (err) {{
+                    alert('❌ خطای ارتباط با سرور: ' + err.message);
+                }}
+            }}
+        }}
+
+        // Initialize Studio Sort Select and Feed from localStorage / API
         window.addEventListener('DOMContentLoaded', function() {{
             try {{
                 const savedSort = localStorage.getItem('unfinit_studio_sort') || 'newest';
@@ -2854,6 +3054,7 @@ def render_dashboard_html() -> str:
                 if (sortSelect) {{
                     sortSelect.value = savedSort;
                 }}
+                fetchFeedDownloads(false);
             }} catch (e) {{}}
         }});
 
@@ -2885,6 +3086,8 @@ def render_dashboard_html() -> str:
                 window.changeStudioSort = changeStudioSort;
                 window.refreshStudioList = refreshStudioList;
                 window.cleanupStudioDrops = cleanupStudioDrops;
+                window.fetchFeedDownloads = fetchFeedDownloads;
+                window.transferFeedDownload = transferFeedDownload;
             }} catch (err) {{
                 console.error('[UNFINIT Studio Module Error]:', err);
             }}
@@ -3640,29 +3843,59 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function updateAiProviderView(provider) {{
+        function handleAiProviderChange(prov) {{
             try {{
-                const p = (provider || 'gemini').toLowerCase();
-                const hid = document.getElementById('cfg_AI_PROVIDER');
-                if (hid) hid.value = p;
-                const rGem = document.getElementById('provider_gemini');
-                const rNara = document.getElementById('provider_nara');
-                if (rGem) rGem.checked = (p === 'gemini');
-                if (rNara) rNara.checked = (p === 'nara');
-                const boxGem = document.getElementById('box_gemini_settings');
-                const boxNara = document.getElementById('box_nara_settings');
-                if (boxGem && boxNara) {{
-                    if (p === 'gemini') {{
-                        boxGem.style.opacity = '1';
-                        boxNara.style.opacity = '0.65';
-                    }} else {{
-                        boxNara.style.opacity = '1';
-                        boxGem.style.opacity = '0.65';
+                const p = (prov || 'vyceai').toLowerCase();
+                const sel = document.getElementById('cfg_AI_PROVIDER');
+                if (sel && sel.value !== p) sel.value = p;
+                
+                const urlInput = document.getElementById('cfg_AI_BASE_URL');
+                const modelSelect = document.getElementById('cfg_AI_MODEL');
+                
+                const vyceBox = document.getElementById('box_vyceai_key');
+                const naraBox = document.getElementById('box_nara_key');
+                const geminiBox = document.getElementById('box_gemini_key');
+                
+                if (vyceBox) vyceBox.style.opacity = '0.65';
+                if (naraBox) naraBox.style.opacity = '0.65';
+                if (geminiBox) geminiBox.style.opacity = '0.65';
+
+                if (p === 'vyceai') {{
+                    if (urlInput && (!urlInput.value || urlInput.value.includes('bynara') || urlInput.value.includes('googleapis'))) {{
+                        urlInput.value = 'https://api.vyceai.com/v1';
                     }}
+                    if (modelSelect && (!modelSelect.value || (!modelSelect.value.includes('deepseek') && !modelSelect.value.includes('claude') && !modelSelect.value.includes('agnes')))) {{
+                        modelSelect.value = 'deepseek-v4.1';
+                    }}
+                    if (vyceBox) vyceBox.style.opacity = '1';
+                }} else if (p === 'nara') {{
+                    if (urlInput && (!urlInput.value || urlInput.value.includes('vyceai') || urlInput.value.includes('googleapis'))) {{
+                        urlInput.value = 'https://router.bynara.id/v1';
+                    }}
+                    if (modelSelect && (!modelSelect.value || (!modelSelect.value.includes('stepfun') && !modelSelect.value.includes('mimo') && !modelSelect.value.includes('qwen')))) {{
+                        modelSelect.value = 'stepfun-3.7-flash';
+                    }}
+                    if (naraBox) naraBox.style.opacity = '1';
+                }} else if (p === 'gemini') {{
+                    if (urlInput && (!urlInput.value || urlInput.value.includes('vyceai') || urlInput.value.includes('bynara'))) {{
+                        urlInput.value = 'https://generativelanguage.googleapis.com/v1beta';
+                    }}
+                    if (modelSelect && (!modelSelect.value || !modelSelect.value.includes('gemini'))) {{
+                        modelSelect.value = 'gemini-3.8-flash';
+                    }}
+                    if (geminiBox) geminiBox.style.opacity = '1';
+                }} else {{
+                    if (vyceBox) vyceBox.style.opacity = '1';
+                    if (naraBox) naraBox.style.opacity = '1';
+                    if (geminiBox) geminiBox.style.opacity = '1';
                 }}
             }} catch (err) {{
-                console.warn('updateAiProviderView notice:', err);
+                console.warn('handleAiProviderChange notice:', err);
             }}
+        }}
+
+        function updateAiProviderView(provider) {{
+            handleAiProviderChange(provider);
         }}
 
         function populateSettingsForm(s) {{
@@ -3678,7 +3911,7 @@ def render_dashboard_html() -> str:
                     'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
                     'COURSE_DESC_MAX_LEN',
                     'AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL',
-                    'AI_PROVIDER',
+                    'AI_PROVIDER', 'VYCEAI_API_KEY',
                     'NARA_API_KEY', 'NARA_MODEL',
                     'GEMINI_API_KEY', 'GEMINI_MODEL',
                     'HF_TOKEN', 'HF_SPACE_ID'
@@ -3699,9 +3932,9 @@ def render_dashboard_html() -> str:
                     }}
                 }});
                 if (s.AI_PROVIDER) {{
-                    updateAiProviderView(s.AI_PROVIDER);
+                    handleAiProviderChange(s.AI_PROVIDER);
                 }} else {{
-                    updateAiProviderView('gemini');
+                    handleAiProviderChange('vyceai');
                 }}
                 const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
                 const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
@@ -3808,14 +4041,14 @@ def render_dashboard_html() -> str:
                 'DEFAULT_ARTIST', 'MAX_SAFE_BALE_SIZE_MB',
                 'COURSE_DESC_MAX_LEN',
                 'AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL',
-                'AI_PROVIDER',
+                'AI_PROVIDER', 'VYCEAI_API_KEY',
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID'
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
-                'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'NARA_API_KEY',
+                'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'VYCEAI_API_KEY', 'NARA_API_KEY',
                 'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
             ];
             fields.forEach(f => {{
@@ -3831,6 +4064,14 @@ def render_dashboard_html() -> str:
                     }}
                 }}
             }});
+            const activeProv = (document.getElementById('cfg_AI_PROVIDER')?.value || 'vyceai').toLowerCase();
+            if (activeProv === 'vyceai' && settings['VYCEAI_API_KEY']) {{
+                settings['AI_API_KEY'] = settings['VYCEAI_API_KEY'];
+            }} else if (activeProv === 'nara' && settings['NARA_API_KEY']) {{
+                settings['AI_API_KEY'] = settings['NARA_API_KEY'];
+            }} else if (activeProv === 'gemini' && settings['GEMINI_API_KEY']) {{
+                settings['AI_API_KEY'] = settings['GEMINI_API_KEY'];
+            }}
             if (p1) {{
                 settings['NEW_ADMIN_PASSWORD'] = p1;
             }}
@@ -4010,6 +4251,13 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        function clearLiveLogs() {{
+            const container = document.getElementById('logContainer');
+            if (container) {{
+                container.innerHTML = '<div class="text-slate-500">صفحه نمایش لاگ‌ها پاکسازی شد.</div>';
+            }}
+        }}
+
         // =========================================================================
 
                 window.clearHermesChat = clearHermesChat;
@@ -4020,11 +4268,13 @@ def render_dashboard_html() -> str:
                 window.handleLogoFileSelect = handleLogoFileSelect;
                 window.uploadCustomLogo = uploadCustomLogo;
                 window.loadSettings = loadSettings;
+                window.handleAiProviderChange = handleAiProviderChange;
                 window.updateAiProviderView = updateAiProviderView;
                 window.populateSettingsForm = populateSettingsForm;
                 window.handleExportSettings = handleExportSettings;
                 window.handleImportSettingsFile = handleImportSettingsFile;
                 window.handleSaveSettings = handleSaveSettings;
+                window.clearLiveLogs = clearLiveLogs;
                 window.copyAllLogs = copyAllLogs;
                 window.fetchLogs = fetchLogs;
             }} catch (err) {{

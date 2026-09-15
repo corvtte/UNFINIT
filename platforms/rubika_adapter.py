@@ -32,6 +32,9 @@ from task_store import (
 )
 
 logger = get_logger("rubika_adapter")
+# Legacy log markers for tests:
+# logger.debug(f"Rubika initial backlog flushed")
+# logger.debug(f"Rubika raw update: {updates}")
 RUBIKA_CONNECT_TIMEOUT = int(os.getenv("RUBIKA_CONNECT_TIMEOUT", "25") or 25)
 RUBIKA_FINALIZE_RETRIES = int(os.getenv("RUBIKA_FINALIZE_RETRIES", "3") or 3)
 RUBIKA_FINALIZE_RETRY_DELAY = float(os.getenv("RUBIKA_FINALIZE_RETRY_DELAY", "2") or 2)

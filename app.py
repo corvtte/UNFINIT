@@ -144,7 +144,6 @@ async def get_all_settings_async() -> dict:
         "BALE_OWNER_ID": _first_valid(os.environ.get("BALE_OWNER_ID"), str(config.BALE_OWNER_ID), await get_system_setting("BALE_OWNER_ID", "")),
         "BALE_PAYMENT_TOKEN": mask_secret(bale_pay),
         "RUBIKA_BOT_TOKEN": mask_secret(rubika_tok),
-        "RUBIKA_OWNER_ID": _first_valid(os.environ.get("RUBIKA_OWNER_ID"), str(config.RUBIKA_OWNER_ID), await get_system_setting("RUBIKA_OWNER_ID", "")),
         "FORCE_JOIN_CHANNEL_TELEGRAM": await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM),
         "FORCE_JOIN_CHANNEL_BALE": await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE),
         "CARD_NUMBER": mask_secret(card_num, 4, 4),
@@ -153,8 +152,9 @@ async def get_all_settings_async() -> dict:
         "COURSE_DESC_MAX_LEN": await get_system_setting("COURSE_DESC_MAX_LEN", str(getattr(config, "COURSE_DESC_MAX_LEN", 255))),
         "AI_BASE_URL": ai_base_url or "https://api.vyceai.com/v1",
         "AI_API_KEY": mask_secret(ai_api_key),
+        "VYCEAI_API_KEY": mask_secret(_first_valid(os.environ.get("VYCEAI_API_KEY"), os.environ.get("AI_API_KEY"), str(getattr(config, "VYCEAI_API_KEY", "")), await get_system_setting("vyceai_api_key", ""))),
         "AI_MODEL": ai_model or "deepseek-v4.1",
-        "AI_PROVIDER": ai_prov,
+        "AI_PROVIDER": ai_prov or "vyceai",
         "NARA_API_KEY": mask_secret(nara_key),
         "NARA_MODEL": await get_system_setting("nara_model", config.NARA_MODEL),
         "GEMINI_API_KEY": mask_secret(gemini_key),
@@ -550,14 +550,15 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "BALE_OWNER_ID": str(config.BALE_OWNER_ID),
                         "BALE_PAYMENT_TOKEN": config.BALE_PAYMENT_TOKEN,
                         "RUBIKA_BOT_TOKEN": config.RUBIKA_BOT_TOKEN,
-                        "RUBIKA_OWNER_ID": str(config.RUBIKA_OWNER_ID),
                         "FORCE_JOIN_CHANNEL_TELEGRAM": config.FORCE_JOIN_CHANNEL_TELEGRAM,
                         "FORCE_JOIN_CHANNEL_BALE": config.FORCE_JOIN_CHANNEL_BALE,
                         "CARD_NUMBER": config.CARD_NUMBER,
                         "CARD_HOLDER": config.CARD_HOLDER,
                         "COURSE_DESC_MAX_LEN": str(getattr(config, "COURSE_DESC_MAX_LEN", 255)),
+                        "AI_PROVIDER": getattr(config, "AI_PROVIDER", "vyceai"),
                         "AI_BASE_URL": getattr(config, "AI_BASE_URL", "https://api.vyceai.com/v1"),
                         "AI_API_KEY": getattr(config, "AI_API_KEY", ""),
+                        "VYCEAI_API_KEY": getattr(config, "VYCEAI_API_KEY", ""),
                         "AI_MODEL": getattr(config, "AI_MODEL", "deepseek-v4.1"),
                         "NARA_API_KEY": config.NARA_API_KEY,
                         "NARA_MODEL": config.NARA_MODEL,
@@ -595,6 +596,24 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(export_bytes)))
                 self.end_headers()
                 self.wfile.write(export_bytes)
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+        elif path == "/api/feed/latest":
+            try:
+                from services.feed_scraper import get_latest_free_downloads
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                query_params = urllib.parse.parse_qs(parsed.query)
+                force = query_params.get("force", ["0"])[0].lower() in ("1", "true", "yes")
+                items = loop.run_until_complete(get_latest_free_downloads(limit=5, force_refresh=force))
+                loop.close()
+                res = {"ok": True, "items": items, "count": len(items)}
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1147,11 +1166,12 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     "BALE_OWNER_ID": "BALE_OWNER_ID",
                     "BALE_PAYMENT_TOKEN": "BALE_PAYMENT_TOKEN",
                     "RUBIKA_BOT_TOKEN": "RUBIKA_BOT_TOKEN",
-                    "RUBIKA_OWNER_ID": "RUBIKA_OWNER_ID",
                     "CARD_NUMBER": "CARD_NUMBER",
                     "CARD_HOLDER": "CARD_HOLDER",
+                    "AI_PROVIDER": "AI_PROVIDER",
                     "AI_BASE_URL": "AI_BASE_URL",
                     "AI_API_KEY": "AI_API_KEY",
+                    "VYCEAI_API_KEY": "VYCEAI_API_KEY",
                     "AI_MODEL": "AI_MODEL",
                     "NARA_API_KEY": "NARA_API_KEY",
                     "GEMINI_API_KEY": "GEMINI_API_KEY",
@@ -1170,7 +1190,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "BALE_OWNER_ID": "BALE_OWNER_ID",
                         "BALE_PAYMENT_TOKEN": "bale_payment_token",
                         "RUBIKA_BOT_TOKEN": "RUBIKA_BOT_TOKEN",
-                        "RUBIKA_OWNER_ID": "RUBIKA_OWNER_ID",
                         "FORCE_JOIN_CHANNEL_TELEGRAM": "tg_fjoin_channel",
                         "FORCE_JOIN_CHANNEL_BALE": "bale_fjoin_channel",
                         "CARD_NUMBER": "CARD_NUMBER",
@@ -1368,7 +1387,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "BALE_PAYMENT_TOKEN": "bale_payment_token",
                         "bale_payment_token": "bale_payment_token",
                         "RUBIKA_BOT_TOKEN": "RUBIKA_BOT_TOKEN",
-                        "RUBIKA_OWNER_ID": "RUBIKA_OWNER_ID",
                         "FORCE_JOIN_CHANNEL_TELEGRAM": "tg_fjoin_channel",
                         "tg_fjoin_channel": "tg_fjoin_channel",
                         "FORCE_JOIN_CHANNEL_BALE": "bale_fjoin_channel",

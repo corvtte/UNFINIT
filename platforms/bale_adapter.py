@@ -1375,7 +1375,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 await bale.send_message(chat_id, "✅ تمام متادیتاها و تگ‌های فایل با موفقیت پاکسازی شد.")
                                             else:
                                                 await bale.send_message(chat_id, "❌ خطا در پاکسازی متادیتا.")
-                                        elif action == "ai_transcribe":
+                                        elif action == "ai_transcribe":  # استخراج متن و کپشن با AI
                                             kb = {
                                                 "inline_keyboard": [
                                                     [{"text": "⚡️ گوگل جمینای (Gemini Flash)", "callback_data": f"bai_eng:gemini:{drop_id}"}],
@@ -2529,7 +2529,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             )
                                             admin_kb = {"inline_keyboard": [
                                                 [
-                                                    {"text": "✅ تایید سفارش و ارسال دوره", "callback_data": f"adm_approve:{order_id}"},
+                                                    {"text": "✅ تایید و تحویل دوره", "callback_data": f"adm_approve:{order_id}"},
                                                     {"text": "❌ رد سفارش", "callback_data": f"adm_reject:{order_id}"}
                                                 ]
                                             ]}

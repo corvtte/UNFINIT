@@ -86,6 +86,7 @@ class AIAgentService:
     NARA_FREE_MODELS = [
         "nemotron-3.5-lightning-free",
         "stepfun-3.7-flash",
+        "mimo-v2.5-free",
         "ling-3.0-flash-fin-free",
         "agnes-2.5-flash",
         "laguna-s-2.1"

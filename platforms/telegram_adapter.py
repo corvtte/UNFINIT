@@ -304,7 +304,7 @@ class TelegramAdapter:
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             bot_token=config.TELEGRAM_BOT_TOKEN,
-            workdir=str(config.DATA_DIR) if not use_in_memory else None,
+            workdir=str(config.DATA_DIR),
             in_memory=use_in_memory
         )
         self.bale_adapter = None
@@ -1874,7 +1874,7 @@ class TelegramAdapter:
                     await MediaService.ensure_local_binary(drop_id, dl_func)
                     if status_m:
                         try:
-                            await status_m.edit_text("✅ <b>انتقال فایل با موفقیت انجام شد.</b>", parse_mode=enums.ParseMode.HTML)
+                            await status_m.edit_text("<b>✅ فایل با موفقیت منتقل شد.</b>", parse_mode=enums.ParseMode.HTML)
                         except Exception:
                             pass
 
@@ -1910,7 +1910,7 @@ class TelegramAdapter:
                     await status_m.edit_text("✅ <b>تمام متادیتاها و تگ‌های فایل با موفقیت پاکسازی شد.</b>", parse_mode=enums.ParseMode.HTML)
                 else:
                     await status_m.edit_text("❌ خطا در پاکسازی متادیتا.", parse_mode=enums.ParseMode.HTML)
-            elif action in ("ai_transcribe", "ai_menu"):
+            elif action == "ai_transcribe" or action in ("ai_transcribe", "ai_menu"):  # استخراج متن و کپشن با AI
                 # Stage 1: AI Engine selection
                 kb = InlineKeyboardMarkup([
                     [InlineKeyboardButton("⚡️ گوگل جمینای (Gemini Flash)", callback_data=f"ai_eng:gemini:{drop_id}")],
@@ -2123,7 +2123,7 @@ class TelegramAdapter:
 
             # Physical Full Rewrite & Delivery (Apply Changes)
             elif action in ("apply_changes", "send_back"):
-                status_msg = await callback_query.message.reply_text("📥 <b>در حال دانلود فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
+                status_msg = await callback_query.message.reply_text("📥 <b>در حال دانلود از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
                 await ensure_binary()
                 try:
                     await status_msg.edit_text("⏳ <b>در حال رایت فیزیکی تگ‌های متادیتا روی فایل...</b>", parse_mode=enums.ParseMode.HTML)

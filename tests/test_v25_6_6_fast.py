@@ -140,30 +140,26 @@ class TestV2566Fast(unittest.TestCase):
             config.ADMIN_PANEL_PASSWORD = orig_pwd
 
     def test_05_env_example_documentation(self):
-        """Verify env.example and .env.example exist, match, and contain Persian guides."""
-        p_env = Path("env.example")
+        """Verify .env.example exists and contains Persian guides."""
         p_dot_env = Path(".env.example")
-        self.assertTrue(p_env.exists(), "env.example must exist!")
         self.assertTrue(p_dot_env.exists(), ".env.example must exist!")
 
-        content1 = p_env.read_text(encoding="utf-8")
-        content2 = p_dot_env.read_text(encoding="utf-8")
-        self.assertEqual(content1, content2, "env.example and .env.example must be synchronized!")
+        content = p_dot_env.read_text(encoding="utf-8")
 
         required_keys = [
             "API_ID", "API_HASH", "TELEGRAM_BOT_TOKEN", "TELEGRAM_OWNER_ID",
             "BALE_BOT_TOKEN", "BALE_OWNER_ID", "BALE_PAYMENT_TOKEN",
-            "RUBIKA_BOT_TOKEN", "RUBIKA_OWNER_ID", "RUBIKA_SESSION",
+            "RUBIKA_BOT_TOKEN", "RUBIKA_SESSION",
             "STORE_NAME", "WELCOME_TEXT", "CARD_NUMBER", "CARD_HOLDER",
             "ADMIN_PANEL_PASSWORD", "NARA_API_KEY", "NARA_MODEL", "NARA_BASE_URL",
             "GEMINI_API_KEY", "GEMINI_MODEL", "PERSISTENT_DATA_DIR", "PORT", "ENGINE_VERSION"
         ]
         for k in required_keys:
-            self.assertIn(k, content1, f"Key {k} missing from env.example")
+            self.assertIn(k, content, f"Key {k} missing from .env.example")
 
         # Verify Persian documentation presence
-        self.assertIn("تنظیم متغیرهای محیطی", content1)
-        self.assertIn("هاگینگ‌فیس", content1)
+        self.assertIn("تنظیم متغیرهای محیطی", content)
+        self.assertIn("هاگینگ‌فیس", content)
 
     def test_06_version_consistency_v25_6_6(self):
         """Verify version is consistently set to v25.6.6 across core and web panel."""

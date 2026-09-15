@@ -1,5 +1,4 @@
 {
-  "admin_password": "",
   "TELEGRAM_BOT_TOKEN": "",
   "TELEGRAM_OWNER_ID": "987654321",
   "BALE_OWNER_ID": "123456789",
@@ -8,7 +7,6 @@
   "RUBIKA_OWNER_ID": "b0BNCMy0zOH0f52e0bd2ca1faa9de77f",
   "FORCE_JOIN_CHANNEL_TELEGRAM": "",
   "FORCE_JOIN_CHANNEL_BALE": "",
-  "ADMIN_PANEL_PASSWORD": "",
   "NARA_API_KEY": "",
   "NARA_MODEL": "stepfun-3.7-flash",
   "NARA_BASE_URL": "https://router.bynara.id/v1",
@@ -25,5 +23,11 @@
   "GEMINI_API_KEY": "",
   "GEMINI_MODEL": "gemini-3.6-flash",
   "DEFAULT_ARTIST": "استاد عباس‌منش",
-  "AI_PROVIDER": "gemini"
+  "AI_PROVIDER": "gemini",
+  "AI_BASE_URL": "https://api.vyceai.com/v1",
+  "AI_API_KEY": "",
+  "VYCEAI_API_KEY": "",
+  "AI_MODEL": "deepseek-v4.1",
+  "admin_password": "",
+  "ADMIN_PANEL_PASSWORD": ""
 }

@@ -1,16 +1,17 @@
 """
-Standard OpenAI/VyceAI AI Service for UNFINIT Store Engine
-Directly connects to VyceAI (https://api.vyceai.com/v1) using standard OpenAI-compatible API.
-Supports deepseek-v4.1, deepseek-v4-flash, claude-sonnet-4-6, agnes-3.0-flash.
+Multi-Provider AI Service for UNFINIT Store Engine
+Supports VyceAI, Nara Router, Google Gemini, and Custom OpenAI-compatible endpoints.
+Maintains distinct API keys per provider and strictly prevents fake model badges on fallback.
 """
 
 import asyncio
 import json
 import logging
-import aiohttp
 from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional
 from pathlib import Path
+import aiohttp
+
 from core.config import config
 
 logger = logging.getLogger("ai_service")
@@ -50,34 +51,62 @@ async def ai_typing_action(action_coro_fn, interval: float = 4.0):
 
 class AIService:
     """
-    Standard AI Service connecting to VyceAI (OpenAI-compatible) endpoint.
+    Multi-Provider AI Service supporting VyceAI, Nara Router, Google Gemini, and Custom endpoints.
     """
-    ALLOWED_MODELS = [
-        "deepseek-v4.1",
-        "deepseek-v4-flash",
-        "claude-sonnet-4-6",
-        "agnes-3.0-flash"
-    ]
-
     MODEL_DISPLAY_NAMES = {
         "deepseek-v4.1": "DeepSeek-v4.1",
         "deepseek-v4-flash": "DeepSeek-v4-Flash",
         "claude-sonnet-4-6": "Claude-Sonnet-4.6",
         "claude-sonnet-4.6": "Claude-Sonnet-4.6",
-        "agnes-3.0-flash": "Agnes-3.0-Flash"
+        "agnes-3.0-flash": "Agnes-3.0-Flash",
+        "stepfun-3.7-flash": "StepFun-3.7",
+        "mimo-v2.5-free": "Mimo-v2.5",
+        "qwen2.5-72b": "Qwen-2.5-72B",
+        "gemini-3.6-flash": "Gemini-3.6-Flash",
+        "gemini-3.8-flash": "Gemini-3.8-Flash",
+        "gemini-3.1-pro": "Gemini-3.1-Pro"
     }
 
     def format_model_badge(self, model: Optional[str] = None) -> str:
-        m = (model or config.AI_MODEL or "deepseek-v4.1").strip().lower()
-        display = self.MODEL_DISPLAY_NAMES.get(m)
+        active_model = (model or config.AI_MODEL or "deepseek-v4.1").strip().lower()
+        display = self.MODEL_DISPLAY_NAMES.get(active_model)
         if not display:
             for k, v in self.MODEL_DISPLAY_NAMES.items():
-                if k in m or m in k:
+                if k in active_model or active_model in k:
                     display = v
                     break
         if not display:
-            display = m.capitalize()
+            display = active_model.capitalize()
         return f"\n\n🧠 {display}"
+
+    def get_provider_config(self, override_provider: Optional[str] = None) -> Dict[str, str]:
+        """Returns the active provider, base_url, api_key, and default model."""
+        provider = (override_provider or getattr(config, "AI_PROVIDER", "vyceai") or "vyceai").strip().lower()
+        if provider == "nara":
+            base_url = (getattr(config, "NARA_BASE_URL", "") or "https://router.bynara.id/v1").strip().rstrip("/")
+            api_key = (getattr(config, "NARA_API_KEY", "") or "").strip()
+            model = (getattr(config, "NARA_MODEL", "") or getattr(config, "AI_MODEL", "") or "stepfun-3.7-flash").strip()
+        elif provider == "gemini":
+            base_url = "https://generativelanguage.googleapis.com/v1beta"
+            api_key = (getattr(config, "GEMINI_API_KEY", "") or "").strip()
+            model = (getattr(config, "GEMINI_MODEL", "") or getattr(config, "AI_MODEL", "") or "gemini-3.8-flash").strip()
+        elif provider == "custom":
+            base_url = (getattr(config, "AI_BASE_URL", "") or "").strip().rstrip("/")
+            api_key = (getattr(config, "AI_API_KEY", "") or "").strip()
+            model = (getattr(config, "AI_MODEL", "") or "default").strip()
+        else:
+            # vyceai default
+            provider = "vyceai"
+            base_url = (getattr(config, "AI_BASE_URL", "") or "https://api.vyceai.com/v1").strip().rstrip("/")
+            api_key = (getattr(config, "VYCEAI_API_KEY", "") or getattr(config, "AI_API_KEY", "") or "").strip()
+            model = (getattr(config, "AI_MODEL", "") or "deepseek-v4.1").strip()
+
+        return {
+            "provider": provider,
+            "base_url": base_url,
+            "api_key": api_key,
+            "model": model
+        }
 
     async def chat(
         self,
@@ -85,23 +114,46 @@ class AIService:
         history: Optional[List[Dict[str, Any]]] = None,
         system_prompt: Optional[str] = None,
         model: Optional[str] = None,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        provider: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Sends a chat completion request to the configured VyceAI / OpenAI-compatible endpoint.
+        Sends a chat completion request to the active provider (VyceAI, Nara, Gemini, Custom).
         """
-        api_key = (config.AI_API_KEY or "").strip()
-        base_url = (config.AI_BASE_URL or "https://api.vyceai.com/v1").strip().rstrip("/")
-        model_name = (model or config.AI_MODEL or "deepseek-v4.1").strip()
+        cfg = self.get_provider_config(override_provider=provider)
+        active_provider = cfg["provider"]
+        api_key = cfg["api_key"]
+        base_url = cfg["base_url"]
+        model_name = (model or cfg["model"]).strip()
 
         if not api_key:
             return {
                 "ok": False,
-                "error": "AI_API_KEY is not set",
+                "error": f"کلید API سرویس {active_provider} در تنظیمات پنل وارد نشده است.",
                 "reply": "",
                 "model": model_name
             }
 
+        # Handle Gemini directly
+        if active_provider == "gemini":
+            try:
+                from services.ai_agent_service import ai_agent_service
+                return await ai_agent_service.chat_gemini(
+                    user_message=user_message,
+                    history=history,
+                    model=model_name,
+                    system_prompt=system_prompt
+                )
+            except Exception as e:
+                logger.warning(f"[ai_service] Gemini chat error: {e}")
+                return {
+                    "ok": False,
+                    "error": str(e),
+                    "reply": "",
+                    "model": model_name
+                }
+
+        # Handle OpenAI-compatible endpoints (VyceAI, Nara, Custom)
         endpoint = f"{base_url}/chat/completions"
         headers = {
             "Content-Type": "application/json",
@@ -146,7 +198,7 @@ class AIService:
                         }
                     else:
                         err_text = await resp.text()
-                        logger.warning(f"[ai_service] VyceAI HTTP {resp.status}: {err_text[:200]}")
+                        logger.warning(f"[ai_service] {active_provider} HTTP {resp.status}: {err_text[:200]}")
                         return {
                             "ok": False,
                             "error": f"HTTP {resp.status}: {err_text[:150]}",
@@ -154,7 +206,7 @@ class AIService:
                             "model": model_name
                         }
         except Exception as e:
-            logger.warning(f"[ai_service] VyceAI request failed: {e}")
+            logger.warning(f"[ai_service] {active_provider} request failed: {e}")
             return {
                 "ok": False,
                 "error": str(e),
@@ -170,8 +222,17 @@ class AIService:
         """
         AI Sales & Support Copilot:
         Provides inspiring, motivational buying guidance and course consultations.
-        Appends the active model badge to the response.
+        Appends the active model badge ONLY when the response is successfully generated.
+        NEVER appends fake model badges in fallback / missing key scenarios.
         """
+        cfg = self.get_provider_config()
+        if not cfg["api_key"]:
+            return (
+                "⚠️ **کلید دسترسی هوش مصنوعی تنظیم نشده است.**\n"
+                f"سرویس فعال فعلی «{cfg['provider'].upper()}» می‌باشد اما کلید API آن در تنظیمات سکرت‌ها ثبت نگردیده است.\n"
+                "لطفاً جهت فعال‌سازی پاسخگویی هوشمند، کلید دسترسی مربوطه را در تب سکرت‌ها و توکن‌ها وارد فرمایید."
+            )
+
         courses_data = []
         courses_json_path = config.DATA_DIR / "courses.json"
         if courses_json_path.exists():
@@ -222,26 +283,42 @@ class AIService:
             f"۵. به پیام‌های احوال‌پرسی یا عمومی با انرژی بسیار بالا و پیام مثبت پاسخ دهید و سپس خدمات آکادمی را با افتخار معرفی نمایید."
         )
 
-        badge = self.format_model_badge(config.AI_MODEL)
+        badge = self.format_model_badge(cfg["model"])
 
         try:
-            res = await self.chat(user_message=user_message, history=history, system_prompt=sys_prompt)
+            res = await self.chat(
+                user_message=user_message,
+                history=history,
+                system_prompt=sys_prompt,
+                model=cfg["model"],
+                provider=cfg["provider"]
+            )
             if res.get("ok") and res.get("reply"):
+                # Successfully generated response: attach authentic model badge
                 return f"{res['reply'].strip()}{badge}"
+            else:
+                err_msg = res.get("error") or "خطای نامشخص"
+                logger.warning(f"[ai_service] chat_course_support returned error: {err_msg}")
+                # Clear error notice WITHOUT fake badge
+                return f"⚠️ در پردازش پیام توسط هوش مصنوعی ({cfg['provider'].upper()}) خطایی رخ داد: {err_msg}"
         except Exception as e:
-            logger.warning(f"[ai_service] chat_course_support error: {e}")
-
-        # Intelligent polite Persian greeting fallback
-        fallback_text = (
-            "سلام و درود دوست ارزشمند من! ✨\n\n"
-            "بسیار خوشحالم که در مسیر یادگیری، آگاهی و رشد فردی با ما همراه هستید. 🌱\n\n"
-            "دوره‌های فعال و تحول‌آفرین آکادمی ما عبارتند از:\n\n"
-            f"{catalog_text}\n\n"
-            "💎 جهت مشاهده جزئیات بیشتر، ثبت‌نام و دریافت فوری محتوا، کافیست دستور /start را ارسال فرمایید یا دکمه **«📚 لیست دوره‌های آموزشی»** را لمس نمایید.\n"
-            "اگر در انتخاب مناسب‌ترین دوره نیاز به مشاوره دارید، با کمال میل راهنمای شما هستم! 🌟"
-        )
-        return f"{fallback_text}{badge}"
+            logger.warning(f"[ai_service] chat_course_support exception: {e}")
+            # Clear exception notice WITHOUT fake badge
+            return f"⚠️ ارتباط با سرویس هوش مصنوعی برقرار نشد: {str(e)}"
 
 
 ai_service = AIService()
 format_model_badge = ai_service.format_model_badge
+get_provider_config = ai_service.get_provider_config
+AI_PROVIDERS = ["vyceai", "nara", "gemini", "custom"]
+
+async def generate_ai_response(user_message: str, provider: Optional[str] = None, api_key: Optional[str] = None, model: Optional[str] = None) -> Dict[str, Any]:
+    if api_key is not None and not api_key.strip():
+        return {"ok": False, "error": "کلید دسترسی (API Key) تنظیم نشده است."}
+    return await ai_service.chat(user_message, provider=provider, model=model)
+
+def format_ai_response_with_badge(res: Dict[str, Any]) -> str:
+    if not res.get("ok"):
+        return f"❌ {res.get('error', 'خطا در پردازش هوش مصنوعی')}"
+    badge = ai_service.format_model_badge(res.get("model"))
+    return f"{res.get('reply', '').strip()}{badge}"

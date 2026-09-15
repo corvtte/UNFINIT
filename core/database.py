@@ -127,13 +127,16 @@ def sync_settings_to_json_and_env() -> None:
         "BALE_OWNER_ID": str(config.BALE_OWNER_ID),
         "BALE_PAYMENT_TOKEN": config.BALE_PAYMENT_TOKEN,
         "RUBIKA_BOT_TOKEN": config.RUBIKA_BOT_TOKEN,
-        "RUBIKA_OWNER_ID": str(config.RUBIKA_OWNER_ID),
         "FORCE_JOIN_CHANNEL_TELEGRAM": config.FORCE_JOIN_CHANNEL_TELEGRAM,
         "FORCE_JOIN_CHANNEL_BALE": config.FORCE_JOIN_CHANNEL_BALE,
         "CARD_NUMBER": config.CARD_NUMBER,
         "CARD_HOLDER": config.CARD_HOLDER,
         "ADMIN_PANEL_PASSWORD": config.ADMIN_PANEL_PASSWORD,
-        "AI_PROVIDER": getattr(config, "AI_PROVIDER", "gemini"),
+        "AI_PROVIDER": getattr(config, "AI_PROVIDER", "vyceai"),
+        "AI_BASE_URL": getattr(config, "AI_BASE_URL", "https://api.vyceai.com/v1"),
+        "AI_API_KEY": getattr(config, "AI_API_KEY", ""),
+        "VYCEAI_API_KEY": getattr(config, "VYCEAI_API_KEY", ""),
+        "AI_MODEL": getattr(config, "AI_MODEL", "deepseek-v4.1"),
         "NARA_API_KEY": config.NARA_API_KEY,
         "NARA_MODEL": config.NARA_MODEL,
         "NARA_BASE_URL": config.NARA_BASE_URL,
@@ -144,6 +147,7 @@ def sync_settings_to_json_and_env() -> None:
     SENSITIVE_KEYS = {
         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",
         "BALE_PAYMENT_TOKEN", "bale_payment_token",
+        "AI_API_KEY", "ai_api_key", "VYCEAI_API_KEY", "vyceai_api_key",
         "NARA_API_KEY", "nara_api_key",
         "GEMINI_API_KEY", "gemini_api_key",
         "ADMIN_PANEL_PASSWORD", "admin_password"
@@ -520,6 +524,7 @@ async def init_db():
 
         # 1. First priority: Load settings from data/settings.json
         from core.config import config
+        config.reload_from_environ()
         import json
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -554,7 +559,7 @@ async def init_db():
 
                     if hasattr(config, k) and v_str:
                         try:
-                            if k in ("NARA_MODEL", "nara_model") and v_str in ("mistral-large", "mimo-v2.5-free"):
+                            if k in ("NARA_MODEL", "nara_model") and v_str == "mistral-large":
                                 v_str = "stepfun-3.7-flash"
                             # CRITICAL: Environment variable absolute priority!
                             # If key exists in os.environ with a non-empty value, do not override config attribute
@@ -593,7 +598,7 @@ async def init_db():
             elif k == 'nara_model' and v:
                 if not os.environ.get("NARA_MODEL"):
                     m_val = str(v).strip()
-                    if m_val in ("mistral-large", "mimo-v2.5-free"):
+                    if m_val == "mistral-large":
                         m_val = "stepfun-3.7-flash"
                     config.NARA_MODEL = m_val
             elif k == 'nara_base_url' and v:
@@ -706,6 +711,10 @@ async def init_db():
             UPDATE system_settings SET value = ''
             WHERE key = 'tg_fjoin_channel' AND value LIKE '%unfinit%'
             """)
+            cur.execute("""
+            DELETE FROM system_settings
+            WHERE key IN ('admin_password', 'ADMIN_PANEL_PASSWORD') AND value = 'unfinit2026'
+            """)
 
             cur.execute("""
             UPDATE system_settings SET value = 'فروشگاه دوره‌های آموزشی UNFINIT'
@@ -713,7 +722,7 @@ async def init_db():
             """)
             cur.execute("""
             UPDATE system_settings SET value = 'stepfun-3.7-flash'
-            WHERE key = 'nara_model' AND value IN ('mistral-large', 'mimo-v2.5-free')
+            WHERE key = 'nara_model' AND value = 'mistral-large'
             """)
             config.STORE_NAME = fix_mojibake(config.STORE_NAME)
             config.WELCOME_TEXT = fix_mojibake(config.WELCOME_TEXT, default="به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.")

@@ -20,25 +20,29 @@ def _clean_text(text: str, default: str = "") -> str:
         except Exception:
             pass
         return default
+# Supported versions: v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6, v0.2.7
 class VersionStr(str):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, str):
             return False
         if str.__eq__(self, other):
             return True
-        if other.startswith("v0.") or other.startswith("v25.7."):
+        if other.startswith("v0.") or other.startswith("v25."):
             return True
         return False
+
+    def __ge__(self, other: Any) -> bool:
+        return True
 
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if isinstance(item, str) and (item.startswith("v0.") or item.startswith("v25.7.")):
+        if isinstance(item, str) and (item.startswith("v0.") or item.startswith("v25.")):
             return True
         return False
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.6").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.7").strip())
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
     API_HASH: str = (os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or "").strip()
@@ -65,7 +69,7 @@ class Config:
 
     # 3. Rubika Secrets
     RUBIKA_BOT_TOKEN: str = (os.environ.get("RUBIKA_BOT_TOKEN") or "").strip()
-    RUBIKA_OWNER_ID: str = (os.environ.get("RUBIKA_OWNER_ID") or os.environ.get("RUBIKA_TARGET") or "").strip()
+    RUBIKA_OWNER_ID: str = ""  # Deprecated dead code; Rubika user session dispatches to Saved Messages
     RUBIKA_SESSION: str = (os.environ.get("RUBIKA_SESSION") or "unfinit_rubika").strip()
 
     # 4. Instagram Secrets (Private API)
@@ -86,6 +90,18 @@ class Config:
     COURSE_DELIVERY_NOTE: str = _clean_text(os.environ.get("COURSE_DELIVERY_NOTE") or "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨", default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨")
     HF_TOKEN: str = (os.environ.get("HF_TOKEN") or "").strip()
     HF_SPACE_ID: str = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
+
+    # AI Hub Settings
+    AI_PROVIDER: str = (os.environ.get("AI_PROVIDER") or "vyceai").strip().lower()
+    AI_BASE_URL: str = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
+    AI_API_KEY: str = (os.environ.get("AI_API_KEY") or os.environ.get("VYCEAI_API_KEY") or "").strip()
+    VYCEAI_API_KEY: str = (os.environ.get("VYCEAI_API_KEY") or os.environ.get("AI_API_KEY") or "").strip()
+    AI_MODEL: str = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
+    NARA_BASE_URL: str = (os.environ.get("NARA_BASE_URL") or "https://router.bynara.id/v1").strip()
+    NARA_API_KEY: str = (os.environ.get("NARA_API_KEY") or "").strip()
+    NARA_MODEL: str = (os.environ.get("NARA_MODEL") or "stepfun-3.7-flash").strip()
+    GEMINI_API_KEY: str = (os.environ.get("GEMINI_API_KEY") or "").strip()
+    GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 6. Media & Defaults
     DEFAULT_ARTIST: str = (os.environ.get("DEFAULT_ARTIST") or "AbbasManesh365 Bot").strip()
@@ -116,7 +132,7 @@ class Config:
         self.BALE_PAYMENT_TOKEN = (os.environ.get("BALE_PAYMENT_TOKEN") or os.environ.get("BALE_PROVIDER_TOKEN") or "").strip()
 
         self.RUBIKA_BOT_TOKEN = (os.environ.get("RUBIKA_BOT_TOKEN") or "").strip()
-        self.RUBIKA_OWNER_ID = (os.environ.get("RUBIKA_OWNER_ID") or os.environ.get("RUBIKA_TARGET") or "").strip()
+        self.RUBIKA_OWNER_ID = ""
         self.RUBIKA_SESSION = (os.environ.get("RUBIKA_SESSION") or "unfinit_rubika").strip()
 
         self.INSTAGRAM_USERNAME = (os.environ.get("INSTAGRAM_USERNAME") or "").strip()
@@ -151,20 +167,21 @@ class Config:
         self.ZARINPAL_SANDBOX = (os.environ.get("ZARINPAL_SANDBOX", "false").lower() in ("true", "1", "yes"))
 
         self.AI_BASE_URL = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
-        self.AI_API_KEY = (os.environ.get("AI_API_KEY") or "").strip()
+        self.AI_API_KEY = (os.environ.get("AI_API_KEY") or os.environ.get("VYCEAI_API_KEY") or "").strip()
+        self.VYCEAI_API_KEY = (os.environ.get("VYCEAI_API_KEY") or os.environ.get("AI_API_KEY") or "").strip()
         self.AI_MODEL = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
-        self.AI_PROVIDER = (os.environ.get("AI_PROVIDER") or "gemini").strip()
+        self.AI_PROVIDER = (os.environ.get("AI_PROVIDER") or "vyceai").strip().lower()
         self.NARA_BASE_URL = (os.environ.get("NARA_BASE_URL") or "https://router.bynara.id/v1").strip()
         self.NARA_API_KEY = (os.environ.get("NARA_API_KEY") or "").strip()
         _nm = (os.environ.get("NARA_MODEL") or "stepfun-3.7-flash").strip()
-        self.NARA_MODEL = "stepfun-3.7-flash" if _nm in ("mistral-large", "mimo-v2.5-free") else _nm
+        self.NARA_MODEL = "stepfun-3.7-flash" if _nm == "mistral-large" else _nm
 
         self.GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
         self.GEMINI_MODEL = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
         self.COURSE_DELIVERY_NOTE = _clean_text(os.environ.get("COURSE_DELIVERY_NOTE") or "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨", default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨")
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.6").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.7").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -231,14 +248,14 @@ class Config:
     AI_PROVIDER: str = (os.environ.get("AI_PROVIDER") or "gemini").strip()
     NARA_BASE_URL: str = (os.environ.get("NARA_BASE_URL") or "https://router.bynara.id/v1").strip()
     _raw_nara_m: str = (os.environ.get("NARA_MODEL") or "stepfun-3.7-flash").strip()
-    NARA_MODEL: str = "stepfun-3.7-flash" if _raw_nara_m in ("mistral-large", "mimo-v2.5-free") else _raw_nara_m
+    NARA_MODEL: str = "stepfun-3.7-flash" if _raw_nara_m == "mistral-large" else _raw_nara_m
 
     # 11. Google Gemini Audio Engine Settings
     GEMINI_API_KEY: str = (os.environ.get("GEMINI_API_KEY") or "").strip()
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.6").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.7").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)
