@@ -985,27 +985,42 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         sz = temp_dest.stat().st_size
                                         sz_mb = sz / (1024 * 1024)
 
-                                        # Safe 50 MB limit management for Bale
+                                        # Safe dynamic limit management for Bale
                                         final_send_path = temp_dest
-                                        if sz_mb >= 49.0:
-                                            orig_size_str = f"{sz_mb:.1f}"
-                                            await bale.send_message(
-                                                chat_id,
-                                                "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                                                f"📊 حجم فعلی: <code>{orig_size_str} MB</code> ➔ هدف: <code>زیر 49.9 MB</code>\n"
-                                                "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید..."
-                                            )
+                                        safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+                                        target_mb = max(1.0, round(safe_mb - 1.5, 2))
+                                        if sz_mb >= safe_mb or sz > getattr(config, "MAX_SAFE_BALE_SIZE_BYTES", int(safe_mb * 1024 * 1024)):
+                                            orig_mb = f"{sz_mb:.1f}"
+                                            try:
+                                                await bale.edit_message_text(
+                                                    chat_id,
+                                                    msg_id,
+                                                    "⚙️ <b>در حال فشرده‌سازی هوشمند...</b>\n"
+                                                    f"📦 حجم فعلی: <code>{orig_mb} MB</code> ➔ هدف: <code>زیر {target_mb} MB</code>"
+                                                )
+                                            except Exception as edit_err:
+                                                logger.debug(f"Bale edit before compression notice: {edit_err}")
+
+                                            loop = asyncio.get_running_loop()
                                             if temp_dest.suffix.lower() in (".mp3", ".m4a", ".wav", ".aac"):
                                                 from media.compressor import SmartAudioCompressor
-                                                comp_p, _, _, _, was_c = SmartAudioCompressor.compress_if_needed(temp_dest)
+                                                comp_p, _, _, _, was_c = await loop.run_in_executor(
+                                                    None, SmartAudioCompressor.compress_if_needed, temp_dest
+                                                )
                                                 if was_c and comp_p.exists():
                                                     final_send_path = comp_p
                                             elif temp_dest.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi", ".webm"):
                                                 from media.compressor import SmartVideoCompressor
-                                                comp_p, _, _, _, was_c = SmartVideoCompressor.compress_if_needed(temp_dest)
+                                                comp_p, _, _, _, was_c = await loop.run_in_executor(
+                                                    None, SmartVideoCompressor.compress_if_needed, temp_dest
+                                                )
                                                 if was_c and comp_p.exists():
                                                     final_send_path = comp_p
-                                            await bale.send_message(chat_id, "📤 <b>در حال ارسال به بله...</b>")
+
+                                            try:
+                                                await bale.edit_message_text(chat_id, msg_id, "📤 <b>در حال ارسال به بله...</b>")
+                                            except Exception:
+                                                pass
 
                                         drop_id = uuid.uuid4().hex[:8]
                                         is_v = final_send_path.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi", ".webm")
@@ -1444,17 +1459,20 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 ok, final_mp3, info = MediaService.extract_audio_from_video(drop_id)
                                                 if ok and final_mp3.exists():
                                                     sz_mb = final_mp3.stat().st_size / (1024 * 1024)
-                                                    send_mp3_p = final_mp3
-                                                    if sz_mb >= 49.0:
+                                                    safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+                                                    target_mb = max(1.0, round(safe_mb - 1.5, 2))
+                                                    if sz_mb >= safe_mb or final_mp3.stat().st_size > getattr(config, "MAX_SAFE_BALE_SIZE_BYTES", int(safe_mb * 1024 * 1024)):
                                                         orig_size_str = f"{sz_mb:.1f}"
                                                         await bale.send_message(
                                                             chat_id,
-                                                            "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                                                            f"📊 حجم فعلی: <code>{orig_size_str} MB</code> ➔ هدف: <code>زیر 49.9 MB</code>\n"
-                                                            "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید..."
+                                                            "⚙️ <b>در حال فشرده‌سازی هوشمند...</b>\n"
+                                                            f"📦 حجم فعلی: <code>{orig_size_str} MB</code> ➔ هدف: <code>زیر {target_mb} MB</code>"
                                                         )
                                                         from media.compressor import SmartAudioCompressor
-                                                        comp_p, _, _, _, was_c = SmartAudioCompressor.compress_if_needed(final_mp3)
+                                                        loop = asyncio.get_running_loop()
+                                                        comp_p, _, _, _, was_c = await loop.run_in_executor(
+                                                            None, SmartAudioCompressor.compress_if_needed, final_mp3
+                                                        )
                                                         if was_c and comp_p.exists():
                                                             send_mp3_p = comp_p
                                                         await bale.send_message(chat_id, "📤 <b>در حال ارسال به بله...</b>")

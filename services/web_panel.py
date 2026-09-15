@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.7"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.8"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -404,6 +404,15 @@ def render_dashboard_html() -> str:
         .theme-accent-btn:hover {{
             filter: brightness(1.15);
         }}
+        .theme-card-btn {{
+            background: var(--card-bg) !important;
+            border: 1px solid var(--card-border) !important;
+            color: var(--fg-color) !important;
+        }}
+        .theme-card-btn:hover {{
+            border-color: var(--accent-color) !important;
+            filter: brightness(1.15);
+        }}
         #studioDropzone {{
             background-color: var(--input-bg) !important;
             border-color: var(--card-border) !important;
@@ -741,6 +750,9 @@ def render_dashboard_html() -> str:
                 <button data-tab="orders" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🧾</span> سفارشات و تراکنش‌ها
                 </button>
+                <button data-tab="downloads" id="btn-tab-downloads" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🎁</span> فایل‌های دانلودی
+                </button>
                 <button data-tab="tokens" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
                 </button>
@@ -762,6 +774,9 @@ def render_dashboard_html() -> str:
                 <button data-tab="orders" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🧾</span> سفارشات و تراکنش‌ها
                 </button>
+                <button data-tab="downloads" id="m-btn-tab-downloads" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🎁</span> فایل‌های دانلودی
+                </button>
                 <button data-tab="tokens" id="m-btn-tab-tokens" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
                 </button>
@@ -775,7 +790,7 @@ def render_dashboard_html() -> str:
             <!-- Platform Status Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- Telegram Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/40 transition">
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex items-center gap-2">
                             <span class="text-2xl">✈️</span>
@@ -785,12 +800,12 @@ def render_dashboard_html() -> str:
                             {p['telegram']['status']}
                         </span>
                     </div>
-                    <p class="text-xs text-slate-400">شناسه ادمین: <code class="text-blue-400">{p['telegram']['owner_id']}</code></p>
+                    <p class="text-xs text-slate-400">شناسه ادمین: <code style="color: var(--accent-color);">{p['telegram']['owner_id']}</code></p>
                     <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300">Pyrogram MTProto v2</span></p>
                 </div>
 
                 <!-- Bale Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group hover:border-emerald-500/40 transition">
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex items-center gap-2">
                             <span class="text-2xl">🟢</span>
@@ -800,12 +815,12 @@ def render_dashboard_html() -> str:
                             {p['bale']['status']}
                         </span>
                     </div>
-                    <p class="text-xs text-slate-400">شناسه مقصد: <code class="text-emerald-400">{p['bale']['owner_id']}</code></p>
-                    <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="text-emerald-300 font-semibold">{config.MAX_SAFE_BALE_SIZE_MB} MB (کمپرس خودکار هوشمند)</span></p>
+                    <p class="text-xs text-slate-400">شناسه مقصد: <code style="color: var(--accent-color);">{p['bale']['owner_id']}</code></p>
+                    <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="font-semibold" style="color: var(--accent-color);">{config.MAX_SAFE_BALE_SIZE_MB} MB (کمپرس خودکار هوشمند)</span></p>
                 </div>
 
                 <!-- Rubika User Session Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group hover:border-indigo-500/40 transition">
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex items-center gap-2">
                             <span class="text-2xl">👤</span>
@@ -815,13 +830,13 @@ def render_dashboard_html() -> str:
                             {p['rubika_user']['status']}
                         </span>
                     </div>
-                    <p class="text-xs text-slate-400">حالت: <span class="text-indigo-300 font-semibold">ارسال نامحدود به Saved Messages</span></p>
+                    <p class="text-xs text-slate-400">حالت: <span class="font-semibold" style="color: var(--accent-color);">ارسال نامحدود به Saved Messages</span></p>
                     <p class="text-xs text-slate-400 mt-1">رمزنگاری: <span class="text-slate-300">RSA PKCS#1 v1.5 خودکار</span></p>
                 </div>
             </div>
 
             <!-- Cross-Platform URL Dispatcher & Tools -->
-            <div class="glass p-6 rounded-2xl">
+            <div class="glass p-6 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
                 <h2 class="text-base font-bold text-slate-100 mb-2 flex items-center gap-2">
                     <span>🌐</span> دانلود استریم از لینک مستقیم و دیسپچ بین پلتفرم‌ها (URL Uploader)
                 </h2>
@@ -838,41 +853,16 @@ def render_dashboard_html() -> str:
                         <select id="targetPlatform" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
                             <option value="telegram">✈️ تلگرام (حساب ادمین)</option>
                             <option value="rubika_user">🟣 روبیکا (پیام‌های ذخیره‌شده)</option>
-                            <option value="bale">🟢 بله (با کمپرسور خودکار ۴۹.۹۹ MB)</option>
+                            <option value="bale">🟢 بله (با کمپرسور خودکار {config.MAX_SAFE_BALE_SIZE_MB} MB)</option>
                         </select>
                     </div>
                     <div class="flex items-end">
-                        <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-2">
+                        <button type="submit" id="submitBtn" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
                             <span>⚡️</span> دانلود و ارسال خودکار
                         </button>
                     </div>
                 </form>
                 <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
-            </div>
-
-            <!-- Site Free Downloads Feed Scraper Section -->
-            <div class="glass p-6 rounded-2xl space-y-4 border border-cyan-500/20 shadow-xl" style="background: var(--glass-bg); border-color: var(--card-border);">
-                <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-white/5">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>🎁</span> رصد و دریافت هدایای دانلودی سایت
-                        </h2>
-                        <p class="text-xs text-slate-400 mt-1">
-                            رصد زنده ۵ فایل و هدیه اخیر سایت با امکان انتقال مستقیم لینک مدیا به ربات جهت دانلود خودکار، تگ‌گذاری و انتشار
-                        </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
-                            <span>🔄</span> به‌روزرسانی هدایا
-                        </button>
-                    </div>
-                </div>
-
-                <div id="feedDownloadsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">
-                        در حال بارگذاری آخرین هدایای دانلودی سایت...
-                    </div>
-                </div>
             </div>
 
             <!-- Web Mp3tag Studio & Media Table -->
@@ -927,13 +917,13 @@ def render_dashboard_html() -> str:
                                 <option value="name_asc">نام فایل (الفبا)</option>
                             </select>
                         </div>
-                        <button onclick="openBatchTagModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-bold shadow-md shadow-cyan-600/20 transition flex items-center gap-1.5">
+                        <button onclick="openBatchTagModal()" class="theme-accent-btn px-3.5 py-1.5 rounded-xl text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
                             <span>✏️</span> ویرایش گروهی تگ‌ها (Batch Edit)
                         </button>
-                        <button onclick="cleanupStudioDrops()" id="btnCleanupStudio" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5" title="پاکسازی رکوردهای تکراری و سشن‌های خالی">
+                        <button onclick="cleanupStudioDrops()" id="btnCleanupStudio" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5" title="پاکسازی رکوردهای تکراری و سشن‌های خالی">
                             <span>🧹</span> پاکسازی سشن‌های خالی
                         </button>
-                        <button onclick="refreshStudioList()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition flex items-center gap-1">
+                        <button onclick="refreshStudioList()" class="theme-card-btn px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1">
                             <span>🔄</span> به‌روزرسانی لیست
                         </button>
                     </div>
@@ -958,9 +948,9 @@ def render_dashboard_html() -> str:
             </div>
 
             <!-- Studio & Course Copilot (Integrated into Studio Tab) -->
-            <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border border-cyan-500/20">
+            <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-2xl shadow-lg shadow-cyan-500/20 text-white">
+                    <div class="w-12 h-12 rounded-2xl theme-accent-btn flex items-center justify-center font-bold text-2xl shadow-lg text-white">
                         🎛
                     </div>
                     <div>
@@ -972,35 +962,35 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-xl">
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border" style="background: var(--input-bg); border-color: var(--card-border);">
                         <label for="hermesModelSelect" class="text-xs text-slate-300 whitespace-nowrap">🤖 مدل هوش مصنوعی:</label>
-                        <select id="hermesModelSelect" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500">
+                        <select id="hermesModelSelect" class="border rounded-lg px-2.5 py-1 text-xs font-mono focus:outline-none" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">
                             <option value="stepfun-3.7-flash" selected>stepfun-3.7-flash (پیش‌فرض هوشمند و قوی متون فارسی)</option>
                             <option value="mimo-v2.5-free">mimo-v2.5-free (فوق‌سریع و رایگان)</option>
                             <option value="qwen2.5-72b">qwen2.5-72b (دقت نگارش بالا)</option>
                         </select>
                     </div>
-                    <span class="px-2.5 py-1.5 rounded-xl bg-cyan-950/80 text-cyan-300 text-[11px] border border-cyan-800 font-mono">🌐 router.bynara.id</span>
+                    <span class="px-2.5 py-1.5 rounded-xl border font-mono text-[11px]" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">🌐 router.bynara.id</span>
                 </div>
             </div>
 
             <!-- Chat Window -->
-            <div class="glass rounded-2xl border border-slate-800 flex flex-col h-[520px] overflow-hidden">
+            <div class="glass rounded-2xl border flex flex-col h-[520px] overflow-hidden shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
                 <div id="hermesChatBox" class="flex-1 p-5 overflow-y-auto space-y-4 chat-scrollbar">
-                    <div class="flex gap-2.5 items-center p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
-                        <div class="w-6 h-6 rounded-lg bg-cyan-600/30 text-cyan-300 flex items-center justify-center font-bold text-xs shrink-0">
+                    <div class="flex gap-2.5 items-center p-3 rounded-xl border text-xs text-slate-300" style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <div class="w-6 h-6 rounded-lg theme-accent-btn flex items-center justify-center font-bold text-xs shrink-0 text-white">
                             🤖
                         </div>
                         <span>دستیار هوش مصنوعی آماده پاسخگویی و ارائه کپشن دوره‌ها و پردازش رسانه است.</span>
                     </div>
                 </div>
-                <div class="p-4 bg-slate-900/90 border-t border-slate-800">
+                <div class="p-4 border-t" style="background: var(--card-bg); border-color: var(--card-border);">
                     <form id="hermesChatForm" onsubmit="handleSendHermes(event)" class="flex items-center gap-3">
-                        <button type="button" onclick="clearHermesChat()" title="پاکسازی چت" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 text-xs transition">
+                        <button type="button" onclick="clearHermesChat()" title="پاکسازی چت" class="theme-card-btn px-3 py-2.5 rounded-xl text-xs transition">
                             🗑
                         </button>
-                        <input type="text" id="hermesInput" placeholder="درخواست اتوماسیون متادیتا، کپشن فروش دوره یا مشاوره رسانه را بنویسید..." class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition">
-                        <button type="submit" id="btnSendHermes" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-xs font-bold text-white shadow-lg shadow-cyan-600/20 transition flex items-center gap-1.5 shrink-0">
+                        <input type="text" id="hermesInput" placeholder="درخواست اتوماسیون متادیتا، کپشن فروش دوره یا مشاوره رسانه را بنویسید..." class="flex-1 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition border" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <button type="submit" id="btnSendHermes" class="px-5 py-2.5 rounded-xl theme-accent-btn text-xs font-bold text-white shadow-lg transition flex items-center gap-1.5 shrink-0">
                             <span>ارسال</span> ➜
                         </button>
                     </form>
@@ -1025,7 +1015,7 @@ def render_dashboard_html() -> str:
                         <span class="text-[11px] text-slate-400 block">دوره‌های فعال / کل:</span>
                         <span class="text-sm font-bold text-cyan-400 font-mono">{active_count} از {len(products)}</span>
                     </div>
-                    <a href="/store" target="_blank" class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-cyan-500/20 transition flex items-center gap-2 text-xs">
+                    <a href="/store" target="_blank" class="theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center gap-2 text-xs">
                         <span>🌐</span> مشاهده ویترین فروشگاه (/store)
                     </a>
                     <button onclick="toggleAddCourseForm()" id="btnAddCourseToggle" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 text-xs">
@@ -1193,7 +1183,7 @@ def render_dashboard_html() -> str:
                         <button onclick="cleanupRejectedOrders()" class="px-3.5 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/80 transition flex items-center gap-1.5 shadow-sm" title="حذف یکباره کلیه سفارش‌های رد شده">
                             <span>🧹</span> پاکسازی سفارشات رد شده
                         </button>
-                        <button onclick="loadStoreOrders()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                        <button onclick="loadStoreOrders()" class="theme-card-btn px-3.5 py-2 rounded-xl text-cyan-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                             <span>🔄</span> به‌روزرسانی لیست سفارش‌ها
                         </button>
                     </div>
@@ -1300,7 +1290,61 @@ def render_dashboard_html() -> str:
             </div>
         </div>
 
-        <!-- ================= TAB 4: SECRETS & TOKENS ================= -->
+        <!-- ================= TAB 4: SITE FREE DOWNLOADS ================= -->
+        <div id="tab-downloads" class="hidden space-y-6">
+            <div class="glass p-6 rounded-2xl space-y-4 border shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-white/5">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>🎁</span> رصد و دریافت هدایای دانلودی سایت (فایل‌های دانلودی)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
+                            <span>🔄</span> به‌روزرسانی صفحه
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pagination Controls: Top -->
+                <div class="flex items-center justify-between gap-2 p-2 rounded-xl border" style="background: var(--glass-bg); border-color: var(--card-border);">
+                    <button type="button" id="btnPrevFeedPage" onclick="changeFeedPage(currentFeedPage - 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        <span>◀️</span> صفحه قبلی
+                    </button>
+                    <span id="feedPaginationInfo" class="text-xs text-slate-300 font-mono font-bold">
+                        صفحه <span id="feedCurrentPage" class="text-cyan-400 font-bold">۱</span> از ۳۹
+                    </span>
+                    <button type="button" id="btnNextFeedPage" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        صفحه بعدی <span>▶️</span>
+                    </button>
+                </div>
+
+                <!-- Feed Downloads Grid Container -->
+                <div id="feedDownloadsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="col-span-full text-center py-8 text-xs text-slate-400 font-mono">
+                        در حال بارگذاری فایل‌های دانلودی سایت...
+                    </div>
+                </div>
+
+                <!-- Pagination Controls: Bottom -->
+                <div class="flex items-center justify-between gap-2 p-2 rounded-xl border" style="background: var(--glass-bg); border-color: var(--card-border);">
+                    <button type="button" onclick="changeFeedPage(currentFeedPage - 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        <span>◀️</span> صفحه قبلی
+                    </button>
+                    <span class="text-xs text-slate-300 font-mono font-bold">
+                        صفحه <span id="feedCurrentPageBottom" class="text-cyan-400 font-bold">۱</span> از ۳۹
+                    </span>
+                    <button type="button" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        صفحه بعدی <span>▶️</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: SECRETS & TOKENS ================= -->
         <div id="tab-tokens" class="hidden space-y-6">
             <div class="glass p-6 rounded-2xl space-y-6">
                 <!-- Cloud Secrets Sync Hub -->
@@ -1548,10 +1592,10 @@ def render_dashboard_html() -> str:
                         <p class="text-xs text-slate-400 mt-1">تغییرات در data/settings.json و دیتابیس پایدار ذخیره شده و پس از ریستارت سرور نیز پایدار خواهند ماند.</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="handleExportSettings()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 font-medium flex items-center gap-1.5 transition shadow-sm">
+                        <button type="button" onclick="handleExportSettings()" class="theme-card-btn px-3 py-2 rounded-xl text-xs text-cyan-300 font-medium flex items-center gap-1.5 transition shadow-sm">
                             <span>📤</span> خروجی و پشتیبان‌گیری تنظیمات (.json)
                         </button>
-                        <label class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-emerald-300 font-medium flex items-center gap-1.5 transition shadow-sm cursor-pointer">
+                        <label class="theme-card-btn px-3 py-2 rounded-xl text-xs text-emerald-300 font-medium flex items-center gap-1.5 transition shadow-sm cursor-pointer">
                             <span>📥</span> درون‌ریزی و بازیابی تنظیمات
                             <input type="file" accept=".json,application/json" class="hidden" onchange="handleImportSettingsFile(this)">
                         </label>
@@ -1683,7 +1727,7 @@ def render_dashboard_html() -> str:
                         <span id="logStatus" class="text-xs text-emerald-400 flex items-center gap-1">
                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> همگام‌سازی هر ۴ ثانیه
                         </span>
-                        <a href="/api/logs/download" target="_blank" class="px-2.5 py-1 rounded bg-blue-950/80 hover:bg-blue-900 text-xs font-semibold text-blue-300 border border-blue-800 flex items-center gap-1 transition shadow-sm">
+                        <a href="/api/logs/download" target="_blank" class="theme-card-btn px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition shadow-sm">
                             <span>📥</span> دانلود فایل لاگ (.txt)
                         </a>
                         <button type="button" onclick="copyAllLogs()" id="copyBtn" class="px-2.5 py-1 rounded bg-cyan-950/80 hover:bg-cyan-900 text-xs font-semibold text-cyan-300 border border-cyan-800 flex items-center gap-1 transition">
@@ -2197,7 +2241,7 @@ def render_dashboard_html() -> str:
                     try {{
                         if (!tabId) tabId = 'studio';
                         let rawTab = tabId.startsWith('tab-') ? tabId.replace('tab-', '') : tabId;
-                        const validTabs = ['studio', 'courses', 'orders', 'tokens', 'settings'];
+                        const validTabs = ['studio', 'courses', 'orders', 'downloads', 'tokens', 'settings'];
                         if (!validTabs.includes(rawTab)) {{
                             rawTab = 'studio';
                         }}
@@ -2242,6 +2286,9 @@ def render_dashboard_html() -> str:
                             if (typeof window.loadStoreOrders === 'function') window.loadStoreOrders();
                             if (typeof window.loadStoreCoupons === 'function') window.loadStoreCoupons();
                             if (typeof window.loadStoreAnalytics === 'function') window.loadStoreAnalytics();
+                        }}
+                        if (rawTab === 'downloads') {{
+                            if (typeof window.fetchFeedDownloads === 'function') window.fetchFeedDownloads();
                         }}
                     }} catch (err) {{
                         console.error('[UNFINIT Navigation Module Error] switchTab error:', err);
@@ -2932,19 +2979,32 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        async function fetchFeedDownloads(force) {{
+        let currentFeedPage = 1;
+        const totalFeedPages = 39;
+        window.currentFeedPage = 1;
+
+        async function fetchFeedDownloads(force, page) {{
             const container = document.getElementById('feedDownloadsContainer');
             const btn = document.getElementById('btnRefreshFeed');
             if (!container) return;
+            if (typeof page === 'number' && page >= 1 && page <= totalFeedPages) {{
+                currentFeedPage = page;
+                window.currentFeedPage = page;
+            }}
+            const curPageEl = document.getElementById('feedCurrentPage');
+            const curPageBottomEl = document.getElementById('feedCurrentPageBottom');
+            if (curPageEl) curPageEl.textContent = currentFeedPage;
+            if (curPageBottomEl) curPageBottomEl.textContent = currentFeedPage;
+
             if (btn) {{
                 btn.disabled = true;
                 btn.innerHTML = '<span>⏳</span> در حال رصد سایت...';
             }}
             if (force || container.children.length === 0 || container.innerText.includes('در حال بارگذاری')) {{
-                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">⏳ در حال دریافت ۵ هدیه دانلودی اخیر از سایت استاد عباس‌منش...</div>';
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">⏳ در حال دریافت ۲۵ هدیه دانلودی صفحه ' + currentFeedPage + ' از سایت...</div>';
             }}
             try {{
-                const res = await fetch('/api/feed/latest' + (force ? '?force=1' : ''));
+                const res = await fetch('/api/feed/latest?page=' + currentFeedPage + '&limit=25' + (force ? '&force=1' : ''));
                 const data = await res.json();
                 if (data.ok && Array.isArray(data.items) && data.items.length > 0) {{
                     container.innerHTML = data.items.map(function(item) {{
@@ -2981,7 +3041,7 @@ def render_dashboard_html() -> str:
                             '<div class="flex flex-col gap-2 pt-2 border-t border-white/5">' +
                                 '<div class="flex items-center gap-2">' + linksHtml + '</div>' +
                                 '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\')" class="w-full theme-accent-btn py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">' +
-                                    '<span>⚡️</span> انتقال به ربات جهت دانلود خودکار و انتشار' +
+                                    '<span>⚡️</span> انتقال به ربات جهت دانلود' +
                                 '</button>' +
                             '</div>' +
                         '</div>';
@@ -2994,9 +3054,30 @@ def render_dashboard_html() -> str:
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
-                    btn.innerHTML = '<span>🔄</span> به‌روزرسانی هدایا';
+                    btn.innerHTML = '<span>🔄</span> به‌روزرسانی صفحه';
                 }}
             }}
+        }}
+
+        function changeFeedPage(targetPage) {{
+            let target = targetPage;
+            if (target === 'prev') target = currentFeedPage - 1;
+            else if (target === 'next') target = currentFeedPage + 1;
+            else target = parseInt(target, 10);
+
+            if (isNaN(target)) return;
+            if (target < 1) target = 1;
+            if (target > totalFeedPages) target = totalFeedPages;
+            if (target === currentFeedPage && document.getElementById('feedDownloadsContainer')?.children?.length > 1) return;
+
+            currentFeedPage = target;
+            window.currentFeedPage = target;
+            const curPageEl = document.getElementById('feedCurrentPage');
+            const curPageBottomEl = document.getElementById('feedCurrentPageBottom');
+            if (curPageEl) curPageEl.textContent = currentFeedPage;
+            if (curPageBottomEl) curPageBottomEl.textContent = currentFeedPage;
+
+            fetchFeedDownloads(false, currentFeedPage);
         }}
 
         async function transferFeedDownload(url, title) {{
@@ -3087,6 +3168,7 @@ def render_dashboard_html() -> str:
                 window.refreshStudioList = refreshStudioList;
                 window.cleanupStudioDrops = cleanupStudioDrops;
                 window.fetchFeedDownloads = fetchFeedDownloads;
+                window.changeFeedPage = changeFeedPage;
                 window.transferFeedDownload = transferFeedDownload;
             }} catch (err) {{
                 console.error('[UNFINIT Studio Module Error]:', err);

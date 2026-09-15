@@ -54,7 +54,10 @@ class SmartAudioCompressor:
             raise FileNotFoundError(f"File not found: {src}")
 
         initial_size = src.stat().st_size
-        max_safe_bytes = getattr(config, "MAX_SAFE_BALE_SIZE_BYTES", 49 * 1024 * 1024)
+        safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+        target_mb = max(1.0, round(safe_limit_mb - 1.5, 2))
+        max_safe_bytes = int(safe_limit_mb * 1024 * 1024)
+        target_max_bytes = int(target_mb * 1024 * 1024)
 
         # If file is already within safe limit, do not compress
         if initial_size <= max_safe_bytes:
@@ -65,8 +68,8 @@ class SmartAudioCompressor:
         if progress_callback:
             orig_size_mb = f"{initial_size / (1024 * 1024):.1f}"
             progress_callback(
-                "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                f"📊 حجم فعلی: <code>{orig_size_mb} MB</code> ➔ هدف: <code>زیر 49.9 MB</code>\n"
+                "⚙️ <b>در حال فشرده‌سازی هوشمند...</b>\n"
+                f"📦 حجم فعلی: <code>{orig_size_mb} MB</code> ➔ هدف: <code>زیر {target_mb} MB</code>\n"
                 "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید..."
             )
 
@@ -76,7 +79,7 @@ class SmartAudioCompressor:
 
         target_bitrate = SmartAudioCompressor.calculate_target_bitrate(
             duration_sec=dur,
-            target_max_bytes=max_safe_bytes,
+            target_max_bytes=target_max_bytes,
             initial_bitrate_kbps=init_bitrate
         )
 
@@ -168,7 +171,10 @@ class SmartVideoCompressor:
             raise FileNotFoundError(f"File not found: {src}")
 
         initial_size = src.stat().st_size
-        max_safe_bytes = getattr(config, "MAX_SAFE_BALE_SIZE_BYTES", int(49.99 * 1024 * 1024))
+        safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+        target_mb = max(1.0, round(safe_limit_mb - 1.5, 2))
+        max_safe_bytes = int(safe_limit_mb * 1024 * 1024)
+        target_max_bytes = int(target_mb * 1024 * 1024)
 
         if initial_size <= max_safe_bytes:
             tech = inspect_technical_metadata(src)
@@ -177,8 +183,8 @@ class SmartVideoCompressor:
         if progress_callback:
             orig_size_mb = f"{initial_size / (1024 * 1024):.1f}"
             progress_callback(
-                "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                f"📊 حجم فعلی: <code>{orig_size_mb} MB</code> ➔ هدف: <code>زیر 49.9 MB</code>\n"
+                "⚙️ <b>در حال فشرده‌سازی هوشمند...</b>\n"
+                f"📦 حجم فعلی: <code>{orig_size_mb} MB</code> ➔ هدف: <code>زیر {target_mb} MB</code>\n"
                 "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید..."
             )
 
@@ -186,7 +192,7 @@ class SmartVideoCompressor:
         dur = float(tech.get("duration_sec", 0) or 0)
         audio_kbps = 64 if dur > 1800 else 96
         target_v_bitrate = SmartVideoCompressor.calculate_target_video_bitrate(
-            dur, max_safe_bytes, audio_bitrate_kbps=audio_kbps
+            dur, target_max_bytes, audio_bitrate_kbps=audio_kbps
         )
 
         out_path = config.TEMP_DIR / f"compressed_{src.stem}.mp4"

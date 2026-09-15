@@ -607,9 +607,19 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 asyncio.set_event_loop(loop)
                 query_params = urllib.parse.parse_qs(parsed.query)
                 force = query_params.get("force", ["0"])[0].lower() in ("1", "true", "yes")
-                items = loop.run_until_complete(get_latest_free_downloads(limit=5, force_refresh=force))
+                page_raw = query_params.get("page", ["1"])[0]
+                try:
+                    page = max(1, int(page_raw))
+                except Exception:
+                    page = 1
+                limit_raw = query_params.get("limit", ["25"])[0]
+                try:
+                    limit = max(1, int(limit_raw))
+                except Exception:
+                    limit = 25
+                items = loop.run_until_complete(get_latest_free_downloads(limit=limit, force_refresh=force, page=page))
                 loop.close()
-                res = {"ok": True, "items": items, "count": len(items)}
+                res = {"ok": True, "items": items, "count": len(items), "page": page, "total_pages": 39}
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

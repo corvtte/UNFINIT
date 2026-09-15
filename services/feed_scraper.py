@@ -155,22 +155,26 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
     }
 
 
-async def get_latest_free_downloads(limit: int = 5, force_refresh: bool = False) -> List[Dict[str, Any]]:
+async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1) -> List[Dict[str, Any]]:
     """
-    Scrapes the 5 most recent free downloads from abasmanesh.com/fa/free-download-list/.
+    Scrapes free downloads from abasmanesh.com/fa/free-download-list/ with dynamic pagination.
     Returns a structured list of dicts with title, direct media links, and cover.
     """
     now = time.time()
-    if not force_refresh and _CACHE["items"] and (now - _CACHE["last_fetched"] < CACHE_TTL_SEC):
+    cache_key = f"page_{page}"
+    if not force_refresh and cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
+        return _CACHE[cache_key]["items"][:limit]
+    if page == 1 and not force_refresh and _CACHE.get("items") and (now - _CACHE.get("last_fetched", 0) < CACHE_TTL_SEC):
         return _CACHE["items"][:limit]
 
+    target_url = f"https://abasmanesh.com/fa/free-download-list/page/{page}/" if page > 1 else BASE_FEED_URL
     timeout = aiohttp.ClientTimeout(total=20)
     try:
         async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
-            async with session.get(BASE_FEED_URL) as resp:
+            async with session.get(target_url) as resp:
                 if resp.status != 200:
-                    logger.warning(f"[feed_scraper] Status {resp.status} fetching {BASE_FEED_URL}")
-                    return FALLBACK_ITEMS[:limit]
+                    logger.warning(f"[feed_scraper] Status {resp.status} fetching {target_url}")
+                    return FALLBACK_ITEMS[:limit] if page == 1 else []
 
                 html = await resp.text()
 
@@ -216,7 +220,7 @@ async def get_latest_free_downloads(limit: int = 5, force_refresh: bool = False)
                         break
 
             if not articles_to_fetch:
-                return FALLBACK_ITEMS[:limit]
+                return FALLBACK_ITEMS[:limit] if page == 1 else []
 
             # Concurrently fetch article pages
             tasks = [
@@ -228,17 +232,22 @@ async def get_latest_free_downloads(limit: int = 5, force_refresh: bool = False)
             final_items = []
             for idx, r in enumerate(results):
                 if isinstance(r, dict) and r.get("title"):
+                    r["file_number"] = f"فایل شماره {((page - 1) * 25) + idx + 1}"
                     final_items.append(r)
                 else:
-                    if idx < len(FALLBACK_ITEMS):
-                        final_items.append(FALLBACK_ITEMS[idx])
+                    if page == 1 and idx < len(FALLBACK_ITEMS):
+                        fb = dict(FALLBACK_ITEMS[idx])
+                        fb["file_number"] = f"فایل شماره {idx + 1}"
+                        final_items.append(fb)
 
             if final_items:
-                _CACHE["items"] = final_items
-                _CACHE["last_fetched"] = now
+                _CACHE[cache_key] = {"items": final_items, "last_fetched": now}
+                if page == 1:
+                    _CACHE["items"] = final_items
+                    _CACHE["last_fetched"] = now
                 return final_items[:limit]
 
     except Exception as e:
         logger.warning(f"[feed_scraper] Failed to scrape live feed: {e}")
 
-    return FALLBACK_ITEMS[:limit]
+    return FALLBACK_ITEMS[:limit] if page == 1 else []
