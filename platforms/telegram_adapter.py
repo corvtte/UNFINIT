@@ -401,6 +401,8 @@ class TelegramAdapter:
     ) -> Dict[str, Any]:
         try:
             fn = file_name or clean_display_filename(Path(file_path).name if isinstance(file_path, (str, Path)) and not str(file_path).startswith("BQAC") else "audio.mp3")
+            safe_duration = int(duration) if (duration is not None and str(duration).isdigit()) else (int(duration) if isinstance(duration, (int, float)) else 0)
+            valid_thumb = str(thumb) if (thumb and Path(str(thumb)).is_file() and Path(str(thumb)).stat().st_size > 0) else None
             sent = await self.app.send_audio(
                 chat_id=int(chat_id),
                 audio=str(file_path),
@@ -408,8 +410,8 @@ class TelegramAdapter:
                 title=title,
                 performer=performer,
                 caption=caption,
-                duration=duration,
-                thumb=str(thumb) if thumb else None,
+                duration=safe_duration,
+                thumb=valid_thumb,
                 parse_mode=enums.ParseMode.HTML
             )
             return {"ok": True, "message_id": sent.id}
@@ -430,15 +432,19 @@ class TelegramAdapter:
     ) -> Dict[str, Any]:
         try:
             fn = file_name or clean_display_filename(Path(file_path).name if isinstance(file_path, (str, Path)) and not str(file_path).startswith("BAAC") else "video.mp4")
+            safe_w = int(width) if (width is not None and str(width).isdigit()) else (int(width) if isinstance(width, (int, float)) else 0)
+            safe_h = int(height) if (height is not None and str(height).isdigit()) else (int(height) if isinstance(height, (int, float)) else 0)
+            safe_duration = int(duration) if (duration is not None and str(duration).isdigit()) else (int(duration) if isinstance(duration, (int, float)) else 0)
+            valid_thumb = str(thumb) if (thumb and Path(str(thumb)).is_file() and Path(str(thumb)).stat().st_size > 0) else None
             sent = await self.app.send_video(
                 chat_id=int(chat_id),
                 video=str(file_path),
                 file_name=fn,
                 caption=caption,
-                width=width,
-                height=height,
-                duration=duration,
-                thumb=str(thumb) if thumb else None,
+                width=safe_w,
+                height=safe_h,
+                duration=safe_duration,
+                thumb=valid_thumb,
                 supports_streaming=supports_streaming,
                 parse_mode=enums.ParseMode.HTML
             )

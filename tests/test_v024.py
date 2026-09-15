@@ -17,8 +17,8 @@ from platforms.telegram_adapter import TelegramAdapter
 class TestV024Features(unittest.TestCase):
     def test_version_v024(self):
         health = get_system_health()
-        self.assertTrue('v0.2.4' in str(health['engine_version']) or 'v0.2.5' in str(health['engine_version']) or 'v0.2.6' in str(health['engine_version']) or 'v0.2.7' in str(health['engine_version']) or 'v0.2.8' in str(health['engine_version']))
-        self.assertIn(config.ENGINE_VERSION, ('v0.2.4', 'v0.2.5', 'v0.2.6', 'v0.2.7', 'v0.2.8'))
+        self.assertTrue('v0.2.4' in str(health['engine_version']) or 'v0.2.5' in str(health['engine_version']) or 'v0.2.6' in str(health['engine_version']) or 'v0.2.7' in str(health['engine_version']) or 'v0.2.8' in str(health['engine_version']) or 'v0.2.9' in str(health['engine_version']))
+        self.assertIn(config.ENGINE_VERSION, ('v0.2.4', 'v0.2.5', 'v0.2.6', 'v0.2.7', 'v0.2.8', 'v0.2.9'))
 
     def test_universal_scrollbar_css(self):
         dash_html = render_dashboard_html()

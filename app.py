@@ -1152,7 +1152,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
-        elif path == "/api/settings":
+        elif path in ("/api/settings", "/api/settings/save"):
             try:
                 pwd = (payload.get("password") or "").strip()
                 if not verify_admin_password(pwd):
@@ -1285,6 +1285,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 try:
                                     config.MAX_SAFE_BALE_SIZE_MB = float(val_str or 49.99)
                                     config.MAX_SAFE_BALE_SIZE_BYTES = int(config.MAX_SAFE_BALE_SIZE_MB * 1024 * 1024)
+                                    logger.info(f"[settings] Updated MAX_SAFE_BALE_SIZE_MB = {config.MAX_SAFE_BALE_SIZE_MB} MB")
                                 except Exception:
                                     pass
                             elif k == "HF_TOKEN":
@@ -1299,6 +1300,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                             # Track cloud secrets to sync
                             if k in CLOUD_SECRET_MAPPING and val_str and not is_masked_or_empty(val_str):
                                 secrets_to_cloud[CLOUD_SECRET_MAPPING[k]] = val_str
+
+                            val_disp = "••••••••" if k in SENSITIVE_KEYS else val_str
+                            logger.info(f"[settings] Setting updated: {k} = {val_disp}")
 
                     # Check for changing admin password
                     new_pwd = str(new_settings.get("NEW_ADMIN_PASSWORD") or "").strip()

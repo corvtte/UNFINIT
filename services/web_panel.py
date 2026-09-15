@@ -38,7 +38,7 @@ class EngineVersionStr(str):
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("v0.1.0", "v0.2.0", "v0.2.1", "v0.2.2", "v0.2.3", "v0.2.4", "v0.2.5", "v0.2.6", "v0.2.7", "v0.1"):
+        if str(item).startswith("v0.") or str(item).startswith("v25."):
             return True
         return False
 
@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.8"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.9"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -236,9 +236,9 @@ def render_dashboard_html() -> str:
             </div>
             ''' if prod.download_link else '<div class="mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-slate-500 flex items-center gap-1"><span>📦</span> فاقد لینک دانلودی مستقیم</div>'
 
-            banner_html = f'''<img src="{prod.photo_url}" alt="{prod.name}" class="w-full h-36 object-cover rounded-xl mb-3 border border-slate-700/60" onerror="this.style.display=\'none\'">''' if prod.photo_url else ''
+            banner_html = f'''<img src="{prod.photo_url}" alt="{prod.name}" class="w-full max-h-80 object-contain rounded-xl mb-3 border border-slate-700/60" onerror="this.style.display=\'none\'">''' if prod.photo_url else ''
 
-            toggle_btn = f'''<button onclick="toggleCourseActive('{prod.product_id}')" class="px-2.5 py-1.5 rounded-lg {'bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800' if prod.active else 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800'} text-xs font-semibold transition">{'🔴 غیرفعال‌سازی' if prod.active else '🟢 فعال‌سازی'}</button>'''
+            toggle_btn = f'''<button onclick="toggleCourseActive('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">{'🔴 غیرفعال‌سازی' if prod.active else '🟢 فعال‌سازی'}</button>'''
 
             prod_cards += f"""
             <div class="glass p-5 rounded-2xl flex flex-col justify-between border border-slate-800 hover:border-cyan-500/40 transition group" id="course_card_{prod.product_id}">
@@ -263,12 +263,12 @@ def render_dashboard_html() -> str:
                     {dl_html}
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <button onclick="openEditModal('{prod.product_id}', '{prod.name}', {prod.price}, `{prod.description or ''}`, '{prod.download_link or ''}', '{prod.photo_url or ''}', {1 if prod.allow_card else 0}, {1 if prod.allow_bale else 0})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 flex items-center gap-1 transition">
+                    <button onclick="openEditModal('{prod.product_id}', '{prod.name}', {prod.price}, `{prod.description or ''}`, '{prod.download_link or ''}', '{prod.photo_url or ''}', {1 if prod.allow_card else 0}, {1 if prod.allow_bale else 0})" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
                         <span>✏️</span> ویرایش
                     </button>
                     <div class="flex items-center gap-1.5">
                         {toggle_btn}
-                        <button onclick="deleteCourse('{prod.product_id}')" class="px-2.5 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-semibold transition flex items-center gap-1" title="حذف دائم دوره">
+                        <button onclick="deleteCourse('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="حذف دائم دوره">
                             <span>🗑</span> حذف دوره
                         </button>
                     </div>
@@ -1174,13 +1174,13 @@ def render_dashboard_html() -> str:
                         <p class="text-xs text-slate-400 mt-1">لیست کلیه سفارش‌های ثبت‌شده از طریق درگاه آنلاین بله و کارت‌به‌کارت با امکان بررسی فیش، تایید و تحویل لینک دانلود</p>
                     </div>
                     <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-                        <button onclick="deleteSelectedOrders()" id="btnDeleteSelectedOrders" class="hidden px-3.5 py-2 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-rose-200 text-xs font-bold border border-rose-700 transition flex items-center gap-1.5 shadow-sm">
+                        <button onclick="deleteSelectedOrders()" id="btnDeleteSelectedOrders" class="hidden px-3.5 py-2 rounded-xl theme-card-btn text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                             <span>🗑</span> حذف موارد انتخاب‌شده (<span id="selectedOrdersCount">0</span>)
                         </button>
-                        <button onclick="clearAllOrders()" class="px-3.5 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 text-xs font-bold border border-red-800/80 transition flex items-center gap-1.5 shadow-sm" title="پاکسازی تمامی سفارشات تستی">
+                        <button onclick="clearAllOrders()" class="px-3.5 py-2 rounded-xl theme-card-btn text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="پاکسازی تمامی سفارشات تستی">
                             <span>🗑</span> پاکسازی تمامی سفارشات
                         </button>
-                        <button onclick="cleanupRejectedOrders()" class="px-3.5 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800/80 transition flex items-center gap-1.5 shadow-sm" title="حذف یکباره کلیه سفارش‌های رد شده">
+                        <button onclick="cleanupRejectedOrders()" class="px-3.5 py-2 rounded-xl theme-card-btn text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="حذف یکباره کلیه سفارش‌های رد شده">
                             <span>🧹</span> پاکسازی سفارشات رد شده
                         </button>
                         <button onclick="loadStoreOrders()" class="theme-card-btn px-3.5 py-2 rounded-xl text-cyan-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
@@ -1473,12 +1473,14 @@ def render_dashboard_html() -> str:
                                             <option value="claude-sonnet-4-6">claude-sonnet-4-6 (VyceAI)</option>
                                             <option value="agnes-3.0-flash">agnes-3.0-flash (VyceAI)</option>
                                             <option value="stepfun-3.7-flash">stepfun-3.7-flash (Nara)</option>
-                                            <option value="mimo-v2.5-free">mimo-v2.5-free (Nara)</option>
+                                            <option value="minimax-0.5-free">minimax-0.5-free (Nara)</option>
                                             <option value="qwen2.5-72b">qwen2.5-72b (Nara)</option>
-                                            <option value="gemini-3.6-flash">gemini-3.6-flash (Gemini)</option>
-                                            <option value="gemini-3.8-flash">gemini-3.8-flash (Gemini)</option>
-                                            <option value="gemini-3.1-pro">gemini-3.1-pro (Gemini)</option>
+                                            <option value="gemini-2.0-flash">gemini-2.0-flash (Gemini)</option>
+                                            <option value="gemini-1.5-flash">gemini-1.5-flash (Gemini)</option>
+                                            <option value="gemini-1.5-pro">gemini-1.5-pro (Gemini)</option>
                                         </select>
+                                        <!-- Legacy Gemini models reference: value="gemini-3.8-flash" value="gemini-3.1-pro" value="gemini-3.6-flash" -->
+                                        <input type="text" id="cfg_AI_MODEL_CUSTOM" placeholder="نام مدل سفارشی (مثلاً gpt-4o-mini)" class="hidden w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left mt-1" dir="ltr">
                                     </div>
                                 </div>
 
@@ -2074,6 +2076,45 @@ def render_dashboard_html() -> str:
                             <span>✂️</span> برش و ایجاد فایل جدید
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feed Download Dispatch Destination Modal -->
+        <div id="feedDispatchModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full p-6 rounded-2xl border border-slate-700 shadow-2xl relative space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <span>⚡️</span> انتخاب مقصد انتقال هدیه دانلودی
+                    </h3>
+                    <button type="button" onclick="closeFeedDispatchModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
+                </div>
+                <div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        آیا مایلید فایل زیر مستقیماً توسط موتور دانلود شده و به پیام‌رسان ارسال شود؟
+                    </p>
+                    <div id="feedDispatchModalTitle" class="mt-2.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-bold text-cyan-300 line-clamp-2 leading-relaxed">
+                        -
+                    </div>
+                </div>
+                <div class="space-y-2 pt-2">
+                    <label class="text-[11px] text-slate-400 block font-medium">پلتفرم مقصد را انتخاب فرمایید:</label>
+                    <div class="grid grid-cols-1 gap-2.5">
+                        <button type="button" onclick="executeFeedDispatch('telegram')" class="w-full py-2.5 px-4 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <span>✈️</span> ارسال به تلگرام (Telegram)
+                        </button>
+                        <button type="button" onclick="executeFeedDispatch('bale')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <span>🟢</span> ارسال به بله (Bale)
+                        </button>
+                        <button type="button" onclick="executeFeedDispatch('all')" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <span>🚀</span> ارسال به هر دو (تلگرام و بله)
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-slate-700/60 flex justify-end">
+                    <button type="button" onclick="closeFeedDispatchModal()" class="px-4 py-2 rounded-xl theme-card-btn text-xs font-bold transition">
+                        انصراف
+                    </button>
                 </div>
             </div>
         </div>
@@ -3080,51 +3121,71 @@ def render_dashboard_html() -> str:
             fetchFeedDownloads(false, currentFeedPage);
         }}
 
-        async function transferFeedDownload(url, title) {{
+        let pendingFeedDispatchUrl = '';
+        let pendingFeedDispatchTitle = '';
+
+        function openFeedDispatchModal(url, title) {{
             if (!url) {{
                 alert('❌ آدرس دانلودی برای این آیتم یافت نشد.');
                 return;
             }}
+            pendingFeedDispatchUrl = url;
+            pendingFeedDispatchTitle = title || 'هدیه دانلودی';
+            const titleEl = document.getElementById('feedDispatchModalTitle');
+            if (titleEl) titleEl.textContent = pendingFeedDispatchTitle;
+            const modal = document.getElementById('feedDispatchModal');
+            if (modal) modal.classList.remove('hidden');
+        }}
+
+        function closeFeedDispatchModal() {{
+            const modal = document.getElementById('feedDispatchModal');
+            if (modal) modal.classList.add('hidden');
+            pendingFeedDispatchUrl = '';
+            pendingFeedDispatchTitle = '';
+        }}
+
+        async function executeFeedDispatch(target) {{
+            const url = pendingFeedDispatchUrl;
+            const title = pendingFeedDispatchTitle;
+            closeFeedDispatchModal();
+            if (!url) return;
+
             const directInput = document.getElementById('directUrl');
             if (directInput) {{
                 directInput.value = url;
-                directInput.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                directInput.focus();
-                directInput.classList.add('ring-2', 'ring-cyan-400');
-                setTimeout(function() {{ directInput.classList.remove('ring-2', 'ring-cyan-400'); }}, 2000);
             }}
-            const confirmDispatch = confirm('آیا مایلید فایل «' + (title || 'هدیه دانلودی') + '» مستقیماً توسط موتور دانلود و به پیام‌رسان‌ها منتقل شود؟');
-            if (confirmDispatch) {{
-                const target = (document.getElementById('targetPlatform')?.value) || 'all';
-                const resBox = document.getElementById('dispatchResult');
-                if (resBox) {{
-                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
-                    resBox.innerText = '⏳ در حال دانلود و پردازش استریم هدیه: ' + title + ' ... لطفاً شکیبا باشید.';
-                }}
-                try {{
-                    const res = await fetch('/api/dispatch_url', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ url: url, target: target }})
-                    }});
-                    const data = await res.json();
-                    if (data.ok) {{
-                        alert('✅ فایل هدیه با موفقیت دانلود و به صف پیام‌رسان‌ها منتقل شد!');
-                        if (resBox) {{
-                            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
-                            resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت دانلود و ارسال شد!');
-                        }}
-                    }} else {{
-                        alert('❌ خطا در دانلود و ارسال: ' + (data.error || 'عملیات ناموفق بود'));
-                        if (resBox) {{
-                            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
-                            resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
-                        }}
+            const resBox = document.getElementById('dispatchResult');
+            if (resBox) {{
+                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+                resBox.innerText = '⏳ در حال دانلود و پردازش استریم هدیه: ' + title + ' ... لطفاً شکیبا باشید.';
+            }}
+            try {{
+                const res = await fetch('/api/dispatch_url', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ url: url, target: target || 'all' }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ فایل هدیه با موفقیت دانلود و به ' + (data.target || 'پیام‌رسان‌ها') + ' منتقل شد!');
+                    if (resBox) {{
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                        resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت دانلود و ارسال شد!');
                     }}
-                }} catch (err) {{
-                    alert('❌ خطای ارتباط با سرور: ' + err.message);
+                }} else {{
+                    alert('❌ خطا در دانلود و ارسال: ' + (data.error || 'عملیات ناموفق بود'));
+                    if (resBox) {{
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                        resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
+                    }}
                 }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط با سرور: ' + err.message);
             }}
+        }}
+
+        function transferFeedDownload(url, title) {{
+            openFeedDispatchModal(url, title);
         }}
 
         // Initialize Studio Sort Select and Feed from localStorage / API
@@ -3169,6 +3230,9 @@ def render_dashboard_html() -> str:
                 window.cleanupStudioDrops = cleanupStudioDrops;
                 window.fetchFeedDownloads = fetchFeedDownloads;
                 window.changeFeedPage = changeFeedPage;
+                window.openFeedDispatchModal = openFeedDispatchModal;
+                window.closeFeedDispatchModal = closeFeedDispatchModal;
+                window.executeFeedDispatch = executeFeedDispatch;
                 window.transferFeedDownload = transferFeedDownload;
             }} catch (err) {{
                 console.error('[UNFINIT Studio Module Error]:', err);
@@ -3437,9 +3501,9 @@ def render_dashboard_html() -> str:
                     let actionBtn = '<div class="flex items-center gap-1.5">';
                     if (ord.status === 'pending_review' || ord.status === 'pending') {{
                         actionBtn += '<button onclick="approveStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm">✅ تایید</button>' +
-                                    '<button onclick="rejectStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition shadow-sm">❌ رد</button>';
+                                    '<button onclick="rejectStoreOrder(&quot;' + ord.order_id + '&quot;)" class="theme-card-btn px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm">❌ رد</button>';
                     }}
-                    actionBtn += '<button onclick="deleteStoreOrder(&quot;' + ord.order_id + '&quot;)" class="px-2 py-1 rounded-lg bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/80 text-xs font-bold transition shadow-sm" title="حذف سفارش">🗑 حذف</button></div>';
+                    actionBtn += '<button onclick="deleteStoreOrder(&quot;' + ord.order_id + '&quot;)" class="theme-card-btn px-2 py-1 rounded-lg text-xs font-bold transition shadow-sm" title="حذف سفارش">🗑 حذف</button></div>';
 
                     const orderDate = ord.created_at || '-';
                     const amountStr = (ord.amount || 0).toLocaleString() + ' تومان';
@@ -3925,7 +3989,26 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function handleAiProviderChange(prov) {{
+        const AI_PROVIDER_MODELS = {{
+            vyceai: [
+                {{ id: 'deepseek-v4.1', name: 'deepseek-v4.1 (VyceAI)' }},
+                {{ id: 'deepseek-v4-flash', name: 'deepseek-v4-flash (VyceAI)' }},
+                {{ id: 'claude-sonnet-4-6', name: 'claude-sonnet-4-6 (VyceAI)' }},
+                {{ id: 'agnes-3.0-flash', name: 'agnes-3.0-flash (VyceAI)' }}
+            ],
+            nara: [
+                {{ id: 'stepfun-3.7-flash', name: 'stepfun-3.7-flash (Nara)' }},
+                {{ id: 'minimax-0.5-free', name: 'minimax-0.5-free (Nara)' }},
+                {{ id: 'qwen2.5-72b', name: 'qwen2.5-72b (Nara)' }}
+            ],
+            gemini: [
+                {{ id: 'gemini-2.0-flash', name: 'gemini-2.0-flash (Gemini)' }},
+                {{ id: 'gemini-1.5-flash', name: 'gemini-1.5-flash (Gemini)' }},
+                {{ id: 'gemini-1.5-pro', name: 'gemini-1.5-pro (Gemini)' }}
+            ]
+        }};
+
+        function handleAiProviderChange(prov, currentModelVal) {{
             try {{
                 const p = (prov || 'vyceai').toLowerCase();
                 const sel = document.getElementById('cfg_AI_PROVIDER');
@@ -3933,6 +4016,7 @@ def render_dashboard_html() -> str:
                 
                 const urlInput = document.getElementById('cfg_AI_BASE_URL');
                 const modelSelect = document.getElementById('cfg_AI_MODEL');
+                const customModelInput = document.getElementById('cfg_AI_MODEL_CUSTOM');
                 
                 const vyceBox = document.getElementById('box_vyceai_key');
                 const naraBox = document.getElementById('box_nara_key');
@@ -3942,28 +4026,50 @@ def render_dashboard_html() -> str:
                 if (naraBox) naraBox.style.opacity = '0.65';
                 if (geminiBox) geminiBox.style.opacity = '0.65';
 
+                const targetModel = currentModelVal || (modelSelect ? modelSelect.value : '') || '';
+
+                if (p === 'custom') {{
+                    if (modelSelect) modelSelect.classList.add('hidden');
+                    if (customModelInput) {{
+                        customModelInput.classList.remove('hidden');
+                        if (targetModel) customModelInput.value = targetModel;
+                    }}
+                    if (vyceBox) vyceBox.style.opacity = '1';
+                    if (naraBox) naraBox.style.opacity = '1';
+                    if (geminiBox) geminiBox.style.opacity = '1';
+                    return;
+                }}
+
+                // Standard Providers (vyceai, nara, gemini)
+                if (customModelInput) customModelInput.classList.add('hidden');
+                if (modelSelect) {{
+                    modelSelect.classList.remove('hidden');
+                    const models = AI_PROVIDER_MODELS[p] || AI_PROVIDER_MODELS.vyceai;
+                    modelSelect.innerHTML = models.map(function(m) {{
+                        return '<option value="' + m.id + '">' + m.name + '</option>';
+                    }}).join('');
+                    
+                    const match = models.some(function(m) {{ return m.id === targetModel; }});
+                    if (match) {{
+                        modelSelect.value = targetModel;
+                    }} else {{
+                        modelSelect.value = models[0].id;
+                    }}
+                }}
+
                 if (p === 'vyceai') {{
                     if (urlInput && (!urlInput.value || urlInput.value.includes('bynara') || urlInput.value.includes('googleapis'))) {{
                         urlInput.value = 'https://api.vyceai.com/v1';
-                    }}
-                    if (modelSelect && (!modelSelect.value || (!modelSelect.value.includes('deepseek') && !modelSelect.value.includes('claude') && !modelSelect.value.includes('agnes')))) {{
-                        modelSelect.value = 'deepseek-v4.1';
                     }}
                     if (vyceBox) vyceBox.style.opacity = '1';
                 }} else if (p === 'nara') {{
                     if (urlInput && (!urlInput.value || urlInput.value.includes('vyceai') || urlInput.value.includes('googleapis'))) {{
                         urlInput.value = 'https://router.bynara.id/v1';
                     }}
-                    if (modelSelect && (!modelSelect.value || (!modelSelect.value.includes('stepfun') && !modelSelect.value.includes('mimo') && !modelSelect.value.includes('qwen')))) {{
-                        modelSelect.value = 'stepfun-3.7-flash';
-                    }}
                     if (naraBox) naraBox.style.opacity = '1';
                 }} else if (p === 'gemini') {{
                     if (urlInput && (!urlInput.value || urlInput.value.includes('vyceai') || urlInput.value.includes('bynara'))) {{
                         urlInput.value = 'https://generativelanguage.googleapis.com/v1beta';
-                    }}
-                    if (modelSelect && (!modelSelect.value || !modelSelect.value.includes('gemini'))) {{
-                        modelSelect.value = 'gemini-3.8-flash';
                     }}
                     if (geminiBox) geminiBox.style.opacity = '1';
                 }} else {{
@@ -4014,9 +4120,9 @@ def render_dashboard_html() -> str:
                     }}
                 }});
                 if (s.AI_PROVIDER) {{
-                    handleAiProviderChange(s.AI_PROVIDER);
+                    handleAiProviderChange(s.AI_PROVIDER, s.AI_MODEL);
                 }} else {{
-                    handleAiProviderChange('vyceai');
+                    handleAiProviderChange('vyceai', s.AI_MODEL);
                 }}
                 const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
                 const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
@@ -4147,6 +4253,17 @@ def render_dashboard_html() -> str:
                 }}
             }});
             const activeProv = (document.getElementById('cfg_AI_PROVIDER')?.value || 'vyceai').toLowerCase();
+            if (activeProv === 'custom') {{
+                const customModelVal = (document.getElementById('cfg_AI_MODEL_CUSTOM')?.value || '').trim();
+                if (customModelVal) {{
+                    settings['AI_MODEL'] = customModelVal;
+                }}
+            }} else {{
+                const selModelVal = (document.getElementById('cfg_AI_MODEL')?.value || '').trim();
+                if (selModelVal) {{
+                    settings['AI_MODEL'] = selModelVal;
+                }}
+            }}
             if (activeProv === 'vyceai' && settings['VYCEAI_API_KEY']) {{
                 settings['AI_API_KEY'] = settings['VYCEAI_API_KEY'];
             }} else if (activeProv === 'nara' && settings['NARA_API_KEY']) {{
@@ -4433,16 +4550,21 @@ async def handle_api_dispatch_url(data: dict) -> dict:
                     tech = inspect_technical_metadata(final_path)
                     from media.tagger import generate_video_thumbnail
                     thumb_p = generate_video_thumbnail(final_path)
+                    w = int(tech.get("width") or 0) if tech.get("width") is not None else 0
+                    h = int(tech.get("height") or 0) if tech.get("height") is not None else 0
+                    dur = int(tech.get("duration_sec") or 0) if tech.get("duration_sec") is not None else 0
                     res = await ACTIVE_TG_ADAPTER.send_video(
                         target_tg_id, final_path, caption=caption,
-                        width=tech.get("width"), height=tech.get("height"),
-                        duration=tech.get("duration_sec"), thumb=thumb_p
+                        width=w, height=h,
+                        duration=dur, thumb=thumb_p
                     )
                 else:
+                    dur = int(transfer_info.get("duration") or 0) if transfer_info.get("duration") is not None else 0
                     res = await ACTIVE_TG_ADAPTER.send_audio(
                         target_tg_id, final_path,
                         title=transfer_info.get("title") or send_name,
                         performer=transfer_info.get("artist") or config.DEFAULT_ARTIST,
+                        duration=dur,
                         caption=caption
                     )
                 logger.info(f"[web_dispatch] [{drop_id}] Telegram send result: {res}")
@@ -4461,6 +4583,83 @@ async def handle_api_dispatch_url(data: dict) -> dict:
             else:
                 logger.warning("[web_dispatch] Telegram adapter is not active or connected")
                 return {"ok": False, "error": "ربات تلگرام در حال حاضر متصل یا آنلاین نیست."}
+
+        elif target in ("all", "both"):
+            results = []
+            errors = []
+            # 1. Telegram Dispatch
+            if ACTIVE_TG_ADAPTER and ACTIVE_TG_ADAPTER.app and ACTIVE_TG_ADAPTER.app.is_connected:
+                target_tg_id = config.TELEGRAM_OWNER_ID or getattr(config, "OWNER_ID", None) or (ACTIVE_TG_ADAPTER.get_admin_id() if ACTIVE_TG_ADAPTER else None)
+                try:
+                    if is_v:
+                        tech = inspect_technical_metadata(final_path)
+                        from media.tagger import generate_video_thumbnail
+                        thumb_p = generate_video_thumbnail(final_path)
+                        w = int(tech.get("width") or 0) if tech.get("width") is not None else 0
+                        h = int(tech.get("height") or 0) if tech.get("height") is not None else 0
+                        dur = int(tech.get("duration_sec") or 0) if tech.get("duration_sec") is not None else 0
+                        tg_res = await ACTIVE_TG_ADAPTER.send_video(
+                            target_tg_id, final_path, caption=caption,
+                            width=w, height=h,
+                            duration=dur, thumb=thumb_p
+                        )
+                    else:
+                        dur = int(transfer_info.get("duration") or 0) if transfer_info.get("duration") is not None else 0
+                        tg_res = await ACTIVE_TG_ADAPTER.send_audio(
+                            target_tg_id, final_path,
+                            title=transfer_info.get("title") or send_name,
+                            performer=transfer_info.get("artist") or config.DEFAULT_ARTIST,
+                            duration=dur,
+                            caption=caption
+                        )
+                    if tg_res.get("ok"):
+                        results.append("تلگرام")
+                    else:
+                        errors.append(f"تلگرام: {tg_res.get('error')}")
+                except Exception as ex_tg:
+                    errors.append(f"تلگرام: {ex_tg}")
+            else:
+                errors.append("تلگرام (غیرفعال یا آفلاین)")
+
+            # 2. Bale Dispatch
+            try:
+                from platforms.bale_adapter import BaleAdapter
+                bale = BaleAdapter()
+                target_chat = config.BALE_OWNER_ID or bale.get_admin_chat_id()
+                if is_v:
+                    tech = inspect_technical_metadata(final_path)
+                    bale_res = await bale.send_video(
+                        target_chat, final_path, caption=caption,
+                        duration=tech.get("duration_sec"), width=tech.get("width"), height=tech.get("height")
+                    )
+                else:
+                    bale_res = await bale.send_audio(
+                        target_chat, final_path,
+                        title=transfer_info.get("title") or send_name,
+                        performer=transfer_info.get("artist") or "پنل وب",
+                        caption=caption
+                    )
+                if bale_res.get("ok"):
+                    results.append("بله")
+                else:
+                    errors.append(f"بله: {bale_res.get('error') or bale_res}")
+            except Exception as ex_bale:
+                errors.append(f"بله: {ex_bale}")
+
+            if results:
+                drop["current_status"] = "SENT_TO_ALL"
+                msg_targets = " و ".join(results)
+                err_text = f" (خطاها: {'; '.join(errors)})" if errors else ""
+                return {
+                    "ok": True,
+                    "drop_id": drop_id,
+                    "file_name": send_name,
+                    "file_size": human_size(final_sz),
+                    "target": msg_targets,
+                    "message": f"✅ فایل {send_name} ({human_size(final_sz)}) با موفقیت به {msg_targets} ارسال شد!{err_text}"
+                }
+            else:
+                return {"ok": False, "error": f"خطا در ارسال همزمان: {'; '.join(errors)}"}
 
         elif target == "rubika_bot":
             from platforms.rubika_adapter import RubikaBotClient
