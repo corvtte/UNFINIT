@@ -512,6 +512,17 @@ async def init_db():
         )
         """)
 
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS file_cache (
+            file_key TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            file_id TEXT NOT NULL,
+            file_type TEXT DEFAULT 'audio',
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (file_key, platform)
+        )
+        """)
+
         cur.execute("SELECT COUNT(*) FROM keyword_rules")
         if cur.fetchone()[0] == 0:
             kw_seed = [
@@ -812,4 +823,30 @@ async def db_clear_all_orders() -> int:
         count = row.get("cnt", 0) if isinstance(row, dict) else (row[0] if len(row) > 0 else 0)
     await execute_query("DELETE FROM orders")
     return int(count)
+
+
+async def db_get_cached_file_id(file_key: str, platform: str) -> Optional[str]:
+    """Retrieves cached file_id for a given file_key and platform (telegram/bale)."""
+    if not file_key or not platform:
+        return None
+    row = await fetch_one(
+        "SELECT file_id FROM file_cache WHERE file_key = ? AND platform = ?",
+        (str(file_key).strip(), str(platform).strip().lower())
+    )
+    if row and "file_id" in row and row["file_id"]:
+        return str(row["file_id"]).strip()
+    return None
+
+
+async def db_set_cached_file_id(file_key: str, platform: str, file_id: str, file_type: str = "audio") -> None:
+    """Stores or updates cached file_id for quick re-dispatching without server bandwidth."""
+    if not file_key or not platform or not file_id:
+        return
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await execute_write(
+        """INSERT INTO file_cache (file_key, platform, file_id, file_type, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(file_key, platform) DO UPDATE SET file_id = excluded.file_id, file_type = excluded.file_type, updated_at = excluded.updated_at""",
+        (str(file_key).strip(), str(platform).strip().lower(), str(file_id).strip(), str(file_type).strip(), now_str)
+    )
 

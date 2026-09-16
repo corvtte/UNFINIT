@@ -16,6 +16,7 @@ from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
+    KeyboardButton,
     Message,
     CallbackQuery
 )
@@ -27,11 +28,13 @@ from core.formatters import (
     format_duration,
     parse_trim_input
 )
-from core.database import get_system_setting, set_system_setting, fix_mojibake
+from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService, ProductItem
 from services.media_service import MediaService, clean_display_filename
 from services.session_manager import session_manager
 from services.url_service import UrlService
+from services.user_service import UserService, normalize_phone
+from services.referral_service import ReferralService, TOHID_AMALI_PACK_ID, TOHID_AMALI_EPISODES
 from media.inspector import inspect_technical_metadata
 from media.tagger import generate_video_thumbnail
 
@@ -594,6 +597,20 @@ class TelegramAdapter:
             if not config.TELEGRAM_OWNER_ID and not self.admin_chat_id:
                 self.admin_chat_id = user_id
 
+            # Referral deep link parsing (e.g. /start ref_abc123)
+            ref_param = None
+            if getattr(message, "command", None) and len(message.command) > 1:
+                ref_param = message.command[1]
+            elif message.text:
+                parts = message.text.strip().split()
+                if len(parts) > 1:
+                    ref_param = parts[1]
+            if ref_param:
+                ref_code = ReferralService.parse_referral_code(ref_param)
+                if ref_code:
+                    session_manager.set_user_action(f"tg_ref_{user_id}", ref_code, ref_code)
+                    logger.info(f"[Telegram] User {user_id} started bot with referral code {ref_code}")
+
             await StoreService.get_or_create_customer(user_id, platform="telegram")
 
             if not await check_force_join_telegram(client, user_id) and not self.is_admin(user_id):
@@ -874,6 +891,7 @@ class TelegramAdapter:
             else:
                 buttons.append([InlineKeyboardButton("📚 لیست دوره‌های آموزشی", callback_data="cnav:courses")])
             buttons.append([InlineKeyboardButton("🎁 دوره‌ها و هدایای رایگان", callback_data="cnav:gifts")])
+            buttons.append([InlineKeyboardButton("🎁 دریافت رایگان توحید عملی (دعوت دوستان)", callback_data="referral_info")])
             buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
             await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
@@ -946,6 +964,7 @@ class TelegramAdapter:
             buttons = []
             if gifts:
                 buttons = [[InlineKeyboardButton(f"🎁 {g.name} (رایگان)", callback_data=f"cview:{g.product_id}")] for g in gifts]
+            buttons.append([InlineKeyboardButton("🎁 دریافت رایگان بسته توحید عملی", callback_data="referral_info")])
             session_manager.set_user_action(f"tg_{message.from_user.id}", "await_support_msg", "none")
             txt = (
                 "💬 <b>مرکز پشتیبانی و هدایای آموزشی:</b>\n\n"
@@ -1024,17 +1043,85 @@ class TelegramAdapter:
                 pass
             await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
-        # Product Buy Callback
-        @self.app.on_callback_query(filters.regex(r"^cbuy:"))
-        async def product_buy_cb(client: Client, callback_query: CallbackQuery):
-            prod_id = callback_query.data.split(":")[1]
-            prod = await StoreService.get_product(prod_id)
-            user_id = callback_query.from_user.id
-            username = callback_query.from_user.username or ""
+        # Contact Sharing Handler (Cross-Platform Unified Identity)
+        @self.app.on_message(filters.private & filters.contact)
+        async def handle_contact_share(client: Client, message: Message):
+            if not message.contact:
+                return
+            user_id = message.from_user.id
+            raw_phone = message.contact.phone_number or ""
+            norm_phone = normalize_phone(raw_phone)
+            if not norm_phone:
+                await message.reply_text("⚠️ شماره تلفن ارسالی نامعتبر است.")
+                return
 
+            first_name = message.from_user.first_name or ""
+            last_name = message.from_user.last_name or ""
+            full_name = f"{first_name} {last_name}".strip()
+
+            u = UserService.link_platform_user(
+                platform="telegram",
+                platform_id=user_id,
+                phone=norm_phone,
+                full_name=full_name
+            )
+
+            # Check if there is a pending referral code
+            pending_ref_data = session_manager.get_user_action(f"tg_ref_{user_id}")
+            pending_ref = pending_ref_data.get("extra") if pending_ref_data else None
+            if pending_ref:
+                inviter_phone, newly_unlocked = ReferralService.record_referral(
+                    inviter_code=pending_ref,
+                    invited_phone=norm_phone,
+                    invited_platform="telegram",
+                    invited_platform_id=user_id
+                )
+                session_manager.clear_user_action(f"tg_ref_{user_id}")
+                if newly_unlocked and inviter_phone:
+                    inviter = UserService.get_user_by_phone(inviter_phone)
+                    if inviter and inviter.telegram_id:
+                        try:
+                            await client.send_message(
+                                chat_id=int(inviter.telegram_id),
+                                text=ReferralService.get_congratulations_message("telegram"),
+                                parse_mode=enums.ParseMode.HTML
+                            )
+                        except Exception as e:
+                            logger.warning(f"[Telegram] Failed to notify inviter {inviter.telegram_id}: {e}")
+
+            success_msg = (
+                f"✅ <b>حساب کاربری شما با موفقیت متصل شد.</b>\n\n"
+                f"📱 شماره تماس: <code>{norm_phone}</code>\n"
+                f"👤 نام: <b>{escape(full_name or 'کاربر گرامی')}</b>\n"
+                f"🔗 کد معرف اختصاصی شما: <code>{u.referral_code}</code>"
+            )
+            await message.reply_text(
+                success_msg,
+                parse_mode=enums.ParseMode.HTML,
+                reply_markup=get_customer_keyboard()
+            )
+
+            # Check if user had a pending purchase
+            pending_buy_data = session_manager.get_user_action(f"tg_pending_buy_{user_id}")
+            if pending_buy_data:
+                prod_id = pending_buy_data.get("extra")
+                session_manager.clear_user_action(f"tg_pending_buy_{user_id}")
+                if prod_id:
+                    prod = await StoreService.get_product(prod_id)
+                    if prod:
+                        await _check_terms_and_proceed(client, message.chat.id, user_id, message.from_user.username or "", full_name, prod, u)
+
+            # Check if user had a pending referral view
+            pending_ref_view = session_manager.get_user_action(f"tg_pending_referral_{user_id}")
+            if pending_ref_view:
+                session_manager.clear_user_action(f"tg_pending_referral_{user_id}")
+                await _show_referral_panel(client, message.chat.id, user_id, u)
+
+        async def _create_and_send_order(client: Client, chat_id: int | str, user_id: int | str, username: str, full_name: str, prod: Any, u: Any):
             if prod.price == 0:
-                order = await StoreService.create_order(user_id, username, "", "", prod, platform="telegram")
-                await callback_query.message.reply_text(f"🎁 <b>هدیه آموزشی شما با موفقیت فعال شد!</b>\nشماره سفارش: <code>{order.order_id}</code>\n🎓 <b>{escape(prod.name)}</b>")
+                order = await StoreService.create_order(user_id, username, full_name, u.phone if u else "", prod, platform="telegram")
+                UserService.unlock_gift_by_platform("telegram", user_id, prod.product_id)
+                await client.send_message(chat_id, f"🎁 <b>هدیه آموزشی شما با موفقیت فعال شد!</b>\nشماره سفارش: <code>{order.order_id}</code>\n🎓 <b>{escape(prod.name)}</b>", parse_mode=enums.ParseMode.HTML)
                 return
 
             wallet_balance = await StoreService.get_wallet_balance(user_id)
@@ -1044,8 +1131,8 @@ class TelegramAdapter:
             order = await StoreService.create_order(
                 user_id=user_id,
                 username=username,
-                customer_name=f"{callback_query.from_user.first_name or ''} {callback_query.from_user.last_name or ''}".strip(),
-                phone="",
+                customer_name=full_name,
+                phone=u.phone if u else "",
                 product=prod,
                 platform="telegram",
                 wallet_used=wallet_used
@@ -1057,7 +1144,248 @@ class TelegramAdapter:
             c_num = await get_system_setting("CARD_NUMBER", config.CARD_NUMBER)
             c_holder = await get_system_setting("CARD_HOLDER", config.CARD_HOLDER)
             lines.extend([f"💳 <b>مبلغ قابل پرداخت:</b> <b>{remaining:,} تومان</b>", "", "🏦 <b>اطلاعات کارت جهت واریز:</b>", f"▫️ شماره کارت: <code>{c_num}</code>", f"▫️ صاحب حساب: <b>{c_holder}</b>", "", "📸 <i>لطفاً پس از واریز، عکس فیش واریزی خود را ارسال فرمایید.</i>"])
-            await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML)
+            await client.send_message(chat_id, "\n".join(lines), parse_mode=enums.ParseMode.HTML)
+
+        async def _check_terms_and_proceed(client: Client, chat_id: int | str, user_id: int | str, username: str, full_name: str, prod: Any, u: Any):
+            if prod.price > 0 and not u.terms_accepted:
+                terms_text = (
+                    f"⚖️ <b>تعهدنامه مالکیت معنوی دوره {escape(prod.name)}:</b>\n\n"
+                    "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»\n\n"
+                    "آیا شرایط و تعهدنامه فوق را مطالعه کرده و می‌پذیرید؟"
+                )
+                terms_kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ شرایط را می‌پذیرم", callback_data=f"terms_accept:{prod.product_id}")],
+                    [InlineKeyboardButton("❌ انصراف", callback_data="terms_reject")]
+                ])
+                await client.send_message(chat_id, terms_text, parse_mode=enums.ParseMode.HTML, reply_markup=terms_kb)
+                return
+            await _create_and_send_order(client, chat_id, user_id, username, full_name, prod, u)
+
+        async def _show_referral_panel(client: Client, chat_id: int | str, user_id: int | str, u: Any):
+            bot_me = await client.get_me()
+            bot_username = bot_me.username or "UNFINIT_Bot"
+            ref_link = ReferralService.get_referral_link("telegram", u.referral_code, bot_username)
+            invites = u.successful_invites
+            unlocked = UserService.is_gift_unlocked_by_platform("telegram", user_id, TOHID_AMALI_PACK_ID)
+
+            st_txt = "✅ <b>باز شده و آماده دریافت</b>" if unlocked else "🔒 <b>قفل (نیاز به ۱ دعوت موفق)</b>"
+            msg_text = (
+                "🎁 <b>طرح دعوت از دوستان و هدیه ویژه توحید عملی:</b>\n\n"
+                "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!\n\n"
+                f"🔗 <b>لینک اختصاصی دعوت شما:</b>\n<code>{ref_link}</code>\n\n"
+                f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} نفر</b>\n"
+                f"🎧 <b>وضعیت بسته صوتی:</b> {st_txt}\n"
+            )
+            buttons = []
+            if unlocked:
+                buttons.append([InlineKeyboardButton("🎧 دریافت ۱۱ فایل صوتی توحید عملی", callback_data="tohid_amali_list")])
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به حساب کاربری", callback_data="btn_profile")])
+            await client.send_message(chat_id, msg_text, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        # Product Buy Callback
+        @self.app.on_callback_query(filters.regex(r"^cbuy:"))
+        async def product_buy_cb(client: Client, callback_query: CallbackQuery):
+            prod_id = callback_query.data.split(":")[1]
+            prod = await StoreService.get_product(prod_id)
+            if not prod:
+                await callback_query.answer("محصول یافت نشد.", show_alert=True)
+                return
+
+            user_id = callback_query.from_user.id
+            username = callback_query.from_user.username or ""
+            full_name = f"{callback_query.from_user.first_name or ''} {callback_query.from_user.last_name or ''}".strip()
+
+            u = UserService.get_user_by_platform_id("telegram", user_id)
+            if not u or not u.phone:
+                session_manager.set_user_action(f"tg_pending_buy_{user_id}", prod_id, prod_id)
+                contact_kb = ReplyKeyboardMarkup(
+                    [[KeyboardButton("📱 ارسال شماره موبایل (جهت ثبت‌نام و صدور فاکتور)", request_contact=True)]],
+                    resize_keyboard=True,
+                    one_time_keyboard=True
+                )
+                await callback_query.message.reply_text(
+                    "⚠️ <b>ثبت‌نام سریع جهت صدور فاکتور رسمی:</b>\n\n"
+                    "برای صدور فاکتور معتبر، اتصال کیف پول و دسترسی دائمی به فایل‌های دوره، لطفاً شماره تماس خود را از طریق دکمه زیر ارسال فرمایید:",
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=contact_kb
+                )
+                return
+
+            await _check_terms_and_proceed(client, callback_query.message.chat.id, user_id, username, full_name, prod, u)
+
+        # Pre-Purchase Terms Acceptance Callbacks
+        @self.app.on_callback_query(filters.regex(r"^terms_accept:"))
+        async def terms_accept_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer("تعهدنامه با موفقیت پذیرفته شد.")
+            prod_id = callback_query.data.split(":", 1)[1]
+            user_id = callback_query.from_user.id
+            username = callback_query.from_user.username or ""
+            full_name = f"{callback_query.from_user.first_name or ''} {callback_query.from_user.last_name or ''}".strip()
+
+            u = UserService.accept_terms_by_platform("telegram", user_id)
+            prod = await StoreService.get_product(prod_id)
+            if prod:
+                await _create_and_send_order(client, callback_query.message.chat.id, user_id, username, full_name, prod, u)
+
+        @self.app.on_callback_query(filters.regex(r"^terms_reject$"))
+        async def terms_reject_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            await callback_query.message.edit_text("❌ خرید دوره لغو شد. در صورت تمایل می‌توانید سایر دوره‌ها را مشاهده فرمایید.")
+
+        # Referral Menu Callback
+        @self.app.on_callback_query(filters.regex(r"^referral_info$"))
+        async def referral_info_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            user_id = callback_query.from_user.id
+            u = UserService.get_user_by_platform_id("telegram", user_id)
+            if not u or not u.phone:
+                session_manager.set_user_action(f"tg_pending_referral_{user_id}", "referral", "referral")
+                contact_kb = ReplyKeyboardMarkup(
+                    [[KeyboardButton("📱 ارسال شماره موبایل (جهت دریافت هدیه)", request_contact=True)]],
+                    resize_keyboard=True,
+                    one_time_keyboard=True
+                )
+                await callback_query.message.reply_text(
+                    "🎁 <b>دریافت بسته صوتی ۱۱ قسمتی توحید عملی:</b>\n\n"
+                    "برای فعال‌سازی لینک دعوت اختصاصی و دریافت فایل‌های هدیه، لطفاً ابتدا شماره تماس خود را ثبت نمایید:",
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=contact_kb
+                )
+                return
+
+            await _show_referral_panel(client, callback_query.message.chat.id, user_id, u)
+
+        # Profile Quick Callback
+        @self.app.on_callback_query(filters.regex(r"^btn_profile$"))
+        async def btn_profile_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            user_id = callback_query.from_user.id
+            cust = await StoreService.get_or_create_customer(user_id, platform="telegram")
+            orders = await StoreService.get_customer_orders(user_id)
+            purchased = await StoreService.get_customer_purchased_courses(user_id)
+            lines = [
+                "👤 <b>اطلاعات حساب کاربری شما:</b>", "",
+                f"▫️ <b>شناسه کاربری:</b> <code>{cust.user_id}</code>",
+                f"💰 <b>موجودی کیف پول:</b> <b>{cust.wallet_balance:,} تومان</b>",
+                f"📦 <b>تعداد کل خریدهای شما:</b> <b>{len(orders)} سفارش</b>",
+                f"🎁 <b>درصد کش‌بک خریدها:</b> <b>{config.CASHBACK_PERCENT}%</b>",
+                f"📚 <b>دوره‌های فعال شما:</b> <b>{len(purchased)} دوره</b>",
+                ""
+            ]
+            buttons = []
+            if purchased:
+                buttons.append([InlineKeyboardButton(f"📚 مشاهده دوره‌های من ({len(purchased)} دوره فعال)", callback_data="btn_my_courses")])
+            else:
+                buttons.append([InlineKeyboardButton("📚 لیست دوره‌های آموزشی", callback_data="cnav:courses")])
+            buttons.append([InlineKeyboardButton("🎁 دوره‌ها و هدایای رایگان", callback_data="cnav:gifts")])
+            buttons.append([InlineKeyboardButton("🎁 دریافت رایگان توحید عملی (دعوت دوستان)", callback_data="referral_info")])
+            buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
+            await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        # Tohid Amali Episodes List Callback
+        @self.app.on_callback_query(filters.regex(r"^tohid_amali_list$"))
+        async def tohid_amali_list_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            user_id = callback_query.from_user.id
+            if not await check_force_join_telegram(client, user_id) and not self.is_admin(user_id):
+                ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
+                await callback_query.message.reply_text(
+                    "⚠️ <b>برای دریافت فایل‌های دوره، عضویت در کانال الزامی است:</b>",
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=build_telegram_force_join_keyboard(ch)
+                )
+                return
+
+            if not UserService.is_gift_unlocked_by_platform("telegram", user_id, TOHID_AMALI_PACK_ID) and not self.is_admin(user_id):
+                await callback_query.message.reply_text("🔒 <b>این بسته هنوز برای شما قفل است.</b>\nلطفاً ابتدا ۱ نفر از دوستان خود را دعوت کنید.", parse_mode=enums.ParseMode.HTML)
+                return
+
+            lines = [
+                "🎧 <b>فهرست ۱۱ قسمت صوتی دوره توحید عملی:</b>",
+                "جهت دریافت هر فایل، روی دکمه آن کلیک کنید:\n"
+            ]
+            buttons = []
+            for ep in TOHID_AMALI_EPISODES:
+                p = ep["part"]
+                t = ep["title"]
+                d = ep["duration"]
+                buttons.append([InlineKeyboardButton(f"▶️ قسمت {p}: {t} ({d})", callback_data=f"tohid_part:{p}")])
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به منوی دعوت", callback_data="referral_info")])
+            await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        # Tohid Amali Part Delivery Callback (Fast file_id Caching)
+        @self.app.on_callback_query(filters.regex(r"^tohid_part:(\d+)$"))
+        async def tohid_part_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer("در حال آماده‌سازی فایل صوتی...")
+            user_id = callback_query.from_user.id
+            part_num = int(callback_query.matches[0].group(1))
+
+            if not await check_force_join_telegram(client, user_id) and not self.is_admin(user_id):
+                ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
+                await callback_query.message.reply_text(
+                    "⚠️ <b>برای دریافت فایل‌های دوره، عضویت در کانال الزامی است:</b>",
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=build_telegram_force_join_keyboard(ch)
+                )
+                return
+
+            if not UserService.is_gift_unlocked_by_platform("telegram", user_id, TOHID_AMALI_PACK_ID) and not self.is_admin(user_id):
+                await callback_query.message.reply_text("🔒 این بسته هنوز قفل است.")
+                return
+
+            ep = next((e for e in TOHID_AMALI_EPISODES if e["part"] == part_num), None)
+            if not ep:
+                await callback_query.message.reply_text("❌ قسمت مورد نظر یافت نشد.")
+                return
+
+            cache_key = f"tohid_part_{part_num}"
+            cached_fid = await db_get_cached_file_id(cache_key, "telegram")
+            caption_txt = f"🎧 <b>بسته صوتی توحید عملی - قسمت {part_num}</b>\n▫️ عنوان: <b>{ep['title']}</b>\n⏱ مدت: <code>{ep['duration']}</code>"
+
+            if cached_fid:
+                try:
+                    await client.send_audio(
+                        chat_id=user_id,
+                        audio=cached_fid,
+                        caption=caption_txt,
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    return
+                except Exception as e:
+                    logger.warning(f"[Telegram] Failed to send cached file_id {cached_fid}: {e}")
+
+            candidates = [
+                config.DATA_DIR / "gifts" / ep["filename"],
+                config.STORAGE_DIR / "gifts" / ep["filename"],
+                Path("data") / "gifts" / ep["filename"]
+            ]
+            local_found = None
+            for c in candidates:
+                if c.exists():
+                    local_found = c
+                    break
+
+            if local_found:
+                try:
+                    sent = await client.send_audio(
+                        chat_id=user_id,
+                        audio=str(local_found),
+                        caption=caption_txt,
+                        title=f"توحید عملی - قسمت {part_num}: {ep['title']}",
+                        performer="UNFINIT Academy",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    if sent and sent.audio and sent.audio.file_id:
+                        await db_set_cached_file_id(cache_key, "telegram", sent.audio.file_id, "audio")
+                    return
+                except Exception as e:
+                    logger.warning(f"[Telegram] Error sending audio file {local_found}: {e}")
+
+            await callback_query.message.reply_text(
+                f"{caption_txt}\n\n"
+                "ℹ️ این فایل در حال آماده‌سازی و بارگذاری مستقیم بر روی سرور می‌باشد.",
+                parse_mode=enums.ParseMode.HTML
+            )
 
         # ================= AI 2-STAGE WORKFLOW HANDLERS =================
         @self.app.on_callback_query(filters.regex(r"^ai_eng:"))

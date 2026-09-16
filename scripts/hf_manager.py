@@ -106,6 +106,7 @@ def cmd_push_secrets():
         "GEMINI_API_KEY",
         "NARA_API_KEY",
         "ADMIN_PANEL_PASSWORD",
+        "DATA_ENCRYPTION_KEY",
         "ZARINPAL_MERCHANT_ID",
         "HF_TOKEN",
     ]
@@ -177,6 +178,10 @@ def cmd_sync(message: Optional[str] = None):
                     "unfinit_instagram.json",
                     "unfinit_session_cache.json",
                     "sessions/*",
+                    "data/*",
+                    "data",
+                    "*.enc",
+                    "users.json",
                     "*.db",
                     "*.sqlite*",
                     ".env*"

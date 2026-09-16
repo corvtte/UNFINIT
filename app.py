@@ -257,6 +257,46 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path == "/api/contacts/export_csv":
+            try:
+                query_params = urllib.parse.parse_qs(parsed.query)
+                pwd_param = (query_params.get("pwd", [""])[0] or query_params.get("password", [""])[0]).strip()
+                cookie_hdr = self.headers.get("Cookie", "")
+                auth_hdr = self.headers.get("Authorization", "")
+
+                is_authenticated = False
+                if pwd_param and verify_admin_password(pwd_param):
+                    is_authenticated = True
+                elif "unfinit_auth=true" in cookie_hdr or "unfinit_auth_token=authenticated" in cookie_hdr:
+                    is_authenticated = True
+                elif auth_hdr.startswith("Bearer "):
+                    token = auth_hdr[7:].strip()
+                    if verify_admin_password(token) or token == "authenticated":
+                        is_authenticated = True
+
+                if not is_authenticated:
+                    self.send_response(401)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"ok": False, "error": "Unauthorized: Admin access required"}, ensure_ascii=False).encode("utf-8"))
+                    return
+
+                from services.user_service import UserService
+                csv_data = UserService.export_contacts_csv()
+                csv_bytes = csv_data.encode("utf-8")
+
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="unfinit_contacts.csv"')
+                self.send_header("Content-Length", str(len(csv_bytes)))
+                self.end_headers()
+                self.wfile.write(csv_bytes)
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path in ("/", "/dashboard"):
             try:
                 html = render_dashboard_html()

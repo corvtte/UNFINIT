@@ -56,7 +56,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.2.9"),
+        "engine_version": EngineVersionStr("UNFINIT Engine v0.3.0"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -1594,6 +1594,9 @@ def render_dashboard_html() -> str:
                         <p class="text-xs text-slate-400 mt-1">تغییرات در data/settings.json و دیتابیس پایدار ذخیره شده و پس از ریستارت سرور نیز پایدار خواهند ماند.</p>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button type="button" onclick="handleExportContactsCSV()" class="theme-card-btn px-3 py-2 rounded-xl text-xs text-amber-300 font-medium flex items-center gap-1.5 transition shadow-sm">
+                            <span>📥</span> خروجی مخاطبین (.csv)
+                        </button>
                         <button type="button" onclick="handleExportSettings()" class="theme-card-btn px-3 py-2 rounded-xl text-xs text-cyan-300 font-medium flex items-center gap-1.5 transition shadow-sm">
                             <span>📤</span> خروجی و پشتیبان‌گیری تنظیمات (.json)
                         </button>
@@ -4144,6 +4147,17 @@ def render_dashboard_html() -> str:
             window.open('/api/settings/export?password=' + encodeURIComponent(pwd), '_blank');
         }}
 
+        function handleExportContactsCSV() {{
+            let pwd = currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
+            if (!pwd) {{
+                pwd = prompt('جهت برون‌بری مخاطبین، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
+                if (!pwd) return;
+                currentAdminPassword = pwd;
+                sessionStorage.setItem('unfinit_admin_pwd', pwd);
+            }}
+            window.open('/api/contacts/export_csv?pwd=' + encodeURIComponent(pwd), '_blank');
+        }}
+
         async function handleImportSettingsFile(input) {{
             const file = input.files && input.files[0];
             if (!file) return;
@@ -4471,6 +4485,7 @@ def render_dashboard_html() -> str:
                 window.updateAiProviderView = updateAiProviderView;
                 window.populateSettingsForm = populateSettingsForm;
                 window.handleExportSettings = handleExportSettings;
+                window.handleExportContactsCSV = handleExportContactsCSV;
                 window.handleImportSettingsFile = handleImportSettingsFile;
                 window.handleSaveSettings = handleSaveSettings;
                 window.clearLiveLogs = clearLiveLogs;

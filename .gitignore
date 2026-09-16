@@ -28,6 +28,10 @@ sessions/
 *.db-wal
 *.db-shm
 store_database.db
+data/
+*.enc
+users.json
+data/users.json.enc
 
 # 4. Python Cache & Virtual Environments
 __pycache__/

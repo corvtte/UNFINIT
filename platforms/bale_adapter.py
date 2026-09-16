@@ -18,11 +18,13 @@ from core.formatters import (
     format_duration,
     parse_trim_input
 )
-from core.database import get_system_setting, set_system_setting, fix_mojibake
+from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService
 from services.media_service import MediaService, clean_display_filename
 from services.session_manager import session_manager
 from services.url_service import UrlService
+from services.user_service import UserService, normalize_phone
+from services.referral_service import ReferralService, TOHID_AMALI_PACK_ID, TOHID_AMALI_EPISODES
 from media.inspector import inspect_technical_metadata
 from media.tagger import extract_cover_image, generate_video_thumbnail
 
@@ -1099,34 +1101,29 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, "📚 لیست دوره‌های آموزشی تخصصی:", reply_markup={"inline_keyboard": buttons})
                                         continue
 
-                                    if cb_data.startswith("bcview:"):
-                                        p_id = cb_data.split(":", 1)[1]
-                                        prod = await StoreService.get_product(p_id)
-                                        if not prod:
-                                            await bale.send_message(chat_id, "❌ دوره مورد نظر یافت نشد.")
-                                            continue
-
-                                        if prod.price <= 0:
+                                    async def _bale_send_order(c_id, p_item, usr):
+                                        if p_item.price <= 0:
                                             order = await StoreService.create_order(
-                                                user_id=chat_id,
+                                                user_id=c_id,
                                                 username="",
-                                                customer_name="",
-                                                phone="",
-                                                product=prod,
+                                                customer_name=usr.full_name if usr else "",
+                                                phone=usr.phone if usr else "",
+                                                product=p_item,
                                                 platform="bale"
                                             )
                                             await StoreService.approve_order(order.order_id)
-                                            dl_content = prod.download_link or "لینک دانلودی برای این دوره ثبت نشده است."
-                                            cust_msg = StoreService.format_delivery_message(prod.name, order.order_id, dl_content, 0)
-                                            await bale.send_message(chat_id, cust_msg)
-                                            continue
+                                            UserService.unlock_gift_by_platform("bale", c_id, p_item.product_id)
+                                            dl_content = p_item.download_link or "لینک دانلودی برای این دوره ثبت نشده است."
+                                            cust_msg = StoreService.format_delivery_message(p_item.name, order.order_id, dl_content, 0)
+                                            await bale.send_message(c_id, cust_msg)
+                                            return
 
                                         order = await StoreService.create_order(
-                                            user_id=chat_id,
+                                            user_id=c_id,
                                             username="",
-                                            customer_name="",
-                                            phone="",
-                                            product=prod,
+                                            customer_name=usr.full_name if usr else "",
+                                            phone=usr.phone if usr else "",
+                                            product=p_item,
                                             platform="bale"
                                         )
 
@@ -1143,32 +1140,92 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                         if bale_token:
                                             res_inv = await bale.send_invoice(
-                                                chat_id=chat_id,
-                                                title=prod.name,
-                                                description=prod.description or f"خرید آنلاین دوره {prod.name}",
+                                                chat_id=c_id,
+                                                title=p_item.name,
+                                                description=p_item.description or f"خرید آنلاین دوره {p_item.name}",
                                                 payload=order.order_id,
                                                 provider_token=bale_token,
-                                                amount_tomans=prod.price,
-                                                photo_url=prod.photo_url or None,
+                                                amount_tomans=p_item.price,
+                                                photo_url=p_item.photo_url or None,
                                                 reply_markup=inv_kb
                                             )
                                             if res_inv.get("ok"):
-                                                continue
+                                                return
                                             logger.warning(f"Bale send_invoice returned not ok: {res_inv}")
 
                                         # Fallback to Card-to-Card if invoice sending failed or token missing
                                         c_num = await get_system_setting("CARD_NUMBER", config.CARD_NUMBER)
                                         c_name = await get_system_setting("CARD_HOLDER", config.CARD_HOLDER)
                                         card_msg = (
-                                            f"🧾 <b>فاکتور پرداخت دوره: {prod.name}</b>\n\n"
-                                            f"▫️ مبلغ قابل پرداخت: <b>{prod.price:,} تومان</b>\n"
+                                            f"🧾 <b>فاکتور پرداخت دوره: {p_item.name}</b>\n\n"
+                                            f"▫️ مبلغ قابل پرداخت: <b>{p_item.price:,} تومان</b>\n"
                                             f"▫️ شماره کارت: <code>{c_num}</code>\n"
                                             f"▫️ به نام: <b>{c_name}</b>\n"
                                             f"▫️ کد سفارش شما: <code>{order.order_id}</code>\n\n"
                                             "📌 لطفاً پس از واریز مبلغ، تصویر رسید / فیش واریزی خود را در همین چت ارسال فرمایید تا تایید و محتوا تحویل گردد."
                                         )
-                                        session_manager.set_user_action(f"bale_{chat_id}", "await_receipt", order.order_id)
-                                        await bale.send_message(chat_id, card_msg)
+                                        session_manager.set_user_action(f"bale_{c_id}", "await_receipt", order.order_id)
+                                        await bale.send_message(c_id, card_msg)
+
+                                    if cb_data.startswith("bcview:"):
+                                        p_id = cb_data.split(":", 1)[1]
+                                        prod = await StoreService.get_product(p_id)
+                                        if not prod:
+                                            await bale.send_message(chat_id, "❌ دوره مورد نظر یافت نشد.")
+                                            continue
+
+                                        if prod.price <= 0:
+                                            u = UserService.get_user_by_platform_id("bale", chat_id)
+                                            await _bale_send_order(chat_id, prod, u)
+                                            continue
+
+                                        u = UserService.get_user_by_platform_id("bale", chat_id)
+                                        if not u or not u.phone:
+                                            session_manager.set_user_action(f"bale_pending_buy_{chat_id}", p_id, p_id)
+                                            contact_kb = {
+                                                "keyboard": [
+                                                    [{"text": "📱 ارسال شماره تماس (جهت ثبت‌نام و صدور فاکتور)", "request_contact": True}],
+                                                    [{"text": "🔙 انصراف"}]
+                                                ],
+                                                "resize_keyboard": True,
+                                                "one_time_keyboard": True
+                                            }
+                                            await bale.send_message(
+                                                chat_id,
+                                                "⚠️ <b>ثبت‌نام سریع جهت صدور فاکتور رسمی:</b>\n\n"
+                                                "برای صدور فاکتور معتبر، اتصال کیف پول و دسترسی دائمی به فایل‌های دوره، لطفاً شماره تماس خود را از طریق دکمه زیر ارسال فرمایید:",
+                                                reply_markup=contact_kb
+                                            )
+                                            continue
+
+                                        if not u.terms_accepted:
+                                            terms_text = (
+                                                f"⚖️ <b>تعهدنامه مالکیت معنوی دوره {prod.name}:</b>\n\n"
+                                                "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»\n\n"
+                                                "آیا شرایط و تعهدنامه فوق را مطالعه کرده و می‌پذیرید؟"
+                                            )
+                                            inv_kb = {
+                                                "inline_keyboard": [
+                                                    [{"text": "✅ شرایط را می‌پذیرم", "callback_data": f"bale_terms_accept:{prod.product_id}"}],
+                                                    [{"text": "❌ انصراف", "callback_data": "bale_terms_reject"}]
+                                                ]
+                                            }
+                                            await bale.send_message(chat_id, terms_text, reply_markup=inv_kb)
+                                            continue
+
+                                        await _bale_send_order(chat_id, prod, u)
+                                        continue
+
+                                    if cb_data.startswith("bale_terms_accept:"):
+                                        p_id = cb_data.split(":", 1)[1]
+                                        u = UserService.accept_terms_by_platform("bale", chat_id)
+                                        prod = await StoreService.get_product(p_id)
+                                        if prod:
+                                            await _bale_send_order(chat_id, prod, u)
+                                        continue
+
+                                    if cb_data == "bale_terms_reject":
+                                        await bale.send_message(chat_id, "❌ خرید دوره لغو شد. در صورت تمایل می‌توانید سایر دوره‌ها را مشاهده فرمایید.")
                                         continue
 
                                     if cb_data.startswith("bpay_online:"):
@@ -1867,9 +1924,176 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": buttons} if buttons else None)
                                         continue
 
-                                    if cb_data == "bnav:support":
-                                        session_manager.set_user_action(f"bale_{chat_id}", "await_support", "none")
-                                        await bale.send_message(chat_id, "💬 <b>ارسال پیام به پشتیبانی:</b>\nلطفاً پیام یا سوال خود را ارسال فرمایید تا تیکت شما ثبت گردد:")
+                                    async def _bale_show_referral_panel(c_id, usr):
+                                        bot_username = "UNFINIT_Bot"
+                                        try:
+                                            b_me = await bale.get_me()
+                                            if b_me and b_me.get("ok"):
+                                                bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
+                                        except Exception:
+                                            pass
+                                        ref_link = ReferralService.get_referral_link("bale", usr.referral_code, bot_username)
+                                        invites = usr.successful_invites
+                                        unlocked = UserService.is_gift_unlocked_by_platform("bale", c_id, TOHID_AMALI_PACK_ID)
+
+                                        st_txt = "✅ <b>باز شده و آماده دریافت</b>" if unlocked else "🔒 <b>قفل (نیاز به ۱ دعوت موفق)</b>"
+                                        msg_text = (
+                                            "🎁 <b>طرح دعوت از دوستان و هدیه ویژه توحید عملی:</b>\n\n"
+                                            "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!\n\n"
+                                            f"🔗 <b>لینک اختصاصی دعوت شما در بله:</b>\n<code>{ref_link}</code>\n\n"
+                                            f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} نفر</b>\n"
+                                            f"🎧 <b>وضعیت بسته صوتی:</b> {st_txt}\n"
+                                        )
+                                        buttons = []
+                                        if unlocked:
+                                            buttons.append([{"text": "🎧 دریافت ۱۱ فایل صوتی توحید عملی", "callback_data": "bale:tohid_amali_list"}])
+                                        buttons.append([{"text": "🔙 بازگشت به حساب کاربری", "callback_data": "bnav:profile"}])
+                                        await bale.send_message(c_id, msg_text, reply_markup={"inline_keyboard": buttons})
+
+                                    if cb_data == "bnav:referral":
+                                        u = UserService.get_user_by_platform_id("bale", chat_id)
+                                        if not u or not u.phone:
+                                            session_manager.set_user_action(f"bale_pending_referral_{chat_id}", "referral", "referral")
+                                            contact_kb = {
+                                                "keyboard": [
+                                                    [{"text": "📱 ارسال شماره تماس (جهت دریافت هدیه)", "request_contact": True}],
+                                                    [{"text": "🔙 انصراف"}]
+                                                ],
+                                                "resize_keyboard": True,
+                                                "one_time_keyboard": True
+                                            }
+                                            await bale.send_message(
+                                                chat_id,
+                                                "🎁 <b>دریافت بسته صوتی ۱۱ قسمتی توحید عملی:</b>\n\n"
+                                                "برای فعال‌سازی لینک دعوت اختصاصی و دریافت فایل‌های هدیه، لطفاً ابتدا شماره تماس خود را ثبت نمایید:",
+                                                reply_markup=contact_kb
+                                            )
+                                            continue
+                                        await _bale_show_referral_panel(chat_id, u)
+                                        continue
+
+                                    if cb_data == "bnav:profile":
+                                        cust = await StoreService.get_or_create_customer(chat_id, platform="bale")
+                                        purchased = await StoreService.get_customer_purchased_courses(chat_id)
+                                        lines = [
+                                            "👤 <b>اطلاعات حساب کاربری شما:</b>\n",
+                                            f"▫️ شناسه کاربری: <code>{cust.user_id}</code>",
+                                            f"💰 موجودی کیف پول: <code>{cust.wallet_balance:,} تومان</code>",
+                                            f"🎁 درصد کش‌بک خریدها: <code>{config.CASHBACK_PERCENT}%</code>",
+                                            f"📚 دوره‌های خریداری‌شده: <b>{len(purchased)} دوره</b>\n"
+                                        ]
+                                        p_btns = []
+                                        if purchased:
+                                            p_btns.append([{"text": f"📚 مشاهده دوره‌های من ({len(purchased)})", "callback_data": "bnav:courses_my"}])
+                                        else:
+                                            p_btns.append([{"text": "📚 لیست دوره‌های آموزشی", "callback_data": "bnav:courses"}])
+                                        p_btns.append([{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}])
+                                        p_btns.append([{"text": "🎁 دریافت رایگان توحید عملی (دعوت از دوستان)", "callback_data": "bnav:referral"}])
+                                        p_btns.append([{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}])
+                                        await bale.send_message(chat_id, "\n".join(lines), reply_markup={"inline_keyboard": p_btns})
+                                        continue
+
+                                    if cb_data == "bale:tohid_amali_list":
+                                        if not await bale.check_user_membership(chat_id) and not bale.is_admin(chat_id):
+                                            ch = await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE)
+                                            await bale.send_message(
+                                                chat_id,
+                                                "⚠️ <b>برای دریافت فایل‌های دوره، عضویت در کانال الزامی است:</b>",
+                                                reply_markup=build_bale_force_join_keyboard(ch)
+                                            )
+                                            continue
+
+                                        if not UserService.is_gift_unlocked_by_platform("bale", chat_id, TOHID_AMALI_PACK_ID) and not bale.is_admin(chat_id):
+                                            await bale.send_message(chat_id, "🔒 <b>این بسته هنوز برای شما قفل است.</b>\nلطفاً ابتدا ۱ نفر از دوستان خود را دعوت کنید.")
+                                            continue
+
+                                        lines = [
+                                            "🎧 <b>فهرست ۱۱ قسمت صوتی دوره توحید عملی:</b>",
+                                            "جهت دریافت هر فایل، روی دکمه آن کلیک کنید:\n"
+                                        ]
+                                        buttons = []
+                                        for ep in TOHID_AMALI_EPISODES:
+                                            p = ep["part"]
+                                            t = ep["title"]
+                                            d = ep["duration"]
+                                            buttons.append([{"text": f"▶️ قسمت {p}: {t} ({d})", "callback_data": f"bale:tohid_part:{p}"}])
+                                        buttons.append([{"text": "🔙 بازگشت به منوی دعوت", "callback_data": "bnav:referral"}])
+                                        await bale.send_message(chat_id, "\n".join(lines), reply_markup={"inline_keyboard": buttons})
+                                        continue
+
+                                    if cb_data.startswith("bale:tohid_part:"):
+                                        part_num = int(cb_data.split(":", 2)[2])
+                                        if not await bale.check_user_membership(chat_id) and not bale.is_admin(chat_id):
+                                            ch = await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE)
+                                            await bale.send_message(
+                                                chat_id,
+                                                "⚠️ <b>برای دریافت فایل‌های دوره، عضویت در کانال الزامی است:</b>",
+                                                reply_markup=build_bale_force_join_keyboard(ch)
+                                            )
+                                            continue
+
+                                        if not UserService.is_gift_unlocked_by_platform("bale", chat_id, TOHID_AMALI_PACK_ID) and not bale.is_admin(chat_id):
+                                            await bale.send_message(chat_id, "🔒 این بسته هنوز قفل است.")
+                                            continue
+
+                                        ep = next((e for e in TOHID_AMALI_EPISODES if e["part"] == part_num), None)
+                                        if not ep:
+                                            await bale.send_message(chat_id, "❌ قسمت مورد نظر یافت نشد.")
+                                            continue
+
+                                        cache_key = f"tohid_part_{part_num}"
+                                        cached_fid = await db_get_cached_file_id(cache_key, "bale")
+                                        caption_txt = f"🎧 <b>بسته صوتی توحید عملی - قسمت {part_num}</b>\n▫️ عنوان: <b>{ep['title']}</b>\n⏱ مدت: <code>{ep['duration']}</code>"
+
+                                        if cached_fid:
+                                            try:
+                                                res_aud = await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    file_path=cached_fid,
+                                                    caption=caption_txt,
+                                                    title=f"توحید عملی - قسمت {part_num}: {ep['title']}",
+                                                    performer="UNFINIT Academy"
+                                                )
+                                                if res_aud.get("ok"):
+                                                    continue
+                                            except Exception as e:
+                                                logger.warning(f"[Bale] Failed to send cached file_id {cached_fid}: {e}")
+
+                                        candidates = [
+                                            config.DATA_DIR / "gifts" / ep["filename"],
+                                            config.STORAGE_DIR / "gifts" / ep["filename"],
+                                            Path("data") / "gifts" / ep["filename"]
+                                        ]
+                                        local_found = None
+                                        for c in candidates:
+                                            if c.exists():
+                                                local_found = c
+                                                break
+
+                                        if local_found:
+                                            try:
+                                                sent_res = await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    file_path=str(local_found),
+                                                    caption=caption_txt,
+                                                    title=f"توحید عملی - قسمت {part_num}: {ep['title']}",
+                                                    performer="UNFINIT Academy"
+                                                )
+                                                if sent_res.get("ok"):
+                                                    res_obj = sent_res.get("result", {})
+                                                    audio_obj = res_obj.get("audio") or res_obj.get("document") or {}
+                                                    new_fid = audio_obj.get("file_id")
+                                                    if new_fid:
+                                                        await db_set_cached_file_id(cache_key, "bale", new_fid, "audio")
+                                                continue
+                                            except Exception as e:
+                                                logger.warning(f"[Bale] Error sending audio file {local_found}: {e}")
+
+                                        await bale.send_message(
+                                            chat_id,
+                                            f"{caption_txt}\n\n"
+                                            "ℹ️ این فایل در حال آماده‌سازی و بارگذاری مستقیم بر روی سرور می‌باشد."
+                                        )
                                         continue
 
                                     continue
@@ -1918,6 +2142,83 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if bale.is_admin(chat_id):
                                             ACTIVE_BALE_ADMIN_ID = chat_id
                                         await StoreService.get_or_create_customer(chat_id, platform="bale")
+
+                                    # Contact Message Handler (Cross-Platform Unified Identity)
+                                    contact_data = msg.get("contact")
+                                    if contact_data:
+                                        raw_phone = contact_data.get("phone_number") or ""
+                                        norm_phone = normalize_phone(raw_phone)
+                                        if norm_phone:
+                                            fn = contact_data.get("first_name") or ""
+                                            ln = contact_data.get("last_name") or ""
+                                            full_name = f"{fn} {ln}".strip()
+                                            u = UserService.link_platform_user("bale", chat_id, norm_phone, full_name)
+
+                                            # Check if there is a pending referral code
+                                            pending_ref_data = session_manager.get_user_action(f"bale_ref_{chat_id}")
+                                            pending_ref = pending_ref_data.get("extra") if pending_ref_data else None
+                                            if pending_ref:
+                                                inviter_phone, newly_unlocked = ReferralService.record_referral(
+                                                    inviter_code=pending_ref,
+                                                    invited_phone=norm_phone,
+                                                    invited_platform="bale",
+                                                    invited_platform_id=chat_id
+                                                )
+                                                session_manager.clear_user_action(f"bale_ref_{chat_id}")
+                                                if newly_unlocked and inviter_phone:
+                                                    inviter = UserService.get_user_by_phone(inviter_phone)
+                                                    if inviter and inviter.bale_id:
+                                                        try:
+                                                            await bale.send_message(
+                                                                inviter.bale_id,
+                                                                ReferralService.get_congratulations_message("bale")
+                                                            )
+                                                        except Exception as e:
+                                                            logger.warning(f"[Bale] Failed to notify inviter {inviter.bale_id}: {e}")
+
+                                            success_msg = (
+                                                f"✅ <b>حساب کاربری شما با موفقیت متصل شد.</b>\n\n"
+                                                f"📱 شماره تماس: <code>{norm_phone}</code>\n"
+                                                f"👤 نام: <b>{full_name or 'کاربر گرامی'}</b>\n"
+                                                f"🔗 کد معرف اختصاصی شما: <code>{u.referral_code}</code>"
+                                            )
+                                            await bale.send_message(chat_id, success_msg, reply_markup=get_bale_customer_keyboard())
+
+                                            # Check if user had a pending purchase
+                                            pending_buy_data = session_manager.get_user_action(f"bale_pending_buy_{chat_id}")
+                                            if pending_buy_data:
+                                                prod_id = pending_buy_data.get("extra")
+                                                session_manager.clear_user_action(f"bale_pending_buy_{chat_id}")
+                                                if prod_id:
+                                                    prod = await StoreService.get_product(prod_id)
+                                                    if prod:
+                                                        if prod.price > 0 and not u.terms_accepted:
+                                                            terms_text = (
+                                                                f"⚖️ <b>تعهدنامه مالکیت معنوی دوره {prod.name}:</b>\n\n"
+                                                                "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»\n\n"
+                                                                "آیا شرایط و تعهدنامه فوق را مطالعه کرده و می‌پذیرید؟"
+                                                            )
+                                                            inv_kb = {
+                                                                "inline_keyboard": [
+                                                                    [{"text": "✅ شرایط را می‌پذیرم", "callback_data": f"bale_terms_accept:{prod.product_id}"}],
+                                                                    [{"text": "❌ انصراف", "callback_data": "bale_terms_reject"}]
+                                                                ]
+                                                            }
+                                                            await bale.send_message(chat_id, terms_text, reply_markup=inv_kb)
+                                                            continue
+                                                        else:
+                                                            await _bale_send_order(chat_id, prod, u)
+                                                            continue
+
+                                            # Check if user had a pending referral view
+                                            pending_ref_view = session_manager.get_user_action(f"bale_pending_referral_{chat_id}")
+                                            if pending_ref_view:
+                                                session_manager.clear_user_action(f"bale_pending_referral_{chat_id}")
+                                                await _bale_show_referral_panel(chat_id, u)
+                                                continue
+                                        else:
+                                            await bale.send_message(chat_id, "⚠️ شماره تماس ارسالی نامعتبر است.")
+                                        continue
 
                                     # Successful Online Payment Handler
                                     sp = msg.get("successful_payment")
@@ -2264,6 +2565,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "❌ دوره مورد نظر یافت نشد.")
                                             continue
 
+                                        elif param.startswith("ref_"):
+                                            ref_code = ReferralService.parse_referral_code(param)
+                                            if ref_code:
+                                                session_manager.set_user_action(f"bale_ref_{chat_id}", ref_code, ref_code)
+                                                logger.info(f"[Bale] User {chat_id} started bot with referral code {ref_code}")
+
                                     if text.lower() in ("/ping", "ping", "پینگ"):
                                         api_start = time.time()
                                         try:
@@ -2440,6 +2747,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 "inline_keyboard": [
                                                     [{"text": "📚 لیست دوره‌های آموزشی", "callback_data": "bnav:courses"}],
                                                     [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
+                                                    [{"text": "🎁 دریافت رایگان توحید عملی (دعوت از دوستان)", "callback_data": "bnav:referral"}],
                                                     [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
                                                 ]
                                             }
@@ -2449,6 +2757,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 "inline_keyboard": [
                                                     [{"text": f"📚 مشاهده دوره‌های من ({len(purchased)})", "callback_data": "bnav:courses_my"}],
                                                     [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
+                                                    [{"text": "🎁 دریافت رایگان توحید عملی (دعوت از دوستان)", "callback_data": "bnav:referral"}],
                                                     [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
                                                 ]
                                             }
@@ -2460,6 +2769,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         buttons = []
                                         if gifts:
                                             buttons = [[{"text": f"🎁 {g.name} (رایگان)", "callback_data": f"bcview:{g.product_id}"}] for g in gifts]
+                                        buttons.append([{"text": "🎁 دریافت رایگان بسته توحید عملی", "callback_data": "bnav:referral"}])
                                         session_manager.set_user_action(f"bale_{chat_id}", "await_support", "none")
                                         support_txt = (
                                             "💬 <b>مرکز پشتیبانی و هدایای آموزشی:</b>\n\n"

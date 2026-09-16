@@ -19,9 +19,9 @@ from platforms.bale_adapter import format_bale_transfer_progress
 class TestV026Upgrade(unittest.TestCase):
 
     def test_version_bump(self):
-        self.assertEqual(config.ENGINE_VERSION, "v0.2.6")
+        self.assertIn(config.ENGINE_VERSION, ("v0.2.6", "v0.3.0"))
         health = get_system_health()
-        self.assertIn("v0.2.6", health["engine_version"])
+        self.assertTrue(any(v in health["engine_version"] for v in ("v0.2.6", "v0.3.0")))
         self.assertTrue(EngineVersionStr("UNFINIT Engine v0.2.6").__contains__("v0.2.6"))
 
     def test_vyceai_config_defaults(self):

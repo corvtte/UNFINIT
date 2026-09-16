@@ -20,7 +20,7 @@ def _clean_text(text: str, default: str = "") -> str:
         except Exception:
             pass
         return default
-# Supported versions: v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6, v0.2.7, v0.2.8, v0.2.9
+# Supported versions: v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6, v0.2.7, v0.2.8, v0.2.9, v0.3.0
 class VersionStr(str):
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, str):
@@ -42,7 +42,8 @@ class VersionStr(str):
         return False
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.9").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.0").strip())
+    DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
     API_HASH: str = (os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or "").strip()
@@ -181,7 +182,8 @@ class Config:
         self.COURSE_DELIVERY_NOTE = _clean_text(os.environ.get("COURSE_DELIVERY_NOTE") or "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨", default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨")
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.9").strip())
+        self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.0").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -212,6 +214,7 @@ class Config:
             self.DB_PATH = self.DATA_DIR / "store_database.db"
             self.COURSES_JSON_FILE = self.DATA_DIR / "courses.json"
             self.SETTINGS_JSON_FILE = self.DATA_DIR / "settings.json"
+            self.USERS_ENC_FILE = self.DATA_DIR / "users.json.enc"
             self.COURSES_BACKUP_FILE = self.COURSES_JSON_FILE
             self.UPLOADS_DIR = self.DATA_DIR / "uploads"
             self.BANNERS_DIR = self.DATA_DIR / "uploads" / "banners"
@@ -221,6 +224,7 @@ class Config:
             self.DB_PATH = (self.BASE_DIR / "store_database.db").resolve()
             self.COURSES_JSON_FILE = self.DATA_DIR / "courses.json"
             self.SETTINGS_JSON_FILE = self.DATA_DIR / "settings.json"
+            self.USERS_ENC_FILE = self.DATA_DIR / "users.json.enc"
             self.COURSES_BACKUP_FILE = self.COURSES_JSON_FILE
             self.UPLOADS_DIR = (self.BASE_DIR / "uploads").resolve()
             self.BANNERS_DIR = (self.BASE_DIR / "uploads" / "banners").resolve()
