@@ -1002,6 +1002,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 photo_url = payload.get("photo_url", "").strip()
                 allow_card = bool(payload.get("allow_card", True))
                 allow_bale = bool(payload.get("allow_bale", True))
+                requires_referral = bool(payload.get("requires_referral", False))
                 if not name:
                     raise ValueError("نام دوره الزامی است.")
                 loop = asyncio.new_event_loop()
@@ -1009,7 +1010,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 p_obj = loop.run_until_complete(StoreService.add_product(
                     name=name, price=price, description=desc,
                     download_link=dl_link, photo_url=photo_url,
-                    allow_card=allow_card, allow_bale=allow_bale
+                    allow_card=allow_card, allow_bale=allow_bale,
+                    requires_referral=requires_referral
                 ))
                 loop.close()
                 self.send_response(200)
@@ -1516,11 +1518,11 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     raise ValueError("شناسه دوره الزامی است.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                for field in ("name", "price", "description", "download_link", "photo_url", "allow_card", "allow_bale"):
+                for field in ("name", "price", "description", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral"):
                     if field in payload:
                         if field == "price":
                             val = int(payload[field])
-                        elif field in ("allow_card", "allow_bale"):
+                        elif field in ("allow_card", "allow_bale", "requires_referral"):
                             val = 1 if payload[field] else 0
                         else:
                             val = str(payload[field])
@@ -1535,6 +1537,44 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+        elif path == "/api/courses/summarize":
+            try:
+                text = (payload.get("text") or "").strip()
+                from services.ai_service import ai_service
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                summary = loop.run_until_complete(ai_service.summarize_course_for_bale(text))
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "summary": summary}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+        elif path in ("/api/courses/terms", "/api/store/terms"):
+            try:
+                terms = (payload.get("terms_text") or payload.get("COURSE_TERMS_TEXT") or "").strip()
+                if not terms:
+                    raise ValueError("متن تعهدنامه نمی‌تواند خالی باشد.")
+                from core.database import set_system_setting
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(set_system_setting("COURSE_TERMS_TEXT", terms))
+                loop.run_until_complete(set_system_setting("course_terms_text", terms))
+                loop.close()
+                config.COURSE_TERMS_TEXT = terms
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "terms_text": terms}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/courses/toggle", "/api/products/toggle_active"):
             try:
                 p_id = (payload.get("product_id") or payload.get("id") or "").strip()

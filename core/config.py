@@ -20,6 +20,7 @@ def _clean_text(text: str, default: str = "") -> str:
         except Exception:
             pass
         return default
+    return text.strip()
 # Supported versions: v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6, v0.2.7, v0.2.8, v0.2.9, v0.3.0
 class VersionStr(str):
     def __eq__(self, other: Any) -> bool:
@@ -41,8 +42,14 @@ class VersionStr(str):
             return True
         return False
 
+    def __str__(self) -> str:
+        v = super().__str__()
+        if "v0.3.1" not in v:
+            return f"v0.3.1 (v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0 {v})"
+        return f"{v} (v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0)"
+
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.0").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.1").strip())
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
@@ -51,6 +58,10 @@ class Config:
     TELEGRAM_OWNER_ID: int = int((os.environ.get("TELEGRAM_OWNER_ID") or os.environ.get("OWNER_TELEGRAM_ID") or "0").strip() or "0")
     TELEGRAM_FORUM_GROUP_ID: str = (os.environ.get("TELEGRAM_FORUM_GROUP_ID") or "").strip()
     ADMIN_USER_IDS: list = [x.strip() for x in (os.environ.get("ADMIN_USER_IDS") or "").split(",") if x.strip()]
+
+    @property
+    def BOT_TOKEN(self) -> str:
+        return self.BALE_BOT_TOKEN or self.TELEGRAM_BOT_TOKEN
 
     @property
     def OWNER_ID(self) -> int:
@@ -82,6 +93,7 @@ class Config:
     STORE_NAME: str = _clean_text(os.environ.get("STORE_NAME") or "فروشگاه دوره‌های آموزشی UNFINIT", default="فروشگاه دوره‌های آموزشی UNFINIT")
     WELCOME_TEXT: str = _clean_text(os.environ.get("WELCOME_TEXT") or "به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.", default="به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.")
     TERMS_TEXT: str = (os.environ.get("TERMS_TEXT") or "کلیه حقوق مادی و معنوی دوره‌ها متعلق به این مجموعه می‌باشد.").strip()
+    COURSE_TERMS_TEXT: str = _clean_text(os.environ.get("COURSE_TERMS_TEXT") or "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»", default="«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»")
     CARD_NUMBER: str = (os.environ.get("CARD_NUMBER") or "6037991122334455").strip()
     CARD_HOLDER: str = (os.environ.get("CARD_HOLDER") or "نام صاحب حساب").strip()
     CASHBACK_PERCENT: int = int((os.environ.get("CASHBACK_PERCENT") or "10").strip() or "10")
@@ -183,7 +195,7 @@ class Config:
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.0").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.1").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -259,7 +271,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.2.9").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.1").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

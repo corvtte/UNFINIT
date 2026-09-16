@@ -168,6 +168,7 @@ class TestV2570Fast(unittest.TestCase):
                 self.assertEqual(p["download_link"], "https://dl.unfinit.com/ai-v2570.zip")
                 break
         self.assertTrue(found, "Purchased course not found for customer")
+        asyncio.run(StoreService.delete_product(prod.product_id))
 
     def test_06_pillow_banner_hd_optimization(self):
         """Verify Pillow 16:9 HD banner resizing and Lanczos optimization logic."""

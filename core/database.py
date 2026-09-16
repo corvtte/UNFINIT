@@ -407,6 +407,8 @@ async def init_db():
             cur.execute("ALTER TABLE products ADD COLUMN allow_bale INTEGER DEFAULT 1")
         if "bale_photo_file_id" not in existing_cols:
             cur.execute("ALTER TABLE products ADD COLUMN bale_photo_file_id TEXT DEFAULT ''")
+        if "requires_referral" not in existing_cols:
+            cur.execute("ALTER TABLE products ADD COLUMN requires_referral INTEGER DEFAULT 0")
 
         # Auto-clean legacy filler text and redundant titles from download_link in products
         try:
@@ -709,14 +711,12 @@ async def init_db():
             """)
 
             cur.execute("""
-            DELETE FROM products
-            WHERE product_id NOT IN ('prod_01', 'prod_02', 'prod_03')
-            """)
-
-            cur.execute("""
             UPDATE system_settings SET value = ''
             WHERE key = 'bale_payment_token' AND value LIKE '%secret_123456%'
             """)
+
+            cur.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('course_terms_text', ?)", (config.COURSE_TERMS_TEXT,))
+            cur.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('COURSE_TERMS_TEXT', ?)", (config.COURSE_TERMS_TEXT,))
 
             cur.execute("""
             UPDATE system_settings SET value = ''

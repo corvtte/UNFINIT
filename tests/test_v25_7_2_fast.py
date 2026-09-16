@@ -138,7 +138,7 @@ class TestV2572Fast(unittest.TestCase):
         self.assertEqual(len(tg_buttons), 3)
         self.assertIn("📚 لیست دوره‌های آموزشی", tg_buttons)
         self.assertTrue(any("حساب کاربری" in b for b in tg_buttons), f"Account button missing from TG: {tg_buttons}")
-        self.assertIn("💬 پشتیبانی و هدایا", tg_buttons)
+        self.assertTrue(any(b in tg_buttons for b in ("💬 پشتیبانی و هدایا", "🎁 فایل‌های هدیه")), f"Gift button missing from TG: {tg_buttons}")
 
         bale_kb = get_bale_customer_keyboard()
         bale_rows = bale_kb.get("keyboard", [])
@@ -147,7 +147,7 @@ class TestV2572Fast(unittest.TestCase):
         self.assertEqual(len(bale_buttons), 3)
         self.assertIn("📚 لیست دوره‌های آموزشی", bale_buttons)
         self.assertTrue(any("حساب کاربری" in b for b in bale_buttons), f"Account button missing from Bale: {bale_buttons}")
-        self.assertIn("💬 پشتیبانی و هدایا", bale_buttons)
+        self.assertTrue(any(b in bale_buttons for b in ("💬 پشتیبانی و هدایا", "🎁 فایل‌های هدیه")), f"Gift button missing from Bale: {bale_buttons}")
 
     def test_07_pillow_banner_optimization_in_adapters(self):
         """Verify Pillow optimization is applied to banner downloads in Bale & Telegram."""

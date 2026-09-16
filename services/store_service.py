@@ -34,6 +34,7 @@ class ProductItem:
         self.allow_card = bool(d.get("allow_card", 1))
         self.allow_bale = bool(d.get("allow_bale", 1))
         self.payment_type = d.get("payment_type", "paid")
+        self.requires_referral = bool(d.get("requires_referral", 0))
 
 class OrderItem:
     def __init__(self, d: dict):
@@ -128,6 +129,7 @@ class StoreService:
                     "allow_card": int(r.get("allow_card", 1)),
                     "allow_bale": int(r.get("allow_bale", 1)),
                     "payment_type": r.get("payment_type", "paid"),
+                    "requires_referral": int(r.get("requires_referral", 0) or 0),
                     "created_at": r.get("created_at", "")
                 })
             config.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -142,7 +144,7 @@ class StoreService:
     async def update_product_field(product_id: str, field: str, value: Any) -> bool:
         allowed = {
             "name", "price", "description", "photo_file_id", "bale_photo_file_id", "digital_file_id",
-            "active", "download_link", "photo_url", "allow_card", "allow_bale"
+            "active", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral"
         }
         if field not in allowed:
             return False
@@ -159,7 +161,8 @@ class StoreService:
         download_link: str = "",
         photo_url: str = "",
         allow_card: bool = True,
-        allow_bale: bool = True
+        allow_bale: bool = True,
+        requires_referral: bool = False
     ) -> ProductItem:
         pid = "prod_" + uuid.uuid4().hex[:6]
         now_str = get_tehran_now_str()
@@ -167,11 +170,12 @@ class StoreService:
         await execute_query(
             """INSERT INTO products (
                 product_id, name, price, description, download_link, photo_url,
-                allow_card, allow_bale, payment_type, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                allow_card, allow_bale, payment_type, requires_referral, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 pid, name, price, description or "", download_link or "", photo_url or "",
-                1 if allow_card else 0, 1 if allow_bale else 0, ptype, now_str
+                1 if allow_card else 0, 1 if allow_bale else 0, ptype,
+                1 if requires_referral else 0, now_str
             )
         )
         await StoreService.backup_products_to_disk()

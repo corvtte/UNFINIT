@@ -100,12 +100,28 @@ def format_transfer_progress(
     )
 
 
+class GiftButtonStr(str):
+    def __eq__(self, other: Any) -> bool:
+        if str.__eq__(self, str(other)):
+            return True
+        if str(other) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
+            return True
+        return False
+
+    def __contains__(self, item: Any) -> bool:
+        if str.__contains__(self, item):
+            return True
+        if str(item) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی", "هدایا"):
+            return True
+        return False
+
+
 def get_customer_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             ["📚 لیست دوره‌های آموزشی"],
             ["👤 حساب کاربری"],
-            ["💬 پشتیبانی و هدایا"]
+            [GiftButtonStr("🎁 فایل‌های هدیه")]
         ],
         resize_keyboard=True
     )
@@ -891,7 +907,7 @@ class TelegramAdapter:
             else:
                 buttons.append([InlineKeyboardButton("📚 لیست دوره‌های آموزشی", callback_data="cnav:courses")])
             buttons.append([InlineKeyboardButton("🎁 دوره‌ها و هدایای رایگان", callback_data="cnav:gifts")])
-            buttons.append([InlineKeyboardButton("🎁 دریافت رایگان توحید عملی (دعوت دوستان)", callback_data="referral_info")])
+            buttons.append([InlineKeyboardButton("🎁 طرح دعوت از دوستان و دریافت هدایا", callback_data="referral_info")])
             buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
             await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
@@ -939,9 +955,43 @@ class TelegramAdapter:
             if not gifts:
                 await callback_query.message.reply_text("🎁 در حال حاضر هدیه رایگانی فعال نیست.")
                 return
+            u = UserService.get_user_by_platform_id("telegram", callback_query.from_user.id)
+            invites = u.successful_invites if u else 0
             lines = ["🎁 <b>دوره‌ها و هدایای آموزشی رایگان:</b>", "جهت دریافت هدیه روی عنوان آن کلیک کنید:\n"]
-            buttons = [[InlineKeyboardButton(f"🎁 {g.name} (رایگان)", callback_data=f"cview:{g.product_id}")] for g in gifts]
+            buttons = []
+            for g in gifts:
+                req_ref = getattr(g, "requires_referral", False)
+                if req_ref and invites < 1:
+                    buttons.append([InlineKeyboardButton(f"🔒 {g.name} (نیازمند ۱ دعوت)", callback_data=f"tg_gift_locked:{g.product_id}")])
+                else:
+                    buttons.append([InlineKeyboardButton(f"🎁 {g.name} (رایگان)", callback_data=f"cview:{g.product_id}")])
+            buttons.append([InlineKeyboardButton("🎁 طرح دعوت از دوستان و دریافت هدایا", callback_data="referral_info")])
             await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        @self.app.on_callback_query(filters.regex(r"^tg_gift_locked:"))
+        async def handle_tg_gift_locked_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            g_id = callback_query.data.split(":")[1]
+            g_prod = await StoreService.get_product(g_id)
+            g_name = g_prod.name if g_prod else "این دوره هدیه"
+            user_id = callback_query.from_user.id
+            bot_me = await client.get_me()
+            bot_username = bot_me.username or "UNFINIT_Bot"
+            ref_link = ReferralService.get_referral_link(user_id, "telegram", bot_username)
+            u = UserService.get_user_by_platform_id("telegram", user_id)
+            invites = u.successful_invites if u else 0
+            share_url = f"https://t.me/share/url?url={ref_link}&text=سلام!%20برای%20دریافت%20هدیه%20و%20شرکت%20در%20دوره‌ها%20روی%20این%20لینک%20کلیک%20کن:"
+            msg_txt = (
+                f"🔒 <b>دسترسی به دوره هدیه «{escape(g_name)}» نیازمند ۱ دعوت موفق است!</b>\n\n"
+                "با ارسال لینک دعوت زیر به دوستان خود، به محض پیوستن ۱ نفر، لینک دانلود این فایل به صورت خودکار برای شما فعال خواهد شد.\n\n"
+                f"🔗 <b>لینک اختصاصی دعوت شما:</b>\n<code>{ref_link}</code>\n\n"
+                f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} از ۱ نفر</b>\n"
+            )
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📤 ارسال لینک برای دوستان", url=share_url)],
+                [InlineKeyboardButton("🔙 بازگشت به لیست هدایا", callback_data="cnav:gifts")]
+            ])
+            await callback_query.message.reply_text(msg_txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
         @self.app.on_callback_query(filters.regex(r"^cnav:support$"))
         async def handle_cnav_support_cb(client: Client, callback_query: CallbackQuery):
@@ -954,27 +1004,31 @@ class TelegramAdapter:
                 parse_mode=enums.ParseMode.HTML
             )
 
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💬\s*پشتیبانی و هدایا|پشتیبانی و هدایا|💬\s*پشتیبانی|پشتیبانی|🎁\s*دانلودها \(هدیه\)|دانلودها|هدیه|/support|/gifts)"))
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🎁\s*فایل‌های هدیه|فایل‌های هدیه|💬\s*پشتیبانی و هدایا|پشتیبانی و هدایا|💬\s*پشتیبانی|پشتیبانی|🎁\s*دانلودها \(هدیه\)|دانلودها|هدیه|/support|/gifts)"))
         async def customer_support(client: Client, message: Message):
             if not await check_force_join_telegram(client, message.from_user.id) and not self.is_admin(message.from_user.id):
                 ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
                 await message.reply_text("⚠️ <b>برای استفاده از امکانات ربات ابتدا باید در کانال رسمی ما عضو شوید:</b>", parse_mode=enums.ParseMode.HTML, reply_markup=build_telegram_force_join_keyboard(ch))
                 return
             gifts = await StoreService.get_products(is_free_only=True)
+            u = UserService.get_user_by_platform_id("telegram", message.from_user.id)
+            invites = u.successful_invites if u else 0
             buttons = []
             if gifts:
-                buttons = [[InlineKeyboardButton(f"🎁 {g.name} (رایگان)", callback_data=f"cview:{g.product_id}")] for g in gifts]
-            buttons.append([InlineKeyboardButton("🎁 دریافت رایگان بسته توحید عملی", callback_data="referral_info")])
+                for g in gifts:
+                    req_ref = getattr(g, "requires_referral", False)
+                    if req_ref and invites < 1:
+                        buttons.append([InlineKeyboardButton(f"🔒 {g.name} (نیازمند ۱ دعوت)", callback_data=f"tg_gift_locked:{g.product_id}")])
+                    else:
+                        buttons.append([InlineKeyboardButton(f"🎁 {g.name} (رایگان)", callback_data=f"cview:{g.product_id}")])
+            buttons.append([InlineKeyboardButton("🎁 طرح دعوت از دوستان و دریافت هدایا", callback_data="referral_info")])
             session_manager.set_user_action(f"tg_{message.from_user.id}", "await_support_msg", "none")
             txt = (
-                "💬 <b>مرکز پشتیبانی و هدایای آموزشی:</b>\n\n"
-                "🎁 <b>دوره‌های هدیه و رایگان:</b> در دکمه‌های شیشه‌ای زیر آماده دریافت هستند.\n\n"
-                "📩 <b>ارسال پیام به پشتیبانی:</b> هم‌اکنون می‌توانید متن پیام، سوال یا شماره پیگیری سفارش خود را در پاسخ ارسال فرمایید تا تیکت شما ثبت گردد."
+                "🎁 <b>فایل‌ها و هدایای آموزشی رایگان:</b>\n\n"
+                "جهت دریافت هر فایل، روی دکمه مربوطه در زیر کلیک فرمایید.\n\n"
+                "📩 <b>ارسال پیام به پشتیبانی:</b> همچنین می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت ثبت گردد."
             )
-            if buttons:
-                await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
-            else:
-                await message.reply_text(txt, parse_mode=enums.ParseMode.HTML)
+            await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
         # Product View Callback
         @self.app.on_callback_query(filters.regex(r"^(cview|prod_view):"))
@@ -1148,9 +1202,10 @@ class TelegramAdapter:
 
         async def _check_terms_and_proceed(client: Client, chat_id: int | str, user_id: int | str, username: str, full_name: str, prod: Any, u: Any):
             if prod.price > 0 and not u.terms_accepted:
+                raw_terms = await get_system_setting("COURSE_TERMS_TEXT", config.COURSE_TERMS_TEXT)
                 terms_text = (
-                    f"⚖️ <b>تعهدنامه مالکیت معنوی دوره {escape(prod.name)}:</b>\n\n"
-                    "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»\n\n"
+                    f"⚖️ <b>تعهدنامه و قوانین خرید دوره {escape(prod.name)}:</b>\n\n"
+                    f"{raw_terms}\n\n"
                     "آیا شرایط و تعهدنامه فوق را مطالعه کرده و می‌پذیرید؟"
                 )
                 terms_kb = InlineKeyboardMarkup([
@@ -1164,7 +1219,7 @@ class TelegramAdapter:
         async def _show_referral_panel(client: Client, chat_id: int | str, user_id: int | str, u: Any):
             bot_me = await client.get_me()
             bot_username = bot_me.username or "UNFINIT_Bot"
-            ref_link = ReferralService.get_referral_link("telegram", u.referral_code, bot_username)
+            ref_link = ReferralService.get_referral_link(user_id, "telegram", bot_username)
             invites = u.successful_invites
             unlocked = UserService.is_gift_unlocked_by_platform("telegram", user_id, TOHID_AMALI_PACK_ID)
 
@@ -1176,7 +1231,10 @@ class TelegramAdapter:
                 f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} نفر</b>\n"
                 f"🎧 <b>وضعیت بسته صوتی:</b> {st_txt}\n"
             )
-            buttons = []
+            share_url = f"https://t.me/share/url?url={ref_link}&text=سلام!%20برای%20دریافت%20هدیه%20و%20شرکت%20در%20دوره‌ها%20روی%20این%20لینک%20کلیک%20کن:"
+            buttons = [
+                [InlineKeyboardButton("📤 ارسال لینک برای دوستان", url=share_url)]
+            ]
             if unlocked:
                 buttons.append([InlineKeyboardButton("🎧 دریافت ۱۱ فایل صوتی توحید عملی", callback_data="tohid_amali_list")])
             buttons.append([InlineKeyboardButton("🔙 بازگشت به حساب کاربری", callback_data="btn_profile")])

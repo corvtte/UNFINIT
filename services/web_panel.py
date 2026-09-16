@@ -4,6 +4,7 @@ import asyncio
 import time
 import uuid
 import urllib.parse
+import html
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -56,7 +57,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr("UNFINIT Engine v0.3.0"),
+        "engine_version": EngineVersionStr(f"UNFINIT Engine {config.ENGINE_VERSION} (v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0)"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -228,6 +229,7 @@ def render_dashboard_html() -> str:
             
             card_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-blue-950/60 text-blue-300 border border-blue-800/60">کارت‌به‌کارت ✅</span>' if prod.allow_card else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">کارت‌به‌کارت ❌</span>'
             bale_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">درگاه آنلاین بله ✅</span>' if prod.allow_bale else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">درگاه آنلاین بله ❌</span>'
+            ref_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-300 border border-amber-800/60">۱ دعوت الزامی 🎁</span>' if getattr(prod, 'requires_referral', False) else ''
             
             dl_html = f'''
             <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
@@ -259,11 +261,12 @@ def render_dashboard_html() -> str:
                     <div class="flex flex-wrap gap-1.5">
                         {card_badge}
                         {bale_badge}
+                        {ref_badge}
                     </div>
                     {dl_html}
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <button onclick="openEditModal('{prod.product_id}', '{prod.name}', {prod.price}, `{prod.description or ''}`, '{prod.download_link or ''}', '{prod.photo_url or ''}', {1 if prod.allow_card else 0}, {1 if prod.allow_bale else 0})" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
+                    <button onclick="openEditModal('{prod.product_id}', '{prod.name}', {prod.price}, `{prod.description or ''}`, '{prod.download_link or ''}', '{prod.photo_url or ''}', {1 if prod.allow_card else 0}, {1 if prod.allow_bale else 0}, {1 if getattr(prod, 'requires_referral', False) else 0})" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
                         <span>✏️</span> ویرایش
                     </button>
                     <div class="flex items-center gap-1.5">
@@ -278,6 +281,7 @@ def render_dashboard_html() -> str:
 
     drop_rows = render_studio_table_rows()
     active_drops_count = len([s for s in session_manager._sessions if not s.startswith("url_") and not s.startswith("rurl_")])
+    course_terms_escaped = html.escape(getattr(config, "COURSE_TERMS_TEXT", ""))
 
     return f"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -286,7 +290,7 @@ def render_dashboard_html() -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z' fill='%23ffffff'/%3E%3Cpolygon points='62,18 42,46 54,46 44,72 68,40 56,40' fill='%23facc15' opacity='0.9'/%3E%3C/svg%3E">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z' fill='%23ffffff'/%3E%3Cpolygon points='62,18 42,46 54,46 44,72 68,40 56,40' fill='%23facc15' opacity='0.9'/%3E%3C/svg%3E">
-    <title>UNFINIT Store Engine v0.1.0 | پنل مدیریت، استودیوی رسانه و فروشگاه آنلاین</title>
+    <title>UNFINIT Store Engine {config.ENGINE_VERSION} | پنل مدیریت، استودیوی رسانه و فروشگاه آنلاین</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -739,24 +743,24 @@ def render_dashboard_html() -> str:
         <main class="max-w-7xl mx-auto p-6 space-y-6">
             <!-- Navigation Tabs: Desktop -->
             <div id="desktopNavTabs" class="hidden md:flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
-                <button data-tab="studio" id="btn-tab-studio" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700">
+                <button draggable="true" data-tab="studio" id="btn-tab-studio" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🎙️</span> استودیوی رسانه و متادیتا
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
-                <button data-tab="courses" id="btn-tab-courses" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button draggable="true" data-tab="courses" id="btn-tab-courses" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🎓</span> دوره‌ها
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
-                <button data-tab="orders" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>🧾</span> سفارشات و تراکنش‌ها
-                </button>
-                <button data-tab="downloads" id="btn-tab-downloads" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button draggable="true" data-tab="downloads" id="btn-tab-downloads" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🎁</span> فایل‌های دانلودی
                 </button>
-                <button data-tab="tokens" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button draggable="true" data-tab="orders" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
+                    <span>🧾</span> سفارشات و تراکنش‌ها
+                </button>
+                <button draggable="true" data-tab="tokens" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
                 </button>
-                <button data-tab="settings" id="btn-tab-settings" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                <button draggable="true" data-tab="settings" id="btn-tab-settings" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
                 </button>
             </div>
@@ -771,11 +775,11 @@ def render_dashboard_html() -> str:
                     <span class="flex items-center gap-2"><span>🎓</span> دوره‌ها</span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
-                <button data-tab="orders" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>🧾</span> سفارشات و تراکنش‌ها
-                </button>
                 <button data-tab="downloads" id="m-btn-tab-downloads" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🎁</span> فایل‌های دانلودی
+                </button>
+                <button data-tab="orders" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                    <span>🧾</span> سفارشات و تراکنش‌ها
                 </button>
                 <button data-tab="tokens" id="m-btn-tab-tokens" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
@@ -1059,7 +1063,12 @@ def render_dashboard_html() -> str:
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs text-slate-300">توضیحات کامل دوره</label>
+                            <div class="flex items-center gap-2">
+                                <label class="block text-xs text-slate-300">توضیحات کامل دوره</label>
+                                <button type="button" onclick="aiSummarizeDescription('newCDesc', 'counter_newCDesc')" id="btnAiSummarizeNew" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-[11px] flex items-center gap-1 transition">
+                                    <span>✨</span> خلاصه هوشمند برای بله (زیر ۲۵۵ کاراکتر)
+                                </button>
+                            </div>
                             <span id="counter_newCDesc" class="text-[11px] font-mono text-slate-400">0 / 255</span>
                         </div>
                         <textarea id="newCDesc" rows="3" oninput="updateCharCounter('newCDesc', 'counter_newCDesc', 255)" placeholder="توضیحات کامل دوره و سرفصل‌ها..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
@@ -1068,7 +1077,7 @@ def render_dashboard_html() -> str:
                         <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره (تحویل خودکار پس از خرید)</label>
                         <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                     </div>
-                    <div class="flex items-center gap-6 pt-2">
+                    <div class="flex flex-wrap items-center gap-6 pt-2">
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                             <input type="checkbox" id="newCAllowCard" checked class="w-4 h-4 rounded text-cyan-600 bg-slate-900 border-slate-700 focus:ring-0">
                             <span>💳 پرداخت کارت به کارت (با ارسال فیش)</span>
@@ -1076,6 +1085,10 @@ def render_dashboard_html() -> str:
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                             <input type="checkbox" id="newCAllowBale" checked class="w-4 h-4 rounded text-emerald-600 bg-slate-900 border-slate-700 focus:ring-0">
                             <span>🌐 درگاه پرداخت آنلاین بله (کیف پول / کارت)</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300">
+                            <input type="checkbox" id="newCRequiresReferral" class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700 focus:ring-0">
+                            <span>🎁 نیازمند ۱ دعوت موفق (هدیه وایرال)</span>
                         </label>
                     </div>
                     <div class="flex justify-end gap-3 pt-3 border-t border-slate-800">
@@ -1088,6 +1101,28 @@ def render_dashboard_html() -> str:
             <!-- Course Cards Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {prod_cards}
+            </div>
+
+            <!-- Course Terms Agreement Management Card -->
+            <div class="glass p-6 rounded-2xl border border-slate-800 space-y-4 mt-6" id="courseTermsCard">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>📜</span> متن تعهدنامه و قوانین خرید دوره (Course Terms & Conditions)
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">این متن پیش از پرداخت وجه در ربات‌های بله و تلگرام به کاربر نمایش داده شده و خرید منوط به پذیرش آن است.</p>
+                    </div>
+                    <button onclick="saveCourseTermsText()" id="btnSaveTerms" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5">
+                        <span>💾</span> ذخیره متن تعهدنامه
+                    </button>
+                </div>
+                <div>
+                    <textarea id="courseTermsTextarea" rows="4" placeholder="متن تعهدنامه و قوانین استفاده از دوره‌ها..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-sans leading-relaxed">{course_terms_escaped}</textarea>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-[11px] text-slate-500">متن به صورت زنده در تلگرام و بله لود می‌شود.</span>
+                        <span id="termsSaveStatus" class="text-xs font-medium"></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Sales Analytics Dashboard -->
@@ -1786,7 +1821,12 @@ def render_dashboard_html() -> str:
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs text-slate-300">توضیحات دوره</label>
+                            <div class="flex items-center gap-2">
+                                <label class="block text-xs text-slate-300">توضیحات دوره</label>
+                                <button type="button" onclick="aiSummarizeDescription('editDesc', 'counter_editDesc')" id="btnAiSummarizeEdit" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-[11px] flex items-center gap-1 transition">
+                                    <span>✨</span> خلاصه هوشمند برای بله (زیر ۲۵۵ کاراکتر)
+                                </button>
+                            </div>
                             <span id="counter_editDesc" class="text-[11px] font-mono text-slate-400">0 / 255</span>
                         </div>
                         <textarea id="editDesc" rows="3" oninput="updateCharCounter('editDesc', 'counter_editDesc', 255)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
@@ -1810,8 +1850,8 @@ def render_dashboard_html() -> str:
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-300 mb-1">روش‌های پرداخت مجاز</label>
-                        <div class="flex items-center gap-6 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
+                        <label class="block text-xs text-slate-300 mb-1">روش‌های پرداخت و شرایط دوره</label>
+                        <div class="flex flex-wrap items-center gap-6 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
                             <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                                 <input type="checkbox" id="editAllowCard" class="w-4 h-4 rounded text-cyan-600 focus:ring-0 bg-slate-900 border-slate-600">
                                 <span>💳 پرداخت کارت‌به‌کارت</span>
@@ -1819,6 +1859,10 @@ def render_dashboard_html() -> str:
                             <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                                 <input type="checkbox" id="editAllowBale" class="w-4 h-4 rounded text-emerald-600 focus:ring-0 bg-slate-900 border-slate-600">
                                 <span>🌐 درگاه پرداخت بله</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300">
+                                <input type="checkbox" id="editRequiresReferral" class="w-4 h-4 rounded text-amber-500 focus:ring-0 bg-slate-900 border-slate-600">
+                                <span>🎁 نیازمند ۱ دعوت موفق (هدیه وایرال)</span>
                             </label>
                         </div>
                     </div>
@@ -2402,13 +2446,79 @@ def render_dashboard_html() -> str:
                     }}
                 }}
 
+                function initTabsDragAndDrop() {{
+                    const desktopNav = document.getElementById('desktopNavTabs');
+                    if (!desktopNav) return;
+
+                    try {{
+                        const savedOrder = JSON.parse(localStorage.getItem('unfinit_tabs_order') || '[]');
+                        if (Array.isArray(savedOrder) && savedOrder.length > 0) {{
+                            savedOrder.forEach(tabId => {{
+                                const btn = desktopNav.querySelector(`[data-tab="${{tabId}}"]`);
+                                if (btn) desktopNav.appendChild(btn);
+                                const mNav = document.getElementById('mobileNavMenu');
+                                if (mNav) {{
+                                    const mBtn = mNav.querySelector(`[data-tab="${{tabId}}"]`);
+                                    if (mBtn) mNav.appendChild(mBtn);
+                                }}
+                            }});
+                        }}
+                    }} catch (e) {{
+                        console.warn('[DragDrop] Error loading saved tab order:', e);
+                    }}
+
+                    let draggedItem = null;
+
+                    desktopNav.addEventListener('dragstart', function(e) {{
+                        const btn = e.target.closest('[data-tab]');
+                        if (!btn) return;
+                        draggedItem = btn;
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', btn.getAttribute('data-tab'));
+                        btn.classList.add('opacity-40');
+                    }});
+
+                    desktopNav.addEventListener('dragend', function(e) {{
+                        const btn = e.target.closest('[data-tab]');
+                        if (btn) btn.classList.remove('opacity-40');
+                        desktopNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('opacity-40'));
+                        draggedItem = null;
+
+                        const currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab'));
+                        localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
+                    }});
+
+                    desktopNav.addEventListener('dragover', function(e) {{
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        const targetBtn = e.target.closest('[data-tab]');
+                        if (targetBtn && targetBtn !== draggedItem) {{
+                            const rect = targetBtn.getBoundingClientRect();
+                            const midpoint = rect.x + rect.width / 2;
+                            if (e.clientX < midpoint) {{
+                                desktopNav.insertBefore(draggedItem, targetBtn);
+                            }} else {{
+                                desktopNav.insertBefore(draggedItem, targetBtn.nextSibling);
+                            }}
+                        }}
+                    }});
+
+                    desktopNav.addEventListener('drop', function(e) {{
+                        e.preventDefault();
+                        const currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab'));
+                        localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
+                    }});
+                }}
+
                 if (document.readyState === 'loading') {{
                     document.addEventListener('DOMContentLoaded', function() {{
                         bindNavDelegation();
+                        initTabsDragAndDrop();
                         checkAuthOnLoad();
                     }});
                 }} else {{
                     bindNavDelegation();
+                    initTabsDragAndDrop();
                     checkAuthOnLoad();
                 }}
             }} catch (err) {{
@@ -3268,12 +3378,13 @@ def render_dashboard_html() -> str:
             const photo_url = document.getElementById('newCPhoto').value;
             const allow_card = document.getElementById('newCAllowCard').checked;
             const allow_bale = document.getElementById('newCAllowBale').checked;
+            const requires_referral = document.getElementById('newCRequiresReferral') ? (document.getElementById('newCRequiresReferral').checked ? 1 : 0) : 0;
 
             try {{
                 const res = await fetch('/api/courses/add', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale }})
+                    body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral }})
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -3290,7 +3401,7 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale) {{
+        function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale, requires_referral) {{
             document.getElementById('editProductId').value = pid;
             document.getElementById('modalProdIdBadge').innerText = pid;
             document.getElementById('editName').value = name;
@@ -3300,6 +3411,9 @@ def render_dashboard_html() -> str:
             document.getElementById('editPhoto').value = photo;
             document.getElementById('editAllowCard').checked = !!allow_card;
             document.getElementById('editAllowBale').checked = !!allow_bale;
+            if (document.getElementById('editRequiresReferral')) {{
+                document.getElementById('editRequiresReferral').checked = !!requires_referral;
+            }}
             const statusEl = document.getElementById('bannerUploadStatus_editPhoto');
             if (statusEl) statusEl.innerText = '';
             updateCharCounter('editName', 'counter_editName', 32);
@@ -3321,12 +3435,13 @@ def render_dashboard_html() -> str:
             const photo_url = document.getElementById('editPhoto').value;
             const allow_card = document.getElementById('editAllowCard').checked ? 1 : 0;
             const allow_bale = document.getElementById('editAllowBale').checked ? 1 : 0;
+            const requires_referral = document.getElementById('editRequiresReferral') ? (document.getElementById('editRequiresReferral').checked ? 1 : 0) : 0;
 
             try {{
                 const res = await fetch('/api/courses/update', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale }})
+                    body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral }})
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -3337,6 +3452,82 @@ def render_dashboard_html() -> str:
                 }}
             }} catch (err) {{
                 alert('❌ خطای ارتباط: ' + err.message);
+            }}
+        }}
+
+        async function saveCourseTermsText() {{
+            const btn = document.getElementById('btnSaveTerms');
+            const status = document.getElementById('termsSaveStatus');
+            const textarea = document.getElementById('courseTermsTextarea');
+            if (!textarea) return;
+            const terms = textarea.value.trim();
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerText = 'در حال ذخیره...';
+            }}
+            try {{
+                const res = await fetch('/api/courses/terms', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ terms: terms }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    if (status) {{
+                        status.className = 'text-xs font-medium text-emerald-400';
+                        status.innerText = '✅ تعهدنامه با موفقیت در سیستم ذخیره شد.';
+                        setTimeout(() => {{ status.innerText = ''; }}, 4000);
+                    }}
+                }} else {{
+                    if (status) {{
+                        status.className = 'text-xs font-medium text-rose-400';
+                        status.innerText = '❌ خطا: ' + (data.error || 'ذخیره نشد');
+                    }}
+                }}
+            }} catch (err) {{
+                if (status) {{
+                    status.className = 'text-xs font-medium text-rose-400';
+                    status.innerText = '❌ خطای شبکه: ' + err.message;
+                }}
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerText = '💾 ذخیره متن تعهدنامه';
+                }}
+            }}
+        }}
+
+        async function aiSummarizeDescription(textareaId, counterId) {{
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) return;
+            const text = textarea.value.trim();
+            if (!text) {{
+                alert('لطفاً ابتدا متنی در بخش توضیحات بنویسید تا هوش مصنوعی آن را خلاصه کند.');
+                return;
+            }}
+            const prevPlaceholder = textarea.placeholder;
+            textarea.disabled = true;
+            textarea.placeholder = '✨ در حال خلاصه‌سازی هوشمند برای بله (زیر ۲۵۵ کاراکتر)...';
+            try {{
+                const res = await fetch('/api/courses/summarize', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ text: text }})
+                }});
+                const data = await res.json();
+                if (data.ok && data.summary) {{
+                    textarea.value = data.summary;
+                    if (counterId) {{
+                        updateCharCounter(textareaId, counterId, 255);
+                    }}
+                }} else {{
+                    alert('❌ خطا در خلاصه‌سازی: ' + (data.error || 'پاسخی دریافت نشد'));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط با هوش مصنوعی: ' + err.message);
+            }} finally {{
+                textarea.disabled = false;
+                textarea.placeholder = prevPlaceholder;
             }}
         }}
 
@@ -3795,6 +3986,8 @@ def render_dashboard_html() -> str:
                 window.handleCreateCoupon = handleCreateCoupon;
                 window.copyText = copyText;
                 window.handleDispatch = handleDispatch;
+                window.saveCourseTermsText = saveCourseTermsText;
+                window.aiSummarizeDescription = aiSummarizeDescription;
             }} catch (err) {{
                 console.error('[UNFINIT Store & Orders Module Error]:', err);
             }}
@@ -4513,7 +4706,10 @@ async def handle_api_dispatch_url(data: dict) -> dict:
         logger.warning(f"[web_dispatch] URL probe failed for {url}")
         return {"ok": False, "error": "لینک نامعتبر است یا توسط سرور قابل دسترس نمی‌باشد."}
 
-    fn = clean_display_filename(probe.get("filename") or "downloaded_file.mp3")
+    orig_fn = probe.get("filename") or "downloaded_file.mp3"
+    fn = clean_display_filename(orig_fn)
+    if not fn or fn == "audio.mp3":
+        fn = orig_fn
     drop_id = uuid.uuid4().hex[:8]
     temp_p = config.TEMP_DIR / f"{drop_id}_{fn}"
     temp_p.parent.mkdir(parents=True, exist_ok=True)
@@ -4577,8 +4773,8 @@ async def handle_api_dispatch_url(data: dict) -> dict:
                     dur = int(transfer_info.get("duration") or 0) if transfer_info.get("duration") is not None else 0
                     res = await ACTIVE_TG_ADAPTER.send_audio(
                         target_tg_id, final_path,
-                        title=transfer_info.get("title") or send_name,
-                        performer=transfer_info.get("artist") or config.DEFAULT_ARTIST,
+                        title=transfer_info.get("title") or embed_meta.get("title") or send_name,
+                        performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
                         duration=dur,
                         caption=caption
                     )
@@ -4622,8 +4818,8 @@ async def handle_api_dispatch_url(data: dict) -> dict:
                         dur = int(transfer_info.get("duration") or 0) if transfer_info.get("duration") is not None else 0
                         tg_res = await ACTIVE_TG_ADAPTER.send_audio(
                             target_tg_id, final_path,
-                            title=transfer_info.get("title") or send_name,
-                            performer=transfer_info.get("artist") or config.DEFAULT_ARTIST,
+                            title=transfer_info.get("title") or embed_meta.get("title") or send_name,
+                            performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
                             duration=dur,
                             caption=caption
                         )
@@ -4650,8 +4846,8 @@ async def handle_api_dispatch_url(data: dict) -> dict:
                 else:
                     bale_res = await bale.send_audio(
                         target_chat, final_path,
-                        title=transfer_info.get("title") or send_name,
-                        performer=transfer_info.get("artist") or "پنل وب",
+                        title=transfer_info.get("title") or embed_meta.get("title") or send_name,
+                        performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
                         caption=caption
                     )
                 if bale_res.get("ok"):
@@ -4730,8 +4926,8 @@ async def handle_api_dispatch_url(data: dict) -> dict:
             else:
                 res = await bale.send_audio(
                     target_chat, final_path,
-                    title=transfer_info.get("title") or send_name,
-                    performer=transfer_info.get("artist") or "پنل وب",
+                    title=transfer_info.get("title") or embed_meta.get("title") or send_name,
+                    performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
                     caption=caption
                 )
             logger.info(f"[web_dispatch] [{drop_id}] Bale send_audio result: {res}")

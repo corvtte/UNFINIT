@@ -306,6 +306,44 @@ class AIService:
             # Clear exception notice WITHOUT fake badge
             return f"⚠️ ارتباط با سرویس هوش مصنوعی برقرار نشد: {str(e)}"
 
+    async def summarize_course_for_bale(self, text: str) -> str:
+        """
+        Summarizes long course descriptions into concise, compelling Persian text
+        strictly under 255 characters suitable for Bale messenger captions and cards.
+        """
+        clean_text = (text or "").strip()
+        if not clean_text:
+            return ""
+        if len(clean_text) <= 250:
+            return clean_text
+
+        cfg = self.get_provider_config()
+        sys_prompt = (
+            "تو یک دستیار حرفه‌ای نگارش و بازاریابی محتوا هستی.\n"
+            "وظیفه تو خلاصه کردن متن توضیحات یک دوره آموزشی به زبانی جذاب، روان و ترغیب‌کننده است.\n"
+            "قانون فوق‌العاده مهم و غیرقابل نقض: طول کل پاسخ باید حتماً و اکیداً حداکثر ۲۵۰ کاراکتر باشد.\n"
+            "فقط متن نهایی خلاصه را بدون هیچ مقدمه، توضیح اضافی، گیومه، پرانتز یا علامت اضافی بنویس."
+        )
+        user_msg = f"متن توضیحات دوره:\n{clean_text}\n\nلطفاً در حداکثر ۲۵۰ کاراکتر فارسی جذاب خلاصه کن:"
+
+        try:
+            res = await self.chat(
+                user_message=user_msg,
+                system_prompt=sys_prompt,
+                model=cfg["model"],
+                provider=cfg["provider"]
+            )
+            if res.get("ok") and res.get("reply"):
+                summary = res["reply"].strip().strip('"').strip("'").strip("«»")
+                if len(summary) > 255:
+                    summary = summary[:250].rstrip() + "..."
+                return summary or clean_text[:250].rstrip() + "..."
+        except Exception as e:
+            logger.warning(f"[ai_service] summarize_course_for_bale fallback: {e}")
+
+        # Fallback if AI provider is unreachable: truncate gracefully
+        return clean_text[:250].rstrip() + "..."
+
 
 ai_service = AIService()
 format_model_badge = ai_service.format_model_badge

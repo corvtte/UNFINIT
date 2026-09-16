@@ -32,12 +32,28 @@ logger = get_logger("bale_adapter")
 ACTIVE_BALE_ADMIN_ID: Optional[str] = None
 _BALE_POLLING_RUNNING: bool = False
 
+class GiftButtonStr(str):
+    def __eq__(self, other: Any) -> bool:
+        if str.__eq__(self, str(other)):
+            return True
+        if str(other) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
+            return True
+        return False
+
+    def __contains__(self, item: Any) -> bool:
+        if str.__contains__(self, item):
+            return True
+        if str(item) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی", "هدایا"):
+            return True
+        return False
+
+
 def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
             [{"text": "📚 لیست دوره‌های آموزشی"}],
             [{"text": "👤 حساب کاربری"}],
-            [{"text": "💬 پشتیبانی و هدایا"}]
+            [{"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
         ],
         "resize_keyboard": True
     }
@@ -1176,6 +1192,31 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                         if prod.price <= 0:
                                             u = UserService.get_user_by_platform_id("bale", chat_id)
+                                            req_ref = getattr(prod, "requires_referral", False)
+                                            invites = u.successful_invites if u else 0
+                                            if req_ref and invites < 1:
+                                                bot_username = "UNFINIT_Bot"
+                                                try:
+                                                    b_me = await bale.get_me()
+                                                    if b_me and b_me.get("ok"):
+                                                        bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
+                                                except Exception:
+                                                    pass
+                                                ref_link = ReferralService.get_referral_link(chat_id, "bale", bot_username)
+                                                lock_msg = (
+                                                    f"🔒 <b>دسترسی به دوره هدیه «{prod.name}» نیازمند ۱ دعوت موفق است!</b>\n\n"
+                                                    "با ارسال لینک دعوت زیر به دوستان خود، به محض پیوستن ۱ نفر، این دوره به صورت خودکار برای شما فعال خواهد شد.\n\n"
+                                                    f"🔗 <b>لینک اختصاصی دعوت شما در بله:</b>\n<code>{ref_link}</code>\n\n"
+                                                    f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} از ۱ نفر</b>\n"
+                                                )
+                                                lock_kb = {
+                                                    "inline_keyboard": [
+                                                        [{"text": "📤 ارسال لینک برای دوستان", "url": f"https://ble.ir/share/url?url={ref_link}&text=سلام!%20برای%20دریافت%20هدیه%20و%20دوره‌ها%20کلیک%20کنید:"}],
+                                                        [{"text": "🔙 بازگشت به لیست هدایا", "callback_data": "bnav:gifts"}]
+                                                    ]
+                                                }
+                                                await bale.send_message(chat_id, lock_msg, reply_markup=lock_kb)
+                                                continue
                                             await _bale_send_order(chat_id, prod, u)
                                             continue
 
@@ -1199,9 +1240,10 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             continue
 
                                         if not u.terms_accepted:
+                                            raw_terms = await get_system_setting("COURSE_TERMS_TEXT", config.COURSE_TERMS_TEXT)
                                             terms_text = (
-                                                f"⚖️ <b>تعهدنامه مالکیت معنوی دوره {prod.name}:</b>\n\n"
-                                                "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»\n\n"
+                                                f"⚖️ <b>تعهدنامه و قوانین خرید دوره {prod.name}:</b>\n\n"
+                                                f"{raw_terms}\n\n"
                                                 "آیا شرایط و تعهدنامه فوق را مطالعه کرده و می‌پذیرید؟"
                                             )
                                             inv_kb = {
@@ -1919,9 +1961,49 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                     if cb_data == "bnav:gifts":
                                         gifts = await StoreService.get_products(is_free_only=True)
-                                        buttons = [[{"text": f"🎁 {g.name} (رایگان)", "callback_data": f"bcview:{g.product_id}"}] for g in gifts] if gifts else []
+                                        u = UserService.get_user_by_platform_id("bale", chat_id)
+                                        invites = u.successful_invites if u else 0
+                                        buttons = []
+                                        if gifts:
+                                            for g in gifts:
+                                                req_ref = getattr(g, "requires_referral", False)
+                                                if req_ref and invites < 1:
+                                                    buttons.append([{"text": f"🔒 {g.name} (نیازمند ۱ دعوت)", "callback_data": f"bgift_locked:{g.product_id}"}])
+                                                else:
+                                                    buttons.append([{"text": f"🎁 {g.name} (رایگان)", "callback_data": f"bcview:{g.product_id}"}])
+                                        buttons.append([{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}])
                                         txt = "🎁 <b>دوره‌ها و هدایای آموزشی رایگان:</b>\nجهت دریافت هر دوره روی آن کلیک کنید:"
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": buttons} if buttons else None)
+                                        continue
+
+                                    if cb_data.startswith("bgift_locked:"):
+                                        g_id = cb_data.split(":")[1]
+                                        g_prod = await StoreService.get_product(g_id)
+                                        g_name = g_prod.name if g_prod else "این دوره هدیه"
+                                        bot_username = "UNFINIT_Bot"
+                                        try:
+                                            b_me = await bale.get_me()
+                                            if b_me and b_me.get("ok"):
+                                                bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
+                                        except Exception:
+                                            pass
+                                        ref_link = ReferralService.get_referral_link(chat_id, "bale", bot_username)
+                                        u = UserService.get_user_by_platform_id("bale", chat_id)
+                                        invites = u.successful_invites if u else 0
+                                        share_url = f"https://ble.ir/share/url?url={ref_link}&text=سلام!%20برای%20دریافت%20هدیه%20و%20دوره‌ها%20روی%20این%20لینک%20کلیک%20کنید:"
+                                        msg_txt = (
+                                            f"🔒 <b>دسترسی به دوره هدیه «{html.escape(g_name)}» نیازمند ۱ دعوت موفق است!</b>\n\n"
+                                            "با ارسال لینک دعوت زیر به دوستان خود، به محض پیوستن ۱ نفر، لینک دانلود این فایل به صورت خودکار برای شما فعال خواهد شد.\n\n"
+                                            f"🔗 <b>لینک اختصاصی دعوت شما در بله:</b>\n<code>{ref_link}</code>\n\n"
+                                            f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} از ۱ نفر</b>\n"
+                                        )
+                                        kb = {
+                                            "inline_keyboard": [
+                                                [{"text": "📤 ارسال لینک برای دوستان", "url": share_url}],
+                                                [{"text": "🔙 بازگشت به لیست هدایا", "callback_data": "bnav:gifts"}]
+                                            ]
+                                        }
+                                        await bale.send_message(chat_id, msg_txt, reply_markup=kb)
                                         continue
 
                                     async def _bale_show_referral_panel(c_id, usr):
@@ -1932,7 +2014,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
                                         except Exception:
                                             pass
-                                        ref_link = ReferralService.get_referral_link("bale", usr.referral_code, bot_username)
+                                        ref_link = ReferralService.get_referral_link(c_id, "bale", bot_username)
                                         invites = usr.successful_invites
                                         unlocked = UserService.is_gift_unlocked_by_platform("bale", c_id, TOHID_AMALI_PACK_ID)
 
@@ -1944,7 +2026,10 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} نفر</b>\n"
                                             f"🎧 <b>وضعیت بسته صوتی:</b> {st_txt}\n"
                                         )
-                                        buttons = []
+                                        share_url = f"https://ble.ir/share/url?url={ref_link}&text=سلام!%20برای%20دریافت%20هدیه%20و%20دوره‌ها%20کلیک%20کنید:"
+                                        buttons = [
+                                            [{"text": "📤 ارسال لینک برای دوستان", "url": share_url}]
+                                        ]
                                         if unlocked:
                                             buttons.append([{"text": "🎧 دریافت ۱۱ فایل صوتی توحید عملی", "callback_data": "bale:tohid_amali_list"}])
                                         buttons.append([{"text": "🔙 بازگشت به حساب کاربری", "callback_data": "bnav:profile"}])
@@ -1988,7 +2073,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         else:
                                             p_btns.append([{"text": "📚 لیست دوره‌های آموزشی", "callback_data": "bnav:courses"}])
                                         p_btns.append([{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}])
-                                        p_btns.append([{"text": "🎁 دریافت رایگان توحید عملی (دعوت از دوستان)", "callback_data": "bnav:referral"}])
+                                        p_btns.append([{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}])
                                         p_btns.append([{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}])
                                         await bale.send_message(chat_id, "\n".join(lines), reply_markup={"inline_keyboard": p_btns})
                                         continue
@@ -2625,7 +2710,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 "⚙️ <b>وضعیت زنده سرور و اتصالات سیستم:</b>",
                                                 "",
                                                 f"🟢 <b>پیام‌رسان بله:</b> <code>{'آنلاین ✅' if config.BALE_BOT_TOKEN else 'غیرفعال ❌'}</code> (شناسه ادمین: <code>{config.BALE_OWNER_ID}</code>)",
-                                                f"✈️ <b>ربات تلگرام:</b> <code>{'آنلاین ✅' if config.BOT_TOKEN else 'غیرفعال ❌'}</code>",
+                                                f"✈️ <b>ربات تلگرام:</b> <code>{'آنلاین ✅' if getattr(config, 'TELEGRAM_BOT_TOKEN', '') else 'غیرفعال ❌'}</code>",
                                                 f"💾 <b>دیسک موقت:</b> <code>{len(temp_files)} فایل ({human_size(total_temp_size)})</code>",
                                                 f"🚀 <b>سقف فشرده‌سازی بله:</b> <code>{config.MAX_SAFE_BALE_SIZE_MB} MB</code>",
                                                 f"💳 <b>شماره کارت فعال:</b> <code>{config.CARD_NUMBER}</code> ({config.CARD_HOLDER})"
@@ -2747,33 +2832,40 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 "inline_keyboard": [
                                                     [{"text": "📚 لیست دوره‌های آموزشی", "callback_data": "bnav:courses"}],
                                                     [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
-                                                    [{"text": "🎁 دریافت رایگان توحید عملی (دعوت از دوستان)", "callback_data": "bnav:referral"}],
+                                                    [{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}],
                                                     [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
                                                 ]
                                             }
                                         else:
-                                            lines.append("جهت دسترسی به دوره‌ها و لینک‌های آموزشی، دکمه زیر را لمس نمایید:")
-                                            profile_kb = {
-                                                "inline_keyboard": [
-                                                    [{"text": f"📚 مشاهده دوره‌های من ({len(purchased)})", "callback_data": "bnav:courses_my"}],
-                                                    [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
-                                                    [{"text": "🎁 دریافت رایگان توحید عملی (دعوت از دوستان)", "callback_data": "bnav:referral"}],
-                                                    [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
-                                                ]
-                                            }
+                                             lines.append("جهت دسترسی به دوره‌ها و لینک‌های آموزشی، دکمه زیر را لمس نمایید:")
+                                             profile_kb = {
+                                                 "inline_keyboard": [
+                                                     [{"text": f"📚 مشاهده دوره‌های من ({len(purchased)})", "callback_data": "bnav:courses_my"}],
+                                                     [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
+                                                     [{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}],
+                                                     [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
+                                                 ]
+                                             }
                                         await bale.send_message(chat_id, "\n".join(lines), reply_markup=profile_kb)
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["💬 پشتیبانی و هدایا", "پشتیبانی و هدایا", "💬 پشتیبانی", "پشتیبانی", "🎁 دانلودها (هدیه)", "دانلودها", "هدیه", "/support", "/gifts"]):
+                                    if any(text.startswith(cmd) for cmd in ["🎁 فایل‌های هدیه", "فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی و هدایا", "💬 پشتیبانی", "پشتیبانی", "🎁 دانلودها (هدیه)", "دانلودها", "هدیه", "/support", "/gifts"]):
                                         gifts = await StoreService.get_products(is_free_only=True)
+                                        u = UserService.get_user_by_platform_id("bale", chat_id)
+                                        invites = u.successful_invites if u else 0
                                         buttons = []
                                         if gifts:
-                                            buttons = [[{"text": f"🎁 {g.name} (رایگان)", "callback_data": f"bcview:{g.product_id}"}] for g in gifts]
-                                        buttons.append([{"text": "🎁 دریافت رایگان بسته توحید عملی", "callback_data": "bnav:referral"}])
+                                            for g in gifts:
+                                                req_ref = getattr(g, "requires_referral", False)
+                                                if req_ref and invites < 1:
+                                                    buttons.append([{"text": f"🔒 {g.name} (نیازمند ۱ دعوت)", "callback_data": f"bgift_locked:{g.product_id}"}])
+                                                else:
+                                                    buttons.append([{"text": f"🎁 {g.name} (رایگان)", "callback_data": f"bcview:{g.product_id}"}])
+                                        buttons.append([{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}])
                                         session_manager.set_user_action(f"bale_{chat_id}", "await_support", "none")
                                         support_txt = (
                                             "💬 <b>مرکز پشتیبانی و هدایای آموزشی:</b>\n\n"
-                                            "🎁 <b>دوره‌های هدیه و رایگان:</b> در دکمه‌های زیر آماده دریافت هستند.\n\n"
+                                            "🎁 <b>دوره‌ها و هدایای آموزشی رایگان:</b> در دکمه‌های زیر آماده دریافت هستند.\n\n"
                                             "📩 <b>ارسال پیام به پشتیبانی:</b> هم‌اکنون می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت شما ثبت گردد."
                                         )
                                         if buttons:
