@@ -200,12 +200,27 @@ class BaleAdapter:
         self.token = token or config.BALE_BOT_TOKEN
         self.base_url = f"https://tapi.bale.ai/bot{self.token}"
         self._session: Optional[aiohttp.ClientSession] = None
+        self.username: str = getattr(config, "BALE_BOT_USERNAME", "") or ""
 
     async def get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             connector = aiohttp.TCPConnector(limit=50, keepalive_timeout=60, enable_cleanup_closed=True)
             self._session = aiohttp.ClientSession(connector=connector, timeout=aiohttp.ClientTimeout(total=25))
         return self._session
+
+    async def get_me(self) -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url = f"{self.base_url}/getMe"
+        session = await self.get_session()
+        async with session.get(url) as resp:
+            data = await resp.json()
+            if data.get("ok") and data.get("result"):
+                u = data.get("result", {}).get("username", "")
+                if u:
+                    self.username = u
+                    config.BALE_BOT_USERNAME = u
+            return data
 
 
     def get_admin_chat_id(self) -> Optional[str]:
@@ -823,6 +838,16 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
         return
 
     bale = BaleAdapter(token)
+    try:
+        b_me = await bale.get_me()
+        if b_me and b_me.get("ok"):
+            b_u = b_me.get("result", {}).get("username")
+            if b_u:
+                bale.username = b_u
+                config.BALE_BOT_USERNAME = b_u
+                logger.info(f"Bale bot verified: @{bale.username}")
+    except Exception as e:
+        logger.warning(f"Failed to fetch Bale bot info on startup: {e}")
     logger.info("Bale polling listener active and running.")
 
     # 1. Persistent offset management
@@ -1195,13 +1220,14 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             req_ref = getattr(prod, "requires_referral", False)
                                             invites = u.successful_invites if u else 0
                                             if req_ref and invites < 1:
-                                                bot_username = "UNFINIT_Bot"
-                                                try:
-                                                    b_me = await bale.get_me()
-                                                    if b_me and b_me.get("ok"):
-                                                        bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
-                                                except Exception:
-                                                    pass
+                                                bot_username = bale.username or getattr(config, "BALE_BOT_USERNAME", "") or ""
+                                                if not bot_username:
+                                                    try:
+                                                        b_me = await bale.get_me()
+                                                        if b_me and b_me.get("ok"):
+                                                            bot_username = b_me.get("result", {}).get("username") or ""
+                                                    except Exception:
+                                                        pass
                                                 ref_link = ReferralService.get_referral_link(chat_id, "bale", bot_username)
                                                 lock_msg = (
                                                     f"🔒 <b>دسترسی به دوره هدیه «{prod.name}» نیازمند ۱ دعوت موفق است!</b>\n\n"
@@ -1919,6 +1945,37 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, f"🧹 پاکسازی دیسک انجام شد ({deleted} فایل موقت حذف شد).")
                                         continue
 
+                                    if cb_data in ("admin:ping", "badm:ping"):
+                                        if not bale.is_admin(chat_id): continue
+                                        t0 = time.time()
+                                        api_ok = True
+                                        try:
+                                            await bale.get_me()
+                                            latency_ms = max(1, int((time.time() - t0) * 1000))
+                                        except Exception:
+                                            api_ok = False
+                                            latency_ms = 0
+
+                                        db_ok = True
+                                        db_t0 = time.time()
+                                        try:
+                                            from core.database import fetch_one
+                                            await fetch_one("SELECT 1")
+                                            db_latency_ms = max(1, int((time.time() - db_t0) * 1000))
+                                        except Exception:
+                                            db_ok = False
+                                            db_latency_ms = 0
+
+                                        msg = (
+                                            "🏓 <b>نتیجه آزمون پینگ و سلامت سرور (Bale):</b>\n\n"
+                                            f"⚡️ <b>پاسخ‌دهی وب‌سرویس بله:</b> <code>{latency_ms} ms</code> ({'پایدار ✅' if api_ok else 'خطا ❌'})\n"
+                                            f"💾 <b>پاسخ‌دهی دیتابیس SQLite:</b> <code>{db_latency_ms} ms</code> ({'سالم ✅' if db_ok else 'خطا ❌'})\n"
+                                            f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
+                                            f"🕒 <b>زمان آزمون:</b> <code>{get_tehran_now_str()}</code>"
+                                        )
+                                        await bale.send_message(chat_id, msg)
+                                        continue
+
                                     if cb_data == "bale:fjoin_panel":
                                         if not bale.is_admin(chat_id): continue
                                         ch = await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE)
@@ -1980,13 +2037,14 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         g_id = cb_data.split(":")[1]
                                         g_prod = await StoreService.get_product(g_id)
                                         g_name = g_prod.name if g_prod else "این دوره هدیه"
-                                        bot_username = "UNFINIT_Bot"
-                                        try:
-                                            b_me = await bale.get_me()
-                                            if b_me and b_me.get("ok"):
-                                                bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
-                                        except Exception:
-                                            pass
+                                        bot_username = bale.username or getattr(config, "BALE_BOT_USERNAME", "") or ""
+                                        if not bot_username:
+                                            try:
+                                                b_me = await bale.get_me()
+                                                if b_me and b_me.get("ok"):
+                                                    bot_username = b_me.get("result", {}).get("username") or ""
+                                            except Exception:
+                                                pass
                                         ref_link = ReferralService.get_referral_link(chat_id, "bale", bot_username)
                                         u = UserService.get_user_by_platform_id("bale", chat_id)
                                         invites = u.successful_invites if u else 0
@@ -2007,13 +2065,14 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     async def _bale_show_referral_panel(c_id, usr):
-                                        bot_username = "UNFINIT_Bot"
-                                        try:
-                                            b_me = await bale.get_me()
-                                            if b_me and b_me.get("ok"):
-                                                bot_username = b_me.get("result", {}).get("username") or "UNFINIT_Bot"
-                                        except Exception:
-                                            pass
+                                        bot_username = bale.username or getattr(config, "BALE_BOT_USERNAME", "") or ""
+                                        if not bot_username:
+                                            try:
+                                                b_me = await bale.get_me()
+                                                if b_me and b_me.get("ok"):
+                                                    bot_username = b_me.get("result", {}).get("username") or ""
+                                            except Exception:
+                                                pass
                                         ref_link = ReferralService.get_referral_link(c_id, "bale", bot_username)
                                         invites = usr.successful_invites
                                         unlocked = UserService.is_gift_unlocked_by_platform("bale", c_id, TOHID_AMALI_PACK_ID)
@@ -2720,6 +2779,9 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     [
                                                         {"text": "🧹 پاکسازی دیسک", "callback_data": "badm:cleanup_disk"},
                                                         {"text": "💾 بک‌آپ دیتابیس", "callback_data": "badm_backup_file"}
+                                                    ],
+                                                    [
+                                                        {"text": "🏓 تست سلامت و پینگ (Ping)", "callback_data": "admin:ping"}
                                                     ],
                                                     [
                                                         {"text": "🔒 مدیریت قفل کانال", "callback_data": "bale:fjoin_panel"}

@@ -759,6 +759,9 @@ class TelegramAdapter:
                     InlineKeyboardButton("💾 بک‌آپ دیتابیس", callback_data="adm_backup_file")
                 ],
                 [
+                    InlineKeyboardButton("🏓 تست سلامت و پینگ (Ping)", callback_data="admin:ping")
+                ],
+                [
                     InlineKeyboardButton("🔒 مدیریت قفل کانال", callback_data="tg:fjoin_panel"),
                     InlineKeyboardButton("🔐 لاگین حساب روبیکا", callback_data="adm:rubika_login")
                 ]
@@ -778,6 +781,37 @@ class TelegramAdapter:
                         if f.is_file(): f.unlink(); deleted += 1
                     except Exception: pass
             await callback_query.answer(f"پاکسازی انجام شد: {deleted} فایل حذف گردید.", show_alert=True)
+
+        @self.app.on_callback_query(filters.regex(r"^(admin:ping|adm:ping)$"))
+        async def admin_ping_cb(client: Client, callback_query: CallbackQuery):
+            t0 = time.time()
+            try:
+                await client.get_me()
+                tg_latency_ms = max(1, int((time.time() - t0) * 1000))
+                tg_ok = True
+            except Exception:
+                tg_latency_ms = 0
+                tg_ok = False
+
+            db_ok = True
+            db_t0 = time.time()
+            try:
+                from core.database import fetch_one
+                await fetch_one("SELECT 1")
+                db_latency_ms = max(1, int((time.time() - db_t0) * 1000))
+            except Exception:
+                db_ok = False
+                db_latency_ms = 0
+
+            msg = (
+                "🏓 <b>نتیجه آزمون پینگ و سلامت سرور (Telegram):</b>\n\n"
+                f"⚡️ <b>پاسخ‌دهی وب‌سرویس تلگرام:</b> <code>{tg_latency_ms} ms</code> ({'پایدار ✅' if tg_ok else 'خطا ❌'})\n"
+                f"💾 <b>پاسخ‌دهی دیتابیس SQLite:</b> <code>{db_latency_ms} ms</code> ({'سالم ✅' if db_ok else 'خطا ❌'})\n"
+                f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
+                f"🕒 <b>زمان آزمون:</b> <code>{get_tehran_now_str()}</code>"
+            )
+            await callback_query.message.reply_text(msg, parse_mode=enums.ParseMode.HTML)
+            await callback_query.answer("آزمون پینگ با موفقیت انجام شد ✅")
 
         @self.app.on_callback_query(filters.regex(r"^(adm:rubika_login|smeta:rub_login:)"))
         async def rubika_login_start(client: Client, callback_query: CallbackQuery):
@@ -976,7 +1010,7 @@ class TelegramAdapter:
             g_name = g_prod.name if g_prod else "این دوره هدیه"
             user_id = callback_query.from_user.id
             bot_me = await client.get_me()
-            bot_username = bot_me.username or "UNFINIT_Bot"
+            bot_username = bot_me.username or getattr(config, "TELEGRAM_BOT_USERNAME", "") or ""
             ref_link = ReferralService.get_referral_link(user_id, "telegram", bot_username)
             u = UserService.get_user_by_platform_id("telegram", user_id)
             invites = u.successful_invites if u else 0
@@ -1218,7 +1252,7 @@ class TelegramAdapter:
 
         async def _show_referral_panel(client: Client, chat_id: int | str, user_id: int | str, u: Any):
             bot_me = await client.get_me()
-            bot_username = bot_me.username or "UNFINIT_Bot"
+            bot_username = bot_me.username or getattr(config, "TELEGRAM_BOT_USERNAME", "") or ""
             ref_link = ReferralService.get_referral_link(user_id, "telegram", bot_username)
             invites = u.successful_invites
             unlocked = UserService.is_gift_unlocked_by_platform("telegram", user_id, TOHID_AMALI_PACK_ID)
@@ -2538,15 +2572,25 @@ class TelegramAdapter:
                             raise RuntimeError(res.get("error", "خطا در ارسال فایل ویدیویی"))
                     else:
                         cover_path = drop.get("working_cover") or drop.get("embedded_cover")
+                        art_tag = transfer_info.get("artist") or drop.get("api_meta", {}).get("artist") or None
+                        title_tag = transfer_info.get("title") or drop.get("api_meta", {}).get("title") or None
+                        caption_parts = [
+                            "✅ <b>فایل صوتی اصلاح‌شده و تگ‌گذاری‌شده:</b>",
+                            f"📄 <code>{escape(send_name)}</code>"
+                        ]
+                        if art_tag:
+                            caption_parts.append(f"🗣 خواننده: <b>{escape(art_tag)}</b>")
+                        if title_tag:
+                            caption_parts.append(f"🎵 عنوان: <code>{escape(title_tag)}</code>")
                         res = await self.send_audio(
                             chat_id=user_id,
                             file_path=final_path,
                             file_name=send_name,
-                            title=transfer_info.get("title") or drop.get("api_meta", {}).get("title"),
-                            performer=transfer_info.get("artist") or config.DEFAULT_ARTIST,
+                            title=title_tag,
+                            performer=art_tag,
                             duration=transfer_info.get("duration") or drop.get("api_meta", {}).get("duration_sec"),
                             thumb=cover_path if cover_path and Path(str(cover_path)).exists() else None,
-                            caption=f"✅ <b>فایل صوتی اصلاح‌شده و تگ‌گذاری‌شده:</b>\n📄 <code>{escape(send_name)}</code>\n🗣 خواننده: <b>{escape(transfer_info.get('artist') or config.DEFAULT_ARTIST)}</b>\n🎵 عنوان: <code>{escape(transfer_info.get('title') or '')}</code>"
+                            caption="\n".join(caption_parts)
                         )
                         if isinstance(res, dict) and not res.get("ok"):
                             raise RuntimeError(res.get("error", "خطا در ارسال فایل صوتی به تلگرام"))
@@ -2981,8 +3025,8 @@ class TelegramAdapter:
                         sent_aud = await self.send_audio(
                             user_id,
                             trimmed_p,
-                            title=drop.get("embed_meta", {}).get("title") or trimmed_p.stem,
-                            performer=drop.get("embed_meta", {}).get("artist") or config.DEFAULT_ARTIST,
+                            title=drop.get("embed_meta", {}).get("title") or drop.get("api_meta", {}).get("title") or trimmed_p.stem,
+                            performer=drop.get("embed_meta", {}).get("artist") or drop.get("api_meta", {}).get("artist") or None,
                             duration=t_dur,
                             caption=f"✂️ <b>فایل صوتی برش‌خورده ({format_duration(start_s)} تا {format_duration(end_s or total_dur)}):</b>\n📄 <code>{escape(trimmed_p.name)}</code>\n⏱️ مدت زمان قطعه: <code>{format_duration(t_dur)}</code>"
                         )

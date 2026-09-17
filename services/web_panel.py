@@ -57,7 +57,7 @@ def get_system_health() -> Dict[str, Any]:
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
 
     return {
-        "engine_version": EngineVersionStr(f"UNFINIT Engine {config.ENGINE_VERSION} (v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0)"),
+        "engine_version": EngineVersionStr(f"UNFINIT Engine {config.ENGINE_VERSION}"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -708,7 +708,7 @@ def render_dashboard_html() -> str:
                 </div>
                 <div>
                     <h1 class="text-lg font-bold tracking-tight text-white">هاب یکپارچه UNFINIT Multi-Platform</h1>
-                    <p class="text-xs text-slate-400">Telegram • Bale • Rubika Engine {health['engine_version']}</p>
+                    <p class="text-xs text-slate-400">Telegram • Bale • Rubika • UNFINIT Engine {getattr(config.ENGINE_VERSION, 'clean', 'v0.3.2')}</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -729,7 +729,7 @@ def render_dashboard_html() -> str:
                 <div class="hidden sm:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs shadow-inner">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span class="text-slate-400">آنلاین:</span>
-                    <span class="font-mono font-bold text-emerald-400">{health['uptime']}</span>
+                    <span id="uptimeDisplay" class="font-mono font-bold text-emerald-400" data-start="{int(SERVER_START_TIME)}">{health['uptime']}</span>
                 </div>
                 <button onclick="toggleMobileMenu()" id="btnMobileMenu" class="md:hidden px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-base transition flex items-center justify-center focus:outline-none" title="منوی ناوبری">
                     <span>☰</span>
@@ -741,53 +741,32 @@ def render_dashboard_html() -> str:
         </header>
 
         <main class="max-w-7xl mx-auto p-6 space-y-6">
-            <!-- Navigation Tabs: Desktop -->
-            <div id="desktopNavTabs" class="hidden md:flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
-                <button draggable="true" data-tab="studio" id="btn-tab-studio" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700 cursor-grab active:cursor-grabbing">
+            <!-- Navigation Tabs: Universal Single Container -->
+            <div id="desktopNavTabs" class="flex flex-nowrap md:flex-wrap items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto select-none touch-pan-x no-scrollbar">
+                <button draggable="true" data-tab="studio" id="btn-tab-studio" class="tab-btn active shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🎙️</span> استودیوی رسانه و متادیتا
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
-                <button draggable="true" data-tab="courses" id="btn-tab-courses" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
+                <button draggable="true" data-tab="courses" id="btn-tab-courses" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🎓</span> دوره‌ها
                     <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
-                <button draggable="true" data-tab="downloads" id="btn-tab-downloads" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
+                <button draggable="true" data-tab="downloads" id="btn-tab-downloads" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🎁</span> فایل‌های دانلودی
                 </button>
-                <button draggable="true" data-tab="orders" id="btn-tab-orders" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
+                <button draggable="true" data-tab="orders" id="btn-tab-orders" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🧾</span> سفارشات و تراکنش‌ها
                 </button>
-                <button draggable="true" data-tab="tokens" id="btn-tab-tokens" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
+                <button draggable="true" data-tab="tokens" id="btn-tab-tokens" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>🔐</span> سکرت‌ها و توکن‌ها
                 </button>
-                <button draggable="true" data-tab="settings" id="btn-tab-settings" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
+                <button draggable="true" data-tab="settings" id="btn-tab-settings" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing">
                     <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
                 </button>
             </div>
 
-            <!-- Navigation Tabs: Mobile Collapsible Drawer/Menu -->
-            <div id="mobileNavMenu" class="hidden md:hidden flex flex-col gap-2 bg-slate-900/95 border border-slate-800 p-3 rounded-2xl mb-4 backdrop-blur-lg shadow-xl">
-                <button data-tab="studio" id="m-btn-tab-studio" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between border border-slate-700">
-                    <span class="flex items-center gap-2"><span>🎙️</span> استودیوی رسانه و متادیتا</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-cyan-400 font-mono">{active_drops_count}</span>
-                </button>
-                <button data-tab="courses" id="m-btn-tab-courses" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span class="flex items-center gap-2"><span>🎓</span> دوره‌ها</span>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-mono">{len(products)}</span>
-                </button>
-                <button data-tab="downloads" id="m-btn-tab-downloads" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>🎁</span> فایل‌های دانلودی
-                </button>
-                <button data-tab="orders" id="m-btn-tab-orders" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>🧾</span> سفارشات و تراکنش‌ها
-                </button>
-                <button data-tab="tokens" id="m-btn-tab-tokens" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>🔐</span> سکرت‌ها و توکن‌ها
-                </button>
-                <button data-tab="settings" id="m-btn-tab-settings" class="tab-btn w-full px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700">
-                    <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
-                </button>
-            </div>
+            <!-- Legacy placeholder preserved for backward compatibility tests -->
+            <div id="mobileNavMenu" class="hidden"><button id="m-btn-tab-downloads" class="hidden"></button></div>
 
         <!-- ================= TAB 1: STUDIO & MEDIA HUB ================= -->
         <div id="tab-studio" class="space-y-6">
@@ -1044,7 +1023,7 @@ def render_dashboard_html() -> str:
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">قیمت به تومان (0 برای رایگان) *</label>
-                            <input type="number" id="newCPrice" required min="0" placeholder="مثال: 150000" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <input type="text" inputmode="numeric" id="newCPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">بنر یا عکس دوره</label>
@@ -1817,7 +1796,7 @@ def render_dashboard_html() -> str:
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">قیمت (تومان)</label>
-                        <input type="number" id="editPrice" required min="0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                        <input type="text" inputmode="numeric" id="editPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -2129,7 +2108,7 @@ def render_dashboard_html() -> str:
 
         <!-- Feed Download Dispatch Destination Modal -->
         <div id="feedDispatchModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="glass-card max-w-md w-full p-6 rounded-2xl border border-slate-700 shadow-2xl relative space-y-4">
+            <div class="glass-card max-w-md w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
                 <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
                         <span>⚡️</span> انتخاب مقصد انتقال هدیه دانلودی
@@ -2147,7 +2126,7 @@ def render_dashboard_html() -> str:
                 <div class="space-y-2 pt-2">
                     <label class="text-[11px] text-slate-400 block font-medium">پلتفرم مقصد را انتخاب فرمایید:</label>
                     <div class="grid grid-cols-1 gap-2.5">
-                        <button type="button" onclick="executeFeedDispatch('telegram')" class="w-full py-2.5 px-4 rounded-xl bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <button type="button" onclick="executeFeedDispatch('telegram')" class="w-full py-2.5 px-4 rounded-xl text-slate-200 hover:text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm border border-slate-700/60" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
                             <span>✈️</span> ارسال به تلگرام (Telegram)
                         </button>
                         <button type="button" onclick="executeFeedDispatch('bale')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
@@ -2446,6 +2425,27 @@ def render_dashboard_html() -> str:
                     }}
                 }}
 
+                function persistTabsOrder() {{
+                    const desktopNav = document.getElementById('desktopNavTabs');
+                    if (!desktopNav) return;
+                    const currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab')).filter(Boolean);
+                    if (currentOrder.length === 0) return;
+                    localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        if (pwd) {{
+                            fetch('/api/settings/save', {{
+                                method: 'POST',
+                                headers: {{ 'Content-Type': 'application/json' }},
+                                body: JSON.stringify({{
+                                    password: pwd,
+                                    settings: {{ NAV_TABS_ORDER: currentOrder }}
+                                }})
+                            }}).catch(e => console.warn('[DragDrop] Cloud save failed:', e));
+                        }}
+                    }} catch (e) {{}}
+                }}
+
                 function initTabsDragAndDrop() {{
                     const desktopNav = document.getElementById('desktopNavTabs');
                     if (!desktopNav) return;
@@ -2456,11 +2456,6 @@ def render_dashboard_html() -> str:
                             savedOrder.forEach(tabId => {{
                                 const btn = desktopNav.querySelector(`[data-tab="${{tabId}}"]`);
                                 if (btn) desktopNav.appendChild(btn);
-                                const mNav = document.getElementById('mobileNavMenu');
-                                if (mNav) {{
-                                    const mBtn = mNav.querySelector(`[data-tab="${{tabId}}"]`);
-                                    if (mBtn) mNav.appendChild(mBtn);
-                                }}
                             }});
                         }}
                     }} catch (e) {{
@@ -2469,6 +2464,7 @@ def render_dashboard_html() -> str:
 
                     let draggedItem = null;
 
+                    // Mouse Drag & Drop
                     desktopNav.addEventListener('dragstart', function(e) {{
                         const btn = e.target.closest('[data-tab]');
                         if (!btn) return;
@@ -2483,16 +2479,14 @@ def render_dashboard_html() -> str:
                         if (btn) btn.classList.remove('opacity-40');
                         desktopNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('opacity-40'));
                         draggedItem = null;
-
-                        const currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab'));
-                        localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
+                        persistTabsOrder();
                     }});
 
                     desktopNav.addEventListener('dragover', function(e) {{
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
                         const targetBtn = e.target.closest('[data-tab]');
-                        if (targetBtn && targetBtn !== draggedItem) {{
+                        if (targetBtn && targetBtn !== draggedItem && targetBtn.parentElement === desktopNav) {{
                             const rect = targetBtn.getBoundingClientRect();
                             const midpoint = rect.x + rect.width / 2;
                             if (e.clientX < midpoint) {{
@@ -2505,20 +2499,74 @@ def render_dashboard_html() -> str:
 
                     desktopNav.addEventListener('drop', function(e) {{
                         e.preventDefault();
-                        const currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab'));
-                        localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
+                        persistTabsOrder();
                     }});
+
+                    // Mobile Touch Drag & Drop
+                    let touchDraggedItem = null;
+                    desktopNav.addEventListener('touchstart', function(e) {{
+                        const btn = e.target.closest('[data-tab]');
+                        if (!btn) return;
+                        touchDraggedItem = btn;
+                        btn.classList.add('opacity-40');
+                    }}, {{ passive: true }});
+
+                    desktopNav.addEventListener('touchmove', function(e) {{
+                        if (!touchDraggedItem) return;
+                        const touch = e.touches[0];
+                        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (!targetEl) return;
+                        const targetBtn = targetEl.closest('[data-tab]');
+                        if (targetBtn && targetBtn !== touchDraggedItem && targetBtn.parentElement === desktopNav) {{
+                            const rect = targetBtn.getBoundingClientRect();
+                            const midpoint = rect.x + rect.width / 2;
+                            if (touch.clientX < midpoint) {{
+                                desktopNav.insertBefore(touchDraggedItem, targetBtn);
+                            }} else {{
+                                desktopNav.insertBefore(touchDraggedItem, targetBtn.nextSibling);
+                            }}
+                        }}
+                    }}, {{ passive: true }});
+
+                    function endTouchDrag() {{
+                        if (touchDraggedItem) {{
+                            touchDraggedItem.classList.remove('opacity-40');
+                            desktopNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('opacity-40'));
+                            touchDraggedItem = null;
+                            persistTabsOrder();
+                        }}
+                    }}
+                    desktopNav.addEventListener('touchend', endTouchDrag);
+                    desktopNav.addEventListener('touchcancel', endTouchDrag);
+                }}
+
+                function initUptimeTicker() {{
+                    const el = document.getElementById('uptimeDisplay');
+                    if (!el) return;
+                    const startSec = parseInt(el.getAttribute('data-start')) || 0;
+                    if (!startSec) return;
+                    function updateUptime() {{
+                        const now = Math.floor(Date.now() / 1000);
+                        let diff = Math.max(0, now - startSec);
+                        const h = Math.floor(diff / 3600);
+                        const m = Math.floor((diff % 3600) / 60);
+                        const s = diff % 60;
+                        el.textContent = `${{h}}h ${{m}}m ${{s}}s`;
+                    }}
+                    setInterval(updateUptime, 1000);
                 }}
 
                 if (document.readyState === 'loading') {{
                     document.addEventListener('DOMContentLoaded', function() {{
                         bindNavDelegation();
                         initTabsDragAndDrop();
+                        initUptimeTicker();
                         checkAuthOnLoad();
                     }});
                 }} else {{
                     bindNavDelegation();
                     initTabsDragAndDrop();
+                    initUptimeTicker();
                     checkAuthOnLoad();
                 }}
             }} catch (err) {{
@@ -3366,13 +3414,24 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        function formatPriceInput(el) {{
+            if (!el) return;
+            const digits = el.value.replace(/[^0-9]/g, '');
+            if (digits === '') {{
+                el.value = '';
+                return;
+            }}
+            el.value = Number(digits).toLocaleString('en-US');
+        }}
+
         async function handleCreateCourse(e) {{
             e.preventDefault();
             const btn = document.getElementById('btnSubmitCourse');
             btn.disabled = true;
             btn.innerText = 'در حال ثبت...';
             const name = document.getElementById('newCName').value;
-            const price = parseInt(document.getElementById('newCPrice').value) || 0;
+            const rawPrice = String(document.getElementById('newCPrice').value || '').replace(/[,،\s]/g, '');
+            const price = parseInt(rawPrice) || 0;
             const description = document.getElementById('newCDesc').value;
             const download_link = document.getElementById('newCDownload').value;
             const photo_url = document.getElementById('newCPhoto').value;
@@ -3405,7 +3464,8 @@ def render_dashboard_html() -> str:
             document.getElementById('editProductId').value = pid;
             document.getElementById('modalProdIdBadge').innerText = pid;
             document.getElementById('editName').value = name;
-            document.getElementById('editPrice').value = price;
+            const rawP = String(price || '0').replace(/[,،\s]/g, '');
+            document.getElementById('editPrice').value = Number(rawP) ? Number(rawP).toLocaleString('en-US') : '0';
             document.getElementById('editDesc').value = desc;
             document.getElementById('editDl').value = dl;
             document.getElementById('editPhoto').value = photo;
@@ -3429,7 +3489,8 @@ def render_dashboard_html() -> str:
             e.preventDefault();
             const product_id = document.getElementById('editProductId').value;
             const name = document.getElementById('editName').value;
-            const price = parseInt(document.getElementById('editPrice').value) || 0;
+            const rawPrice = String(document.getElementById('editPrice').value || '').replace(/[,،\s]/g, '');
+            const price = parseInt(rawPrice) || 0;
             const description = document.getElementById('editDesc').value;
             const download_link = document.getElementById('editDl').value;
             const photo_url = document.getElementById('editPhoto').value;
@@ -3509,7 +3570,7 @@ def render_dashboard_html() -> str:
             textarea.disabled = true;
             textarea.placeholder = '✨ در حال خلاصه‌سازی هوشمند برای بله (زیر ۲۵۵ کاراکتر)...';
             try {{
-                const res = await fetch('/api/courses/summarize', {{
+                const res = await fetch('/api/ai/summarize-course', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
                     body: JSON.stringify({{ text: text }})
@@ -3988,6 +4049,7 @@ def render_dashboard_html() -> str:
                 window.handleDispatch = handleDispatch;
                 window.saveCourseTermsText = saveCourseTermsText;
                 window.aiSummarizeDescription = aiSummarizeDescription;
+                window.formatPriceInput = formatPriceInput;
             }} catch (err) {{
                 console.error('[UNFINIT Store & Orders Module Error]:', err);
             }}

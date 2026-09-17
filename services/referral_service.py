@@ -55,7 +55,7 @@ class ReferralService:
             if platform == "telegram":
                 clean_bot = getattr(config, "TELEGRAM_BOT_USERNAME", "") or "unfinit_store_bot"
             elif platform == "bale":
-                clean_bot = getattr(config, "BALE_BOT_USERNAME", "") or "unfinit_bot"
+                clean_bot = getattr(config, "BALE_BOT_USERNAME", "") or ""
 
         if platform == "telegram":
             return f"https://t.me/{clean_bot}?start=ref_{clean_id}"

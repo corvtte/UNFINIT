@@ -44,12 +44,17 @@ class VersionStr(str):
 
     def __str__(self) -> str:
         v = super().__str__()
-        if "v0.3.1" not in v:
-            return f"v0.3.1 (v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0 {v})"
-        return f"{v} (v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0)"
+        if "v0.3.2" not in v:
+            return f"v0.3.2 (v0.3.1 v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0 {v})"
+        return f"{v} (v0.3.1 v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0)"
+
+    @property
+    def clean(self) -> str:
+        v = super().__str__()
+        return v.split()[0] if " " in v else v
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.1").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.2").strip())
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
@@ -195,7 +200,7 @@ class Config:
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.1").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.2").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -271,7 +276,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.1").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.2").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

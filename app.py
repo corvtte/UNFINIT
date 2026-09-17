@@ -996,7 +996,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
         elif path in ("/api/courses/add", "/api/products"):
             try:
                 name = payload.get("name", "").strip()
-                price = int(payload.get("price", 0))
+                raw_price = str(payload.get("price", 0)).replace(",", "").replace("،", "").strip()
+                price = int(raw_price or 0)
                 desc = payload.get("description", "").strip()
                 dl_link = payload.get("download_link", "").strip()
                 photo_url = payload.get("photo_url", "").strip()
@@ -1264,6 +1265,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "HF_TOKEN": "HF_TOKEN",
                         "HF_SPACE_ID": "HF_SPACE_ID",
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",
+                        "NAV_TABS_ORDER": "NAV_TABS_ORDER",
                     }
                     SENSITIVE_KEYS = {
                         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",
@@ -1272,7 +1274,22 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     }
                     for k, val in new_settings.items():
                         if k in mapping and val is not None:
-                            val_str = str(val).strip()
+                            if k == "NAV_TABS_ORDER":
+                                val_str = json.dumps(val) if isinstance(val, (list, dict)) else str(val).strip()
+                                try:
+                                    settings_path = config.DATA_DIR / "settings.json"
+                                    s_data = {}
+                                    if settings_path.exists():
+                                        try:
+                                            s_data = json.loads(settings_path.read_text(encoding="utf-8") or "{}")
+                                        except Exception:
+                                            s_data = {}
+                                    s_data["NAV_TABS_ORDER"] = val if isinstance(val, (list, dict)) else json.loads(val_str)
+                                    settings_path.write_text(json.dumps(s_data, ensure_ascii=False, indent=2), encoding="utf-8")
+                                except Exception as err:
+                                    logger.warning(f"Error persisting NAV_TABS_ORDER to settings.json: {err}")
+                            else:
+                                val_str = str(val).strip()
                             if k in SENSITIVE_KEYS and is_masked_or_empty(val_str):
                                 continue
                             if k in ("STORE_NAME", "WELCOME_TEXT"):
@@ -1521,7 +1538,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 for field in ("name", "price", "description", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral"):
                     if field in payload:
                         if field == "price":
-                            val = int(payload[field])
+                            val = int(str(payload[field]).replace(",", "").replace("،", "").strip() or 0)
                         elif field in ("allow_card", "allow_bale", "requires_referral"):
                             val = 1 if payload[field] else 0
                         else:
@@ -1537,7 +1554,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
-        elif path == "/api/courses/summarize":
+        elif path in ("/api/courses/summarize", "/api/ai/summarize-course"):
             try:
                 text = (payload.get("text") or "").strip()
                 from services.ai_service import ai_service
