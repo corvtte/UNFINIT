@@ -18,23 +18,35 @@ from core.logger import get_logger
 logger = get_logger("store")
 
 class ProductItem:
-    def __init__(self, d: dict):
-        self.id = d.get("id")
-        self.product_id = d.get("product_id", "")
-        self.name = d.get("name", "")
-        self.price = int(d.get("price", 0) or 0)
-        self.description = d.get("description", "")
-        self.photo_file_id = d.get("photo_file_id")
-        self.bale_photo_file_id = str(d.get("bale_photo_file_id") or "")
-        self.photo_url = str(d.get("photo_url") or "")
-        self.digital_file_id = d.get("digital_file_id")
-        self.download_link = str(d.get("download_link") or "")
-        self.digital_file_type = d.get("digital_file_type", "audio")
-        self.active = bool(d.get("active", 1))
-        self.allow_card = bool(d.get("allow_card", 1))
-        self.allow_bale = bool(d.get("allow_bale", 1))
-        self.payment_type = d.get("payment_type", "paid")
-        self.requires_referral = bool(d.get("requires_referral", 0))
+    def __init__(self, d: Optional[dict] = None, **kwargs):
+        data = dict(d or {})
+        data.update(kwargs)
+        self.id = data.get("id")
+        self.product_id = data.get("product_id", "")
+        self.name = data.get("name", "")
+        self.price = int(data.get("price", 0) or 0)
+        self.description = data.get("description", "")
+        self.photo_file_id = data.get("photo_file_id")
+        self.bale_photo_file_id = str(data.get("bale_photo_file_id") or "")
+        self.photo_url = str(data.get("photo_url") or "")
+        self.digital_file_id = data.get("digital_file_id")
+        self.download_link = str(data.get("download_link") or "")
+        self.digital_file_type = data.get("digital_file_type", "audio")
+        self.active = bool(data.get("active", 1))
+        self.allow_card = bool(data.get("allow_card", 1))
+        self.allow_bale = bool(data.get("allow_bale", 1))
+        self.payment_type = data.get("payment_type", "paid")
+        self.requires_referral = bool(data.get("requires_referral", 0))
+        eps = data.get("episodes")
+        if isinstance(eps, str) and eps.strip():
+            try:
+                self.episodes = json.loads(eps)
+            except Exception:
+                self.episodes = []
+        elif isinstance(eps, list):
+            self.episodes = eps
+        else:
+            self.episodes = []
 
 class OrderItem:
     def __init__(self, d: dict):
@@ -130,6 +142,7 @@ class StoreService:
                     "allow_bale": int(r.get("allow_bale", 1)),
                     "payment_type": r.get("payment_type", "paid"),
                     "requires_referral": int(r.get("requires_referral", 0) or 0),
+                    "episodes": json.loads(r.get("episodes")) if (r.get("episodes") and isinstance(r.get("episodes"), str)) else (r.get("episodes") or []),
                     "created_at": r.get("created_at", "")
                 })
             config.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -144,7 +157,7 @@ class StoreService:
     async def update_product_field(product_id: str, field: str, value: Any) -> bool:
         allowed = {
             "name", "price", "description", "photo_file_id", "bale_photo_file_id", "digital_file_id",
-            "active", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral"
+            "active", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral", "episodes"
         }
         if field not in allowed:
             return False
@@ -152,6 +165,128 @@ class StoreService:
         await execute_query(sql, (value, product_id))
         await StoreService.backup_products_to_disk()
         return True
+
+    @staticmethod
+    async def get_course_episodes(product_id: str) -> List[Dict[str, Any]]:
+        prod = await StoreService.get_product(product_id)
+        if prod and getattr(prod, "episodes", None):
+            return prod.episodes
+        try:
+            if config.COURSES_JSON_FILE.exists():
+                with open(config.COURSES_JSON_FILE, "r", encoding="utf-8") as f:
+                    c_list = json.load(f)
+                for c in c_list:
+                    if c.get("product_id") == product_id and c.get("episodes"):
+                        return c.get("episodes")
+        except Exception:
+            pass
+        return []
+
+    @staticmethod
+    async def add_course_episode(
+        product_id: str,
+        title: str,
+        url: str,
+        part: Optional[int] = None,
+        filename: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Appends an episode to the course in both SQLite database and courses.json.
+        """
+        prod = await StoreService.get_product(product_id)
+        if not prod:
+            return {"ok": False, "error": f"دوره با شناسه {product_id} یافت نشد."}
+
+        episodes = list(getattr(prod, "episodes", []) or [])
+        ep_part = part or (len(episodes) + 1)
+        new_ep = {
+            "part": ep_part,
+            "title": str(title).strip() or f"قسمت {ep_part}",
+            "url": str(url).strip(),
+            "filename": str(filename).strip() or f"part_{ep_part}.mp3"
+        }
+        episodes.append(new_ep)
+
+        # Update SQLite
+        await StoreService.update_product_field(product_id, "episodes", json.dumps(episodes, ensure_ascii=False))
+
+        # Update courses.json directly as well for instant disk sync
+        try:
+            if config.COURSES_JSON_FILE.exists():
+                with open(config.COURSES_JSON_FILE, "r", encoding="utf-8") as f:
+                    c_list = json.load(f)
+                found = False
+                for c in c_list:
+                    if c.get("product_id") == product_id:
+                        c["episodes"] = episodes
+                        found = True
+                        break
+                if found:
+                    with open(config.COURSES_JSON_FILE, "w", encoding="utf-8") as f:
+                        json.dump(c_list, f, ensure_ascii=False, indent=2)
+        except Exception as e_json:
+            logger.warning(f"[add_course_episode] Error updating courses.json: {e_json}")
+
+        await StoreService.backup_products_to_disk()
+        return {
+            "ok": True,
+            "episode": new_ep,
+            "total_episodes": len(episodes),
+            "message": f"قسمت {ep_part} با موفقیت به سرفصل‌های دوره «{prod.name}» افزوده شد."
+        }
+
+    @staticmethod
+    async def create_product(product: Any = None, **kwargs) -> ProductItem:
+        if isinstance(product, ProductItem):
+            pid = product.product_id or ("prod_" + uuid.uuid4().hex[:6])
+            name = product.name
+            price = product.price
+            description = product.description
+            download_link = product.download_link
+            photo_url = product.photo_url
+            allow_card = product.allow_card
+            allow_bale = product.allow_bale
+            requires_referral = product.requires_referral
+            episodes_str = json.dumps(product.episodes or [], ensure_ascii=False)
+        elif isinstance(product, dict):
+            pid = product.get("product_id") or ("prod_" + uuid.uuid4().hex[:6])
+            name = product.get("name", "")
+            price = int(product.get("price", 0) or 0)
+            description = product.get("description", "")
+            download_link = product.get("download_link", "")
+            photo_url = product.get("photo_url", "")
+            allow_card = product.get("allow_card", True)
+            allow_bale = product.get("allow_bale", True)
+            requires_referral = product.get("requires_referral", False)
+            episodes_str = json.dumps(product.get("episodes", []), ensure_ascii=False)
+        else:
+            pid = kwargs.get("product_id") or ("prod_" + uuid.uuid4().hex[:6])
+            name = str(product or kwargs.get("name", ""))
+            price = int(kwargs.get("price", 0) or 0)
+            description = kwargs.get("description", "")
+            download_link = kwargs.get("download_link", "")
+            photo_url = kwargs.get("photo_url", "")
+            allow_card = kwargs.get("allow_card", True)
+            allow_bale = kwargs.get("allow_bale", True)
+            requires_referral = kwargs.get("requires_referral", False)
+            episodes_str = json.dumps(kwargs.get("episodes", []), ensure_ascii=False)
+
+        now_str = get_tehran_now_str()
+        ptype = "free" if price == 0 else "paid"
+        await execute_query(
+            """INSERT INTO products (
+                product_id, name, price, description, download_link, photo_url,
+                allow_card, allow_bale, payment_type, requires_referral, episodes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                pid, name, price, description or "", download_link or "", photo_url or "",
+                1 if allow_card else 0, 1 if allow_bale else 0, ptype,
+                1 if requires_referral else 0, episodes_str, now_str
+            )
+        )
+        await StoreService.backup_products_to_disk()
+        row = await fetch_one("SELECT * FROM products WHERE product_id = ?", (pid,))
+        return ProductItem(row)
 
     @staticmethod
     async def add_product(

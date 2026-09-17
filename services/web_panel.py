@@ -266,7 +266,7 @@ def render_dashboard_html() -> str:
                     {dl_html}
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <button onclick="openEditModalById('{prod.product_id}')" data-course-id="{prod.product_id}" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
+                    <button onclick="openEditCourseModal('{prod.product_id}')" data-course-id="{prod.product_id}" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
                         <span>✏️</span> ویرایش
                     </button>
                     <div class="flex items-center gap-1.5">
@@ -908,37 +908,91 @@ def render_dashboard_html() -> str:
                 <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
             </div>
 
-            <!-- SVG Vector to Image Converter Widget -->
-            <div class="glass p-6 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div class="flex justify-between items-center mb-2">
+            <!-- SVG Vector Studio Suite Widget -->
+            <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div class="flex justify-between items-center mb-1">
                     <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                        <span>🎨</span> ابزار تبدیل هوشمند وکتور SVG به تصویر (PNG شفاف / JPG)
+                        <span>🖼</span> استودیوی وکتور SVG (SVG Studio Suite)
                     </h2>
                     <span class="text-xs font-mono px-2.5 py-1 rounded-lg border text-cyan-400 bg-cyan-950/80 border-cyan-800">
-                        Vector Engine v0.3.3
+                        Vector Engine v0.3.4
                     </span>
                 </div>
-                <p class="text-xs text-slate-400 mb-4">
-                    فایل‌های وکتور SVG خود را بارگذاری کنید و نسخه بهینه‌شده با ابعاد بالا (PNG شفاف با حفظ آلفا یا JPG با پس‌زمینه سفید) را بدون افت کیفیت تحویل بگیرید.
+                <p class="text-xs text-slate-400">
+                    موتور برداری پیشرفته: تغییر رنگ زنده و هوشمند المان‌های SVG، تولید وکتور از متن و تبدیل بدون افت کیفیت به PNG شفاف و JPG با ابعاد بالا.
                 </p>
-                <form id="svgConvertForm" class="grid grid-cols-1 md:grid-cols-4 gap-4" onsubmit="handleSvgConvert(event)">
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-medium text-slate-300 mb-1">انتخاب فایل وکتور SVG</label>
-                        <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <!-- Left: Upload, Recolor & Text-to-SVG Form -->
+                    <div class="lg:col-span-7 space-y-3">
+                        <form id="svgConvertForm" class="space-y-3" onsubmit="handleSvgConvert(event)">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">انتخاب فایل وکتور SVG</label>
+                                    <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" onchange="handleSvgFileSelected(this.files)" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-300 mb-1">فرمت خروجی تبدیل</label>
+                                    <select id="svgOutputFormat" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                                        <option value="png">🖼 PNG با شفافیت کامل (Alpha Transparency)</option>
+                                        <option value="jpg">🖼 JPG با پس‌زمینه سفید (HQ 300 DPI)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Color Palette & Smart Recolor -->
+                            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                <label class="block text-[11px] font-bold text-slate-300">🎨 تغییر رنگ هوشمند وکتور (Smart Recolor):</label>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <input type="color" id="svgRecolorPicker" value="#FFFFFF" onchange="syncSvgColorPicker(this.value)" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
+                                    <input type="text" id="svgHexInput" value="#FFFFFF" placeholder="#FFFFFF" maxlength="9" onchange="syncSvgHexInput(this.value)" class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-center text-cyan-300 focus:outline-none focus:border-cyan-500" dir="ltr">
+                                    <button type="button" onclick="setSvgColor('#FFFFFF')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-medium border border-slate-600 transition">⚪️ سفید (#FFF)</button>
+                                    <button type="button" onclick="setSvgColor('#000000')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700 transition">⚫️ مشکی (#000)</button>
+                                    <button type="button" onclick="setSvgColor('#3B82F6')" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 text-sky-300 text-[11px] font-medium border border-sky-800 transition">🔵 آبی (#3B82F6)</button>
+                                    <button type="button" onclick="setSvgColor('#E11D48')" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 text-[11px] font-medium border border-rose-800 transition">🔴 قرمز (#E11D48)</button>
+                                </div>
+                                <div class="flex flex-wrap gap-2 pt-1">
+                                    <button type="button" id="btnSvgRecolor" onclick="handleSvgRecolor()" class="px-3.5 py-1.5 rounded-xl bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-bold transition flex items-center gap-1">
+                                        <span>🎨</span> اعمال تغییر رنگ
+                                    </button>
+                                    <button type="button" id="btnSvgDownload" onclick="downloadCurrentSvg()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1">
+                                        <span>📥</span> دریافت فایل SVG
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Typography: Text to SVG -->
+                            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                <label class="block text-[11px] font-bold text-slate-300">✍️ تولید وکتور متنی (Text to SVG Typography):</label>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <input type="text" id="svgTextInput" placeholder="متن جهت تولید لوگوتایپ یا عنوان وکتور..." class="flex-1 min-w-[200px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                                    <input type="number" id="svgTextSizeInput" value="48" min="12" max="144" class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-mono text-center text-slate-200" title="اندازه فونت">
+                                    <button type="button" onclick="handleGenerateTextSvg()" class="px-3.5 py-1.5 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1">
+                                        <span>⚡️</span> ساخت وکتور
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="pt-1">
+                                <button type="submit" id="btnSvgConvert" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-xs">
+                                    <span>⚡️</span> تبدیل و دریافت تصویر
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">فرمت خروجی تبدیل</label>
-                        <select id="svgOutputFormat" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
-                            <option value="png">🖼 PNG با شفافیت کامل (Alpha Transparency)</option>
-                            <option value="jpg">🖼 JPG با پس‌زمینه سفید (HQ 300 DPI)</option>
-                        </select>
+
+                    <!-- Right: Live Vector Preview -->
+                    <div class="lg:col-span-5 flex flex-col">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-medium text-slate-300">پیش‌نمایش زنده وکتور:</label>
+                            <span id="svgDimensionsBadge" class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">-</span>
+                        </div>
+                        <div id="svgLivePreview" class="flex-1 border border-dashed border-slate-700/80 rounded-xl p-4 bg-slate-950/70 min-h-[200px] flex items-center justify-center overflow-auto">
+                            <span class="text-xs text-slate-500">فایل SVG انتخاب شده در اینجا رسم می‌شود</span>
+                        </div>
                     </div>
-                    <div class="flex items-end">
-                        <button type="submit" id="btnSvgConvert" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-xs">
-                            <span>⚡️</span> تبدیل و دریافت تصویر
-                        </button>
-                    </div>
-                </form>
+                </div>
+
                 <div id="svgConvertResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono flex items-center justify-between"></div>
             </div>
 
@@ -2242,6 +2296,20 @@ def render_dashboard_html() -> str:
                         </button>
                     </div>
                 </div>
+                <!-- Direct Add to Course Episodes Section -->
+                <div class="space-y-2 pt-3 border-t border-slate-700/60">
+                    <label class="text-[11px] text-cyan-400 block font-bold flex items-center gap-1.5">
+                        <span>➕</span> افزودن مستقیم به سرفصل‌های دوره:
+                    </label>
+                    <div class="flex flex-col gap-2">
+                        <select id="feedCourseSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                            <!-- Populated dynamically from window.COURSES_CACHE -->
+                        </select>
+                        <button type="button" onclick="addFeedToCourseEpisodes()" id="btnAddFeedToCourse" class="w-full py-2 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <span>📦</span> افزودن به عنوان قسمت جدید این دوره
+                        </button>
+                    </div>
+                </div>
                 <div class="pt-3 border-t border-slate-700/60 flex justify-end">
                     <button type="button" onclick="closeFeedDispatchModal()" class="px-4 py-2 rounded-xl theme-card-btn text-xs font-bold transition">
                         انصراف
@@ -2258,7 +2326,8 @@ def render_dashboard_html() -> str:
     </div>
 
     <script>
-        window.coursesData = {courses_data_json};
+        window.COURSES_CACHE = {courses_data_json};
+        window.coursesData = window.COURSES_CACHE;
 
         // Global Auth & State Access
         window.currentAdminPassword = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
@@ -3407,6 +3476,25 @@ def render_dashboard_html() -> str:
             pendingFeedDispatchTitle = title || 'هدیه دانلودی';
             const titleEl = document.getElementById('feedDispatchModalTitle');
             if (titleEl) titleEl.textContent = pendingFeedDispatchTitle;
+
+            const courseSelect = document.getElementById('feedCourseSelect');
+            if (courseSelect) {{
+                courseSelect.innerHTML = '';
+                const cache = window.COURSES_CACHE || window.coursesData || {{}};
+                const pids = Object.keys(cache);
+                if (pids.length === 0) {{
+                    courseSelect.innerHTML = '<option value="">(هیچ دوره‌ای در سیستم ثبت نشده است)</option>';
+                }} else {{
+                    pids.forEach(function(pid) {{
+                        const c = cache[pid];
+                        const opt = document.createElement('option');
+                        opt.value = c.product_id || pid;
+                        opt.textContent = '🎓 ' + (c.name || pid);
+                        courseSelect.appendChild(opt);
+                    }});
+                }}
+            }}
+
             const modal = document.getElementById('feedDispatchModal');
             if (modal) modal.classList.remove('hidden');
         }}
@@ -3416,6 +3504,55 @@ def render_dashboard_html() -> str:
             if (modal) modal.classList.add('hidden');
             pendingFeedDispatchUrl = '';
             pendingFeedDispatchTitle = '';
+        }}
+
+        async function addFeedToCourseEpisodes() {{
+            const courseSelect = document.getElementById('feedCourseSelect');
+            const pid = courseSelect ? courseSelect.value : '';
+            const url = pendingFeedDispatchUrl;
+            const title = pendingFeedDispatchTitle;
+            if (!pid) {{
+                alert('لطفاً یک دوره را انتخاب فرمایید.');
+                return;
+            }}
+            if (!url) {{
+                alert('آدرس فایل معتبر نیست.');
+                return;
+            }}
+            const btn = document.getElementById('btnAddFeedToCourse');
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerText = '⏳ در حال افزودن...';
+            }}
+            try {{
+                const res = await fetch('/api/courses/episodes/add', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json',
+                        'X-Admin-Password': window.currentAdminPassword || ''
+                    }},
+                    body: JSON.stringify({{
+                        product_id: pid,
+                        title: title,
+                        url: url,
+                        filename: title ? (title.replace(/[^\w\s\-\.\u0600-\u06FF]/gi, '') + '.mp3') : ''
+                    }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || 'فایل با موفقیت به سرفصل‌های دوره افزوده شد!'));
+                    closeFeedDispatchModal();
+                }} else {{
+                    alert('❌ خطا در افزودن به سرفصل‌ها: ' + (data.error || 'ناموفق'));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط با سرور: ' + err.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>📦</span> افزودن به عنوان قسمت جدید این دوره';
+                }}
+            }}
         }}
 
         async function executeFeedDispatch(target) {{
@@ -3474,6 +3611,166 @@ def render_dashboard_html() -> str:
             }} catch (e) {{}}
         }});
 
+                let currentSvgContent = '';
+                let currentSvgFilename = 'vector.svg';
+
+                function setSvgColor(hex) {{
+                    const picker = document.getElementById('svgRecolorPicker');
+                    const input = document.getElementById('svgHexInput');
+                    if (picker) picker.value = hex;
+                    if (input) input.value = hex;
+                }}
+
+                function syncSvgColorPicker(val) {{
+                    const input = document.getElementById('svgHexInput');
+                    if (input) input.value = val;
+                }}
+
+                function syncSvgHexInput(val) {{
+                    val = (val || '').trim();
+                    if (val && !val.startsWith('#')) val = '#' + val;
+                    const picker = document.getElementById('svgRecolorPicker');
+                    if (picker && /^#[0-9A-Fa-f]{{6}}$/.test(val)) {{
+                        picker.value = val;
+                    }}
+                }}
+
+                function renderSvgInPreview(svgText) {{
+                    currentSvgContent = svgText || '';
+                    const previewEl = document.getElementById('svgLivePreview');
+                    const badgeEl = document.getElementById('svgDimensionsBadge');
+                    if (previewEl) {{
+                        if (!svgText) {{
+                            previewEl.innerHTML = '<span class="text-xs text-slate-500">فایل SVG انتخاب شده در اینجا رسم می‌شود</span>';
+                            if (badgeEl) badgeEl.textContent = '-';
+                            return;
+                        }}
+                        previewEl.innerHTML = svgText;
+                        const svgEl = previewEl.querySelector('svg');
+                        if (svgEl) {{
+                            svgEl.style.maxWidth = '100%';
+                            svgEl.style.maxHeight = '240px';
+                            svgEl.style.height = 'auto';
+                            svgEl.style.display = 'block';
+                            svgEl.style.margin = 'auto';
+                            const w = svgEl.getAttribute('width') || '';
+                            const h = svgEl.getAttribute('height') || '';
+                            const vb = svgEl.getAttribute('viewBox') || '';
+                            if (badgeEl) {{
+                                badgeEl.textContent = (w && h) ? (w + ' × ' + h) : (vb ? ('viewBox: ' + vb) : 'SVG Vector');
+                            }}
+                        }}
+                    }}
+                }}
+
+                function handleSvgFileSelected(files) {{
+                    if (!files || files.length === 0) return;
+                    const file = files[0];
+                    currentSvgFilename = file.name || 'vector.svg';
+                    const reader = new FileReader();
+                    reader.onload = function(e) {{
+                        renderSvgInPreview(e.target.result);
+                    }};
+                    reader.readAsText(file);
+                }}
+
+                async function handleSvgRecolor() {{
+                    if (!currentSvgContent) {{
+                        alert('لطفاً ابتدا یک فایل وکتور SVG انتخاب نموده یا متنی وارد نمایید.');
+                        return;
+                    }}
+                    const hexInput = document.getElementById('svgHexInput');
+                    const color = (hexInput ? hexInput.value : '#FFFFFF') || '#FFFFFF';
+                    const btn = document.getElementById('btnSvgRecolor');
+                    if (btn) {{
+                        btn.disabled = true;
+                        btn.innerHTML = '<span>⏳</span> در حال تغییر رنگ...';
+                    }}
+                    try {{
+                        const res = await fetch('/api/media/recolor-svg', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'X-Admin-Password': window.currentAdminPassword || ''
+                            }},
+                            body: JSON.stringify({{
+                                svg: currentSvgContent,
+                                color: color,
+                                filename: currentSvgFilename
+                            }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok && data.svg) {{
+                            renderSvgInPreview(data.svg);
+                            alert('✅ رنگ اجزای وکتور با موفقیت به ' + color + ' تغییر یافت.');
+                        }} else {{
+                            alert('❌ خطا در تغییر رنگ وکتور: ' + (data.error || 'ناموفق'));
+                        }}
+                    }} catch (err) {{
+                        alert('❌ خطای ارتباط با سرور: ' + err.message);
+                    }} finally {{
+                        if (btn) {{
+                            btn.disabled = false;
+                            btn.innerHTML = '<span>🎨</span> اعمال تغییر رنگ';
+                        }}
+                    }}
+                }}
+
+                function downloadCurrentSvg() {{
+                    if (!currentSvgContent) {{
+                        alert('فایل SVG فعالی برای دانلود وجود ندارد.');
+                        return;
+                    }}
+                    const blob = new Blob([currentSvgContent], {{ type: 'image/svg+xml;charset=utf-8' }});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentSvgFilename || 'vector.svg';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(function() {{ URL.revokeObjectURL(url); }}, 1000);
+                }}
+
+                async function handleGenerateTextSvg() {{
+                    const textInput = document.getElementById('svgTextInput');
+                    const sizeInput = document.getElementById('svgTextSizeInput');
+                    const hexInput = document.getElementById('svgHexInput');
+                    const text = (textInput ? textInput.value : '').trim();
+                    const fontSize = parseInt(sizeInput ? sizeInput.value : '48') || 48;
+                    const fill = (hexInput ? hexInput.value : '#FFFFFF') || '#FFFFFF';
+
+                    if (!text) {{
+                        alert('لطفاً ابتدا متن مورد نظر را وارد نمایید.');
+                        return;
+                    }}
+
+                    try {{
+                        const res = await fetch('/api/media/text-to-svg', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'X-Admin-Password': window.currentAdminPassword || ''
+                            }},
+                            body: JSON.stringify({{
+                                text: text,
+                                font_size: fontSize,
+                                fill: fill
+                            }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok && data.svg) {{
+                            currentSvgFilename = (text.replace(/[^\w\s\-\.\u0600-\u06FF]/gi, '').slice(0, 20) || 'typography') + '.svg';
+                            renderSvgInPreview(data.svg);
+                            alert('✅ وکتور متنی با موفقیت ایجاد شد.');
+                        }} else {{
+                            alert('❌ خطا در تولید وکتور متنی: ' + (data.error || 'ناموفق'));
+                        }}
+                    }} catch (err) {{
+                        alert('❌ خطای ارتباط با سرور: ' + err.message);
+                    }}
+                }}
+
                 async function handleSvgConvert(e) {{
                     if (e) e.preventDefault();
                     const fileInput = document.getElementById('svgFileInput');
@@ -3481,12 +3778,14 @@ def render_dashboard_html() -> str:
                     const btn = document.getElementById('btnSvgConvert');
                     const resultDiv = document.getElementById('svgConvertResult');
 
-                    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {{
-                        alert('لطفاً ابتدا یک فایل وکتور SVG انتخاب فرمایید.');
+                    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                    if (!hasFile && !currentSvgContent) {{
+                        alert('لطفاً ابتدا یک فایل وکتور SVG انتخاب فرمایید یا از بخش ساخت وکتور استفاده نمایید.');
                         return;
                     }}
-                    const file = fileInput.files[0];
+
                     const format = (formatSelect ? formatSelect.value : 'png') || 'png';
+                    let fname = hasFile ? fileInput.files[0].name : (currentSvgFilename || 'vector.svg');
 
                     if (btn) {{
                         btn.disabled = true;
@@ -3498,10 +3797,8 @@ def render_dashboard_html() -> str:
                         resultDiv.innerHTML = '<span>⚡️ در حال پردازش فایل وکتور و رندر تصویر...</span>';
                     }}
 
-                    const reader = new FileReader();
-                    reader.onload = async function() {{
+                    const sendConvertRequest = async function(b64Data, filename) {{
                         try {{
-                            const b64 = reader.result;
                             const res = await fetch('/api/media/convert-svg', {{
                                 method: 'POST',
                                 headers: {{
@@ -3509,9 +3806,9 @@ def render_dashboard_html() -> str:
                                     'X-Admin-Password': window.currentAdminPassword || ''
                                 }},
                                 body: JSON.stringify({{
-                                    data: b64,
+                                    data: b64Data,
                                     format: format,
-                                    filename: file.name
+                                    filename: filename
                                 }})
                             }});
                             const data = await res.json();
@@ -3545,19 +3842,48 @@ def render_dashboard_html() -> str:
                             }}
                         }}
                     }};
-                    reader.onerror = function() {{
-                        if (resultDiv) {{
-                            resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
-                            resultDiv.innerText = '❌ خطا در خواندن فایل وکتور از دستگاه.';
+
+                    if (hasFile) {{
+                        const reader = new FileReader();
+                        reader.onload = function() {{
+                            sendConvertRequest(reader.result, fname);
+                        }};
+                        reader.onerror = function() {{
+                            if (resultDiv) {{
+                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                resultDiv.innerText = '❌ خطا در خواندن فایل وکتور از دستگاه.';
+                            }}
+                            if (btn) {{
+                                btn.disabled = false;
+                                btn.innerHTML = '<span>⚡️</span> تبدیل و دریافت تصویر';
+                            }}
+                        }};
+                        reader.readAsDataURL(fileInput.files[0]);
+                    }} else {{
+                        try {{
+                            const b64 = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(currentSvgContent)));
+                            sendConvertRequest(b64, fname);
+                        }} catch (e) {{
+                            if (resultDiv) {{
+                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                resultDiv.innerText = '❌ خطا در کدگذاری وکتور: ' + e.message;
+                            }}
+                            if (btn) {{
+                                btn.disabled = false;
+                                btn.innerHTML = '<span>⚡️</span> تبدیل و دریافت تصویر';
+                            }}
                         }}
-                        if (btn) {{
-                            btn.disabled = false;
-                            btn.innerHTML = '<span>⚡️</span> تبدیل و دریافت تصویر';
-                        }}
-                    }};
-                    reader.readAsDataURL(file);
+                    }}
                 }}
                 window.handleSvgConvert = handleSvgConvert;
+                window.setSvgColor = setSvgColor;
+                window.syncSvgColorPicker = syncSvgColorPicker;
+                window.syncSvgHexInput = syncSvgHexInput;
+                window.renderSvgInPreview = renderSvgInPreview;
+                window.handleSvgFileSelected = handleSvgFileSelected;
+                window.handleSvgRecolor = handleSvgRecolor;
+                window.downloadCurrentSvg = downloadCurrentSvg;
+                window.handleGenerateTextSvg = handleGenerateTextSvg;
 
                 window.handleStudioFilesSelect = handleStudioFilesSelect;
                 window.previewStudioCover = previewStudioCover;
@@ -3593,6 +3919,7 @@ def render_dashboard_html() -> str:
                 window.closeFeedDispatchModal = closeFeedDispatchModal;
                 window.executeFeedDispatch = executeFeedDispatch;
                 window.transferFeedDownload = transferFeedDownload;
+                window.addFeedToCourseEpisodes = addFeedToCourseEpisodes;
             }} catch (err) {{
                 console.error('[UNFINIT Studio Module Error]:', err);
             }}
@@ -4271,6 +4598,7 @@ def render_dashboard_html() -> str:
                 window.handleCreateCourse = handleCreateCourse;
                 window.openEditModal = openEditModal;
                 window.openEditModalById = openEditModalById;
+                window.openEditCourseModal = openEditModalById;
                 window.closeEditModal = closeEditModal;
                 window.handleSaveEdit = handleSaveEdit;
                 window.toggleCourseActive = toggleCourseActive;

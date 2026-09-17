@@ -21,10 +21,9 @@ from services.store_service import StoreService
 class TestV029Features(unittest.TestCase):
 
     def test_01_version_bump_v029(self):
-        """Verify engine version is bumped to v0.2.9 across config and web_panel."""
-        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3")))
+        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4")))
         health = get_system_health()
-        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3")))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4")))
         self.assertTrue(EngineVersionStr("UNFINIT Engine v0.2.9").__contains__("v0.2.9"))
 
     def test_02_telegram_send_video_and_audio_sanitization(self):

@@ -33,7 +33,7 @@ from platforms.bale_adapter import BaleAdapter
 class TestV2575Fast(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        os.environ["ENGINE_VERSION"] = "v0.3.3"
+        os.environ["ENGINE_VERSION"] = "v0.3.4"
 
     def test_01_version_assertion(self):
         """Verify global engine version is v0.3.3."""

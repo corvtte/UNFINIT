@@ -50,7 +50,7 @@ class VersionStr(str):
         return str.__str__(self)
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.3").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.4").strip())
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
     CASHBACK_PERCENT: float = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
@@ -200,7 +200,7 @@ class Config:
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
         self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
         self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.3").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.4").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -276,7 +276,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.3").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.4").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

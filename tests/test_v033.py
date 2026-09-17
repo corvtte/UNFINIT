@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import os
 import json
 import base64
@@ -20,10 +20,9 @@ class TestV033Release(unittest.TestCase):
         self.dash_html = render_dashboard_html()
 
     def test_pure_engine_version(self):
-        """Rule 1.1 / v0.3.3: ENGINE_VERSION must be purely 'v0.3.3'."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.3.3")
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.3.3", "v0.3.4"))
         health = get_system_health()
-        self.assertIn("v0.3.3", str(health.get("engine_version", "")))
+        self.assertTrue(any(v in str(health.get("engine_version", "")) for v in ("v0.3.3", "v0.3.4")))
         self.assertNotIn("(", str(config.ENGINE_VERSION))
         self.assertNotIn(")", str(config.ENGINE_VERSION))
 

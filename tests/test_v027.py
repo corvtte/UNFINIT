@@ -24,9 +24,9 @@ from services.feed_scraper import get_latest_free_downloads
 class TestV027Features(unittest.TestCase):
 
     def test_01_version_bump_v027(self):
-        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ('v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3')))
+        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ('v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3', 'v0.3.4')))
         health = get_system_health()
-        self.assertTrue(any(v in str(health["engine_version"]) for v in ('v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3')))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ('v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3', 'v0.3.4')))
         self.assertTrue(EngineVersionStr("UNFINIT Engine v0.2.7").__contains__("v0.2.7"))
 
     def test_02_admin_hub_cleanup_and_symmetry(self):

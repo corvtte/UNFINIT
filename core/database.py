@@ -409,6 +409,8 @@ async def init_db():
             cur.execute("ALTER TABLE products ADD COLUMN bale_photo_file_id TEXT DEFAULT ''")
         if "requires_referral" not in existing_cols:
             cur.execute("ALTER TABLE products ADD COLUMN requires_referral INTEGER DEFAULT 0")
+        if "episodes" not in existing_cols:
+            cur.execute("ALTER TABLE products ADD COLUMN episodes TEXT DEFAULT ''")
 
         # Auto-clean legacy filler text and redundant titles from download_link in products
         try:

@@ -1247,6 +1247,115 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
             return
+        elif path in ("/api/media/recolor-svg", "/api/recolor-svg"):
+            try:
+                import base64
+                from services.image_service import image_service
+
+                raw_data = payload.get("data") or payload.get("svg_data") or payload.get("svg") or ""
+                color = str(payload.get("color") or payload.get("hex") or "#FFFFFF").strip()
+                fname = str(payload.get("filename") or "recolored.svg").strip()
+                if not raw_data:
+                    raise ValueError("داده فایل SVG ارسال نشده است.")
+
+                if "," in raw_data and "base64," in raw_data:
+                    raw_data = raw_data.split("base64,", 1)[1]
+
+                try:
+                    svg_bytes = base64.b64decode(raw_data)
+                    svg_str = svg_bytes.decode("utf-8", errors="replace")
+                except Exception:
+                    svg_str = raw_data
+
+                recolored_svg = image_service.recolor_svg(svg_str, color)
+                out_b64 = base64.b64encode(recolored_svg.encode("utf-8")).decode("ascii")
+                data_url = f"data:image/svg+xml;base64,{out_b64}"
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "svg": recolored_svg,
+                    "color": color,
+                    "filename": fname,
+                    "data": data_url
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"[recolor-svg] error: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path in ("/api/media/text-to-svg", "/api/text-to-svg"):
+            try:
+                import base64
+                from services.image_service import image_service
+
+                text = str(payload.get("text") or "").strip()
+                font_size = int(payload.get("font_size") or 48)
+                fill = str(payload.get("fill") or payload.get("color") or "#FFFFFF").strip()
+                if not text:
+                    raise ValueError("متن برای تولید وکتور وارد نشده است.")
+
+                svg_content = image_service.text_to_svg(text, font_size=font_size, fill=fill)
+                out_b64 = base64.b64encode(svg_content.encode("utf-8")).decode("ascii")
+                data_url = f"data:image/svg+xml;base64,{out_b64}"
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "svg": svg_content,
+                    "data": data_url,
+                    "filename": "typography.svg"
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"[text-to-svg] error: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path in ("/api/courses/episodes/add", "/api/courses/add-episode"):
+            try:
+                from services.store_service import StoreService
+
+                product_id = str(payload.get("product_id") or "").strip()
+                title = str(payload.get("title") or payload.get("name") or "").strip()
+                url = str(payload.get("url") or payload.get("download_link") or "").strip()
+                part = int(payload.get("part") or 0) if payload.get("part") else None
+                filename = str(payload.get("filename") or "").strip()
+
+                if not product_id:
+                    raise ValueError("شناسه دوره انتخاب نشده است.")
+                if not url:
+                    raise ValueError("آدرس دانلود یا فایل ارسال نشده است.")
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(StoreService.add_course_episode(
+                    product_id=product_id,
+                    title=title,
+                    url=url,
+                    part=part,
+                    filename=filename
+                ))
+                loop.close()
+
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"[add-episode] error: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
         elif path in ("/api/settings", "/api/settings/save"):
             try:
                 pwd = (payload.get("password") or "").strip()

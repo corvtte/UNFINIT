@@ -2020,12 +2020,62 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, msg)
                                         continue
 
+                                    if cb_data.startswith("b_svg_hex:"):
+                                        target_fid = cb_data.split(":", 1)[1]
+                                        session_manager.set_user_action(f"bale_{chat_id}", "await_svg_hex", target_fid)
+                                        await bale.send_message(chat_id, "🎨 لطفاً کد هگز رنگ دلخواه خود را ارسال فرمایید (مانند #3B82F6 یا #E11D48):")
+                                        continue
+
+                                    if cb_data.startswith("b_svg_recol:"):
+                                        parts = cb_data.split(":", 2)
+                                        if len(parts) == 3:
+                                            c_name = parts[1].lower()
+                                            target_fid = parts[2]
+                                            color_map = {"white": "#FFFFFF", "black": "#000000"}
+                                            hex_color = color_map.get(c_name, c_name if c_name.startswith("#") else f"#{c_name}")
+                                            await bale.send_chat_action(chat_id, "upload_document")
+                                            tmp_svg_path = config.TEMP_DIR / f"svg_dl_{uuid.uuid4().hex[:8]}.svg"
+                                            try:
+                                                from services.image_service import image_service
+                                                downloaded = await bale.download_file(target_fid, tmp_svg_path)
+                                                if not downloaded or not tmp_svg_path.exists():
+                                                    raise ValueError("خطا در دانلود فایل SVG از سرور بله.")
+                                                with open(tmp_svg_path, "r", encoding="utf-8", errors="replace") as svg_f:
+                                                    svg_str = svg_f.read()
+                                                recolored_svg = image_service.recolor_svg(svg_str, hex_color)
+                                                out_bytes = recolored_svg.encode("utf-8")
+                                                svg_kb = {
+                                                    "inline_keyboard": [
+                                                        [
+                                                            {"text": "⚪️ سفید (#FFF)", "callback_data": f"b_svg_recol:white:{target_fid}"},
+                                                            {"text": "⚫️ مشکی (#000)", "callback_data": f"b_svg_recol:black:{target_fid}"}
+                                                        ],
+                                                        [
+                                                            {"text": "🎨 کد هگز دلخواه", "callback_data": f"b_svg_hex:{target_fid}"}
+                                                        ],
+                                                        [
+                                                            {"text": "🖼 خروجی PNG (شفاف)", "callback_data": f"b_svg_conv:png:{target_fid}"},
+                                                            {"text": "🖼 خروجی JPG (باکیفیت)", "callback_data": f"b_svg_conv:jpg:{target_fid}"}
+                                                        ]
+                                                    ]
+                                                }
+                                                caption = f"🎨 <b>وکتور با رنگ تغییر‌یافته ({hex_color}):</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                                                await bale.send_document(chat_id, out_bytes, caption=caption, filename=f"vector_{hex_color.lstrip('#')}.svg", reply_markup=svg_kb)
+                                            except Exception as e_recol:
+                                                logger.error(f"[bale_svg_recol] error: {e_recol}")
+                                                await bale.send_message(chat_id, f"❌ خطا در تغییر رنگ وکتور: {e_recol}")
+                                            finally:
+                                                if tmp_svg_path.exists():
+                                                    try: tmp_svg_path.unlink()
+                                                    except Exception: pass
+                                        continue
+
                                     if cb_data.startswith("b_svg_conv:"):
                                         parts = cb_data.split(":", 2)
                                         if len(parts) == 3:
                                             target_fmt = parts[1].lower()
                                             target_fid = parts[2]
-                                            await bale.send_chat_action(chat_id, "upload_document" if target_fmt == "png" else "upload_photo")
+                                            await bale.send_chat_action(chat_id, "upload_document" if target_fmt in ("png", "svg") else "upload_photo")
                                             tmp_svg_path = config.TEMP_DIR / f"svg_dl_{uuid.uuid4().hex[:8]}.svg"
                                             try:
                                                 from services.image_service import image_service
@@ -2040,6 +2090,9 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     out_bytes = image_service.convert_svg_to_jpg(svg_bytes)
                                                     caption = f"🖼 <b>تصویر باکیفیت JPG استخراج‌شده از وکتور</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
                                                     await bale.send_photo(chat_id, out_bytes, caption=caption)
+                                                elif target_fmt == "svg":
+                                                    caption = f"📥 <b>فایل اصلی وکتور SVG</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                                                    await bale.send_document(chat_id, svg_bytes, caption=caption, filename="vector.svg")
                                                 else:
                                                     out_bytes = image_service.convert_svg_to_png(svg_bytes)
                                                     caption = f"🖼 <b>تصویر باکیفیت PNG (شفاف) استخراج‌شده از وکتور</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
@@ -2053,6 +2106,27 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                         tmp_svg_path.unlink()
                                                 except Exception:
                                                     pass
+                                        continue
+
+                                    if cb_data.startswith("b_c_episodes:"):
+                                        c_pid = cb_data.split(":", 1)[1]
+                                        c_prod = await StoreService.get_product(c_pid)
+                                        if not c_prod:
+                                            await bale.send_message(chat_id, "❌ دوره مورد نظر یافت نشد.")
+                                            continue
+                                        c_eps = await StoreService.get_course_episodes(c_pid)
+                                        if not c_eps:
+                                            await bale.send_message(chat_id, f"ℹ️ هنوز قسمتی برای دوره «{c_prod.name}» ثبت نشده است.")
+                                            continue
+                                        ep_btns = []
+                                        for ep in c_eps:
+                                            ep_num = ep.get("part") or 1
+                                            ep_t = ep.get("title") or f"قسمت {ep_num}"
+                                            ep_u = ep.get("url")
+                                            if ep_u:
+                                                ep_btns.append([{"text": f"🎵 قسمت {ep_num}: {ep_t}", "url": ep_u}])
+                                        ep_btns.append([{"text": "🔙 بازگشت به دوره", "callback_data": f"bcview:{c_pid}"}])
+                                        await bale.send_message(chat_id, f"📚 <b>سرفصل‌ها و قسمت‌های دوره «{c_prod.name}»:</b>", reply_markup={"inline_keyboard": ep_btns})
                                         continue
 
                                     if cb_data == "bale:fjoin_panel":
@@ -2711,6 +2785,52 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, txt, reply_markup=kb)
                                         continue
 
+                                    if user_act and user_act.get("action") == "await_svg_hex" and text:
+                                        target_fid = user_act.get("drop_id")
+                                        session_manager.clear_user_action(f"bale_{chat_id}")
+                                        color = text.strip()
+                                        if not color.startswith("#"):
+                                            color = "#" + color
+                                        await bale.send_chat_action(chat_id, "upload_document")
+                                        tmp_svg_path = config.TEMP_DIR / f"svg_dl_{uuid.uuid4().hex[:8]}.svg"
+                                        try:
+                                            from services.image_service import image_service
+                                            downloaded = await bale.download_file(target_fid, tmp_svg_path)
+                                            if not downloaded or not tmp_svg_path.exists():
+                                                raise ValueError("خطا در دانلود فایل SVG از سرور بله.")
+                                            with open(tmp_svg_path, "r", encoding="utf-8", errors="replace") as svg_f:
+                                                svg_str = svg_f.read()
+                                            recolored_svg = image_service.recolor_svg(svg_str, color)
+                                            out_bytes = recolored_svg.encode("utf-8")
+                                            svg_kb = {
+                                                "inline_keyboard": [
+                                                    [
+                                                        {"text": "⚪️ سفید (#FFF)", "callback_data": f"b_svg_recol:white:{target_fid}"},
+                                                        {"text": "⚫️ مشکی (#000)", "callback_data": f"b_svg_recol:black:{target_fid}"}
+                                                    ],
+                                                    [
+                                                        {"text": "🎨 ارسال کد هگز", "callback_data": f"b_svg_hex:{target_fid}"}
+                                                    ],
+                                                    [
+                                                        {"text": "🖼 خروجی PNG شفاف", "callback_data": f"b_svg_conv:png:{target_fid}"},
+                                                        {"text": "🖼 خروجی JPG", "callback_data": f"b_svg_conv:jpg:{target_fid}"}
+                                                    ],
+                                                    [
+                                                        {"text": "📥 دریافت مجدد فایل SVG", "callback_data": f"b_svg_conv:svg:{target_fid}"}
+                                                    ]
+                                                ]
+                                            }
+                                            caption = f"🎨 <b>وکتور با رنگ جدید ({color}):</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                                            await bale.send_document(chat_id, out_bytes, caption=caption, filename=f"vector_{color.lstrip('#')}.svg", reply_markup=svg_kb)
+                                        except Exception as e_svg:
+                                            logger.error(f"[bale_svg_hex] error: {e_svg}")
+                                            await bale.send_message(chat_id, f"❌ خطا در پردازش تغییر رنگ: {e_svg}")
+                                        finally:
+                                            if tmp_svg_path.exists():
+                                                try: tmp_svg_path.unlink()
+                                                except Exception: pass
+                                        continue
+
                                     if text.startswith("/start "):
                                         param = text.split(" ", 1)[1].strip()
                                         if param.startswith("ord_") or param.startswith("invoice_") or "ord_" in param or param.startswith("ORD_") or param.startswith("order_"):
@@ -2788,7 +2908,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "❌ دوره مورد نظر یافت نشد.")
                                             continue
 
-                                        elif param.startswith("ref_"):
+                                        else:
                                             ref_code = ReferralService.parse_referral_code(param)
                                             if ref_code:
                                                 session_manager.set_user_action(f"bale_ref_{chat_id}", ref_code, ref_code)
@@ -3134,15 +3254,25 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             svg_kb = {
                                                 "inline_keyboard": [
                                                     [
-                                                        {"text": "🖼 دریافت نسخه PNG (شفاف)", "callback_data": f"b_svg_conv:png:{f_id}"},
-                                                        {"text": "🖼 دریافت نسخه JPG (باکیفیت)", "callback_data": f"b_svg_conv:jpg:{f_id}"}
+                                                        {"text": "⚪️ سفید (#FFF)", "callback_data": f"b_svg_recol:white:{f_id}"},
+                                                        {"text": "⚫️ مشکی (#000)", "callback_data": f"b_svg_recol:black:{f_id}"}
+                                                    ],
+                                                    [
+                                                        {"text": "🎨 ارسال کد هگز", "callback_data": f"b_svg_hex:{f_id}"}
+                                                    ],
+                                                    [
+                                                        {"text": "🖼 خروجی PNG شفاف", "callback_data": f"b_svg_conv:png:{f_id}"},
+                                                        {"text": "🖼 خروجی JPG", "callback_data": f"b_svg_conv:jpg:{f_id}"}
+                                                    ],
+                                                    [
+                                                        {"text": "📥 دریافت مجدد فایل SVG", "callback_data": f"b_svg_conv:svg:{f_id}"}
                                                     ]
                                                 ]
                                             }
                                             await bale.send_message(
                                                 chat_id,
-                                                f"🎨 <b>فایل وکتور SVG دریافت شد:</b> <code>{html.escape(raw_file_name or 'vector.svg')}</code>\n\n"
-                                                "فرمت تصویر مورد نظر را جهت تبدیل و دریافت انتخاب فرمایید:",
+                                                f"🎨 <b>استودیوی وکتور SVG:</b> <code>{html.escape(raw_file_name or 'vector.svg')}</code>\n\n"
+                                                "عملیات مورد نظر خود را جهت تغییر رنگ یا تبدیل فرمت انتخاب فرمایید:",
                                                 reply_markup=svg_kb
                                             )
                                             continue

@@ -1092,10 +1092,12 @@ class TelegramAdapter:
                 short_desc = desc_txt[: max(50, 950 - len(prod.name))] + "..."
                 caption = f"🎓 <b>{escape(prod.name)}</b>\n\n📝 <b>توضیحات دوره:</b>\n{escape(short_desc)}\n\n💵 <b>قیمت:</b> <b>{price_txt}</b>"
 
-            kb = InlineKeyboardMarkup([
-                [InlineKeyboardButton(btn_txt, callback_data=f"cbuy:{prod.product_id}")],
-                [InlineKeyboardButton("🔙 بازگشت به لیست دوره‌ها", callback_data="cnav:back")]
-            ])
+            episodes = prod.episodes or await StoreService.get_course_episodes(prod.product_id)
+            kb_rows = [[InlineKeyboardButton(btn_txt, callback_data=f"cbuy:{prod.product_id}")]]
+            if episodes:
+                kb_rows.append([InlineKeyboardButton(f"🎵 سرفصل‌های دوره ({len(episodes)} قسمت)", callback_data=f"tg_c_episodes:{prod.product_id}")])
+            kb_rows.append([InlineKeyboardButton("🔙 بازگشت به لیست دوره‌ها", callback_data="cnav:back")])
+            kb = InlineKeyboardMarkup(kb_rows)
 
             photo_res = resolve_telegram_course_photo(prod)
             sent_photo = False
@@ -1123,6 +1125,33 @@ class TelegramAdapter:
 
             if not sent_photo:
                 await callback_query.message.reply_text(caption, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+
+        # Course Episodes Callback Handler
+        @self.app.on_callback_query(filters.regex(r"^tg_c_episodes:"))
+        async def tg_course_episodes_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            c_pid = callback_query.data.split(":", 1)[1]
+            c_prod = await StoreService.get_product(c_pid)
+            if not c_prod:
+                await callback_query.message.reply_text("❌ دوره مورد نظر یافت نشد.")
+                return
+            c_eps = await StoreService.get_course_episodes(c_pid)
+            if not c_eps:
+                await callback_query.message.reply_text(f"ℹ️ هنوز قسمتی برای دوره «{c_prod.name}» ثبت نشده است.")
+                return
+            buttons = []
+            for ep in c_eps:
+                ep_num = ep.get("part") or 1
+                ep_t = ep.get("title") or f"قسمت {ep_num}"
+                ep_u = ep.get("url")
+                if ep_u:
+                    buttons.append([InlineKeyboardButton(f"🎵 قسمت {ep_num}: {ep_t}", url=ep_u)])
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به دوره", callback_data=f"cview:{c_pid}")])
+            await callback_query.message.reply_text(
+                f"📚 <b>سرفصل‌ها و قسمت‌های دوره «{escape(c_prod.name)}»:</b>",
+                parse_mode=enums.ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
 
         # Product Navigation Back Callback
         @self.app.on_callback_query(filters.regex(r"^cnav:back$"))
@@ -2120,13 +2149,23 @@ class TelegramAdapter:
                 file_id = getattr(media_obj, "file_id", "")
                 svg_kb = InlineKeyboardMarkup([
                     [
-                        InlineKeyboardButton("🖼 دریافت نسخه PNG (شفاف)", callback_data=f"tg_svg:png:{file_id}"),
-                        InlineKeyboardButton("🖼 دریافت نسخه JPG (باکیفیت)", callback_data=f"tg_svg:jpg:{file_id}")
+                        InlineKeyboardButton("⚪️ سفید (#FFF)", callback_data=f"tg_svg_recol:white:{file_id}"),
+                        InlineKeyboardButton("⚫️ مشکی (#000)", callback_data=f"tg_svg_recol:black:{file_id}")
+                    ],
+                    [
+                        InlineKeyboardButton("🎨 ارسال کد هگز", callback_data=f"tg_svg_hex:{file_id}")
+                    ],
+                    [
+                        InlineKeyboardButton("🖼 خروجی PNG شفاف", callback_data=f"tg_svg:png:{file_id}"),
+                        InlineKeyboardButton("🖼 خروجی JPG", callback_data=f"tg_svg:jpg:{file_id}")
+                    ],
+                    [
+                        InlineKeyboardButton("📥 دریافت مجدد فایل SVG", callback_data=f"tg_svg:svg:{file_id}")
                     ]
                 ])
                 await message.reply_text(
-                    f"🎨 <b>فایل وکتور SVG دریافت شد:</b> <code>{escape(raw_fn or 'vector.svg')}</code>\n\n"
-                    "فرمت تصویر خروجی مد نظر خود را انتخاب فرمایید:",
+                    f"🎨 <b>استودیوی وکتور SVG:</b> <code>{escape(raw_fn or 'vector.svg')}</code>\n\n"
+                    "عملیات مورد نظر خود را جهت تغییر رنگ یا تبدیل فرمت انتخاب فرمایید:",
                     parse_mode=enums.ParseMode.HTML,
                     reply_markup=svg_kb
                 )
@@ -2165,6 +2204,69 @@ class TelegramAdapter:
             sent_card = await message.reply_text(card_text, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
             data["card_msg_id"] = sent_card.id
 
+        # SVG Vector Callbacks: Hex Input & Recolor
+        @self.app.on_callback_query(filters.regex(r"^tg_svg_hex:"))
+        async def tg_svg_hex_cb(client: Client, callback_query: CallbackQuery):
+            file_id = callback_query.data.split(":", 1)[1]
+            user_id = callback_query.from_user.id
+            session_manager.set_user_action(f"tg_{user_id}", "await_svg_hex", file_id)
+            await callback_query.answer()
+            await callback_query.message.reply_text(
+                "🎨 <b>لطفاً کد رنگ هگز مدنظر خود را ارسال فرمایید (مانند #3B82F6 یا #E11D48):</b>",
+                parse_mode=enums.ParseMode.HTML
+            )
+
+        @self.app.on_callback_query(filters.regex(r"^tg_svg_recol:"))
+        async def tg_svg_recol_cb(client: Client, callback_query: CallbackQuery):
+            parts = callback_query.data.split(":", 2)
+            if len(parts) != 3:
+                return
+            c_name = parts[1].lower()
+            file_id = parts[2]
+            user_id = callback_query.from_user.id
+            color_map = {"white": "#FFFFFF", "black": "#000000"}
+            hex_color = color_map.get(c_name, c_name if c_name.startswith("#") else f"#{c_name}")
+            await callback_query.answer("در حال تغییر رنگ وکتور...")
+            status_msg = await callback_query.message.reply_text(f"⏳ در حال دانلود فایل وکتور و تغییر رنگ به {hex_color}...")
+            tmp_svg_path = config.TEMP_DIR / f"tg_svg_{uuid.uuid4().hex[:8]}.svg"
+            try:
+                from services.image_service import image_service
+                await client.download_media(file_id, file_name=str(tmp_svg_path))
+                if not tmp_svg_path.exists():
+                    raise ValueError("خطا در دانلود فایل SVG از تلگرام.")
+                with open(tmp_svg_path, "r", encoding="utf-8", errors="replace") as f_in:
+                    svg_str = f_in.read()
+                recolored_svg = image_service.recolor_svg(svg_str, hex_color)
+                out_bytes = recolored_svg.encode("utf-8")
+                tmp_out = config.TEMP_DIR / f"vector_{hex_color.lstrip('#')}_{uuid.uuid4().hex[:8]}.svg"
+                with open(tmp_out, "wb") as f_out:
+                    f_out.write(out_bytes)
+                svg_kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("⚪️ سفید (#FFF)", callback_data=f"tg_svg_recol:white:{file_id}"),
+                        InlineKeyboardButton("⚫️ مشکی (#000)", callback_data=f"tg_svg_recol:black:{file_id}")
+                    ],
+                    [
+                        InlineKeyboardButton("🎨 کد هگز دلخواه", callback_data=f"tg_svg_hex:{file_id}")
+                    ],
+                    [
+                        InlineKeyboardButton("🖼 خروجی PNG شفاف", callback_data=f"tg_svg:png:{file_id}"),
+                        InlineKeyboardButton("🖼 خروجی JPG", callback_data=f"tg_svg:jpg:{file_id}")
+                    ]
+                ])
+                caption = f"🎨 <b>وکتور با رنگ تغییر‌یافته ({hex_color}):</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                await client.send_document(user_id, str(tmp_out), caption=caption, file_name=f"vector_{hex_color.lstrip('#')}.svg", parse_mode=enums.ParseMode.HTML, reply_markup=svg_kb)
+                try: tmp_out.unlink()
+                except Exception: pass
+                await status_msg.delete()
+            except Exception as e:
+                logger.error(f"[tg_svg_recol] Error: {e}")
+                await status_msg.edit_text(f"❌ خطا در تغییر رنگ وکتور: {e}")
+            finally:
+                if tmp_svg_path.exists():
+                    try: tmp_svg_path.unlink()
+                    except Exception: pass
+
         # SVG Vector to Image Conversion Callback Handler
         @self.app.on_callback_query(filters.regex(r"^tg_svg:"))
         async def tg_svg_convert_cb(client: Client, callback_query: CallbackQuery):
@@ -2175,7 +2277,7 @@ class TelegramAdapter:
             file_id = parts[2]
             user_id = callback_query.from_user.id
             await callback_query.answer("در حال تبدیل وکتور...")
-            status_msg = await callback_query.message.reply_text("⏳ در حال دانلود فایل وکتور SVG و تبدیل به تصویر...")
+            status_msg = await callback_query.message.reply_text("⏳ در حال پردازش فایل وکتور...")
             tmp_svg_path = config.TEMP_DIR / f"tg_svg_{uuid.uuid4().hex[:8]}.svg"
             try:
                 from services.image_service import image_service
@@ -2191,16 +2293,19 @@ class TelegramAdapter:
                     tmp_out = config.TEMP_DIR / f"vector_{uuid.uuid4().hex[:8]}.jpg"
                     with open(tmp_out, "wb") as f_out:
                         f_out.write(out_bytes)
-                    caption = f"🖼 <b>تصویر باکیفیت JPG استخراج‌شده از وکتور</b>\nنگارش موتور: <code>{config.ENGINE_VERSION}</code>"
+                    caption = f"🖼 <b>تصویر باکیفیت JPG استخراج‌شده از وکتور</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
                     await client.send_photo(user_id, str(tmp_out), caption=caption, parse_mode=enums.ParseMode.HTML)
                     try: tmp_out.unlink()
                     except Exception: pass
+                elif target_fmt == "svg":
+                    caption = f"📥 <b>فایل اصلی وکتور SVG</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                    await client.send_document(user_id, str(tmp_svg_path), caption=caption, file_name="vector.svg", parse_mode=enums.ParseMode.HTML)
                 else:
                     out_bytes = image_service.convert_svg_to_png(svg_bytes)
                     tmp_out = config.TEMP_DIR / f"vector_{uuid.uuid4().hex[:8]}.png"
                     with open(tmp_out, "wb") as f_out:
                         f_out.write(out_bytes)
-                    caption = f"🖼 <b>تصویر باکیفیت PNG (شفاف) استخراج‌شده از وکتور</b>\nنگارش موتور: <code>{config.ENGINE_VERSION}</code>"
+                    caption = f"🖼 <b>تصویر باکیفیت PNG (شفاف) استخراج‌شده از وکتور</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
                     await client.send_document(user_id, str(tmp_out), caption=caption, file_name="vector_converted.png", parse_mode=enums.ParseMode.HTML)
                     try: tmp_out.unlink()
                     except Exception: pass
@@ -2828,6 +2933,53 @@ class TelegramAdapter:
             if user_act and text == "/cancel":
                 session_manager.clear_user_action(f"tg_{user_id}")
                 await message.reply_text("❌ عملیات با موفقیت لغو شد.", parse_mode=enums.ParseMode.HTML)
+                return
+
+            if user_act and user_act.get("action") == "await_svg_hex":
+                target_fid = user_act.get("drop_id")
+                session_manager.clear_user_action(f"tg_{user_id}")
+                color = text.strip()
+                if not color.startswith("#"):
+                    color = "#" + color
+                status_msg = await message.reply_text(f"⏳ در حال تغییر رنگ وکتور به {color}...")
+                tmp_svg_path = config.TEMP_DIR / f"tg_svg_{uuid.uuid4().hex[:8]}.svg"
+                try:
+                    from services.image_service import image_service
+                    await client.download_media(target_fid, file_name=str(tmp_svg_path))
+                    if not tmp_svg_path.exists():
+                        raise ValueError("خطا در دانلود فایل SVG از تلگرام.")
+                    with open(tmp_svg_path, "r", encoding="utf-8", errors="replace") as f_in:
+                        svg_str = f_in.read()
+                    recolored_svg = image_service.recolor_svg(svg_str, color)
+                    out_bytes = recolored_svg.encode("utf-8")
+                    tmp_out = config.TEMP_DIR / f"vector_{color.lstrip('#')}_{uuid.uuid4().hex[:8]}.svg"
+                    with open(tmp_out, "wb") as f_out:
+                        f_out.write(out_bytes)
+                    svg_kb = InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("⚪️ سفید (#FFF)", callback_data=f"tg_svg_recol:white:{target_fid}"),
+                            InlineKeyboardButton("⚫️ مشکی (#000)", callback_data=f"tg_svg_recol:black:{target_fid}")
+                        ],
+                        [
+                            InlineKeyboardButton("🎨 تغییر به کد هگز دیگر", callback_data=f"tg_svg_hex:{target_fid}")
+                        ],
+                        [
+                            InlineKeyboardButton("🖼 خروجی PNG شفاف", callback_data=f"tg_svg:png:{target_fid}"),
+                            InlineKeyboardButton("🖼 خروجی JPG", callback_data=f"tg_svg:jpg:{target_fid}")
+                        ]
+                    ])
+                    caption = f"🎨 <b>وکتور با رنگ جدید ({color}):</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                    await client.send_document(user_id, str(tmp_out), caption=caption, file_name=f"vector_{color.lstrip('#')}.svg", parse_mode=enums.ParseMode.HTML, reply_markup=svg_kb)
+                    try: tmp_out.unlink()
+                    except Exception: pass
+                    await status_msg.delete()
+                except Exception as e:
+                    logger.error(f"[tg_svg_hex] error: {e}")
+                    await status_msg.edit_text(f"❌ خطا در پردازش و تغییر رنگ وکتور: {e}")
+                finally:
+                    if tmp_svg_path.exists():
+                        try: tmp_svg_path.unlink()
+                        except Exception: pass
                 return
 
             if user_act and user_act.get("action") == "await_c_name":

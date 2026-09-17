@@ -27,10 +27,9 @@ from services.feed_scraper import get_latest_free_downloads
 class TestV028Features(unittest.TestCase):
 
     def test_01_version_bump_v028(self):
-        """Verify engine version is bumped to v0.2.8 across config and web_panel."""
-        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ('v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3')))
+        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ('v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3', 'v0.3.4')))
         health = get_system_health()
-        self.assertTrue(any(v in str(health["engine_version"]) for v in ('v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3')))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ('v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3', 'v0.3.4')))
         self.assertTrue(EngineVersionStr("UNFINIT Engine v0.2.8").__contains__("v0.2.8"))
 
     def test_02_dynamic_bale_safe_limit_and_margin(self):
