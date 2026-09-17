@@ -64,7 +64,7 @@ def get_system_health() -> Dict[str, Any]:
                 "name": "تلگرام (MTProto)",
                 "status": "ONLINE" if config.TELEGRAM_BOT_TOKEN else "OFFLINE",
                 "owner_id": config.TELEGRAM_OWNER_ID,
-                "badge": "bg-blue-600"
+                "badge": "bg-sky-600"
             },
             "bale": {
                 "name": "پیام‌رسان بله (Bot API)",
@@ -179,7 +179,7 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
                         <span>🗑️</span>
                     </button>
                     <div class="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                        <button onclick="dispatchDrop('{d['drop_id']}', 'telegram')" class="px-1.5 py-1 rounded hover:bg-blue-900/60 text-blue-300 text-xs font-bold transition" title="ارسال به تلگرام">✈️</button>
+                        <button onclick="dispatchDrop('{d['drop_id']}', 'telegram')" class="px-1.5 py-1 rounded hover:bg-sky-900/60 text-sky-300 text-xs font-bold transition" title="ارسال به تلگرام">✈️</button>
                         <button onclick="dispatchDrop('{d['drop_id']}', 'bale')" class="px-1.5 py-1 rounded hover:bg-emerald-900/60 text-emerald-300 text-xs font-bold transition" title="ارسال به بله (با فشرده‌سازی خودکار)">🟢</button>
                         <button onclick="dispatchDrop('{d['drop_id']}', 'rubika')" class="px-1.5 py-1 rounded hover:bg-purple-900/60 text-purple-300 text-xs font-bold transition" title="ارسال به روبیکا">🟣</button>
                     </div>
@@ -224,10 +224,10 @@ def render_dashboard_html() -> str:
         prod_cards = '<div class="col-span-full py-12 text-center text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">هیچ دوره‌ای در سیستم ثبت نشده است. از فرم زیر جهت افزودن دوره استفاده فرمایید.</div>'
     else:
         for prod in products:
-            status_badge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1"><span>🟢</span> فعال</span>' if prod.active else '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1"><span>🔴</span> غیرفعال</span>'
+            status_badge = f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1"><span>🟢</span> فعال</span>' if prod.active else f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1"><span>🔴</span> غیرفعال</span>'
             price_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان 🎁</span>'
             
-            card_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-blue-950/60 text-blue-300 border border-blue-800/60">کارت‌به‌کارت ✅</span>' if prod.allow_card else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">کارت‌به‌کارت ❌</span>'
+            card_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-cyan-300 border border-cyan-800/60" style="color: var(--accent-color);">کارت‌به‌کارت ✅</span>' if prod.allow_card else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">کارت‌به‌کارت ❌</span>'
             bale_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">درگاه آنلاین بله ✅</span>' if prod.allow_bale else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">درگاه آنلاین بله ❌</span>'
             ref_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-300 border border-amber-800/60">۱ دعوت الزامی 🎁</span>' if getattr(prod, 'requires_referral', False) else ''
             
@@ -240,7 +240,7 @@ def render_dashboard_html() -> str:
 
             banner_html = f'''<img src="{prod.photo_url}" alt="{prod.name}" class="w-full max-h-80 object-contain rounded-xl mb-3 border border-slate-700/60" onerror="this.style.display=\'none\'">''' if prod.photo_url else ''
 
-            toggle_btn = f'''<button onclick="toggleCourseActive('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">{'🔴 غیرفعال‌سازی' if prod.active else '🟢 فعال‌سازی'}</button>'''
+            toggle_btn = f'''<button id="toggle_btn_{prod.product_id}" onclick="toggleCourseActive('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">{'🔴 غیرفعال‌سازی' if prod.active else '🟢 فعال‌سازی'}</button>'''
 
             prod_cards += f"""
             <div class="glass p-5 rounded-2xl flex flex-col justify-between border border-slate-800 hover:border-cyan-500/40 transition group" id="course_card_{prod.product_id}">
@@ -266,7 +266,7 @@ def render_dashboard_html() -> str:
                     {dl_html}
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <button onclick="openEditModal('{prod.product_id}', '{prod.name}', {prod.price}, `{prod.description or ''}`, '{prod.download_link or ''}', '{prod.photo_url or ''}', {1 if prod.allow_card else 0}, {1 if prod.allow_bale else 0}, {1 if getattr(prod, 'requires_referral', False) else 0})" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
+                    <button onclick="openEditModalById('{prod.product_id}')" data-course-id="{prod.product_id}" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
                         <span>✏️</span> ویرایش
                     </button>
                     <div class="flex items-center gap-1.5">
@@ -278,6 +278,23 @@ def render_dashboard_html() -> str:
                 </div>
             </div>
             """
+
+    courses_dict = {
+        prod.product_id: {
+            "product_id": prod.product_id,
+            "name": prod.name,
+            "price": prod.price,
+            "description": prod.description or "",
+            "download_link": prod.download_link or "",
+            "photo_url": prod.photo_url or "",
+            "allow_card": 1 if prod.allow_card else 0,
+            "allow_bale": 1 if prod.allow_bale else 0,
+            "requires_referral": 1 if getattr(prod, "requires_referral", False) else 0,
+            "is_active": 1 if prod.active else 0
+        }
+        for prod in products
+    }
+    courses_data_json = json.dumps(courses_dict, ensure_ascii=False)
 
     drop_rows = render_studio_table_rows()
     active_drops_count = len([s for s in session_manager._sessions if not s.startswith("url_") and not s.startswith("rurl_")])
@@ -497,7 +514,7 @@ def render_dashboard_html() -> str:
     <div id="loginGate" class="fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300" style="background: radial-gradient(circle at 50% 30%, #0e224c 0%, #081229 55%, #020612 100%);">
         <div class="glass p-8 md:p-10 rounded-3xl w-full max-w-md border border-cyan-500/30 shadow-2xl shadow-cyan-950/70 text-center space-y-6 relative overflow-hidden">
             <div class="absolute -top-12 -right-12 w-36 h-36 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none"></div>
-            <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-blue-600/10 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-cyan-600/10 rounded-full blur-2xl pointer-events-none"></div>
 
             <!-- Brand Header -->
             <div class="flex items-center justify-center gap-3">
@@ -731,7 +748,7 @@ def render_dashboard_html() -> str:
                     <span class="text-slate-400">آنلاین:</span>
                     <span id="uptimeDisplay" class="font-mono font-bold text-emerald-400" data-start="{int(SERVER_START_TIME)}">{health['uptime']}</span>
                 </div>
-                <button onclick="toggleMobileMenu()" id="btnMobileMenu" class="md:hidden px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-base transition flex items-center justify-center focus:outline-none" title="منوی ناوبری">
+                <button onclick="toggleMobileDrawer()" id="btnMobileMenu" class="md:hidden px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-base transition flex items-center justify-center focus:outline-none" title="منوی ناوبری">
                     <span>☰</span>
                 </button>
                 <button onclick="handleLogout()" class="rounded-full px-4 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5 font-medium">
@@ -739,6 +756,49 @@ def render_dashboard_html() -> str:
                 </button>
             </div>
         </header>
+
+        <!-- Mobile Drawer Backdrop Overlay -->
+        <div id="drawerOverlay" onclick="toggleMobileDrawer(false)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300 md:hidden"></div>
+
+        <!-- Mobile Off-Canvas Drawer (Slides in from Right in RTL) -->
+        <div id="mobileDrawer" class="fixed top-0 right-0 bottom-0 w-72 max-w-[85vw] p-5 z-50 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col justify-between" style="background: var(--bg-color, #0f172a); border-left: 1px solid var(--card-border, #1e293b);">
+            <div class="space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">⚡</span>
+                        <span class="font-bold text-sm text-white">منوی مدیریت UNFINIT</span>
+                    </div>
+                    <button onclick="toggleMobileDrawer(false)" class="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+                        ✕
+                    </button>
+                </div>
+                <div class="flex flex-col space-y-2" id="mobileDrawerTabs">
+                    <button onclick="switchTab('studio'); toggleMobileDrawer(false);" class="w-full text-right px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-200">
+                        <span>🎙️</span> استودیوی رسانه و متادیتا
+                    </button>
+                    <button onclick="switchTab('courses'); toggleMobileDrawer(false);" class="w-full text-right px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-200">
+                        <span>🎓</span> دوره‌ها
+                    </button>
+                    <button onclick="switchTab('downloads'); toggleMobileDrawer(false);" class="w-full text-right px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-200">
+                        <span>🎁</span> فایل‌های دانلودی
+                    </button>
+                    <button onclick="switchTab('orders'); toggleMobileDrawer(false);" class="w-full text-right px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-200">
+                        <span>🧾</span> سفارشات و تراکنش‌ها
+                    </button>
+                    <button onclick="switchTab('tokens'); toggleMobileDrawer(false);" class="w-full text-right px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-200">
+                        <span>🔐</span> سکرت‌ها و توکن‌ها
+                    </button>
+                    <button onclick="switchTab('settings'); toggleMobileDrawer(false);" class="w-full text-right px-4 py-3 rounded-xl text-xs font-bold transition flex items-center gap-3 bg-slate-800/60 hover:bg-slate-700/80 text-slate-200">
+                        <span>⚙️</span> تنظیمات سیستم و لاگ‌ها
+                    </button>
+                </div>
+            </div>
+            <div class="pt-4 border-t border-slate-800">
+                <button onclick="handleLogout()" class="w-full py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center justify-center gap-2 font-medium">
+                    <span>🚪</span> خروج از حساب مدیریت
+                </button>
+            </div>
+        </div>
 
         <main class="max-w-7xl mx-auto p-6 space-y-6">
             <!-- Navigation Tabs: Universal Single Container -->
@@ -846,6 +906,40 @@ def render_dashboard_html() -> str:
                     </div>
                 </form>
                 <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
+            </div>
+
+            <!-- SVG Vector to Image Converter Widget -->
+            <div class="glass p-6 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <span>🎨</span> ابزار تبدیل هوشمند وکتور SVG به تصویر (PNG شفاف / JPG)
+                    </h2>
+                    <span class="text-xs font-mono px-2.5 py-1 rounded-lg border text-cyan-400 bg-cyan-950/80 border-cyan-800">
+                        Vector Engine v0.3.3
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 mb-4">
+                    فایل‌های وکتور SVG خود را بارگذاری کنید و نسخه بهینه‌شده با ابعاد بالا (PNG شفاف با حفظ آلفا یا JPG با پس‌زمینه سفید) را بدون افت کیفیت تحویل بگیرید.
+                </p>
+                <form id="svgConvertForm" class="grid grid-cols-1 md:grid-cols-4 gap-4" onsubmit="handleSvgConvert(event)">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-medium text-slate-300 mb-1">انتخاب فایل وکتور SVG</label>
+                        <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" required class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">فرمت خروجی تبدیل</label>
+                        <select id="svgOutputFormat" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                            <option value="png">🖼 PNG با شفافیت کامل (Alpha Transparency)</option>
+                            <option value="jpg">🖼 JPG با پس‌زمینه سفید (HQ 300 DPI)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" id="btnSvgConvert" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-xs">
+                            <span>⚡️</span> تبدیل و دریافت تصویر
+                        </button>
+                    </div>
+                </form>
+                <div id="svgConvertResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono flex items-center justify-between"></div>
             </div>
 
             <!-- Web Mp3tag Studio & Media Table -->
@@ -1130,9 +1224,9 @@ def render_dashboard_html() -> str:
                         <div id="metricTodaySales" class="text-lg font-bold text-emerald-400 font-mono">۰ تومان</div>
                         <div id="metricTodayOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
-                    <div class="bg-slate-900/80 p-4 rounded-xl border border-blue-900/40">
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-sky-900/40">
                         <div class="text-[11px] text-slate-400 mb-1">فروش ۷ روز گذشته</div>
-                        <div id="metricWeekSales" class="text-lg font-bold text-blue-400 font-mono">۰ تومان</div>
+                        <div id="metricWeekSales" class="text-lg font-bold text-sky-400 font-mono">۰ تومان</div>
                         <div id="metricWeekOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
                     <div class="bg-slate-900/80 p-4 rounded-xl border border-purple-900/40">
@@ -1723,6 +1817,17 @@ def render_dashboard_html() -> str:
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">سقف امن آپلود بله (MAX_SAFE_BALE_SIZE_MB)</label>
                                     <input type="number" step="0.01" id="cfg_MAX_SAFE_BALE_SIZE_MB" value="49.99" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
+                                <div>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">درصد پاداش کش‌بک خرید (CASHBACK_PERCENT %)</label>
+                                    <input type="number" step="0.1" min="0" max="100" id="cfg_CASHBACK_PERCENT" value="0.0" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                </div>
+                                <div class="flex items-center gap-3 pt-2 md:col-span-2">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="cfg_APPLY_DEFAULT_ARTIST_TAG" class="sr-only peer" checked>
+                                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                                        <span class="mr-3 text-xs font-medium text-slate-300">اعمال متادیتا و تگ خواننده پیش‌فرض روی فایل‌های خروجی صوتی (APPLY_DEFAULT_ARTIST_TAG)</span>
+                                    </label>
+                                </div>
                             </div>
                         </details>
                     </div>
@@ -2153,6 +2258,7 @@ def render_dashboard_html() -> str:
     </div>
 
     <script>
+        window.coursesData = {courses_data_json};
 
         // Global Auth & State Access
         window.currentAdminPassword = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
@@ -2292,17 +2398,24 @@ def render_dashboard_html() -> str:
                 }}
                 window.handleLogout = handleLogout;
 
-                function toggleMobileMenu(forceState) {{
-                    const menu = document.getElementById('mobileNavMenu');
-                    if (!menu) return;
-                    if (typeof forceState === 'boolean') {{
-                        if (forceState) menu.classList.remove('hidden');
-                        else menu.classList.add('hidden');
+                function toggleMobileDrawer(forceState) {{
+                    const drawer = document.getElementById('mobileDrawer');
+                    const overlay = document.getElementById('drawerOverlay');
+                    if (!drawer || !overlay) return;
+                    const isClosed = drawer.classList.contains('translate-x-full');
+                    const shouldOpen = (typeof forceState === 'boolean') ? forceState : isClosed;
+                    if (shouldOpen) {{
+                        overlay.classList.remove('hidden');
+                        drawer.classList.remove('translate-x-full');
+                        drawer.classList.add('translate-x-0');
                     }} else {{
-                        menu.classList.toggle('hidden');
+                        overlay.classList.add('hidden');
+                        drawer.classList.remove('translate-x-0');
+                        drawer.classList.add('translate-x-full');
                     }}
                 }}
-                window.toggleMobileMenu = toggleMobileMenu;
+                window.toggleMobileDrawer = toggleMobileDrawer;
+                window.toggleMobileMenu = toggleMobileDrawer;
 
                 function switchTab(tabId) {{
                     try {{
@@ -3361,6 +3474,91 @@ def render_dashboard_html() -> str:
             }} catch (e) {{}}
         }});
 
+                async function handleSvgConvert(e) {{
+                    if (e) e.preventDefault();
+                    const fileInput = document.getElementById('svgFileInput');
+                    const formatSelect = document.getElementById('svgOutputFormat');
+                    const btn = document.getElementById('btnSvgConvert');
+                    const resultDiv = document.getElementById('svgConvertResult');
+
+                    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {{
+                        alert('لطفاً ابتدا یک فایل وکتور SVG انتخاب فرمایید.');
+                        return;
+                    }}
+                    const file = fileInput.files[0];
+                    const format = (formatSelect ? formatSelect.value : 'png') || 'png';
+
+                    if (btn) {{
+                        btn.disabled = true;
+                        btn.innerHTML = '<span>⏳</span> در حال تبدیل...';
+                    }}
+                    if (resultDiv) {{
+                        resultDiv.classList.remove('hidden');
+                        resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-cyan-950/60 border border-cyan-800 text-cyan-300 flex items-center justify-between';
+                        resultDiv.innerHTML = '<span>⚡️ در حال پردازش فایل وکتور و رندر تصویر...</span>';
+                    }}
+
+                    const reader = new FileReader();
+                    reader.onload = async function() {{
+                        try {{
+                            const b64 = reader.result;
+                            const res = await fetch('/api/media/convert-svg', {{
+                                method: 'POST',
+                                headers: {{
+                                    'Content-Type': 'application/json',
+                                    'X-Admin-Password': window.currentAdminPassword || ''
+                                }},
+                                body: JSON.stringify({{
+                                    data: b64,
+                                    format: format,
+                                    filename: file.name
+                                }})
+                            }});
+                            const data = await res.json();
+                            if (data.ok) {{
+                                if (resultDiv) {{
+                                    resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-emerald-950/60 border border-emerald-800 text-emerald-300 flex items-center justify-between';
+                                    resultDiv.innerHTML = '<span>✅ تبدیل موفق: ' + data.filename + ' (' + Math.round((data.size || 0) / 1024) + ' KB)</span>' +
+                                        '<a href="' + data.data + '" download="' + data.filename + '" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-sans font-bold transition">دریافت فایل</a>';
+                                }}
+                                const a = document.createElement('a');
+                                a.href = data.data;
+                                a.download = data.filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                            }} else {{
+                                if (resultDiv) {{
+                                    resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                    resultDiv.innerText = '❌ خطای تبدیل: ' + (data.error || 'عملیات ناموفق بود');
+                                }}
+                            }}
+                        }} catch (err) {{
+                            if (resultDiv) {{
+                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                resultDiv.innerText = '❌ خطای ارتباط با سرور: ' + err.message;
+                            }}
+                        }} finally {{
+                            if (btn) {{
+                                btn.disabled = false;
+                                btn.innerHTML = '<span>⚡️</span> تبدیل و دریافت تصویر';
+                            }}
+                        }}
+                    }};
+                    reader.onerror = function() {{
+                        if (resultDiv) {{
+                            resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                            resultDiv.innerText = '❌ خطا در خواندن فایل وکتور از دستگاه.';
+                        }}
+                        if (btn) {{
+                            btn.disabled = false;
+                            btn.innerHTML = '<span>⚡️</span> تبدیل و دریافت تصویر';
+                        }}
+                    }};
+                    reader.readAsDataURL(file);
+                }}
+                window.handleSvgConvert = handleSvgConvert;
+
                 window.handleStudioFilesSelect = handleStudioFilesSelect;
                 window.previewStudioCover = previewStudioCover;
                 window.openSpecsModal = openSpecsModal;
@@ -3430,7 +3628,7 @@ def render_dashboard_html() -> str:
             btn.disabled = true;
             btn.innerText = 'در حال ثبت...';
             const name = document.getElementById('newCName').value;
-            const rawPrice = String(document.getElementById('newCPrice').value || '').replace(/[,،\s]/g, '');
+            const rawPrice = String(document.getElementById('newCPrice').value || '').replace(/[,،\\s]/g, '');
             const price = parseInt(rawPrice) || 0;
             const description = document.getElementById('newCDesc').value;
             const download_link = document.getElementById('newCDownload').value;
@@ -3464,7 +3662,7 @@ def render_dashboard_html() -> str:
             document.getElementById('editProductId').value = pid;
             document.getElementById('modalProdIdBadge').innerText = pid;
             document.getElementById('editName').value = name;
-            const rawP = String(price || '0').replace(/[,،\s]/g, '');
+            const rawP = String(price || '0').replace(/[,،\\s]/g, '');
             document.getElementById('editPrice').value = Number(rawP) ? Number(rawP).toLocaleString('en-US') : '0';
             document.getElementById('editDesc').value = desc;
             document.getElementById('editDl').value = dl;
@@ -3485,11 +3683,30 @@ def render_dashboard_html() -> str:
             document.getElementById('editModal').classList.add('hidden');
         }}
 
+        function openEditModalById(pid) {{
+            const course = (window.coursesData && window.coursesData[pid]) ? window.coursesData[pid] : null;
+            if (!course) {{
+                alert('اطلاعات دوره یافت نشد.');
+                return;
+            }}
+            openEditModal(
+                course.product_id,
+                course.name,
+                course.price,
+                course.description,
+                course.download_link,
+                course.photo_url,
+                course.allow_card,
+                course.allow_bale,
+                course.requires_referral
+            );
+        }}
+
         async function handleSaveEdit(e) {{
             e.preventDefault();
             const product_id = document.getElementById('editProductId').value;
             const name = document.getElementById('editName').value;
-            const rawPrice = String(document.getElementById('editPrice').value || '').replace(/[,،\s]/g, '');
+            const rawPrice = String(document.getElementById('editPrice').value || '').replace(/[,،\\s]/g, '');
             const price = parseInt(rawPrice) || 0;
             const description = document.getElementById('editDesc').value;
             const download_link = document.getElementById('editDl').value;
@@ -3593,6 +3810,12 @@ def render_dashboard_html() -> str:
         }}
 
         async function toggleCourseActive(pid) {{
+            const btn = document.getElementById('toggle_btn_' + pid);
+            const badge = document.getElementById('status_badge_' + pid);
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerText = 'در حال تغییر...';
+            }}
             try {{
                 const res = await fetch('/api/products/toggle_active', {{
                     method: 'POST',
@@ -3601,12 +3824,31 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    location.reload();
+                    const isActive = !!data.active;
+                    if (badge) {{
+                        if (isActive) {{
+                            badge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1';
+                            badge.innerHTML = '<span>🟢</span> فعال';
+                        }} else {{
+                            badge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1';
+                            badge.innerHTML = '<span>🔴</span> غیرفعال';
+                        }}
+                    }}
+                    if (btn) {{
+                        btn.innerHTML = isActive ? '🔴 غیرفعال‌سازی' : '🟢 فعال‌سازی';
+                    }}
+                    if (window.coursesData && window.coursesData[pid]) {{
+                        window.coursesData[pid].is_active = isActive ? 1 : 0;
+                    }}
                 }} else {{
                     alert('❌ خطا در تغییر وضعیت: ' + (data.error || ''));
                 }}
             }} catch (err) {{
                 alert('❌ خطا: ' + err.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                }}
             }}
         }}
 
@@ -3746,11 +3988,11 @@ def render_dashboard_html() -> str:
                     if (m === 'bale_online' || m === 'bale') {{
                         payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 inline-flex items-center gap-1"><span>🛍</span> درگاه بله</span>';
                     }} else if (m === 'card_to_card' || m === 'card') {{
-                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
+                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/60 text-sky-300 border border-sky-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
                     }} else if (m === 'zarinpal') {{
                         payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950/60 text-amber-300 border border-amber-800/60 inline-flex items-center gap-1"><span>⚡️</span> زرین‌پال</span>';
                     }} else {{
-                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
+                        payMethodBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/60 text-sky-300 border border-sky-800/60 inline-flex items-center gap-1"><span>💳</span> کارت‌به‌کارت</span>';
                     }}
 
                     let actionBtn = '<div class="flex items-center gap-1.5">';
@@ -4028,6 +4270,7 @@ def render_dashboard_html() -> str:
                 window.toggleAddCourseForm = toggleAddCourseForm;
                 window.handleCreateCourse = handleCreateCourse;
                 window.openEditModal = openEditModal;
+                window.openEditModalById = openEditModalById;
                 window.closeEditModal = closeEditModal;
                 window.handleSaveEdit = handleSaveEdit;
                 window.toggleCourseActive = toggleCourseActive;
@@ -4360,7 +4603,8 @@ def render_dashboard_html() -> str:
                     'AI_PROVIDER', 'VYCEAI_API_KEY',
                     'NARA_API_KEY', 'NARA_MODEL',
                     'GEMINI_API_KEY', 'GEMINI_MODEL',
-                    'HF_TOKEN', 'HF_SPACE_ID'
+                    'HF_TOKEN', 'HF_SPACE_ID',
+                    'CASHBACK_PERCENT'
                 ];
                 fields.forEach(f => {{
                     const el = document.getElementById('cfg_' + f);
@@ -4377,6 +4621,10 @@ def render_dashboard_html() -> str:
                         el.value = s[f];
                     }}
                 }});
+                const artistTagEl = document.getElementById('cfg_APPLY_DEFAULT_ARTIST_TAG');
+                if (artistTagEl && s.APPLY_DEFAULT_ARTIST_TAG !== undefined) {{
+                    artistTagEl.checked = !!s.APPLY_DEFAULT_ARTIST_TAG;
+                }}
                 if (s.AI_PROVIDER) {{
                     handleAiProviderChange(s.AI_PROVIDER, s.AI_MODEL);
                 }} else {{
@@ -4501,7 +4749,8 @@ def render_dashboard_html() -> str:
                 'AI_PROVIDER', 'VYCEAI_API_KEY',
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
-                'HF_TOKEN', 'HF_SPACE_ID'
+                'HF_TOKEN', 'HF_SPACE_ID',
+                'CASHBACK_PERCENT'
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
@@ -4521,6 +4770,10 @@ def render_dashboard_html() -> str:
                     }}
                 }}
             }});
+            const artistTagEl = document.getElementById('cfg_APPLY_DEFAULT_ARTIST_TAG');
+            if (artistTagEl) {{
+                settings['APPLY_DEFAULT_ARTIST_TAG'] = artistTagEl.checked;
+            }}
             const activeProv = (document.getElementById('cfg_AI_PROVIDER')?.value || 'vyceai').toLowerCase();
             if (activeProv === 'custom') {{
                 const customModelVal = (document.getElementById('cfg_AI_MODEL_CUSTOM')?.value || '').trim();
@@ -6313,7 +6566,7 @@ def render_storefront_html() -> str:
         <div class="glass-modal max-w-md w-full rounded-3xl p-6 space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
             <button onclick="closeModal('cardBuyModal')" class="absolute top-4 left-4 text-slate-400 hover:text-white text-lg">✕</button>
             <div class="flex items-center gap-3 pb-3 border-b border-slate-800">
-                <div class="w-10 h-10 rounded-xl bg-blue-950 border border-blue-800 flex items-center justify-center text-xl text-blue-400">
+                <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xl text-cyan-400">
                     🏦
                 </div>
                 <div>
@@ -6323,7 +6576,7 @@ def render_storefront_html() -> str:
             </div>
 
             <!-- Bank Card Info Box -->
-            <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950/40 border border-blue-800/60 space-y-3">
+            <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950/40 border border-slate-800 space-y-3">
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400">مبلغ واریزی:</span>
                     <span id="cardModalCoursePrice" class="font-bold text-emerald-400 font-mono">-</span>

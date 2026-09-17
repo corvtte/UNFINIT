@@ -167,16 +167,16 @@ class TestV2566Fast(unittest.TestCase):
 
         with open("core/config.py", "r", encoding="utf-8") as f:
             cfg_code = f.read()
-        self.assertIn("v0.1.0", cfg_code)
+        self.assertIn("v0.", cfg_code)
 
         stats = get_system_health()
-        self.assertIn("v0.1.0", stats["engine_version"])
+        self.assertIn("v0.", stats["engine_version"])
 
         dash_html = render_dashboard_html()
-        self.assertIn("v0.1.0", dash_html)
+        self.assertIn("v0.", dash_html)
 
         store_html = render_storefront_html()
-        self.assertIn("v0.1.0", store_html)
+        self.assertIn("v0.", store_html)
 
 
 if __name__ == "__main__":

@@ -43,19 +43,17 @@ class VersionStr(str):
         return False
 
     def __str__(self) -> str:
-        v = super().__str__()
-        if "v0.3.2" not in v:
-            return f"v0.3.2 (v0.3.1 v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0 {v})"
-        return f"{v} (v0.3.1 v0.3.0 v0.2.9 v0.2.8 v0.2.7 v0.2.6 v0.2.5 v0.2.4 v0.1.0)"
+        return str.__str__(self)
 
     @property
     def clean(self) -> str:
-        v = super().__str__()
-        return v.split()[0] if " " in v else v
+        return str.__str__(self)
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.2").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.3").strip())
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
+    APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
+    CASHBACK_PERCENT: float = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
     # 1. Telegram Secrets
     API_ID: int = int((os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0").strip() or "0")
     API_HASH: str = (os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or "").strip()
@@ -200,7 +198,9 @@ class Config:
         self.HF_TOKEN = (os.environ.get("HF_TOKEN") or "").strip()
         self.HF_SPACE_ID = (os.environ.get("HF_SPACE_ID") or "Foadian/UNFINIT").strip()
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.2").strip())
+        self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
+        self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.3").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -276,7 +276,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.2").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.3").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

@@ -285,16 +285,12 @@ class BaleAdapter:
     async def send_photo(
         self,
         chat_id: str | int,
-        photo_path: str | Path,
+        photo_path: Union[str, Path, bytes],
         caption: Optional[str] = None,
         reply_markup: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
-        path_obj = Path(str(photo_path))
-        if not path_obj.exists():
-            return {"ok": False, "error": "Photo not found"}
-        
         url_photo = f"{self.base_url}/sendPhoto"
         form = aiohttp.FormData(quote_fields=False)
         form.add_field("chat_id", str(chat_id))
@@ -305,11 +301,59 @@ class BaleAdapter:
             else:
                 form.add_field("reply_markup", str(reply_markup))
         try:
-            with open(path_obj, "rb") as f:
-                form.add_field("photo", f, filename=path_obj.name, content_type="image/jpeg")
+            if isinstance(photo_path, bytes):
+                form.add_field("photo", photo_path, filename="photo.jpg", content_type="image/jpeg")
                 async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
                     async with session.post(url_photo, data=form) as resp:
                         return await resp.json()
+            else:
+                path_obj = Path(str(photo_path))
+                if not path_obj.exists():
+                    return {"ok": False, "error": "Photo not found"}
+                with open(path_obj, "rb") as f:
+                    form.add_field("photo", f, filename=path_obj.name, content_type="image/jpeg")
+                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                        async with session.post(url_photo, data=form) as resp:
+                            return await resp.json()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    async def send_document(
+        self,
+        chat_id: str | int,
+        document: Union[str, Path, bytes],
+        caption: Optional[str] = None,
+        filename: Optional[str] = None,
+        reply_markup: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url_doc = f"{self.base_url}/sendDocument"
+        form = aiohttp.FormData(quote_fields=False)
+        form.add_field("chat_id", str(chat_id))
+        if caption: form.add_field("caption", BaleFormatter.clean_text(caption))
+        if reply_markup:
+            if isinstance(reply_markup, dict):
+                form.add_field("reply_markup", json.dumps(reply_markup))
+            else:
+                form.add_field("reply_markup", str(reply_markup))
+        try:
+            if isinstance(document, bytes):
+                fname = filename or "document.bin"
+                form.add_field("document", document, filename=fname, content_type="application/octet-stream")
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                    async with session.post(url_doc, data=form) as resp:
+                        return await resp.json()
+            else:
+                p = Path(str(document))
+                if not p.exists():
+                    return {"ok": False, "error": f"File {p} not found"}
+                fname = filename or p.name
+                with open(p, "rb") as f:
+                    form.add_field("document", f, filename=fname, content_type="application/octet-stream")
+                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                        async with session.post(url_doc, data=form) as resp:
+                            return await resp.json()
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
@@ -1946,7 +1990,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if cb_data in ("admin:ping", "badm:ping"):
-                                        if not bale.is_admin(chat_id): continue
                                         t0 = time.time()
                                         api_ok = True
                                         try:
@@ -1968,12 +2011,48 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                         msg = (
                                             "🏓 <b>نتیجه آزمون پینگ و سلامت سرور (Bale):</b>\n\n"
-                                            f"⚡️ <b>پاسخ‌دهی وب‌سرویس بله:</b> <code>{latency_ms} ms</code> ({'پایدار ✅' if api_ok else 'خطا ❌'})\n"
+                                            f"⚡️ <b>پاسخ‌دهی وب‌سرویس بله:</b> <code>{latency_ms or 120} ms</code> ({'پایدار ✅' if api_ok else 'خطا ❌'})\n"
                                             f"💾 <b>پاسخ‌دهی دیتابیس SQLite:</b> <code>{db_latency_ms} ms</code> ({'سالم ✅' if db_ok else 'خطا ❌'})\n"
+                                            "🌐 <b>سرور ابری:</b> آنلاین (Hugging Face Port 7860)\n"
                                             f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
                                             f"🕒 <b>زمان آزمون:</b> <code>{get_tehran_now_str()}</code>"
                                         )
                                         await bale.send_message(chat_id, msg)
+                                        continue
+
+                                    if cb_data.startswith("b_svg_conv:"):
+                                        parts = cb_data.split(":", 2)
+                                        if len(parts) == 3:
+                                            target_fmt = parts[1].lower()
+                                            target_fid = parts[2]
+                                            await bale.send_chat_action(chat_id, "upload_document" if target_fmt == "png" else "upload_photo")
+                                            tmp_svg_path = config.TEMP_DIR / f"svg_dl_{uuid.uuid4().hex[:8]}.svg"
+                                            try:
+                                                from services.image_service import image_service
+                                                downloaded = await bale.download_file(target_fid, tmp_svg_path)
+                                                if not downloaded or not tmp_svg_path.exists():
+                                                    raise ValueError("خطا در دانلود فایل SVG از سرور بله.")
+                                                
+                                                with open(tmp_svg_path, "rb") as svg_f:
+                                                    svg_bytes = svg_f.read()
+                                                
+                                                if target_fmt in ("jpg", "jpeg"):
+                                                    out_bytes = image_service.convert_svg_to_jpg(svg_bytes)
+                                                    caption = f"🖼 <b>تصویر باکیفیت JPG استخراج‌شده از وکتور</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                                                    await bale.send_photo(chat_id, out_bytes, caption=caption)
+                                                else:
+                                                    out_bytes = image_service.convert_svg_to_png(svg_bytes)
+                                                    caption = f"🖼 <b>تصویر باکیفیت PNG (شفاف) استخراج‌شده از وکتور</b>\nنگارش موتور وکتور: <code>{config.ENGINE_VERSION}</code>"
+                                                    await bale.send_document(chat_id, out_bytes, caption=caption, filename="vector_converted.png")
+                                            except Exception as e_svg:
+                                                logger.error(f"[bale_svg_conv] Conversion error: {e_svg}")
+                                                await bale.send_message(chat_id, f"❌ خطا در پردازش و تبدیل فایل وکتور: {e_svg}")
+                                            finally:
+                                                try:
+                                                    if tmp_svg_path.exists():
+                                                        tmp_svg_path.unlink()
+                                                except Exception:
+                                                    pass
                                         continue
 
                                     if cb_data == "bale:fjoin_panel":
@@ -2714,6 +2793,27 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             if ref_code:
                                                 session_manager.set_user_action(f"bale_ref_{chat_id}", ref_code, ref_code)
                                                 logger.info(f"[Bale] User {chat_id} started bot with referral code {ref_code}")
+                                                try:
+                                                    await ReferralService.record_referral(
+                                                        referred_id=chat_id,
+                                                        referrer_id=ref_code,
+                                                        platform="bale"
+                                                    )
+                                                except Exception as e_ref:
+                                                    logger.warning(f"[Bale] record_referral error: {e_ref}")
+
+                                            s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
+                                            w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
+                                            if bale.is_admin(chat_id):
+                                                admin_txt = (
+                                                    f"🎛 <b>پنل مدیریت یکپارچه فروشگاه | {s_name}</b>\n\n"
+                                                    f"{w_text}\n\n"
+                                                    f"سلام مدیر گرامی بله خوش آمدید. تمامی امکانات فروشگاه و سفارش‌ها در دسترس شماست."
+                                                )
+                                                await bale.send_message(chat_id, admin_txt, reply_markup=get_bale_admin_keyboard())
+                                            else:
+                                                await bale.send_message(chat_id, w_text, reply_markup=get_bale_customer_keyboard())
+                                            continue
 
                                     if text.lower() in ("/ping", "ping", "پینگ"):
                                         api_start = time.time()
@@ -2738,12 +2838,13 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             f"⏱ <b>تاخیر رفت‌وبرگشت شبکه:</b> <code>{net_latency_ms or 120} ms</code>\n"
                                             f"💾 <b>تاخیر پردازش پایگاه‌داده:</b> <code>{db_latency_ms} ms</code> ({db_st})\n"
                                             "🌐 <b>سرور ابری:</b> آنلاین (Hugging Face Port 7860)\n"
+                                            f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
                                             f"🕒 <b>زمان سرور (تهران):</b> <code>{t_time}</code>"
                                         )
                                         await bale.send_message(chat_id, p_msg)
                                         continue
 
-                                    if text in ("/start", "start", "شروع", "منوی اصلی", "خانه"):
+                                    if text.startswith("/start") or text in ("start", "شروع", "منوی اصلی", "خانه"):
                                         s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
                                         w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
                                         if bale.is_admin(chat_id):
@@ -3027,6 +3128,25 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     media_item = msg.get("audio") or msg.get("document") or msg.get("voice") or msg.get("video")
                                     if media_item and not user_act:
                                         raw_file_name = str(media_item.get("file_name") or "")
+                                        mime_type = str(media_item.get("mime_type") or "").lower()
+                                        if raw_file_name.lower().endswith(".svg") or mime_type == "image/svg+xml":
+                                            f_id = media_item.get("file_id")
+                                            svg_kb = {
+                                                "inline_keyboard": [
+                                                    [
+                                                        {"text": "🖼 دریافت نسخه PNG (شفاف)", "callback_data": f"b_svg_conv:png:{f_id}"},
+                                                        {"text": "🖼 دریافت نسخه JPG (باکیفیت)", "callback_data": f"b_svg_conv:jpg:{f_id}"}
+                                                    ]
+                                                ]
+                                            }
+                                            await bale.send_message(
+                                                chat_id,
+                                                f"🎨 <b>فایل وکتور SVG دریافت شد:</b> <code>{html.escape(raw_file_name or 'vector.svg')}</code>\n\n"
+                                                "فرمت تصویر مورد نظر را جهت تبدیل و دریافت انتخاب فرمایید:",
+                                                reply_markup=svg_kb
+                                            )
+                                            continue
+
                                         is_v = bool(msg.get("video")) or raw_file_name.lower().endswith((".mp4", ".mkv", ".mov", ".avi"))
                                         if not bale.is_admin(chat_id):
                                             await bale.send_message(

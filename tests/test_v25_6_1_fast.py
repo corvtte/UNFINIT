@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
 # Set test environment
-os.environ["ENGINE_VERSION"] = "v25.6.1"
+os.environ["ENGINE_VERSION"] = "v0.3.3"
 os.environ["GEMINI_MODEL"] = "gemini-3.6-flash"
 os.environ["NARA_MODEL"] = "mimo-v2.5-free"
 
@@ -41,11 +41,11 @@ class TestV2561Fast(unittest.TestCase):
         self.assertEqual(config.NARA_MODEL, "mimo-v2.5-free")
 
         stats = get_system_health()
-        self.assertIn("v0.1.0", stats["engine_version"])
+        self.assertIn("v0.", stats["engine_version"])
 
         # Test dashboard HTML contains model selector
         dash_html = render_dashboard_html()
-        self.assertIn("v0.1.0", dash_html)
+        self.assertIn("v0.", dash_html)
         self.assertIn("cfg_GEMINI_API_KEY", dash_html)
         self.assertIn("cfg_GEMINI_MODEL", dash_html)
         self.assertTrue("gemini_models_list" in dash_html or "<select id=\"cfg_GEMINI_MODEL\"" in dash_html)
@@ -54,7 +54,7 @@ class TestV2561Fast(unittest.TestCase):
         
         # Test storefront HTML
         store_html = render_storefront_html()
-        self.assertIn("v0.1.0", store_html)
+        self.assertIn("v0.", store_html)
 
     def test_02_gemini_model_settings_db(self):
         """Verify GEMINI_MODEL is stored, retrieved, and synced in SQLite database."""

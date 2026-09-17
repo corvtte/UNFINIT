@@ -299,7 +299,7 @@ class MediaService:
         if "title" not in tags or not tags["title"]:
             tags["title"] = v_path.stem
         if "artist" not in tags or not tags["artist"]:
-            tags["artist"] = config.DEFAULT_ARTIST
+            tags["artist"] = config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True) else ""
 
         cov_p = cover_image_path or generate_video_thumbnail(v_path)
         modify_id3_tags(out_p, tags, cover_image_path=cov_p)
@@ -313,9 +313,10 @@ class MediaService:
             raise ValueError(f"Session or working video file not found for drop_id: {drop_id}")
 
         v_path = Path(session["working_path"])
+        def_art = config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True) else ""
         tags = {
             "title": session.get("draft_tags", {}).get("title") or session.get("embed_meta", {}).get("title") or v_path.stem,
-            "artist": session.get("draft_tags", {}).get("artist") or session.get("embed_meta", {}).get("artist") or config.DEFAULT_ARTIST
+            "artist": session.get("draft_tags", {}).get("artist") or session.get("embed_meta", {}).get("artist") or def_art
         }
         thumb = session.get("thumb_path") or generate_video_thumbnail(v_path)
 

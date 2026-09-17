@@ -603,6 +603,7 @@ class TelegramAdapter:
                 f"⚡️ <b>سرعت پردازش داخلی دیتابیس:</b> <code>{db_lat} ms</code>\n"
                 f"💾 <b>پایگاه داده SQLite:</b> {db_st}\n"
                 "🚀 <b>سرور ابری:</b> آنلاین (Hugging Face Port 7860)\n"
+                f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
                 f"🕒 <b>زمان سرور (تهران):</b> <code>{t_time}</code>"
             )
             await message.reply_text(ping_msg, parse_mode=enums.ParseMode.HTML)
@@ -626,6 +627,14 @@ class TelegramAdapter:
                 if ref_code:
                     session_manager.set_user_action(f"tg_ref_{user_id}", ref_code, ref_code)
                     logger.info(f"[Telegram] User {user_id} started bot with referral code {ref_code}")
+                    try:
+                        await ReferralService.record_referral(
+                            referred_id=user_id,
+                            referrer_id=ref_code,
+                            platform="telegram"
+                        )
+                    except Exception as e_ref:
+                        logger.warning(f"[Telegram] record_referral error: {e_ref}")
 
             await StoreService.get_or_create_customer(user_id, platform="telegram")
 
@@ -2104,6 +2113,24 @@ class TelegramAdapter:
         @self.app.on_message(filters.private & (filters.audio | filters.document | filters.voice | filters.video))
         async def incoming_media(client: Client, message: Message):
             user_id = message.from_user.id
+            media_obj = message.audio or message.document or message.voice or message.video
+            raw_fn = getattr(media_obj, "file_name", "") or ""
+            mime_type = getattr(media_obj, "mime_type", "") or ""
+            if raw_fn.lower().endswith(".svg") or mime_type.lower() == "image/svg+xml":
+                file_id = getattr(media_obj, "file_id", "")
+                svg_kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("🖼 دریافت نسخه PNG (شفاف)", callback_data=f"tg_svg:png:{file_id}"),
+                        InlineKeyboardButton("🖼 دریافت نسخه JPG (باکیفیت)", callback_data=f"tg_svg:jpg:{file_id}")
+                    ]
+                ])
+                await message.reply_text(
+                    f"🎨 <b>فایل وکتور SVG دریافت شد:</b> <code>{escape(raw_fn or 'vector.svg')}</code>\n\n"
+                    "فرمت تصویر خروجی مد نظر خود را انتخاب فرمایید:",
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=svg_kb
+                )
+                return
 
             if not self.is_admin(user_id):
                 await message.reply_text(
@@ -2115,7 +2142,6 @@ class TelegramAdapter:
                 return
 
             drop_id = uuid.uuid4().hex[:8]
-            media_obj = message.audio or message.document or message.voice or message.video
             media_type = "video" if message.video else ("audio" if (message.audio or message.voice) else "document")
             raw_fn = getattr(media_obj, "file_name", "") or ("video.mp4" if media_type == "video" else "audio.mp3")
             fn = clean_display_filename(raw_fn)
@@ -2138,6 +2164,55 @@ class TelegramAdapter:
             kb = self.build_media_keyboard(drop_id, data)
             sent_card = await message.reply_text(card_text, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
             data["card_msg_id"] = sent_card.id
+
+        # SVG Vector to Image Conversion Callback Handler
+        @self.app.on_callback_query(filters.regex(r"^tg_svg:"))
+        async def tg_svg_convert_cb(client: Client, callback_query: CallbackQuery):
+            parts = callback_query.data.split(":", 2)
+            if len(parts) != 3:
+                return
+            target_fmt = parts[1].lower()
+            file_id = parts[2]
+            user_id = callback_query.from_user.id
+            await callback_query.answer("در حال تبدیل وکتور...")
+            status_msg = await callback_query.message.reply_text("⏳ در حال دانلود فایل وکتور SVG و تبدیل به تصویر...")
+            tmp_svg_path = config.TEMP_DIR / f"tg_svg_{uuid.uuid4().hex[:8]}.svg"
+            try:
+                from services.image_service import image_service
+                await client.download_media(file_id, file_name=str(tmp_svg_path))
+                if not tmp_svg_path.exists():
+                    raise ValueError("خطا در دانلود فایل SVG از تلگرام.")
+                
+                with open(tmp_svg_path, "rb") as f_in:
+                    svg_bytes = f_in.read()
+                
+                if target_fmt in ("jpg", "jpeg"):
+                    out_bytes = image_service.convert_svg_to_jpg(svg_bytes)
+                    tmp_out = config.TEMP_DIR / f"vector_{uuid.uuid4().hex[:8]}.jpg"
+                    with open(tmp_out, "wb") as f_out:
+                        f_out.write(out_bytes)
+                    caption = f"🖼 <b>تصویر باکیفیت JPG استخراج‌شده از وکتور</b>\nنگارش موتور: <code>{config.ENGINE_VERSION}</code>"
+                    await client.send_photo(user_id, str(tmp_out), caption=caption, parse_mode=enums.ParseMode.HTML)
+                    try: tmp_out.unlink()
+                    except Exception: pass
+                else:
+                    out_bytes = image_service.convert_svg_to_png(svg_bytes)
+                    tmp_out = config.TEMP_DIR / f"vector_{uuid.uuid4().hex[:8]}.png"
+                    with open(tmp_out, "wb") as f_out:
+                        f_out.write(out_bytes)
+                    caption = f"🖼 <b>تصویر باکیفیت PNG (شفاف) استخراج‌شده از وکتور</b>\nنگارش موتور: <code>{config.ENGINE_VERSION}</code>"
+                    await client.send_document(user_id, str(tmp_out), caption=caption, file_name="vector_converted.png", parse_mode=enums.ParseMode.HTML)
+                    try: tmp_out.unlink()
+                    except Exception: pass
+                
+                await status_msg.delete()
+            except Exception as e:
+                logger.error(f"[tg_svg_conv] Error: {e}")
+                await status_msg.edit_text(f"❌ خطا در پردازش وکتور: {e}")
+            finally:
+                try:
+                    if tmp_svg_path.exists(): tmp_svg_path.unlink()
+                except Exception: pass
 
         # URL Uploader Callback Handlers
         @self.app.on_callback_query(filters.regex(r"^urldl:"))

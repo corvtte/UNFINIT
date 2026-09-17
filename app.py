@@ -167,6 +167,8 @@ async def get_all_settings_async() -> dict:
         "HF_TOKEN": mask_secret(hf_tok),
         "HF_SPACE_ID": str(hf_sp or "Foadian/UNFINIT").strip(),
         "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"),
+        "APPLY_DEFAULT_ARTIST_TAG": (await get_system_setting("apply_default_artist_tag", str(getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True)))).lower() in ("true", "1", "yes"),
+        "CASHBACK_PERCENT": float(await get_system_setting("cashback_percent", str(getattr(config, "CASHBACK_PERCENT", 0.0))) or 0.0),
     }
 
 def get_all_settings() -> dict:
@@ -1195,6 +1197,56 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+        elif path in ("/api/media/convert-svg", "/api/convert-svg"):
+            try:
+                import base64
+                from services.image_service import image_service
+                
+                raw_data = payload.get("data") or payload.get("svg_data") or ""
+                target_fmt = str(payload.get("format") or "png").strip().lower()
+                fname = str(payload.get("filename") or "image.svg").strip()
+                stem = Path(fname).stem or "image"
+                
+                if not raw_data:
+                    raise ValueError("داده فایل SVG ارسال نشده است.")
+                
+                if "," in raw_data and "base64," in raw_data:
+                    raw_data = raw_data.split("base64,", 1)[1]
+                
+                try:
+                    svg_bytes = base64.b64decode(raw_data)
+                except Exception:
+                    svg_bytes = raw_data.encode("utf-8")
+                
+                if target_fmt in ("jpg", "jpeg"):
+                    out_bytes = image_service.convert_svg_to_jpg(svg_bytes)
+                    mime = "image/jpeg"
+                    out_name = f"{stem}.jpg"
+                else:
+                    out_bytes = image_service.convert_svg_to_png(svg_bytes)
+                    mime = "image/png"
+                    out_name = f"{stem}.png"
+                
+                out_b64 = base64.b64encode(out_bytes).decode("ascii")
+                data_url = f"data:{mime};base64,{out_b64}"
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "filename": out_name,
+                    "mime": mime,
+                    "size": len(out_bytes),
+                    "data": data_url
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"[convert-svg] error: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
         elif path in ("/api/settings", "/api/settings/save"):
             try:
                 pwd = (payload.get("password") or "").strip()
@@ -1266,6 +1318,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "HF_SPACE_ID": "HF_SPACE_ID",
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",
                         "NAV_TABS_ORDER": "NAV_TABS_ORDER",
+                        "APPLY_DEFAULT_ARTIST_TAG": "apply_default_artist_tag",
+                        "CASHBACK_PERCENT": "cashback_percent",
                     }
                     SENSITIVE_KEYS = {
                         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",
@@ -1355,6 +1409,10 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 os.environ["HF_SPACE_ID"] = val_str
                             elif k == "COURSE_DELIVERY_NOTE":
                                 config.COURSE_DELIVERY_NOTE = val_str
+                            elif k == "APPLY_DEFAULT_ARTIST_TAG":
+                                config.APPLY_DEFAULT_ARTIST_TAG = str(val_str).lower() in ("true", "1", "yes")
+                            elif k == "CASHBACK_PERCENT":
+                                config.CASHBACK_PERCENT = float(val_str or 0.0)
 
                             # Track cloud secrets to sync
                             if k in CLOUD_SECRET_MAPPING and val_str and not is_masked_or_empty(val_str):

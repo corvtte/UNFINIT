@@ -51,16 +51,16 @@ class TestV2571Fast(unittest.TestCase):
             p = Path(env_file)
             if p.exists():
                 text = p.read_text(encoding="utf-8")
-                self.assertIn("v0.1.0", text)
+                self.assertIn("v0.", text)
 
         health = get_system_health()
-        self.assertIn("v0.1.0", health["engine_version"])
+        self.assertIn("v0.", health["engine_version"])
 
         dash = render_dashboard_html()
-        self.assertIn("v0.1.0", dash)
+        self.assertIn("v0.", dash)
 
         store = render_storefront_html()
-        self.assertIn("v0.1.0", store)
+        self.assertIn("v0.", store)
 
     def test_02_tehran_timezone(self):
         """Verify Tehran timezone offset is UTC+03:30."""

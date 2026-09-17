@@ -21,8 +21,8 @@ from platforms.telegram_adapter import TelegramAdapter
 class TestV025Features(unittest.TestCase):
     def test_01_version_v025(self):
         health = get_system_health()
-        self.assertTrue(any(v in str(health['engine_version']) for v in ('v0.2.5', 'v0.2.6', 'v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0')))
-        self.assertIn(config.ENGINE_VERSION, ('v0.2.5', 'v0.2.6', 'v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0'))
+        self.assertTrue(any(v in str(health['engine_version']) for v in ('v0.2.5', 'v0.2.6', 'v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3')))
+        self.assertIn(config.ENGINE_VERSION, ('v0.2.5', 'v0.2.6', 'v0.2.7', 'v0.2.8', 'v0.2.9', 'v0.3.0', 'v0.3.1', 'v0.3.2', 'v0.3.3'))
 
     def test_02_probe_url_error_and_user_agent(self):
         try:

@@ -189,6 +189,39 @@ def cmd_sync(message: Optional[str] = None):
             )
             print("✅ Deployment complete!")
             print(f"🌐 Commit URL: {commit_info.commit_url}")
+            
+            # Protocol: Self-Healing Deployment Check
+            print("\n🔍 Initiating Self-Healing Deployment verification...")
+            time.sleep(5.0)
+            try:
+                runtime = api.get_space_runtime(repo_id=REPO_ID)
+                stage = getattr(runtime, "stage", "UNKNOWN")
+                print(f"🚀 Space Runtime Stage: {stage}")
+                
+                print("📋 Analyzing last 50 lines of container logs for startup health...")
+                try:
+                    logs_iter = api.fetch_space_logs(repo_id=REPO_ID)
+                    logs_list = [l.strip() for l in list(logs_iter) if l.strip()]
+                    recent_logs = logs_list[-50:] if len(logs_list) >= 50 else logs_list
+                    
+                    error_indicators = ["Traceback", "SyntaxError", "IndentationError", "ModuleNotFoundError", "CRITICAL"]
+                    detected_errors = []
+                    for line in recent_logs:
+                        for err in error_indicators:
+                            if err in line:
+                                detected_errors.append(line)
+                                break
+                    
+                    if detected_errors:
+                        print(f"⚠️ Warning: Detected {len(detected_errors)} potential error lines in last 50 log entries:")
+                        for el in detected_errors[-5:]:
+                            print(f"   🔴 {el}")
+                    else:
+                        print("✅ Container startup logs healthy! No critical traceback detected.")
+                except Exception as log_err:
+                    print(f"ℹ️ Logs fetch status: {log_err}")
+            except Exception as runtime_err:
+                print(f"⚠️ Runtime inspection note: {runtime_err}")
             return
         except Exception as e:
             if attempt < max_retries and ("412" in str(e) or "Precondition Failed" in str(e) or "updated since" in str(e)):

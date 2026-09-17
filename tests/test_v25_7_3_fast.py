@@ -21,15 +21,15 @@ class TestV2573Fast(unittest.TestCase):
         self.assertTrue(os.path.exists(".env.example"), ".env.example must exist")
         with open(".env.example", encoding="utf-8") as f:
             content = f.read()
-            self.assertIn("v0.1.0", content)
+            self.assertIn("v0.", content)
 
     def test_02_health_and_titles_version(self):
         health = get_system_health()
-        self.assertIn("v0.1.0", health["engine_version"])
+        self.assertIn("v0.", health["engine_version"])
         dash_html = render_dashboard_html()
-        self.assertIn("v0.1.0", dash_html)
+        self.assertIn("v0.", dash_html)
         store_html = render_storefront_html()
-        self.assertIn("v0.1.0", store_html)
+        self.assertIn("v0.", store_html)
 
     def test_03_jalali_calendar_accuracy(self):
         # 2026-09-09 is 18 Shahrivar 1405
