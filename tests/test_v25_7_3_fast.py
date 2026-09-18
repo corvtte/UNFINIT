@@ -83,6 +83,9 @@ class TestV2573Fast(unittest.TestCase):
 
     def test_08_storefront_and_dashboard_node_check(self):
         import tempfile
+        import shutil
+        if not shutil.which("node"):
+            self.skipTest("node binary not installed in environment")
         store_html = render_storefront_html()
         scripts = re.findall(r"<script>(.*?)</script>", store_html, re.DOTALL)
         self.assertTrue(len(scripts) > 0)

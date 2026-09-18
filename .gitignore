@@ -11,11 +11,19 @@
 *.key
 *.cert
 
-# 2. Platform Sessions (Telegram, Rubika, Instagram)
+# 2. Platform Sessions & Encrypted Credentials (Zero-Git Exposure)
 *.session
+*.session.enc
 *.session-journal
 *.rubpy
 *.rp
+*.enc
+data/*.session
+data/*.session.enc
+data/*.enc
+data/sessions/
+soroush.session*
+rubika.session*
 unfinit_instagram.json
 unfinit_session_cache.json
 sessions/

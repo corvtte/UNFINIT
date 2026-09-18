@@ -55,6 +55,22 @@ def get_system_health() -> Dict[str, Any]:
     temp_size = sum(f.stat().st_size for f in temp_files if f.is_file())
 
     rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
+    rub_phone = ""
+    if rub_user_active:
+        try:
+            from platforms.rubika_adapter import RubikaUserClient
+            rub_phone = RubikaUserClient().get_masked_phone()
+        except Exception:
+            rub_phone = ""
+
+    splus_active = False
+    splus_phone = ""
+    try:
+        from platforms.soroush_worker import soroush_worker
+        splus_active = soroush_worker.is_connected()
+        splus_phone = soroush_worker.get_masked_phone()
+    except Exception:
+        pass
 
     return {
         "engine_version": EngineVersionStr(f"UNFINIT Engine {config.ENGINE_VERSION}"),
@@ -75,7 +91,14 @@ def get_system_health() -> Dict[str, Any]:
             "rubika_user": {
                 "name": "روبیکا سشن کاربری (Saved Messages)",
                 "status": "ONLINE" if rub_user_active else "REQUIRE_AUTH",
+                "masked_phone": rub_phone,
                 "badge": "bg-indigo-600" if rub_user_active else "bg-amber-600"
+            },
+            "soroush": {
+                "name": "سروش‌پلاس سشن کاربری (Saved Messages)",
+                "status": "ONLINE" if splus_active else "REQUIRE_AUTH",
+                "masked_phone": splus_phone,
+                "badge": "bg-cyan-600" if splus_active else "bg-amber-600"
             }
         },
         "stats": {
@@ -325,8 +348,8 @@ def render_dashboard_html() -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z' fill='%23ffffff'/%3E%3Cpolygon points='62,18 42,46 54,46 44,72 68,40 56,40' fill='%23facc15' opacity='0.9'/%3E%3C/svg%3E">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z' fill='%23ffffff'/%3E%3Cpolygon points='62,18 42,46 54,46 44,72 68,40 56,40' fill='%23facc15' opacity='0.9'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z' fill='%23ffffff'/%3E%3Ccircle cx='54' cy='36' r='6' fill='%2338bdf8'/%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="/favicon.ico">
     <title>UNFINIT Store Engine {config.ENGINE_VERSION} | پنل مدیریت، استودیوی رسانه و فروشگاه آنلاین</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
@@ -799,7 +822,7 @@ def render_dashboard_html() -> str:
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-cyan-500/20 text-white overflow-hidden relative shrink-0" id="headerLogoContainer" style="background: var(--accent-color, #06b6d4);">
                             <img id="headerLogoImg" src="/static/logo.png?t={int(time.time())}" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
-                            <span class="hidden items-center justify-center w-full h-full text-xl font-bold">⚡️</span>
+                            <span class="hidden items-center justify-center w-full h-full text-white font-bold p-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4v8a6 6 0 0012 0V4M12 18v2"/></svg></span>
                         </div>
                         <div class="overflow-hidden">
                             <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
@@ -866,7 +889,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                     </svg>
-                    <span class="flex-1 text-right">کاربران و شبکه رفرال</span>
+                    <span class="flex-1 text-right">مدیریت کاربران</span>
                 </button>
 
                 <!-- 7. Tokens & AI -->
@@ -953,6 +976,9 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button type="button" onclick="toggleLogsDrawer()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="مشاهده لاگ‌های زنده موتور">
+                        <span>☰</span> Logs
+                    </button>
                     <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                         موتور پایدار و فعال
@@ -994,8 +1020,8 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400">۳ پلتفرم</div>
-                    <p class="text-[11px] text-slate-500 mt-1">تلگرام • بله • روبیکا</p>
+                    <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400">۴ پلتفرم</div>
+                    <p class="text-[11px] text-slate-500 mt-1">تلگرام • بله • روبیکا • سروش+</p>
                 </div>
 
                 <!-- Metric 3: System Health -->
@@ -1022,80 +1048,147 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400">{config.MAX_SAFE_BALE_SIZE_MB} MB</div>
+                    <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400 flex items-center justify-between">
+                        <span id="dashBaleSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span>
+                        <button type="button" onclick="editBaleSafeLimit()" class="text-xs p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition" title="ویرایش سریع سقف ایمن بله">✏️</button>
+                    </div>
                     <p class="text-[11px] text-slate-500 mt-1">فشرده‌سازی غیرمسدودکننده</p>
                 </div>
             </div>
 
-            <!-- Platform Status Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Platform Status Cards (4 Columns) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Telegram Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl">✈️</span>
-                            <h3 class="font-bold text-sm text-slate-200">{p['telegram']['name']}</h3>
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">✈️</span>
+                                <h3 class="font-bold text-sm text-slate-200">{p['telegram']['name']}</h3>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                                {p['telegram']['status']}
+                            </span>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                            {p['telegram']['status']}
-                        </span>
+                        <p class="text-xs text-slate-400">شناسه ادمین: <code style="color: var(--accent-color);">{p['telegram']['owner_id']}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300">Pyrogram MTProto v2</span></p>
                     </div>
-                    <p class="text-xs text-slate-400">شناسه ادمین: <code style="color: var(--accent-color);">{p['telegram']['owner_id']}</code></p>
-                    <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300">Pyrogram MTProto v2</span></p>
+                    <div class="mt-3 pt-2 border-t border-white/5 text-[11px] text-emerald-400">
+                        🟢 متصل و آماده تبادل رسانه
+                    </div>
                 </div>
 
                 <!-- Bale Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl">🟢</span>
-                            <h3 class="font-bold text-sm text-slate-200">{p['bale']['name']}</h3>
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">🟢</span>
+                                <h3 class="font-bold text-sm text-slate-200">{p['bale']['name']}</h3>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                                {p['bale']['status']}
+                            </span>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                            {p['bale']['status']}
-                        </span>
+                        <p class="text-xs text-slate-400">شناسه مقصد: <code style="color: var(--accent-color);">{p['bale']['owner_id']}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="font-semibold" style="color: var(--accent-color);"><span id="baleCardSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span> (کمپرس خودکار)</span></p>
                     </div>
-                    <p class="text-xs text-slate-400">شناسه مقصد: <code style="color: var(--accent-color);">{p['bale']['owner_id']}</code></p>
-                    <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="font-semibold" style="color: var(--accent-color);">{config.MAX_SAFE_BALE_SIZE_MB} MB (کمپرس خودکار)</span></p>
+                    <div class="mt-3">
+                        <button type="button" onclick="editBaleSafeLimit()" class="w-full py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-medium transition flex items-center justify-center gap-1.5">
+                            <span>✏️</span> ویرایش سقف ایمن حجم
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Rubika User Session Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl">👤</span>
-                            <h3 class="font-bold text-sm text-slate-200">{p['rubika_user']['name']}</h3>
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">👤</span>
+                                <h3 class="font-bold text-sm text-slate-200 truncate">{p['rubika_user']['name']}</h3>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['rubika_user']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                                {p['rubika_user']['status']}
+                            </span>
                         </div>
-                        <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['rubika_user']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
-                            {p['rubika_user']['status']}
-                        </span>
+                        <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-emerald-400">ارسال به Saved Messages</span></p>
+                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code class="font-mono text-cyan-300">{p['rubika_user'].get('masked_phone') or 'بدون شماره'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
-                    <p class="text-xs text-slate-400">حالت: <span class="font-semibold" style="color: var(--accent-color);">ارسال نامحدود به Saved Messages</span></p>
-                    <p class="text-xs text-slate-400 mt-1">رمزنگاری: <span class="text-slate-300">RSA PKCS#1 v1.5 خودکار</span></p>
+                    <div class="mt-3">
+                        {f'''<button type="button" onclick="disconnectSession('rubika')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1"><span>🔌</span> قطع اتصال / خروج از حساب</button>''' if p['rubika_user']['status'] == 'ONLINE' else '''<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>'''}
+                    </div>
+                </div>
+
+                <!-- Soroush Plus Session Card -->
+                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">💬</span>
+                                <h3 class="font-bold text-sm text-slate-200 truncate">{p['soroush']['name']}</h3>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['soroush']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                                {p['soroush']['status']}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-cyan-400">ارسال به Saved Messages</span></p>
+                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code class="font-mono text-cyan-300">{p['soroush'].get('masked_phone') or 'بدون شماره'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
+                    </div>
+                    <div class="mt-3">
+                        {f'''<button type="button" onclick="disconnectSession('soroush')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1"><span>🔌</span> قطع اتصال / خروج از حساب</button>''' if p['soroush']['status'] == 'ONLINE' else '''<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1"><span>🔑</span> ورود به حساب سروش‌پلاس</button>'''}
+                    </div>
                 </div>
             </div>
 
-            <!-- Recent Activity LTR Dark Log Box -->
-            <div class="glass p-5 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <h3 class="font-bold text-sm text-slate-200">کنسول فعالیت‌های زنده موتور (Live Engine Stream)</h3>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="loadDashboardData()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition">
-                            🔄 تازه‌سازی
-                        </button>
-                        <button type="button" onclick="switchTab('settings')" class="px-2.5 py-1 rounded-lg bg-cyan-950/60 hover:bg-cyan-900 text-[11px] text-cyan-300 border border-cyan-800/80 transition">
-                            مشاهده تمام لاگ‌ها ←
-                        </button>
+            <!-- Compact Live Stream Banner & Drawer Trigger -->
+            <div class="glass p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                    <div class="overflow-hidden">
+                        <h4 class="text-xs font-bold text-slate-200">کنسول فعالیت‌های زنده موتور (Live Engine Console Stream)</h4>
+                        <p id="dashboardLatestLogPreview" class="text-[11px] text-emerald-400 font-mono truncate" dir="ltr">// UNFINIT Engine v0.3.7 Live Stream active...</p>
                     </div>
                 </div>
-                <div id="dashboardRecentLogs" dir="ltr" class="font-mono text-xs max-h-60 overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text">
-                    <div class="text-slate-500">// UNFINIT Engine v0.3.6 Live Stream initialized...</div>
+                <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    <button type="button" onclick="loadDashboardData()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition">
+                        🔄 تازه‌سازی
+                    </button>
+                    <button type="button" onclick="toggleLogsDrawer(true)" class="px-3.5 py-1.5 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <span>☰</span> باز کردن لاگ‌ها (Drawer)
+                    </button>
                 </div>
             </div>
         </div>
+
+        <!-- Slide-Over Live Logs Drawer (Hugging Face / Modern DevOps style) -->
+        <div id="logsDrawerOverlay" onclick="toggleLogsDrawer(false)" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity"></div>
+        <aside id="logsDrawer" class="fixed left-0 top-0 bottom-0 w-full max-w-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-r shadow-2xl" style="background: var(--bg-color, #0a0f1d); border-color: var(--card-border, #1e293b);">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <h3 class="font-bold text-sm text-white font-mono flex items-center gap-2">
+                        <span>📋 Live Engine Console Logs</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">STREAM</span>
+                    </h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="loadDashboardData()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition" title="تازه‌سازی">🔄</button>
+                    <button type="button" onclick="toggleLogsDrawer(false)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">✕</button>
+                </div>
+            </div>
+            <div class="flex-1 p-4 overflow-hidden flex flex-col">
+                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 font-mono text-xs overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text no-scrollbar">
+                    <div class="text-slate-500">// UNFINIT Engine v0.3.7 Live Stream initialized...</div>
+                </div>
+            </div>
+            <div class="p-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <span>پروتکل لاگینگ: Async Ring Stream</span>
+                <button type="button" onclick="switchTab('settings'); toggleLogsDrawer(false);" class="text-cyan-400 hover:underline">مشاهده همه لاگ‌ها در تب تنظیمات ←</button>
+            </div>
+        </aside>
 
         <!-- ================= TAB 1: STUDIO & MEDIA HUB ================= -->
         <div id="tab-studio" class="hidden space-y-6">
@@ -1606,8 +1699,8 @@ def render_dashboard_html() -> str:
                         </button>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right border-collapse text-xs">
+                <div class="overflow-x-auto block whitespace-nowrap">
+                    <table class="w-full text-right border-collapse text-xs whitespace-nowrap">
                         <thead>
                             <tr class="border-b border-slate-700 text-slate-400">
                                 <th class="py-3 px-3 w-8 text-center">
@@ -1762,92 +1855,119 @@ def render_dashboard_html() -> str:
             </div>
         </div>
 
-        <!-- ================= TAB: USERS & VIRAL REFERRALS ================= -->
+        <!-- ================= TAB: USERS MANAGEMENT & VIRAL REFERRALS ================= -->
         <div id="tab-users" class="hidden space-y-6">
-            <!-- User Stat Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-slate-400">کل کاربران ثبت‌نامی</span>
-                        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="text-2xl font-bold font-mono text-white" id="statTotalUsers">0</div>
-                    <p class="text-[11px] text-slate-500 mt-1">شناسه یکپارچه بله و تلگرام</p>
-                </div>
+            <!-- User Sub-Tabs Navigation Buttons -->
+            <div class="flex items-center gap-2 border-b border-slate-800 pb-3 flex-wrap">
+                <button type="button" onclick="switchUserSubTab('list')" id="btnUserSubTabList" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-accent-btn">
+                    <span>👥</span> فهرست و مشخصات کاربران و خریداران
+                </button>
+                <button type="button" onclick="switchUserSubTab('referrals')" id="btnUserSubTabRef" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-card-btn text-slate-300">
+                    <span>🌐</span> شبکه رفرال و آمار زیرمجموعه‌گیری
+                </button>
+            </div>
 
-                <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-slate-400">معرفی‌شده‌ها (رفرال فعال)</span>
-                        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                            </svg>
+            <!-- Sub-Tab 1: Users List & Profiles -->
+            <div id="userSubTabContentList" class="space-y-4">
+                <!-- Users Table Card -->
+                <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <span>👥</span> فهرست کاربران و خریداران
+                            </h3>
+                            <p class="text-xs text-slate-400">اطلاعات کاربران، شماره تلفن‌ها و سابقه عضویت در بات‌های تلگرام و بله</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                            <button type="button" onclick="exportUsersCsv()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition flex items-center gap-1.5">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                خروجی CSV
+                            </button>
+                            <button type="button" onclick="loadUsersData()" class="px-3 py-1.5 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center gap-1.5">
+                                🔄 بروزرسانی
+                            </button>
                         </div>
                     </div>
-                    <div class="text-2xl font-bold font-mono text-emerald-400" id="statRefUsers">0</div>
-                    <p class="text-[11px] text-slate-500 mt-1">شبکه بازاریابی دهان‌به‌دهان</p>
-                </div>
 
-                <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-slate-400">مجموع اعتبار کیف‌پول‌ها</span>
-                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-                            </svg>
-                        </div>
+                    <div class="overflow-x-auto block whitespace-nowrap rounded-xl border border-slate-800">
+                        <table class="w-full text-right text-xs whitespace-nowrap">
+                            <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">پلتفرم</th>
+                                    <th class="p-3">شناسه کاربری</th>
+                                    <th class="p-3">نام / نام کاربری</th>
+                                    <th class="p-3">شماره تماس</th>
+                                    <th class="p-3">معرف رفرال</th>
+                                    <th class="p-3">موجودی کیف پول</th>
+                                    <th class="p-3">وضعیت تعهدنامه</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-mono">
+                                <tr>
+                                    <td colspan="7" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="text-2xl font-bold font-mono text-amber-400" id="statTotalWallet">۰ تومان</div>
-                    <p class="text-[11px] text-slate-500 mt-1">پاداش‌های رفرال و خرید</p>
                 </div>
             </div>
 
-            <!-- Users Table Card -->
-            <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                        <h3 class="text-base font-bold text-white flex items-center gap-2">
-                            <span>👥</span> فهرست کاربران و خریداران
-                        </h3>
-                        <p class="text-xs text-slate-400">اطلاعات کاربران، شماره تلفن‌ها و سابقه عضویت در بات‌های تلگرام و بله</p>
+            <!-- Sub-Tab 2: Viral Referral Network & Stats -->
+            <div id="userSubTabContentRef" class="hidden space-y-6">
+                <!-- User Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-400">کل کاربران ثبت‌نامی</span>
+                            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold font-mono text-white" id="statTotalUsers">0</div>
+                        <p class="text-[11px] text-slate-500 mt-1">شناسه یکپارچه بله و تلگرام</p>
                     </div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
-                        <button type="button" onclick="exportUsersCsv()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition flex items-center gap-1.5">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                            </svg>
-                            خروجی CSV
-                        </button>
-                        <button type="button" onclick="loadUsersData()" class="px-3 py-1.5 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center gap-1.5">
-                            🔄 بروزرسانی
-                        </button>
+
+                    <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-400">معرفی‌شده‌ها (رفرال فعال)</span>
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold font-mono text-emerald-400" id="statRefUsers">0</div>
+                        <p class="text-[11px] text-slate-500 mt-1">شبکه بازاریابی دهان‌به‌دهان</p>
+                    </div>
+
+                    <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-400">مجموع اعتبار کیف‌پول‌ها</span>
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold font-mono text-amber-400" id="statTotalWallet">۰ تومان</div>
+                        <p class="text-[11px] text-slate-500 mt-1">پاداش‌های رفرال و خرید</p>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto rounded-xl border border-slate-800">
-                    <table class="w-full text-right text-xs">
-                        <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
-                            <tr>
-                                <th class="p-3">پلتفرم</th>
-                                <th class="p-3">شناسه کاربری</th>
-                                <th class="p-3">نام / نام کاربری</th>
-                                <th class="p-3">شماره تماس</th>
-                                <th class="p-3">معرف رفرال</th>
-                                <th class="p-3">موجودی کیف پول</th>
-                                <th class="p-3">وضعیت تعهدنامه</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-mono">
-                            <tr>
-                                <td colspan="7" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Referral Architecture Info Box -->
+                <div class="glass p-6 rounded-2xl border space-y-3" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🌐</span>
+                        <h4 class="text-sm font-bold text-slate-100">شبکه بازاریابی رفرال ویروسی (Identical Twin Referral Engine)</h4>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        سامانه رفرال با مکانیزم یکپارچه دوگانه عمل می‌کند: هر کاربر در تلگرام و بله با شناسه عددی یکسان به عنوان معرف ثبت شده و با دعوت هر کاربر جدید، پاداش رفرال به صورت خودکار به کیف پول افزوده شده و سوابق در دیتابیس رمزنگاری‌شده ثبت می‌گردد.
+                    </p>
                 </div>
             </div>
         </div>
@@ -2632,32 +2752,56 @@ def render_dashboard_html() -> str:
             <div class="glass-card max-w-md w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
                 <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                        <span>⚡️</span> انتخاب مقصد انتقال هدیه دانلودی
+                        <span>⚡️</span> انتقال هدیه دانلودی به پیام‌رسان‌ها
                     </h3>
                     <button type="button" onclick="closeFeedDispatchModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-300 leading-relaxed">
-                        آیا مایلید فایل زیر مستقیماً توسط موتور دانلود شده و به پیام‌رسان ارسال شود؟
-                    </p>
-                    <div id="feedDispatchModalTitle" class="mt-2.5 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-bold text-cyan-300 line-clamp-2 leading-relaxed">
+                    <div id="feedDispatchModalTitle" class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-bold text-cyan-300 line-clamp-2 leading-relaxed">
                         -
                     </div>
                 </div>
-                <div class="space-y-2 pt-2">
-                    <label class="text-[11px] text-slate-400 block font-medium">پلتفرم مقصد را انتخاب فرمایید:</label>
-                    <div class="grid grid-cols-1 gap-2.5">
-                        <button type="button" onclick="executeFeedDispatch('telegram')" class="w-full py-2.5 px-4 rounded-xl text-slate-200 hover:text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm border border-slate-700/60" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
-                            <span>✈️</span> ارسال به تلگرام (Telegram)
+
+                <!-- Dual Format Selector: MP3 vs MP4 -->
+                <div class="space-y-1.5">
+                    <label class="text-[11px] text-slate-400 block font-medium">انتخاب فرمت رسانه:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" id="btnFormatAudio" onclick="setDispatchFormat('audio')" class="py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 theme-accent-btn">
+                            <span>🎙</span> نسخه صوتی MP3
                         </button>
-                        <button type="button" onclick="executeFeedDispatch('bale')" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                            <span>🟢</span> ارسال به بله (Bale)
-                        </button>
-                        <button type="button" onclick="executeFeedDispatch('all')" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                            <span>🚀</span> ارسال به هر دو (تلگرام و بله)
+                        <button type="button" id="btnFormatVideo" onclick="setDispatchFormat('video')" class="py-2 px-3 rounded-xl border border-slate-700 text-slate-300 bg-slate-800/80 hover:bg-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
+                            <span>🎬</span> نسخه تصویری MP4
                         </button>
                     </div>
                 </div>
+
+                <!-- Multi-select Checklist for Target Platforms -->
+                <div class="space-y-2 pt-2 border-t border-slate-700/60">
+                    <label class="text-[11px] text-slate-400 block font-medium">پلتفرم‌های مقصد را انتخاب فرمایید:</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
+                            <input type="checkbox" id="chkDispatchTg" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                            <span class="text-slate-200">✈️ تلگرام</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition">
+                            <input type="checkbox" id="chkDispatchBale" checked class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
+                            <span class="text-slate-200">🟢 بله</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition">
+                            <input type="checkbox" id="chkDispatchRubika" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-0">
+                            <span class="text-slate-200">👤 روبیکا کاربری</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
+                            <input type="checkbox" id="chkDispatchSoroush" class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
+                            <span class="text-slate-200">💬 سروش‌پلاس</span>
+                        </label>
+                    </div>
+
+                    <button type="button" onclick="executeFeedMultiDispatch()" id="btnExecuteMultiDispatch" class="w-full mt-2 py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <span>🚀</span> ارسال به پلتفرم‌های انتخاب‌شده
+                    </button>
+                </div>
+
                 <!-- Direct Add to Course Episodes Section -->
                 <div class="space-y-2 pt-3 border-t border-slate-700/60">
                     <label class="text-[11px] text-cyan-400 block font-bold flex items-center gap-1.5">
@@ -2677,6 +2821,42 @@ def render_dashboard_html() -> str:
                         انصراف
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Soroush Plus Login Modal -->
+        <div id="soroushLoginModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="glass-card max-w-sm w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <span>💬</span> ورود به حساب کاربری سروش‌پلاس
+                    </h3>
+                    <button type="button" onclick="closeSoroushLoginModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
+                </div>
+                <!-- Step 1: Phone -->
+                <div id="soroushStepPhone" class="space-y-3">
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        شماره موبایل حساب سروش‌پلاس خود را جهت دریافت پیامک تایید وارد نمایید:
+                    </p>
+                    <input type="text" id="soroushPhoneInput" placeholder="09121234567" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 text-left" dir="ltr">
+                    <button type="button" onclick="submitSoroushPhone()" id="btnSoroushSendCode" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <span>📩</span> دریافت کد تایید پیامکی
+                    </button>
+                </div>
+                <!-- Step 2: Code -->
+                <div id="soroushStepCode" class="hidden space-y-3">
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        کد ۵ رقمی ارسال‌شده به شماره <b id="soroushTargetPhoneDisplay" class="text-cyan-300 font-mono"></b> را وارد نمایید:
+                    </p>
+                    <input type="text" id="soroushCodeInput" placeholder="12345" maxlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 text-center tracking-widest text-lg" dir="ltr">
+                    <button type="button" onclick="submitSoroushCode()" id="btnSoroushVerifyCode" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <span>✅</span> تایید و فعال‌سازی سشن امن
+                    </button>
+                    <button type="button" onclick="resetSoroushLoginForm()" class="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition">
+                        ← تغییر شماره موبایل
+                    </button>
+                </div>
+                <div id="soroushLoginError" class="hidden p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-xs text-rose-300 font-mono"></div>
             </div>
         </div>
 
@@ -3006,6 +3186,10 @@ def render_dashboard_html() -> str:
                                 streamBox.innerText = recent;
                                 streamBox.scrollTop = streamBox.scrollHeight;
                             }}
+                            const prev = document.getElementById('dashboardLatestLogPreview');
+                            if (prev && lines.length > 0) {{
+                                prev.textContent = lines[lines.length - 1];
+                            }}
                         }}
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/store/analytics', {{
@@ -3023,6 +3207,230 @@ def render_dashboard_html() -> str:
                     }}
                 }}
                 window.loadDashboardData = loadDashboardData;
+
+                function toggleLogsDrawer(show) {{
+                    const drawer = document.getElementById('logsDrawer');
+                    const overlay = document.getElementById('logsDrawerOverlay');
+                    if (!drawer) return;
+                    const isHidden = drawer.classList.contains('-translate-x-full');
+                    const shouldShow = (typeof show === 'boolean') ? show : isHidden;
+                    if (shouldShow) {{
+                        drawer.classList.remove('-translate-x-full');
+                        if (overlay) overlay.classList.remove('hidden');
+                        if (typeof loadDashboardData === 'function') loadDashboardData();
+                    }} else {{
+                        drawer.classList.add('-translate-x-full');
+                        if (overlay) overlay.classList.add('hidden');
+                    }}
+                }}
+                window.toggleLogsDrawer = toggleLogsDrawer;
+
+                async function editBaleSafeLimit() {{
+                    const curLimit = '{config.MAX_SAFE_BALE_SIZE_MB}';
+                    const inputVal = prompt('سقف ایمن فشرده‌سازی بله را بر حسب مگابایت وارد نمایید (مثال: 48.50):', curLimit);
+                    if (!inputVal) return;
+                    const valFloat = parseFloat(inputVal.trim());
+                    if (isNaN(valFloat) || valFloat <= 0 || valFloat > 50) {{
+                        alert('❌ مقدار سقف باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
+                        return;
+                    }}
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/settings/save', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + pwd,
+                                'X-Admin-Password': pwd
+                            }},
+                            body: JSON.stringify({{ MAX_SAFE_BALE_SIZE_MB: valFloat.toFixed(2) }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            alert('✅ سقف ایمن بله با موفقیت به ' + valFloat.toFixed(2) + ' MB به‌روزرسانی شد.');
+                            const d1 = document.getElementById('dashBaleSafeSize');
+                            const d2 = document.getElementById('baleCardSafeSize');
+                            if (d1) d1.textContent = valFloat.toFixed(2) + ' MB';
+                            if (d2) d2.textContent = valFloat.toFixed(2) + ' MB';
+                        }} else {{
+                            alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || 'عملیات ناموفق بود'));
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطا: ' + e.message);
+                    }}
+                }}
+                window.editBaleSafeLimit = editBaleSafeLimit;
+
+                async function disconnectSession(platform) {{
+                    const platName = (platform === 'soroush' ? 'سروش‌پلاس' : 'روبیکا');
+                    if (!confirm('آیا از قطع اتصال و حذف امن سشن ' + platName + ' اطمینان دارید؟')) return;
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/sessions/disconnect', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + pwd,
+                                'X-Admin-Password': pwd
+                            }},
+                            body: JSON.stringify({{ platform: platform }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            alert('✅ سشن ' + platName + ' با موفقیت قطع و از سرور پاکسازی شد.');
+                            window.location.reload();
+                        }} else {{
+                            alert('❌ خطا: ' + (data.error || 'عملیات ناموفق بود'));
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطای ارتباط با سرور: ' + e.message);
+                    }}
+                }}
+                window.disconnectSession = disconnectSession;
+
+                function switchUserSubTab(subTab) {{
+                    const listSec = document.getElementById('userSubTabContentList');
+                    const refSec = document.getElementById('userSubTabContentRef');
+                    const btnList = document.getElementById('btnUserSubTabList');
+                    const btnRef = document.getElementById('btnUserSubTabRef');
+                    if (subTab === 'referrals') {{
+                        if (listSec) listSec.classList.add('hidden');
+                        if (refSec) refSec.classList.remove('hidden');
+                        if (btnRef) {{
+                            btnRef.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-accent-btn';
+                        }}
+                        if (btnList) {{
+                            btnList.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-card-btn text-slate-300';
+                        }}
+                    }} else {{
+                        if (refSec) refSec.classList.add('hidden');
+                        if (listSec) listSec.classList.remove('hidden');
+                        if (btnList) {{
+                            btnList.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-accent-btn';
+                        }}
+                        if (btnRef) {{
+                            btnRef.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-card-btn text-slate-300';
+                        }}
+                    }}
+                }}
+                window.switchUserSubTab = switchUserSubTab;
+
+                let pendingSoroushPhone = '';
+
+                function openSoroushLoginModal() {{
+                    const modal = document.getElementById('soroushLoginModal');
+                    if (modal) {{
+                        modal.classList.remove('hidden');
+                        resetSoroushLoginForm();
+                    }}
+                }}
+                function closeSoroushLoginModal() {{
+                    const modal = document.getElementById('soroushLoginModal');
+                    if (modal) modal.classList.add('hidden');
+                }}
+                function resetSoroushLoginForm() {{
+                    const pStep = document.getElementById('soroushStepPhone');
+                    const cStep = document.getElementById('soroushStepCode');
+                    const errBox = document.getElementById('soroushLoginError');
+                    if (pStep) pStep.classList.remove('hidden');
+                    if (cStep) cStep.classList.add('hidden');
+                    if (errBox) {{ errBox.classList.add('hidden'); errBox.textContent = ''; }}
+                    const phoneInput = document.getElementById('soroushPhoneInput');
+                    if (phoneInput) phoneInput.value = '';
+                    const codeInput = document.getElementById('soroushCodeInput');
+                    if (codeInput) codeInput.value = '';
+                }}
+                async function submitSoroushPhone() {{
+                    const phoneInput = document.getElementById('soroushPhoneInput');
+                    const phone = phoneInput ? phoneInput.value.trim() : '';
+                    if (!phone || phone.length < 10) {{
+                        alert('❌ شماره تلفن نامعتبر است.');
+                        return;
+                    }}
+                    const btn = document.getElementById('btnSoroushSendCode');
+                    const errBox = document.getElementById('soroushLoginError');
+                    if (btn) {{ btn.disabled = true; btn.textContent = '⏳ در حال ارسال درخواست...'; }}
+                    if (errBox) errBox.classList.add('hidden');
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/soroush/login/request', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + pwd,
+                                'X-Admin-Password': pwd
+                            }},
+                            body: JSON.stringify({{ phone: phone }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            pendingSoroushPhone = phone;
+                            const disp = document.getElementById('soroushTargetPhoneDisplay');
+                            if (disp) disp.textContent = phone;
+                            const pStep = document.getElementById('soroushStepPhone');
+                            const cStep = document.getElementById('soroushStepCode');
+                            if (pStep) pStep.classList.add('hidden');
+                            if (cStep) cStep.classList.remove('hidden');
+                        }} else {{
+                            if (errBox) {{
+                                errBox.textContent = '❌ ' + (data.error || 'خطا در ارسال کد');
+                                errBox.classList.remove('hidden');
+                            }} else {{
+                                alert('❌ ' + (data.error || 'خطا در ارسال کد'));
+                            }}
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطا: ' + e.message);
+                    }} finally {{
+                        if (btn) {{ btn.disabled = false; btn.innerHTML = '<span>📩</span> دریافت کد تایید پیامکی'; }}
+                    }}
+                }}
+                async function submitSoroushCode() {{
+                    const codeInput = document.getElementById('soroushCodeInput');
+                    const code = codeInput ? codeInput.value.trim() : '';
+                    if (!code) {{
+                        alert('❌ کد تایید را وارد نمایید.');
+                        return;
+                    }}
+                    const btn = document.getElementById('btnSoroushVerifyCode');
+                    const errBox = document.getElementById('soroushLoginError');
+                    if (btn) {{ btn.disabled = true; btn.textContent = '⏳ در حال تایید...'; }}
+                    if (errBox) errBox.classList.add('hidden');
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/soroush/login/verify', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + pwd,
+                                'X-Admin-Password': pwd
+                            }},
+                            body: JSON.stringify({{ phone: pendingSoroushPhone, code: code }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            alert('✅ ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
+                            closeSoroushLoginModal();
+                            window.location.reload();
+                        }} else {{
+                            if (errBox) {{
+                                errBox.textContent = '❌ ' + (data.error || 'کد تایید اشتباه است.');
+                                errBox.classList.remove('hidden');
+                            }} else {{
+                                alert('❌ ' + (data.error || 'کد تایید اشتباه است.'));
+                            }}
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطا: ' + e.message);
+                    }} finally {{
+                        if (btn) {{ btn.disabled = false; btn.innerHTML = '<span>✅</span> تایید و فعال‌سازی سشن امن'; }}
+                    }}
+                }}
+                window.openSoroushLoginModal = openSoroushLoginModal;
+                window.closeSoroushLoginModal = closeSoroushLoginModal;
+                window.resetSoroushLoginForm = resetSoroushLoginForm;
+                window.submitSoroushPhone = submitSoroushPhone;
+                window.submitSoroushCode = submitSoroushCode;
 
                 let allLoadedUsers = [];
 
@@ -4042,6 +4450,8 @@ def render_dashboard_html() -> str:
                         const primaryUrl = audioLink || videoLink || (item.links && item.links[0]) || '';
                         const safeUrl = primaryUrl.replace(/'/g, "\\\\'");
                         const safeTitle = title.replace(/'/g, "\\\\'");
+                        const safeAudio = (audioLink || '').replace(/'/g, "\\\\'");
+                        const safeVideo = (videoLink || '').replace(/'/g, "\\\\'");
                         
                         let linksHtml = '';
                         if (audioLink) {{
@@ -4066,7 +4476,7 @@ def render_dashboard_html() -> str:
                             '</div>' +
                             '<div class="flex flex-col gap-2 pt-2 border-t border-white/5">' +
                                 '<div class="flex items-center gap-2">' + linksHtml + '</div>' +
-                                '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\')" class="w-full theme-accent-btn py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">' +
+                                '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\')" class="w-full theme-accent-btn py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">' +
                                     '<span>⚡️</span> انتقال به ربات جهت دانلود' +
                                 '</button>' +
                             '</div>' +
@@ -4108,16 +4518,49 @@ def render_dashboard_html() -> str:
 
         let pendingFeedDispatchUrl = '';
         let pendingFeedDispatchTitle = '';
+        let pendingFeedAudioUrl = '';
+        let pendingFeedVideoUrl = '';
+        let pendingFeedActiveFormat = 'audio';
 
-        function openFeedDispatchModal(url, title) {{
-            if (!url) {{
+        function setDispatchFormat(fmt) {{
+            pendingFeedActiveFormat = fmt;
+            const btnAudio = document.getElementById('btnFormatAudio');
+            const btnVideo = document.getElementById('btnFormatVideo');
+            if (fmt === 'audio') {{
+                if (btnAudio) {{
+                    btnAudio.className = 'py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 theme-accent-btn';
+                }}
+                if (btnVideo) {{
+                    btnVideo.className = 'py-2 px-3 rounded-xl border border-slate-700 text-slate-300 bg-slate-800/80 hover:bg-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5';
+                }}
+                pendingFeedDispatchUrl = pendingFeedAudioUrl || pendingFeedVideoUrl;
+            }} else {{
+                if (btnVideo) {{
+                    btnVideo.className = 'py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 theme-accent-btn';
+                }}
+                if (btnAudio) {{
+                    btnAudio.className = 'py-2 px-3 rounded-xl border border-slate-700 text-slate-300 bg-slate-800/80 hover:bg-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5';
+                }}
+                pendingFeedDispatchUrl = pendingFeedVideoUrl || pendingFeedAudioUrl;
+            }}
+        }}
+
+        function openFeedDispatchModal(url, title, audioUrl, videoUrl) {{
+            if (!url && !audioUrl && !videoUrl) {{
                 alert('❌ آدرس دانلودی برای این آیتم یافت نشد.');
                 return;
             }}
-            pendingFeedDispatchUrl = url;
+            pendingFeedAudioUrl = audioUrl || (url && url.toLowerCase().endsWith('.mp3') ? url : '');
+            pendingFeedVideoUrl = videoUrl || (url && url.toLowerCase().endsWith('.mp4') ? url : '');
+            if (!pendingFeedAudioUrl && !pendingFeedVideoUrl) {{
+                pendingFeedAudioUrl = url;
+            }}
+            pendingFeedDispatchUrl = pendingFeedAudioUrl || pendingFeedVideoUrl || url;
             pendingFeedDispatchTitle = title || 'هدیه دانلودی';
             const titleEl = document.getElementById('feedDispatchModalTitle');
             if (titleEl) titleEl.textContent = pendingFeedDispatchTitle;
+
+            setDispatchFormat(pendingFeedAudioUrl ? 'audio' : 'video');
 
             const courseSelect = document.getElementById('feedCourseSelect');
             if (courseSelect) {{
@@ -4127,13 +4570,21 @@ def render_dashboard_html() -> str:
                 if (pids.length === 0) {{
                     courseSelect.innerHTML = '<option value="">(هیچ دوره‌ای در سیستم ثبت نشده است)</option>';
                 }} else {{
+                    let defaultPid = '';
                     pids.forEach(function(pid) {{
                         const c = cache[pid];
                         const opt = document.createElement('option');
                         opt.value = c.product_id || pid;
-                        opt.textContent = '🎓 ' + (c.name || pid);
+                        const isFree = (c.price === 0 || c.price === '0' || c.is_free || (c.name && c.name.includes('توحید')));
+                        if (isFree && !defaultPid) {{
+                            defaultPid = opt.value;
+                        }}
+                        opt.textContent = (isFree ? '🎁 ' : '🎓 ') + (c.name || pid);
                         courseSelect.appendChild(opt);
                     }});
+                    if (defaultPid) {{
+                        courseSelect.value = defaultPid;
+                    }}
                 }}
             }}
 
@@ -4146,12 +4597,14 @@ def render_dashboard_html() -> str:
             if (modal) modal.classList.add('hidden');
             pendingFeedDispatchUrl = '';
             pendingFeedDispatchTitle = '';
+            pendingFeedAudioUrl = '';
+            pendingFeedVideoUrl = '';
         }}
 
         async function addFeedToCourseEpisodes() {{
             const courseSelect = document.getElementById('feedCourseSelect');
             const pid = courseSelect ? courseSelect.value : '';
-            const url = pendingFeedDispatchUrl;
+            const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
             const title = pendingFeedDispatchTitle;
             if (!pid) {{
                 alert('لطفاً یک دوره را انتخاب فرمایید.');
@@ -4167,17 +4620,19 @@ def render_dashboard_html() -> str:
                 btn.innerText = '⏳ در حال افزودن...';
             }}
             try {{
+                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                 const res = await fetch('/api/courses/episodes/add', {{
                     method: 'POST',
                     headers: {{
                         'Content-Type': 'application/json',
-                        'X-Admin-Password': window.currentAdminPassword || ''
+                        'Authorization': 'Bearer ' + pwd,
+                        'X-Admin-Password': pwd
                     }},
                     body: JSON.stringify({{
                         product_id: pid,
                         title: title,
                         url: url,
-                        filename: title ? (title.replace(/[^\w\s\-\.\u0600-\u06FF]/gi, '') + '.mp3') : ''
+                        filename: title ? (title.replace(/[^\w\s\-\.\u0600-\u06FF]/gi, '') + (pendingFeedActiveFormat === 'video' ? '.mp4' : '.mp3')) : ''
                     }})
                 }});
                 const data = await res.json();
@@ -4197,8 +4652,59 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        async function executeFeedMultiDispatch() {{
+            const targets = [];
+            if (document.getElementById('chkDispatchTg')?.checked) targets.push('telegram');
+            if (document.getElementById('chkDispatchBale')?.checked) targets.push('bale');
+            if (document.getElementById('chkDispatchRubika')?.checked) targets.push('rubika_user');
+            if (document.getElementById('chkDispatchSoroush')?.checked) targets.push('soroush');
+
+            if (targets.length === 0) {{
+                alert('❌ لطفاً حداقل یک پلتفرم مقصد را انتخاب فرمایید.');
+                return;
+            }}
+            const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
+            const title = pendingFeedDispatchTitle;
+            closeFeedDispatchModal();
+            if (!url) return;
+
+            const resBox = document.getElementById('dispatchResult');
+            if (resBox) {{
+                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+                resBox.innerText = '⏳ در حال دانلود و ارسال همزمان هدیه: ' + title + ' به پلتفرم‌های منتخب...';
+            }}
+            try {{
+                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                const res = await fetch('/api/dispatch_url', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + pwd,
+                        'X-Admin-Password': pwd
+                    }},
+                    body: JSON.stringify({{ url: url, targets: targets, target: targets.join(',') }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ فایل هدیه با موفقیت به ' + (data.target || targets.join(' و ')) + ' منتقل شد!');
+                    if (resBox) {{
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                        resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت ارسال شد!');
+                    }}
+                }} else {{
+                    alert('❌ خطا در ارسال: ' + (data.error || 'عملیات ناموفق بود'));
+                    if (resBox) {{
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                        resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
+                    }}
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط با سرور: ' + err.message);
+            }}
+        }}
+
         async function executeFeedDispatch(target) {{
-            const url = pendingFeedDispatchUrl;
+            const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
             const title = pendingFeedDispatchTitle;
             closeFeedDispatchModal();
             if (!url) return;
@@ -4213,9 +4719,14 @@ def render_dashboard_html() -> str:
                 resBox.innerText = '⏳ در حال دانلود و پردازش استریم هدیه: ' + title + ' ... لطفاً شکیبا باشید.';
             }}
             try {{
+                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                 const res = await fetch('/api/dispatch_url', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + pwd,
+                        'X-Admin-Password': pwd
+                    }},
                     body: JSON.stringify({{ url: url, target: target || 'all' }})
                 }});
                 const data = await res.json();
@@ -4237,8 +4748,8 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function transferFeedDownload(url, title) {{
-            openFeedDispatchModal(url, title);
+        function transferFeedDownload(url, title, audioUrl, videoUrl) {{
+            openFeedDispatchModal(url, title, audioUrl, videoUrl);
         }}
 
         // Initialize Studio Sort Select and Feed from localStorage / API
@@ -4562,6 +5073,8 @@ def render_dashboard_html() -> str:
                 window.executeFeedDispatch = executeFeedDispatch;
                 window.transferFeedDownload = transferFeedDownload;
                 window.addFeedToCourseEpisodes = addFeedToCourseEpisodes;
+                window.executeFeedMultiDispatch = executeFeedMultiDispatch;
+                window.setDispatchFormat = setDispatchFormat;
             }} catch (err) {{
                 console.error('[UNFINIT Studio Module Error]:', err);
             }}
@@ -6090,8 +6603,8 @@ async def handle_api_dispatch_url(data: dict) -> dict:
 
     logger.info(f"[web_dispatch] [{drop_id}] Dispatching {final_path.name} ({human_size(final_sz)}) to {target}...")
 
-    try:
-        if target == "telegram":
+    async def _send_to_platform(plat: str) -> dict:
+        if plat == "telegram":
             if ACTIVE_TG_ADAPTER and ACTIVE_TG_ADAPTER.app and ACTIVE_TG_ADAPTER.app.is_connected:
                 target_tg_id = config.TELEGRAM_OWNER_ID or getattr(config, "OWNER_ID", None) or (ACTIVE_TG_ADAPTER.get_admin_id() if ACTIVE_TG_ADAPTER else None)
                 if is_v:
@@ -6101,188 +6614,128 @@ async def handle_api_dispatch_url(data: dict) -> dict:
                     w = int(tech.get("width") or 0) if tech.get("width") is not None else 0
                     h = int(tech.get("height") or 0) if tech.get("height") is not None else 0
                     dur = int(tech.get("duration_sec") or 0) if tech.get("duration_sec") is not None else 0
-                    res = await ACTIVE_TG_ADAPTER.send_video(
+                    return await ACTIVE_TG_ADAPTER.send_video(
                         target_tg_id, final_path, caption=caption,
                         width=w, height=h,
                         duration=dur, thumb=thumb_p
                     )
                 else:
                     dur = int(transfer_info.get("duration") or 0) if transfer_info.get("duration") is not None else 0
-                    res = await ACTIVE_TG_ADAPTER.send_audio(
+                    return await ACTIVE_TG_ADAPTER.send_audio(
                         target_tg_id, final_path,
                         title=transfer_info.get("title") or embed_meta.get("title") or send_name,
                         performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
                         duration=dur,
                         caption=caption
                     )
-                logger.info(f"[web_dispatch] [{drop_id}] Telegram send result: {res}")
-                if res.get("ok"):
-                    drop["current_status"] = "SENT_TO_TELEGRAM"
-                    return {
-                        "ok": True,
-                        "drop_id": drop_id,
-                        "file_name": send_name,
-                        "file_size": human_size(final_sz),
-                        "target": "تلگرام",
-                        "message": f"✅ فایل {send_name} ({human_size(final_sz)}) با موفقیت به تلگرام شما ارسال شد!"
-                    }
-                else:
-                    return {"ok": False, "error": f"خطا در ارسال به تلگرام: {res.get('error')}"}
-            else:
-                logger.warning("[web_dispatch] Telegram adapter is not active or connected")
-                return {"ok": False, "error": "ربات تلگرام در حال حاضر متصل یا آنلاین نیست."}
+            return {"ok": False, "error": "ربات تلگرام در حال حاضر متصل یا آنلاین نیست."}
 
-        elif target in ("all", "both"):
-            results = []
-            errors = []
-            # 1. Telegram Dispatch
-            if ACTIVE_TG_ADAPTER and ACTIVE_TG_ADAPTER.app and ACTIVE_TG_ADAPTER.app.is_connected:
-                target_tg_id = config.TELEGRAM_OWNER_ID or getattr(config, "OWNER_ID", None) or (ACTIVE_TG_ADAPTER.get_admin_id() if ACTIVE_TG_ADAPTER else None)
-                try:
-                    if is_v:
-                        tech = inspect_technical_metadata(final_path)
-                        from media.tagger import generate_video_thumbnail
-                        thumb_p = generate_video_thumbnail(final_path)
-                        w = int(tech.get("width") or 0) if tech.get("width") is not None else 0
-                        h = int(tech.get("height") or 0) if tech.get("height") is not None else 0
-                        dur = int(tech.get("duration_sec") or 0) if tech.get("duration_sec") is not None else 0
-                        tg_res = await ACTIVE_TG_ADAPTER.send_video(
-                            target_tg_id, final_path, caption=caption,
-                            width=w, height=h,
-                            duration=dur, thumb=thumb_p
-                        )
-                    else:
-                        dur = int(transfer_info.get("duration") or 0) if transfer_info.get("duration") is not None else 0
-                        tg_res = await ACTIVE_TG_ADAPTER.send_audio(
-                            target_tg_id, final_path,
-                            title=transfer_info.get("title") or embed_meta.get("title") or send_name,
-                            performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
-                            duration=dur,
-                            caption=caption
-                        )
-                    if tg_res.get("ok"):
-                        results.append("تلگرام")
-                    else:
-                        errors.append(f"تلگرام: {tg_res.get('error')}")
-                except Exception as ex_tg:
-                    errors.append(f"تلگرام: {ex_tg}")
-            else:
-                errors.append("تلگرام (غیرفعال یا آفلاین)")
-
-            # 2. Bale Dispatch
-            try:
-                from platforms.bale_adapter import BaleAdapter
-                bale = BaleAdapter()
-                target_chat = config.BALE_OWNER_ID or bale.get_admin_chat_id()
-                if is_v:
-                    tech = inspect_technical_metadata(final_path)
-                    bale_res = await bale.send_video(
-                        target_chat, final_path, caption=caption,
-                        duration=tech.get("duration_sec"), width=tech.get("width"), height=tech.get("height")
-                    )
-                else:
-                    bale_res = await bale.send_audio(
-                        target_chat, final_path,
-                        title=transfer_info.get("title") or embed_meta.get("title") or send_name,
-                        performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
-                        caption=caption
-                    )
-                if bale_res.get("ok"):
-                    results.append("بله")
-                else:
-                    errors.append(f"بله: {bale_res.get('error') or bale_res}")
-            except Exception as ex_bale:
-                errors.append(f"بله: {ex_bale}")
-
-            if results:
-                drop["current_status"] = "SENT_TO_ALL"
-                msg_targets = " و ".join(results)
-                err_text = f" (خطاها: {'; '.join(errors)})" if errors else ""
-                return {
-                    "ok": True,
-                    "drop_id": drop_id,
-                    "file_name": send_name,
-                    "file_size": human_size(final_sz),
-                    "target": msg_targets,
-                    "message": f"✅ فایل {send_name} ({human_size(final_sz)}) با موفقیت به {msg_targets} ارسال شد!{err_text}"
-                }
-            else:
-                return {"ok": False, "error": f"خطا در ارسال همزمان: {'; '.join(errors)}"}
-
-        elif target == "rubika_bot":
-            from platforms.rubika_adapter import RubikaBotClient
-            bot = RubikaBotClient()
-            target_guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
-            if not target_guid:
-                return {"ok": False, "error": "شناسه مقصد روبیکا (RUBIKA_OWNER_ID) در تنظیمات یا سکرت‌ها تعریف نشده است."}
-            res = await bot.send_document(target_guid, final_path, caption=caption)
-            logger.info(f"[web_dispatch] [{drop_id}] Rubika bot send_document result: {res}")
-            if res.get("ok") or res.get("status") == "OK":
-                drop["current_status"] = "SENT_TO_RUBIKA_BOT"
-                return {
-                    "ok": True,
-                    "drop_id": drop_id,
-                    "file_name": send_name,
-                    "file_size": human_size(final_sz),
-                    "target": "ربات رسمی روبیکا",
-                    "message": f"✅ فایل {send_name} ({human_size(final_sz)}) با موفقیت به ربات روبیکا ارسال گردید!"
-                }
-            else:
-                return {"ok": False, "error": f"خطا در ارسال به روبیکا: {res.get('error') or res}"}
-
-        elif target == "rubika_user":
-            from platforms.rubika_adapter import RubikaUserClient
-            client = RubikaUserClient()
-            if not client.has_session():
-                return {"ok": False, "error": "سشن کاربری روبیکا فعال یا لاگین نیست. لطفاً فایل سشن روبیکا (unfinit_rubika.rp) را روی سرور قرار دهید."}
-            res = await client.upload_and_send(final_path, target="me", caption=caption)
-            logger.info(f"[web_dispatch] [{drop_id}] Rubika user upload_and_send result: {res}")
-            if res.get("ok"):
-                drop["current_status"] = "SENT_TO_RUBIKA_SAVED"
-                return {
-                    "ok": True,
-                    "drop_id": drop_id,
-                    "file_name": send_name,
-                    "file_size": human_size(final_sz),
-                    "target": "پیام‌های ذخیره‌شده روبیکا",
-                    "message": f"✅ فایل {send_name} ({human_size(final_sz)}) با موفقیت در Saved Messages روبیکا آپلود گردید!"
-                }
-            else:
-                return {"ok": False, "error": f"خطا در ارسال به پیام‌های ذخیره‌شده روبیکا: {res.get('error') or res}"}
-
-        elif target == "bale":
+        elif plat == "bale":
             from platforms.bale_adapter import BaleAdapter
             bale = BaleAdapter()
             target_chat = config.BALE_OWNER_ID or bale.get_admin_chat_id()
             if is_v:
                 tech = inspect_technical_metadata(final_path)
-                res = await bale.send_video(
+                return await bale.send_video(
                     target_chat, final_path, caption=caption,
                     duration=tech.get("duration_sec"), width=tech.get("width"), height=tech.get("height")
                 )
             else:
-                res = await bale.send_audio(
+                return await bale.send_audio(
                     target_chat, final_path,
                     title=transfer_info.get("title") or embed_meta.get("title") or send_name,
                     performer=transfer_info.get("artist") or embed_meta.get("artist") or config.DEFAULT_ARTIST,
                     caption=caption
                 )
-            logger.info(f"[web_dispatch] [{drop_id}] Bale send_audio result: {res}")
-            if res.get("ok"):
-                drop["current_status"] = "SENT_TO_BALE"
-                comp_note = " (فشرده‌سازی هوشمند خودکار انجام شد)" if transfer_info.get("was_compressed") else ""
+
+        elif plat == "rubika_user":
+            from platforms.rubika_adapter import RubikaUserClient
+            client = RubikaUserClient()
+            if not client.has_session():
+                return {"ok": False, "error": "سشن کاربری روبیکا فعال یا لاگین نیست."}
+            return await client.upload_and_send(final_path, target="me", caption=caption)
+
+        elif plat == "rubika_bot":
+            from platforms.rubika_adapter import RubikaBotClient
+            bot = RubikaBotClient()
+            target_guid = config.RUBIKA_OWNER_ID if (config.RUBIKA_OWNER_ID and config.RUBIKA_OWNER_ID.lower() != "me") else ""
+            if not target_guid:
+                return {"ok": False, "error": "شناسه مقصد روبیکا (RUBIKA_OWNER_ID) تعریف نشده است."}
+            return await bot.send_document(target_guid, final_path, caption=caption)
+
+        elif plat == "soroush":
+            from platforms.soroush_worker import soroush_worker
+            if not soroush_worker.is_connected():
+                return {"ok": False, "error": "سشن کاربری سروش‌پلاس متصل نیست. لطفاً ابتدا در پنل وب لاگین کنید."}
+            return await soroush_worker.send_file_to_saved_messages(final_path, caption=caption)
+
+        return {"ok": False, "error": f"پلتفرم نامعتبر: {plat}"}
+
+    target_names = {
+        "telegram": "تلگرام",
+        "bale": "بله",
+        "rubika_user": "پیام‌های ذخیره‌شده روبیکا",
+        "rubika_bot": "ربات رسمی روبیکا",
+        "soroush": "پیام‌های ذخیره‌شده سروش‌پلاس"
+    }
+
+    try:
+        raw_targets = data.get("targets")
+        if isinstance(raw_targets, list) and raw_targets:
+            targets_to_run = [str(t).strip() for t in raw_targets if str(t).strip()]
+        elif "," in target:
+            targets_to_run = [t.strip() for t in target.split(",") if t.strip()]
+        elif target in ("all", "both"):
+            targets_to_run = ["telegram", "bale"]
+        else:
+            targets_to_run = [target]
+
+        if len(targets_to_run) == 1:
+            single_target = targets_to_run[0]
+            res = await _send_to_platform(single_target)
+            if res.get("ok") or res.get("status") == "OK":
+                drop["current_status"] = f"SENT_TO_{single_target.upper()}"
+                t_name = target_names.get(single_target, single_target)
+                comp_note = " (فشرده‌سازی هوشمند خودکار انجام شد)" if (single_target == "bale" and transfer_info.get("was_compressed")) else ""
                 return {
                     "ok": True,
                     "drop_id": drop_id,
                     "file_name": send_name,
                     "file_size": human_size(final_sz),
-                    "target": "پیام‌رسان بله",
-                    "message": f"✅ فایل {send_name} ({human_size(final_sz)}){comp_note} با موفقیت به پیام‌رسان بله ارسال شد!"
+                    "target": t_name,
+                    "message": f"✅ فایل {send_name} ({human_size(final_sz)}){comp_note} با موفقیت به {t_name} ارسال شد!"
                 }
             else:
-                return {"ok": False, "error": f"خطا در ارسال به بله: {res.get('error') or res}"}
+                return {"ok": False, "error": f"خطا در ارسال به {target_names.get(single_target, single_target)}: {res.get('error') or res}"}
 
-        return {"ok": False, "error": f"پلتفرم نامعتبر: {target}"}
+        # Multiple targets dispatch
+        results = []
+        errors = []
+        for t in targets_to_run:
+            try:
+                r = await _send_to_platform(t)
+                t_name = target_names.get(t, t)
+                if r.get("ok") or r.get("status") == "OK":
+                    results.append(t_name)
+                else:
+                    errors.append(f"{t_name}: {r.get('error') or r}")
+            except Exception as ex_t:
+                errors.append(f"{target_names.get(t, t)}: {ex_t}")
+
+        if results:
+            drop["current_status"] = "SENT_TO_MULTI"
+            msg_targets = " و ".join(results)
+            err_text = f" (خطاها: {'; '.join(errors)})" if errors else ""
+            return {
+                "ok": True,
+                "drop_id": drop_id,
+                "file_name": send_name,
+                "file_size": human_size(final_sz),
+                "target": msg_targets,
+                "message": f"✅ فایل {send_name} ({human_size(final_sz)}) با موفقیت به {msg_targets} ارسال شد!{err_text}"
+            }
+        else:
+            return {"ok": False, "error": f"خطا در ارسال به مقاصد: {'; '.join(errors)}"}
     except Exception as e:
         logger.error(f"[web_dispatch] [{drop_id}] Unexpected error: {e}")
         return {"ok": False, "error": str(e)}

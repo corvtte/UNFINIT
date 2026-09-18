@@ -846,6 +846,10 @@ def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) ->
             {"text": "🧹 حذف کامل متادیتا", "callback_data": f"bmeta:strip_tags:{drop_id}"}
         ],
         [
+            {"text": "➕ افزودن به دوره", "callback_data": f"bmeta:add_to_course:{drop_id}"},
+            {"text": "⚡ فشرده‌سازی", "callback_data": f"bmeta:compress:{drop_id}"}
+        ],
+        [
             {"text": "⚡️ اعمال سریع", "callback_data": f"bmeta:quick_send:{drop_id}"},
             {"text": "💾 اعمال تغییرات", "callback_data": f"bmeta:send_back:{drop_id}"}
         ],
@@ -1198,9 +1202,14 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             )
                                             await StoreService.approve_order(order.order_id)
                                             UserService.unlock_gift_by_platform("bale", c_id, p_item.product_id)
-                                            dl_content = p_item.download_link or "لینک دانلودی برای این دوره ثبت نشده است."
-                                            cust_msg = StoreService.format_delivery_message(p_item.name, order.order_id, dl_content, 0)
-                                            await bale.send_message(c_id, cust_msg)
+                                            is_pkg = bool(getattr(p_item, "delivery_type", "channel") == "files_package" or getattr(p_item, "files_package", None) or getattr(p_item, "episodes", None))
+                                            if is_pkg:
+                                                await bale.send_message(c_id, f"🎉 <b>دوره «{p_item.name}» با موفقیت برای شما فعال شد!</b>\nفایل‌های دوره هم‌اکنون به ترتیب برای شما ارسال می‌شوند:\nشماره سفارش: <code>{order.order_id}</code>")
+                                                await StoreService.deliver_course_package(p_item, c_id, "bale")
+                                            else:
+                                                dl_content = p_item.download_link or "لینک دانلود در دسترس است."
+                                                cust_msg = StoreService.format_delivery_message(p_item.name, order.order_id, dl_content, 0)
+                                                await bale.send_message(c_id, cust_msg)
                                             return
 
                                         order = await StoreService.create_order(
@@ -1486,13 +1495,18 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 cust_uid = order_item.user_id if order_item else None
                                                 if cust_uid:
                                                     try:
-                                                        cust_msg = StoreService.format_delivery_message(prod_name, oid, dl_link, cb_awarded)
-                                                        parsed_dl = StoreService.parse_delivery_links(dl_link)
-                                                        cust_buttons = []
-                                                        for lk in parsed_dl["links"]:
-                                                            cust_buttons.append([{"text": lk["title"], "url": lk["url"]}])
-                                                        cust_kb = {"inline_keyboard": cust_buttons} if cust_buttons else None
-                                                        await bale.send_message(cust_uid, cust_msg, reply_markup=cust_kb)
+                                                        is_pkg = bool(prod and (getattr(prod, "delivery_type", "channel") == "files_package" or getattr(prod, "files_package", None) or getattr(prod, "episodes", None)))
+                                                        if is_pkg:
+                                                            await bale.send_message(cust_uid, f"🎉 <b>سفارش شما تایید شد!</b>\nفایل‌های دوره «{prod_name}» هم‌اکنون به ترتیب برای شما ارسال می‌شوند:\nشماره سفارش: <code>{oid}</code>")
+                                                            await StoreService.deliver_course_package(prod, cust_uid, "bale")
+                                                        else:
+                                                            cust_msg = StoreService.format_delivery_message(prod_name, oid, dl_link, cb_awarded)
+                                                            parsed_dl = StoreService.parse_delivery_links(dl_link)
+                                                            cust_buttons = []
+                                                            for lk in parsed_dl["links"]:
+                                                                cust_buttons.append([{"text": lk["title"], "url": lk["url"]}])
+                                                            cust_kb = {"inline_keyboard": cust_buttons} if cust_buttons else None
+                                                            await bale.send_message(cust_uid, cust_msg, reply_markup=cust_kb)
                                                     except Exception as ex_del:
                                                         logger.warning(f"Could not deliver course to Bale user {cust_uid}: {ex_del}")
                                             else:
@@ -1774,6 +1788,61 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     await bale.send_message(chat_id, f"✅ فایل با موفقیت به روبیکا منتقل شد!\n📄 {clean_display_filename(fn)}")
                                                 else:
                                                     await bale.send_message(chat_id, f"❌ خطا در ارسال به روبیکا: {res.get('error') or res}")
+
+                                        elif action == "add_to_course":
+                                            courses = await StoreService.get_products(is_free_only=False)
+                                            if not courses:
+                                                await bale.send_message(chat_id, "هیچ دوره‌ای تعریف نشده است.")
+                                            else:
+                                                c_buttons = [
+                                                    [{"text": f"➕ {c.name}", "callback_data": f"bmeta:attach_course:{drop_id}:{c.product_id}"}]
+                                                    for c in courses[:10]
+                                                ]
+                                                c_buttons.append([{"text": "🔙 بازگشت به منوی رسانه", "callback_data": f"bmeta:back:{drop_id}"}])
+                                                await bale.send_message(chat_id, "📚 دوره‌ای که می‌خواهید این فایل به آن اضافه شود را انتخاب فرمایید:", reply_markup={"inline_keyboard": c_buttons})
+
+                                        elif action == "attach_course":
+                                            course_id = parts[3] if len(parts) > 3 else (parts[2] if len(parts) > 2 else "")
+                                            prod = await StoreService.get_product(course_id)
+                                            if prod:
+                                                pkg = list(getattr(prod, "files_package", []) or [])
+                                                f_id = drop.get("file_id") or ""
+                                                fn = drop.get("filename") or "فایل دوره"
+                                                pkg.append({
+                                                    "file_id": f_id,
+                                                    "title": fn,
+                                                    "platform": "bale",
+                                                    "size": drop.get("file_size", 0)
+                                                })
+                                                await StoreService.update_product_field(course_id, "files_package", pkg)
+                                                await StoreService.update_product_field(course_id, "delivery_type", "files_package")
+                                                await bale.send_message(chat_id, f"✅ فایل با موفقیت به دوره «{prod.name}» پیوست شد!")
+                                            else:
+                                                await bale.send_message(chat_id, "دوره یافت نشد.")
+
+                                        elif action == "compress":
+                                            await ensure_bale_binary()
+                                            status_m = await bale.send_message(chat_id, "⚡️ <b>در حال فشرده‌سازی هوشمند فایل...</b>")
+                                            try:
+                                                wpath = Path(drop.get("working_path") or "")
+                                                if not wpath.exists():
+                                                    final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "bale")
+                                                    wpath = final_p
+                                                if drop.get("media_type") == "video":
+                                                    from media.compressor import SmartVideoCompressor
+                                                    comp_p, _, _, _, was_c = SmartVideoCompressor.compress_if_needed(wpath)
+                                                else:
+                                                    from media.compressor import SmartAudioCompressor
+                                                    comp_p, _, _, _, was_c = SmartAudioCompressor.compress_if_needed(wpath)
+                                                if comp_p and comp_p.exists():
+                                                    drop["working_path"] = str(comp_p)
+                                                    drop["file_size"] = comp_p.stat().st_size
+                                                    session_manager.update_session(drop_id, drop)
+                                                    await bale.send_message(chat_id, f"✅ فشرده‌سازی انجام شد! حجم جدید: {drop['file_size'] / (1024*1024):.2f} مگابایت")
+                                                else:
+                                                    await bale.send_message(chat_id, "ℹ️ فایل در اندازه مناسب است و نیاز به فشرده‌سازی بیشتر ندارد.")
+                                            except Exception as c_err:
+                                                await bale.send_message(chat_id, f"❌ خطا در فشرده‌سازی: {c_err}")
 
                                     # Bale AI Stage 1 -> Stage 2 Callback
                                     if cb_data.startswith("bai_eng:"):
@@ -2528,18 +2597,24 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     
                                         order_item = await StoreService.get_order(order_id)
                                         dl_content = ""
+                                        prod_item = None
                                         if order_item:
                                             prod_item = await StoreService.get_product(order_item.product_id)
                                             if prod_item and prod_item.download_link:
                                                 dl_content = prod_item.download_link
 
-                                        confirm_txt = StoreService.format_delivery_message(prod_name, order_id, dl_content, cb_amount)
-                                        parsed_dl = StoreService.parse_delivery_links(dl_content)
-                                        cust_buttons = []
-                                        for lk in parsed_dl["links"]:
-                                            cust_buttons.append([{"text": lk["title"], "url": lk["url"]}])
-                                        cust_kb = {"inline_keyboard": cust_buttons} if cust_buttons else None
-                                        await bale.send_message(chat_id, confirm_txt, reply_markup=cust_kb)
+                                        is_pkg = bool(prod_item and (getattr(prod_item, "delivery_type", "channel") == "files_package" or getattr(prod_item, "files_package", None) or getattr(prod_item, "episodes", None)))
+                                        if is_pkg:
+                                            await bale.send_message(chat_id, f"🎉 <b>پرداخت شما با موفقیت انجام شد!</b>\nفایل‌های دوره «{prod_name}» هم‌اکنون به ترتیب ارسال می‌شوند:\nشماره سفارش: <code>{order_id}</code>")
+                                            await StoreService.deliver_course_package(prod_item, chat_id, "bale")
+                                        else:
+                                            confirm_txt = StoreService.format_delivery_message(prod_name, order_id, dl_content, cb_amount)
+                                            parsed_dl = StoreService.parse_delivery_links(dl_content)
+                                            cust_buttons = []
+                                            for lk in parsed_dl["links"]:
+                                                cust_buttons.append([{"text": lk["title"], "url": lk["url"]}])
+                                            cust_kb = {"inline_keyboard": cust_buttons} if cust_buttons else None
+                                            await bale.send_message(chat_id, confirm_txt, reply_markup=cust_kb)
                                         continue
 
                                     user_act = session_manager.get_user_action(f"bale_{chat_id}")

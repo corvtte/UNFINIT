@@ -198,6 +198,28 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(f"Error rendering storefront: {e}".encode("utf-8"))
             return
+        elif path == "/favicon.ico":
+            try:
+                logo_p = Path("uploads/logo.png")
+                if not logo_p.exists():
+                    logo_p = Path("static/logo.png")
+                if logo_p.exists():
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/png")
+                    self.send_header("Cache-Control", "public, max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(logo_p.read_bytes())
+                    return
+                svg_icon = b"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#2563eb"/></linearGradient></defs><rect width="100" height="100" rx="24" fill="url(#g)"/><path d="M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z" fill="#ffffff"/></svg>"""
+                self.send_response(200)
+                self.send_header("Content-Type", "image/svg+xml")
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.end_headers()
+                self.wfile.write(svg_icon)
+            except Exception:
+                self.send_response(404)
+                self.end_headers()
+            return
         elif path == "/api/store/orders":
             try:
                 res = handle_store_get_orders()
@@ -798,6 +820,66 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 ord_id = (payload.get("order_id") or "").strip()
                 reason = (payload.get("reason") or "").strip()
                 res = handle_store_reject_order(ord_id, reason)
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/sessions/disconnect":
+            try:
+                platform = payload.get("platform", "").strip().lower()
+                ok = False
+                if platform in ("rubika", "rubika_user"):
+                    from platforms.rubika_adapter import RubikaUserClient
+                    ok = RubikaUserClient().disconnect()
+                elif platform in ("soroush", "splus"):
+                    from platforms.soroush_worker import soroush_worker
+                    ok = soroush_worker.disconnect()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "disconnected": ok, "message": f"اتصال سشن {platform} قطع و فایل‌های نشست پاکسازی شدند."}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/soroush/login/request":
+            try:
+                phone = payload.get("phone", "").strip()
+                from platforms.soroush_worker import soroush_worker
+                loop = asyncio.new_event_loop()
+                try:
+                    res = loop.run_until_complete(soroush_worker.request_code(phone))
+                finally:
+                    loop.close()
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/soroush/login/verify":
+            try:
+                phone = payload.get("phone", "").strip()
+                code = payload.get("code", "").strip()
+                sms_id = payload.get("sms_id", "").strip()
+                from platforms.soroush_worker import soroush_worker
+                loop = asyncio.new_event_loop()
+                try:
+                    res = loop.run_until_complete(soroush_worker.verify_code(phone, code, sms_id))
+                finally:
+                    loop.close()
                 self.send_response(200 if res.get("ok") else 400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

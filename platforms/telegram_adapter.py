@@ -535,6 +535,10 @@ class TelegramAdapter:
                 InlineKeyboardButton("🧹 حذف کامل متادیتا", callback_data=f"smeta:strip_tags:{drop_id}")
             ],
             [
+                InlineKeyboardButton("➕ افزودن به دوره", callback_data=f"smeta:add_to_course:{drop_id}"),
+                InlineKeyboardButton("⚡ فشرده‌سازی", callback_data=f"smeta:compress:{drop_id}")
+            ],
+            [
                 InlineKeyboardButton("💾 اعمال تغییرات", callback_data=f"smeta:apply_changes:{drop_id}")
             ],
             [
@@ -950,7 +954,6 @@ class TelegramAdapter:
             else:
                 buttons.append([InlineKeyboardButton("📚 لیست دوره‌های آموزشی", callback_data="cnav:courses")])
             buttons.append([InlineKeyboardButton("🎁 دوره‌ها و هدایای رایگان", callback_data="cnav:gifts")])
-            buttons.append([InlineKeyboardButton("🎁 طرح دعوت از دوستان و دریافت هدایا", callback_data="referral_info")])
             buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
             await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
@@ -1247,7 +1250,19 @@ class TelegramAdapter:
             if prod.price == 0:
                 order = await StoreService.create_order(user_id, username, full_name, u.phone if u else "", prod, platform="telegram")
                 UserService.unlock_gift_by_platform("telegram", user_id, prod.product_id)
-                await client.send_message(chat_id, f"🎁 <b>هدیه آموزشی شما با موفقیت فعال شد!</b>\nشماره سفارش: <code>{order.order_id}</code>\n🎓 <b>{escape(prod.name)}</b>", parse_mode=enums.ParseMode.HTML)
+                is_pkg = bool(getattr(prod, "delivery_type", "channel") == "files_package" or getattr(prod, "files_package", None) or getattr(prod, "episodes", None))
+                if is_pkg:
+                    await client.send_message(chat_id, f"🎁 <b>دوره «{escape(prod.name)}» با موفقیت فعال شد!</b>\nفایل‌های دوره هم‌اکنون به ترتیب برای شما ارسال می‌شوند:\nشماره سفارش: <code>{order.order_id}</code>", parse_mode=enums.ParseMode.HTML)
+                    await StoreService.deliver_course_package(prod, user_id, "telegram")
+                else:
+                    dl_content = prod.download_link or "لینک دانلود در دسترس است."
+                    cust_msg = StoreService.format_delivery_message(prod.name, order.order_id, dl_content, 0)
+                    parsed_dl = StoreService.parse_delivery_links(dl_content)
+                    cust_buttons = []
+                    for lk in parsed_dl["links"]:
+                        cust_buttons.append([InlineKeyboardButton(lk["title"], url=lk["url"])])
+                    cust_kb = InlineKeyboardMarkup(cust_buttons) if cust_buttons else None
+                    await client.send_message(chat_id, cust_msg, reply_markup=cust_kb, parse_mode=enums.ParseMode.HTML)
                 return
 
             wallet_balance = await StoreService.get_wallet_balance(user_id)
@@ -1893,14 +1908,19 @@ class TelegramAdapter:
                     uid_str = str(order.user_id or "")
                     if uid_str.isdigit():
                         try:
-                            dl_content = (prod.download_link if prod else "") or "برای دریافت لینک‌ها و فایل‌های این دوره با پشتیبانی در ارتباط باشید."
-                            cust_msg = StoreService.format_delivery_message(order.product_name, order.order_id, dl_content, cb_awarded)
-                            parsed_dl = StoreService.parse_delivery_links(dl_content)
-                            cust_buttons = []
-                            for lk in parsed_dl["links"]:
-                                cust_buttons.append([InlineKeyboardButton(lk["title"], url=lk["url"])])
-                            cust_kb = InlineKeyboardMarkup(cust_buttons) if cust_buttons else None
-                            await self.send_message(int(uid_str), cust_msg, reply_markup=cust_kb)
+                            is_pkg = bool(prod and (getattr(prod, "delivery_type", "channel") == "files_package" or getattr(prod, "files_package", None) or getattr(prod, "episodes", None)))
+                            if is_pkg:
+                                await self.send_message(int(uid_str), f"🎉 <b>سفارش شما تایید شد!</b>\nفایل‌های دوره «{escape(order.product_name)}» هم‌اکنون به ترتیب ارسال می‌شوند:\nشماره سفارش: <code>{order.order_id}</code>", parse_mode=enums.ParseMode.HTML)
+                                await StoreService.deliver_course_package(prod, int(uid_str), "telegram")
+                            else:
+                                dl_content = (prod.download_link if prod else "") or "برای دریافت لینک‌ها و فایل‌های این دوره با پشتیبانی در ارتباط باشید."
+                                cust_msg = StoreService.format_delivery_message(order.product_name, order.order_id, dl_content, cb_awarded)
+                                parsed_dl = StoreService.parse_delivery_links(dl_content)
+                                cust_buttons = []
+                                for lk in parsed_dl["links"]:
+                                    cust_buttons.append([InlineKeyboardButton(lk["title"], url=lk["url"])])
+                                cust_kb = InlineKeyboardMarkup(cust_buttons) if cust_buttons else None
+                                await self.send_message(int(uid_str), cust_msg, reply_markup=cust_kb)
                         except Exception as ex_del:
                             logger.warning(f"Could not deliver course to user {uid_str}: {ex_del}")
                 else:
@@ -2726,6 +2746,61 @@ class TelegramAdapter:
                         )
                 except Exception as e:
                     await callback_query.message.reply_text(f"❌ خطا در اعمال سریع: {e}", parse_mode=enums.ParseMode.HTML)
+
+            elif action == "add_to_course":
+                courses = await StoreService.get_products(is_free_only=False)
+                if not courses:
+                    await callback_query.answer("هیچ دوره‌ای تعریف نشده است.", show_alert=True)
+                else:
+                    c_buttons = [
+                        [InlineKeyboardButton(f"➕ {c.name}", callback_data=f"smeta:attach_course:{drop_id}:{c.product_id}")]
+                        for c in courses[:10]
+                    ]
+                    c_buttons.append([InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")])
+                    await callback_query.message.reply_text("📚 دوره‌ای که می‌خواهید این فایل به آن اضافه شود را انتخاب فرمایید:", reply_markup=InlineKeyboardMarkup(c_buttons))
+
+            elif action == "attach_course":
+                course_id = parts[3] if len(parts) > 3 else (parts[2] if len(parts) > 2 else "")
+                prod = await StoreService.get_product(course_id)
+                if prod:
+                    pkg = list(getattr(prod, "files_package", []) or [])
+                    f_id = drop.get("file_id") or ""
+                    fn = drop.get("filename") or "فایل دوره"
+                    pkg.append({
+                        "file_id": f_id,
+                        "title": fn,
+                        "platform": "telegram",
+                        "size": drop.get("file_size", 0)
+                    })
+                    await StoreService.update_product_field(course_id, "files_package", pkg)
+                    await StoreService.update_product_field(course_id, "delivery_type", "files_package")
+                    await callback_query.answer(f"✅ فایل با موفقیت به دوره «{prod.name}» پیوست شد!", show_alert=True)
+                else:
+                    await callback_query.answer("دوره یافت نشد.", show_alert=True)
+
+            elif action == "compress":
+                await ensure_binary()
+                status_m = await callback_query.message.reply_text("⚡️ <b>در حال فشرده‌سازی هوشمند فایل...</b>", parse_mode=enums.ParseMode.HTML)
+                try:
+                    wpath = Path(drop.get("working_path") or "")
+                    if not wpath.exists():
+                        final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "telegram")
+                        wpath = final_p
+                    if drop.get("media_type") == "video":
+                        from media.compressor import SmartVideoCompressor
+                        comp_p, _, _, _, was_c = SmartVideoCompressor.compress_if_needed(wpath)
+                    else:
+                        from media.compressor import SmartAudioCompressor
+                        comp_p, _, _, _, was_c = SmartAudioCompressor.compress_if_needed(wpath)
+                    if comp_p and comp_p.exists():
+                        drop["working_path"] = str(comp_p)
+                        drop["file_size"] = comp_p.stat().st_size
+                        session_manager.update_session(drop_id, drop)
+                        await status_m.edit_text(f"✅ فشرده‌سازی انجام شد! حجم جدید: {drop['file_size'] / (1024*1024):.2f} مگابایت", parse_mode=enums.ParseMode.HTML)
+                    else:
+                        await status_m.edit_text("ℹ️ فایل در اندازه مناسب است و نیازی به فشرده‌سازی بیشتر ندارد.", parse_mode=enums.ParseMode.HTML)
+                except Exception as c_err:
+                    await status_m.edit_text(f"❌ خطا در فشرده‌سازی: {c_err}", parse_mode=enums.ParseMode.HTML)
 
             # Physical Full Rewrite & Delivery (Apply Changes)
             elif action in ("apply_changes", "send_back"):

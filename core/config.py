@@ -50,7 +50,7 @@ class VersionStr(str):
         return str.__str__(self)
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.6").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.7").strip())
     THEME: str = (os.environ.get("THEME") or "default-dark").strip()
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
@@ -123,7 +123,7 @@ class Config:
     # 6. Media & Defaults
     DEFAULT_ARTIST: str = (os.environ.get("DEFAULT_ARTIST") or "AbbasManesh365 Bot").strip()
     DEFAULT_ALBUM: str = (os.environ.get("DEFAULT_ALBUM") or "دوره آموزشی").strip()
-    MAX_SAFE_BALE_SIZE_MB: float = float((os.environ.get("MAX_SAFE_BALE_SIZE_MB") or "49.99").strip() or "49.99")
+    MAX_SAFE_BALE_SIZE_MB: float = float((os.environ.get("MAX_SAFE_BALE_SIZE_MB") or "48.50").strip() or "48.50")
     MAX_SAFE_BALE_SIZE_BYTES: int = int(MAX_SAFE_BALE_SIZE_MB * 1024 * 1024)
 
     # 7. Force Join Channel Settings
@@ -166,7 +166,7 @@ class Config:
 
         self.DEFAULT_ARTIST = (os.environ.get("DEFAULT_ARTIST") or "AbbasManesh365 Bot").strip()
         self.DEFAULT_ALBUM = (os.environ.get("DEFAULT_ALBUM") or "دوره آموزشی").strip()
-        self.MAX_SAFE_BALE_SIZE_MB = float((os.environ.get("MAX_SAFE_BALE_SIZE_MB") or "49.99").strip() or "49.99")
+        self.MAX_SAFE_BALE_SIZE_MB = float((os.environ.get("MAX_SAFE_BALE_SIZE_MB") or "48.50").strip() or "48.50")
         self.MAX_SAFE_BALE_SIZE_BYTES = int(self.MAX_SAFE_BALE_SIZE_MB * 1024 * 1024)
 
         self.FORCE_JOIN_CHANNEL_TELEGRAM = (os.environ.get("FORCE_JOIN_CHANNEL_TELEGRAM") or "").strip()
@@ -201,7 +201,7 @@ class Config:
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
         self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
         self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.6").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.7").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -277,7 +277,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.6").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.7").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

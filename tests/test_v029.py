@@ -21,9 +21,9 @@ from services.store_service import StoreService
 class TestV029Features(unittest.TestCase):
 
     def test_01_version_bump_v029(self):
-        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6")))
+        self.assertTrue(any(v in str(config.ENGINE_VERSION) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7")))
         health = get_system_health()
-        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6")))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.2.9", "v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7")))
         self.assertTrue(EngineVersionStr("UNFINIT Engine v0.2.9").__contains__("v0.2.9"))
 
     def test_02_telegram_send_video_and_audio_sanitization(self):
@@ -99,14 +99,18 @@ class TestV029Features(unittest.TestCase):
         # Check modal container
         self.assertIn('id="feedDispatchModal"', html)
         self.assertIn('closeFeedDispatchModal()', html)
-        self.assertIn("executeFeedDispatch('telegram')", html)
-        self.assertIn("executeFeedDispatch('bale')", html)
-        self.assertIn("executeFeedDispatch('all')", html)
+        # v0.3.7+: Multi-dispatch checklist replaces single-button executeFeedDispatch
+        # Verify either old or new dispatch mechanism exists
+        has_old = "executeFeedDispatch('telegram')" in html
+        has_new = "executeFeedMultiDispatch" in html
+        self.assertTrue(has_old or has_new, "Expected either old or new feed dispatch mechanism in modal")
 
         # Check that transferFeedDownload opens the modal in JS
         self.assertIn('function openFeedDispatchModal', html)
         self.assertIn('window.openFeedDispatchModal = openFeedDispatchModal', html)
-        self.assertIn('window.executeFeedDispatch = executeFeedDispatch', html)
+        has_old_export = 'window.executeFeedDispatch = executeFeedDispatch' in html
+        has_new_export = 'window.executeFeedMultiDispatch = executeFeedMultiDispatch' in html
+        self.assertTrue(has_old_export or has_new_export, "Expected dispatch function to be exported to window")
 
     def test_04_dynamic_ai_models_and_custom_input(self):
         """Verify dynamic AI model select, custom model input, and provider models."""

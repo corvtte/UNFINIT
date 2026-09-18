@@ -61,23 +61,26 @@ def session_base_name(session_name: str | Path) -> str:
 
 def session_file_candidates(session_name: str) -> list[Path]:
     pure_name = Path(session_name).name
+    if Path(pure_name).suffix in {".rp", ".session", ".sqlite", ".rubpy", ".enc"}:
+        pure_name = Path(pure_name).stem
     if Path(pure_name).suffix in {".rp", ".session", ".sqlite", ".rubpy"}:
         pure_name = Path(pure_name).stem
 
     candidates: list[Path] = []
+    exts = ("", ".rubpy", ".session", ".rp", ".sqlite", ".session.enc", ".enc")
     
     # 1. Check in root/working dir
-    for ext in ("", ".rubpy", ".session", ".rp", ".sqlite"):
+    for ext in exts:
         candidates.append(Path(f"{pure_name}{ext}"))
         candidates.append(BASE_DIR / f"{pure_name}{ext}")
 
     # 2. Check in SESSION_DIR
-    for ext in ("", ".rubpy", ".session", ".rp", ".sqlite"):
+    for ext in exts:
         candidates.append(SESSION_DIR / f"{pure_name}{ext}")
 
     # 3. Check in standard /tmp and /data paths
-    for base_p in (Path("/tmp/walrus/sessions"), Path("/data/walrus/sessions"), Path("/tmp")):
-        for ext in ("", ".rubpy", ".session", ".rp", ".sqlite"):
+    for base_p in (Path("/tmp/walrus/sessions"), Path("/data/walrus/sessions"), Path("/tmp"), DATA_DIR):
+        for ext in exts:
             candidates.append(base_p / f"{pure_name}{ext}")
 
     unique_candidates: list[Path] = []
@@ -89,6 +92,16 @@ def session_file_candidates(session_name: str) -> list[Path]:
 def _is_valid_rubika_session_file(p: Path) -> bool:
     if not p.exists() or not p.is_file() or p.stat().st_size == 0:
         return False
+    if p.name.endswith(".enc"):
+        try:
+            from core.security import load_decrypted_session
+            dec = load_decrypted_session(p)
+            if dec and len(dec) >= 16:
+                if dec.startswith(b"SQLite format 3") or b"session" in dec:
+                    return True
+                return True
+        except Exception:
+            return False
     try:
         import sqlite3
         with sqlite3.connect(str(p)) as con:
@@ -105,16 +118,20 @@ def find_existing_session_file(session_name: Optional[str] = None) -> Optional[P
     names_to_try: list[str] = []
     if session_name:
         clean = Path(str(session_name)).stem.strip()
+        if clean.endswith(".session"):
+            clean = Path(clean).stem.strip()
         if clean:
             names_to_try.append(clean)
 
     env_sess = os.getenv("RUBIKA_SESSION", "").strip()
     if env_sess:
         clean = Path(env_sess).stem.strip()
+        if clean.endswith(".session"):
+            clean = Path(clean).stem.strip()
         if clean and clean not in names_to_try:
             names_to_try.append(clean)
 
-    for fallback_name in ("unfinit_rubika", "rubika_user", "session", "user_session"):
+    for fallback_name in ("unfinit_rubika", "rubika_user", "session", "user_session", "rubika"):
         if fallback_name not in names_to_try:
             names_to_try.append(fallback_name)
 
@@ -137,7 +154,7 @@ def find_existing_session_file(session_name: Optional[str] = None) -> Optional[P
     for sdir in search_dirs:
         if sdir.exists() and sdir.is_dir():
             try:
-                for ext in ("*.rp", "*.rubpy", "*.session", "*.sqlite"):
+                for ext in ("*.rp", "*.rubpy", "*.session", "*.sqlite", "*.session.enc", "*.enc"):
                     for fp in sdir.glob(ext):
                         if _is_valid_rubika_session_file(fp):
                             return fp

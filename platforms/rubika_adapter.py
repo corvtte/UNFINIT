@@ -599,6 +599,50 @@ class RubikaUserClient:
     def has_session(self) -> bool:
         return self.get_effective_session_path() is not None
 
+    def get_masked_phone(self) -> str:
+        sess_file = self.get_effective_session_path()
+        if not sess_file:
+            return ""
+        phone = ""
+        try:
+            import sqlite3
+            if sess_file.name.endswith(".enc"):
+                from core.security import load_decrypted_session
+                dec = load_decrypted_session(sess_file)
+                con = sqlite3.connect(":memory:")
+                if hasattr(con, "deserialize"):
+                    con.deserialize(dec)
+                    row = con.execute("SELECT phone_number FROM session WHERE phone_number IS NOT NULL").fetchone()
+                    if row and row[0]:
+                        phone = str(row[0])
+            else:
+                with sqlite3.connect(str(sess_file)) as con:
+                    row = con.execute("SELECT phone_number FROM session WHERE phone_number IS NOT NULL").fetchone()
+                    if row and row[0]:
+                        phone = str(row[0])
+        except Exception:
+            pass
+        if phone:
+            clean = phone.replace("+", "").strip()
+            if len(clean) >= 10:
+                return f"{clean[:4]}***{clean[-4:]}"
+            return f"{clean[:2]}***{clean[-2:]}"
+        return "متصل"
+
+    def disconnect(self) -> bool:
+        try:
+            sess_file = self.get_effective_session_path()
+            if sess_file and sess_file.exists():
+                sess_file.unlink(missing_ok=True)
+            for cand in session_file_candidates(self.session_name):
+                if cand.exists():
+                    cand.unlink(missing_ok=True)
+            self._auth_client = None
+            return True
+        except Exception as e:
+            logger.warning(f"Error disconnecting Rubika user session: {e}")
+            return False
+
     async def get_self_guid(self) -> Optional[str]:
         try:
             from rubpy import Client as RubikaClient
@@ -810,7 +854,13 @@ class RubikaUserClient:
                     await client.disconnect()
                 except Exception:
                     pass
-                self._auth_client = None
+                try:
+                    sess_file = find_existing_session_file(self.session_name)
+                    if sess_file and sess_file.exists() and not sess_file.name.endswith(".enc"):
+                        from core.security import save_encrypted_session
+                        save_encrypted_session(sess_file, sess_file.read_bytes())
+                except Exception as enc_err:
+                    logger.warning(f"Failed to encrypt Rubika session on sign_in: {enc_err}")
 
                 logger.info("Rubika user session successfully authorized and saved.")
                 return {"ok": True}

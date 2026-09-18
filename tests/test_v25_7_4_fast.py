@@ -97,6 +97,9 @@ class TestV2574Fast(unittest.TestCase):
         self.assertIn("handle_store_delete_order", app_code)
 
     def test_07_javascript_syntax_cleanliness(self):
+        import shutil
+        if not shutil.which("node"):
+            self.skipTest("node binary not installed in environment")
         # Test storefront JS
         store_html = render_storefront_html()
         scripts = re.findall(r"<script>(.*?)</script>", store_html, re.DOTALL)

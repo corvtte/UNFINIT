@@ -36,7 +36,9 @@ class TestV2563Fast(unittest.TestCase):
         """Verify /data persistent storage detection, path assignments, and file seeding."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            with patch.dict(os.environ, {"PERSISTENT_DATA_DIR": str(tmp_path)}):
+            old_val = os.environ.get("PERSISTENT_DATA_DIR")
+            os.environ["PERSISTENT_DATA_DIR"] = str(tmp_path)
+            try:
                 test_cfg = Config()
                 self.assertTrue(test_cfg._use_persistent)
                 self.assertEqual(test_cfg.DATA_DIR, tmp_path.resolve())
@@ -50,6 +52,11 @@ class TestV2563Fast(unittest.TestCase):
                 with patch("core.config.config", test_cfg):
                     resolved_db = get_db_path()
                     self.assertEqual(resolved_db, test_cfg.DB_PATH)
+            finally:
+                if old_val is not None:
+                    os.environ["PERSISTENT_DATA_DIR"] = old_val
+                else:
+                    os.environ.pop("PERSISTENT_DATA_DIR", None)
 
     def test_03_telegram_session_revival_from_sqlite(self):
         """Verify Telegram callbacks revive session from SQLite if missing in memory."""

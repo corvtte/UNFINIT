@@ -168,6 +168,9 @@ class TestV2575Fast(unittest.TestCase):
 
     def test_07_javascript_syntax_validation(self):
         """Extract inline JavaScript from dashboard and storefront and validate syntax via node --check."""
+        import shutil
+        if not shutil.which("node"):
+            self.skipTest("node binary not installed in environment")
         dash = render_dashboard_html()
         store = render_storefront_html()
 

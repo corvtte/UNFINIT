@@ -20,9 +20,9 @@ class TestV033Release(unittest.TestCase):
         self.dash_html = render_dashboard_html()
 
     def test_pure_engine_version(self):
-        self.assertIn(str(config.ENGINE_VERSION), ("v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6"))
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7"))
         health = get_system_health()
-        self.assertTrue(any(v in str(health.get("engine_version", "")) for v in ("v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6")))
+        self.assertTrue(any(v in str(health.get("engine_version", "")) for v in ("v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7")))
         self.assertNotIn("(", str(config.ENGINE_VERSION))
         self.assertNotIn(")", str(config.ENGINE_VERSION))
 
