@@ -67,9 +67,9 @@ class TestV030EngineRelease(unittest.TestCase):
         UserService.clear_cache()
 
     def test_01_version_bump_v030(self):
-        self.assertIn(config.ENGINE_VERSION, ("v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5"))
         health = get_system_health()
-        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4")))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.3.0", "v0.3.1", "v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5")))
 
     def test_02_security_fernet_key_derivation_and_encryption(self):
         """Verify PBKDF2 HMAC key derivation and AES-256 / Fernet roundtrip."""

@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
 # Set test environment
-os.environ["ENGINE_VERSION"] = "v0.3.4"
+os.environ["ENGINE_VERSION"] = "v0.3.5"
 os.environ["GEMINI_MODEL"] = "gemini-3.6-flash"
 os.environ["NARA_MODEL"] = "mimo-v2.5-free"
 

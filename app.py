@@ -299,6 +299,36 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path == "/api/users":
+            try:
+                from core.database import fetch_all
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                cust_rows = loop.run_until_complete(fetch_all("SELECT * FROM customers ORDER BY id DESC LIMIT 200"))
+                loop.close()
+
+                from services.user_service import UserService
+                all_users = UserService.load_users()
+                users_list = []
+                for p, u in all_users.items():
+                    users_list.append(u.to_dict())
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "customers": [dict(r) for r in cust_rows],
+                    "users": users_list,
+                    "total_users": len(users_list),
+                    "total_customers": len(cust_rows)
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path in ("/", "/dashboard"):
             try:
                 html = render_dashboard_html()
