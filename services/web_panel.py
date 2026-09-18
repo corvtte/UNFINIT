@@ -201,23 +201,30 @@ def render_dashboard_html() -> str:
 
     # Gather products safely
     products = []
+    saved_theme = "default-dark"
     try:
         try:
             running_loop = asyncio.get_running_loop()
         except RuntimeError:
             running_loop = None
 
+        from core.database import get_system_setting
         if running_loop and running_loop.is_running():
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 products = pool.submit(lambda: asyncio.run(StoreService.get_all_products())).result()
+                saved_theme = pool.submit(lambda: asyncio.run(get_system_setting("THEME", "default-dark"))).result()
         else:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             products = loop.run_until_complete(StoreService.get_all_products())
+            saved_theme = loop.run_until_complete(get_system_setting("THEME", "default-dark"))
             loop.close()
+        if not saved_theme or saved_theme not in ["default-dark", "catppuccin", "dracula", "tokyo-night", "vesper", "solarized-dark", "monokai", "one-dark-pro"]:
+            saved_theme = "default-dark"
     except Exception as e:
-        logger.warning(f"Web panel product fetch error: {e}")
+        logger.warning(f"Web panel data fetch error: {e}")
+        saved_theme = "default-dark"
 
     active_count = sum(1 for prod in products if prod.active)
 
@@ -226,23 +233,26 @@ def render_dashboard_html() -> str:
         prod_cards = '<div class="col-span-full py-12 text-center text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">هیچ دوره‌ای در سیستم ثبت نشده است. از فرم زیر جهت افزودن دوره استفاده فرمایید.</div>'
     else:
         for prod in products:
-            status_badge = f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1"><span>🟢</span> فعال</span>' if prod.active else f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1"><span>🔴</span> غیرفعال</span>'
-            price_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان 🎁</span>'
+            status_badge = f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> فعال</span>' if prod.active else f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> غیرفعال</span>'
+            price_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
             
-            card_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-cyan-300 border border-cyan-800/60" style="color: var(--accent-color);">کارت‌به‌کارت ✅</span>' if prod.allow_card else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">کارت‌به‌کارت ❌</span>'
-            bale_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">درگاه آنلاین بله ✅</span>' if prod.allow_bale else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">درگاه آنلاین بله ❌</span>'
-            ref_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-300 border border-amber-800/60">۱ دعوت الزامی 🎁</span>' if getattr(prod, 'requires_referral', False) else ''
+            card_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-cyan-300 border border-cyan-800/60" style="color: var(--accent-color);">کارت‌به‌کارت ✓</span>' if prod.allow_card else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">کارت‌به‌کارت ✕</span>'
+            bale_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">درگاه بله ✓</span>' if prod.allow_bale else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">درگاه بله ✕</span>'
+            ref_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/60 text-amber-300 border border-amber-800/60">۱ دعوت الزامی</span>' if getattr(prod, 'requires_referral', False) else ''
             
+            deliv_mode = getattr(prod, "delivery_type", "channel")
+            deliv_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-indigo-950/60 text-indigo-300 border border-indigo-800/60">پکیج فایلی</span>' if deliv_mode == "files_package" else '<span class="px-2 py-0.5 rounded text-[10px] bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">کانال تلگرام/بله</span>'
+
             dl_html = f'''
             <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                <span class="truncate max-w-[180px] font-mono" title="{prod.download_link}">🔗 {prod.download_link}</span>
+                <span class="truncate max-w-[180px] font-mono" title="{prod.download_link}">{prod.download_link}</span>
                 <button onclick="copyText('{prod.download_link}')" class="text-cyan-400 hover:text-cyan-300 px-2 py-1 rounded bg-slate-800 text-[10px] border border-slate-700 transition">کپی لینک</button>
             </div>
-            ''' if prod.download_link else '<div class="mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-slate-500 flex items-center gap-1"><span>📦</span> فاقد لینک دانلودی مستقیم</div>'
+            ''' if prod.download_link else '<div class="mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-slate-500 flex items-center gap-1">فاقد لینک مستقیم</div>'
 
             banner_html = f'''<img src="{prod.photo_url}" alt="{prod.name}" class="w-full max-h-80 object-contain rounded-xl mb-3 border border-slate-700/60" onerror="this.style.display=\'none\'">''' if prod.photo_url else ''
 
-            toggle_btn = f'''<button id="toggle_btn_{prod.product_id}" onclick="toggleCourseActive('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">{'🔴 غیرفعال‌سازی' if prod.active else '🟢 فعال‌سازی'}</button>'''
+            toggle_btn = f'''<button id="toggle_btn_{prod.product_id}" onclick="toggleCourseActive('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition">{'غیرفعال‌سازی' if prod.active else 'فعال‌سازی'}</button>'''
 
             prod_cards += f"""
             <div class="glass p-5 rounded-2xl flex flex-col justify-between border border-slate-800 hover:border-cyan-500/40 transition group" id="course_card_{prod.product_id}">
@@ -264,38 +274,46 @@ def render_dashboard_html() -> str:
                         {card_badge}
                         {bale_badge}
                         {ref_badge}
+                        {deliv_badge}
                     </div>
                     {dl_html}
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
                     <button onclick="openEditCourseModal('{prod.product_id}')" data-course-id="{prod.product_id}" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs text-slate-200 flex items-center gap-1 transition">
-                        <span>✏️</span> ویرایش
+                        ویرایش
                     </button>
                     <div class="flex items-center gap-1.5">
                         {toggle_btn}
                         <button onclick="deleteCourse('{prod.product_id}')" class="theme-card-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="حذف دائم دوره">
-                            <span>🗑</span> حذف دوره
+                            حذف دوره
                         </button>
                     </div>
                 </div>
             </div>
             """
 
-    courses_dict = {
-        prod.product_id: {
-            "product_id": prod.product_id,
-            "name": prod.name,
-            "price": prod.price,
-            "description": prod.description or "",
-            "download_link": prod.download_link or "",
-            "photo_url": prod.photo_url or "",
-            "allow_card": 1 if prod.allow_card else 0,
-            "allow_bale": 1 if prod.allow_bale else 0,
-            "requires_referral": 1 if getattr(prod, "requires_referral", False) else 0,
-            "is_active": 1 if prod.active else 0
-        }
-        for prod in products
-    }
+    courses_dict = {}
+    for prod in products:
+        try:
+            pid = str(getattr(prod, "product_id", "") or "")
+            dt = getattr(prod, "delivery_type", "channel")
+            pkg = getattr(prod, "files_package", [])
+            courses_dict[pid] = {
+                "product_id": pid,
+                "name": str(getattr(prod, "name", "") or "") if isinstance(getattr(prod, "name", None), str) else "",
+                "price": int(getattr(prod, "price", 0) or 0) if isinstance(getattr(prod, "price", None), (int, float)) else 0,
+                "description": str(getattr(prod, "description", "") or "") if isinstance(getattr(prod, "description", None), str) else "",
+                "download_link": str(getattr(prod, "download_link", "") or "") if isinstance(getattr(prod, "download_link", None), str) else "",
+                "photo_url": str(getattr(prod, "photo_url", "") or "") if isinstance(getattr(prod, "photo_url", None), str) else "",
+                "allow_card": 1 if getattr(prod, "allow_card", True) else 0,
+                "allow_bale": 1 if getattr(prod, "allow_bale", True) else 0,
+                "requires_referral": 1 if getattr(prod, "requires_referral", False) else 0,
+                "is_active": 1 if getattr(prod, "active", True) else 0,
+                "delivery_type": dt if isinstance(dt, str) else "channel",
+                "files_package": pkg if isinstance(pkg, list) else []
+            }
+        except Exception:
+            continue
     courses_data_json = json.dumps(courses_dict, ensure_ascii=False)
 
     drop_rows = render_studio_table_rows()
@@ -325,6 +343,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(6, 182, 212, 0.2);
             --input-bg: #0f172a; /* #1e293b */
             --card-bg: #0f172a;
+            --table-head-bg: #111a2e;
+            --table-row-hover: rgba(30, 41, 59, 0.5);
         }}
         body.theme-catppuccin {{
             --bg-color: #24273A;
@@ -334,6 +354,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(198, 160, 246, 0.2);
             --input-bg: #1e2030;
             --card-bg: #1e2030;
+            --table-head-bg: #2a2e45;
+            --table-row-hover: rgba(54, 58, 79, 0.5);
         }}
         body.theme-dracula {{
             --bg-color: #282A36;
@@ -343,6 +365,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(189, 147, 249, 0.2);
             --input-bg: #21222c;
             --card-bg: #21222c;
+            --table-head-bg: #343746;
+            --table-row-hover: rgba(68, 71, 90, 0.5);
         }}
         body.theme-tokyo-night {{
             --bg-color: #1A1B26;
@@ -352,6 +376,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(122, 162, 247, 0.2);
             --input-bg: #16161e;
             --card-bg: #16161e;
+            --table-head-bg: #1f2335;
+            --table-row-hover: rgba(41, 46, 66, 0.5);
         }}
         body.theme-vesper {{
             --bg-color: #101010;
@@ -361,6 +387,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(255, 199, 153, 0.2);
             --input-bg: #181818;
             --card-bg: #181818;
+            --table-head-bg: #1e1e1e;
+            --table-row-hover: rgba(38, 38, 38, 0.5);
         }}
         body.theme-solarized-dark {{
             --bg-color: #002B36;
@@ -370,6 +398,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(38, 139, 210, 0.2);
             --input-bg: #073642;
             --card-bg: #073642;
+            --table-head-bg: #0b4352;
+            --table-row-hover: rgba(10, 76, 93, 0.5);
         }}
         body.theme-monokai {{
             --bg-color: #272822;
@@ -379,6 +409,8 @@ def render_dashboard_html() -> str:
             --card-border: rgba(249, 38, 114, 0.2);
             --input-bg: #1e1f1c;
             --card-bg: #1e1f1c;
+            --table-head-bg: #32302f;
+            --table-row-hover: rgba(62, 59, 63, 0.5);
         }}
         body.theme-one-dark-pro {{
             --bg-color: #282C34;
@@ -388,6 +420,20 @@ def render_dashboard_html() -> str:
             --card-border: rgba(97, 175, 239, 0.2);
             --input-bg: #21252b;
             --card-bg: #21252b;
+            --table-head-bg: #2e3440;
+            --table-row-hover: rgba(53, 59, 69, 0.5);
+        }}
+        @media (min-width: 768px) {{
+            #mainSidebar.sidebar-collapsed {{
+                transform: translateX(100%) !important;
+            }}
+            #contentWrapper.sidebar-collapsed {{
+                margin-right: 0 !important;
+            }}
+        }}
+        thead, thead tr, .table-head {{
+            background-color: var(--table-head-bg) !important;
+            color: var(--fg-color) !important;
         }}
         body {{
             font-family: 'Vazirmatn', 'Roboto', sans-serif !important;
@@ -526,7 +572,7 @@ def render_dashboard_html() -> str:
         ::-webkit-scrollbar-thumb {{ background: var(--accent-color, #a855f7) !important; border-radius: 9999px !important; }}
     </style>
 </head>
-<body class="text-slate-100 min-h-screen">
+<body class="text-slate-100 min-h-screen theme-{saved_theme}">
     <!-- ================= FULLSCREEN LOGIN GATE ================= -->
     <div id="loginGate" class="fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300" style="background: radial-gradient(circle at 50% 30%, #0e224c 0%, #081229 55%, #020612 100%);">
         <div class="glass p-8 md:p-10 rounded-3xl w-full max-w-md border border-cyan-500/30 shadow-2xl shadow-cyan-950/70 text-center space-y-6 relative overflow-hidden">
@@ -697,7 +743,7 @@ def render_dashboard_html() -> str:
             'monokai': '#F92672',
             'one-dark-pro': '#61AFEF'
         }};
-        function applyAntigravityTheme(themeKey) {{
+        function applyAntigravityTheme(themeKey, syncServer) {{
             var validThemes = ['default-dark', 'catppuccin', 'dracula', 'tokyo-night', 'vesper', 'solarized-dark', 'monokai', 'one-dark-pro'];
             if (!validThemes.includes(themeKey)) themeKey = 'default-dark';
             validThemes.forEach(function(t) {{
@@ -713,12 +759,21 @@ def render_dashboard_html() -> str:
             if (sel && sel.value !== themeKey) {{
                 sel.value = themeKey;
             }}
+            if (syncServer !== false) {{
+                try {{
+                    fetch('/api/settings/theme', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ theme: themeKey }})
+                    }}).catch(function(e) {{}});
+                }} catch(e) {{}}
+            }}
         }}
         window.changeTheme = applyAntigravityTheme;
         window.applyAntigravityTheme = applyAntigravityTheme;
         try {{
-            var initTheme = localStorage.getItem('unfinit_theme') || 'default-dark';
-            applyAntigravityTheme(initTheme);
+            var initTheme = localStorage.getItem('unfinit_theme') || '{saved_theme}';
+            applyAntigravityTheme(initTheme, false);
         }} catch(e) {{}}
 
                 window.toggleAdminLoginPwd = toggleAdminLoginPwd;
@@ -734,10 +789,10 @@ def render_dashboard_html() -> str:
     <!-- ================= MAIN APP WRAPPER ================= -->
     <div id="appMain" data-id="mainDashboard" class="hidden min-h-screen" style="display: none !important;">
         <!-- Mobile Drawer Backdrop Overlay -->
-        <div id="drawerOverlay" onclick="toggleMobileDrawer(false)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300 md:hidden"></div>
+        <div id="drawerOverlay" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300 md:hidden"></div>
 
-        <!-- ================= MODERN LEFT SIDEBAR ================= -->
-        <aside id="mainSidebar" class="w-64 fixed left-0 top-0 bottom-0 z-50 flex flex-col justify-between transition-transform duration-300 ease-in-out border-r border-slate-800 -translate-x-full md:translate-x-0" style="background: var(--bg-color, #090d16); border-color: var(--card-border, #1e293b);">
+        <!-- ================= MODERN RIGHT SIDEBAR (Collapsible) ================= -->
+        <aside id="mainSidebar" class="w-64 fixed right-0 top-0 bottom-0 z-50 flex flex-col justify-between transition-all duration-300 ease-in-out border-l border-slate-800 translate-x-full md:translate-x-0" style="background: var(--bg-color, #090d16); border-color: var(--card-border, #1e293b);">
             <!-- Sidebar Header / Brand -->
             <div class="p-4 border-b border-slate-800/80">
                 <div class="flex items-center justify-between">
@@ -749,30 +804,31 @@ def render_dashboard_html() -> str:
                         <div class="overflow-hidden">
                             <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
                                 <span>UNFINIT Hub</span>
+                                <span class="text-amber-400 text-xs" title="پنل مدیریت ارشد">👑</span>
                                 <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">{config.ENGINE_VERSION}</span>
                             </h1>
                             <p class="text-[11px] text-slate-400 truncate">Store &amp; Media Studio</p>
                         </div>
                     </div>
-                    <button type="button" onclick="toggleMobileDrawer(false)" class="md:hidden p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+                    <button type="button" onclick="toggleSidebar(false)" class="md:hidden p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
                         ✕
                     </button>
                 </div>
             </div>
 
-            <!-- Sidebar Navigation Items (8 Views) -->
+            <!-- Sidebar Navigation Items (8 Views) with Drag & Drop -->
             <nav class="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar" id="sidebarNavList">
                 <!-- 1. Dashboard -->
-                <button type="button" onclick="switchTab('dashboard'); toggleMobileDrawer(false);" data-tab="dashboard" id="s-btn-tab-dashboard" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 active">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('dashboard'); toggleSidebar(false);" data-tab="dashboard" id="s-btn-tab-dashboard" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing active">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
                     </svg>
                     <span class="flex-1 text-right">داشبورد و وضعیت زنده</span>
                 </button>
 
                 <!-- 2. Downloads -->
-                <button type="button" onclick="switchTab('downloads'); toggleMobileDrawer(false);" data-tab="downloads" id="s-btn-tab-downloads" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('downloads'); toggleSidebar(false);" data-tab="downloads" id="s-btn-tab-downloads" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
                     <span class="flex-1 text-right">فایل‌های دانلودی سایت</span>
@@ -780,8 +836,8 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 3. Studio -->
-                <button type="button" onclick="switchTab('studio'); toggleMobileDrawer(false);" data-tab="studio" id="s-btn-tab-studio" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('studio'); toggleSidebar(false);" data-tab="studio" id="s-btn-tab-studio" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
                     <span class="flex-1 text-right">استودیوی رسانه و وکتور</span>
@@ -789,8 +845,8 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 4. Courses -->
-                <button type="button" onclick="switchTab('courses'); toggleMobileDrawer(false);" data-tab="courses" id="s-btn-tab-courses" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('courses'); toggleSidebar(false);" data-tab="courses" id="s-btn-tab-courses" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
                     <span class="flex-1 text-right">دوره‌ها و سرفصل‌ها</span>
@@ -798,32 +854,32 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 5. Orders -->
-                <button type="button" onclick="switchTab('orders'); toggleMobileDrawer(false);" data-tab="orders" id="s-btn-tab-orders" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('orders'); toggleSidebar(false);" data-tab="orders" id="s-btn-tab-orders" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
                     <span class="flex-1 text-right">سفارشات و تراکنش‌ها</span>
                 </button>
 
                 <!-- 6. Users -->
-                <button type="button" onclick="switchTab('users'); toggleMobileDrawer(false);" data-tab="users" id="s-btn-tab-users" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('users'); toggleSidebar(false);" data-tab="users" id="s-btn-tab-users" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                     </svg>
                     <span class="flex-1 text-right">کاربران و شبکه رفرال</span>
                 </button>
 
                 <!-- 7. Tokens & AI -->
-                <button type="button" onclick="switchTab('tokens'); toggleMobileDrawer(false);" data-tab="tokens" id="s-btn-tab-tokens" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('tokens'); toggleSidebar(false);" data-tab="tokens" id="s-btn-tab-tokens" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                     </svg>
                     <span class="flex-1 text-right">سکرت‌ها و هوش مصنوعی</span>
                 </button>
 
                 <!-- 8. Settings & Logs -->
-                <button type="button" onclick="switchTab('settings'); toggleMobileDrawer(false);" data-tab="settings" id="s-btn-tab-settings" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5">
-                    <svg class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button draggable="true" type="button" onclick="switchTab('settings'); toggleSidebar(false);" data-tab="settings" id="s-btn-tab-settings" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.241.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span class="flex-1 text-right">تنظیمات و لاگ‌ها</span>
@@ -834,16 +890,18 @@ def render_dashboard_html() -> str:
             <div class="p-3 border-t border-slate-800/80 space-y-2">
                 <!-- Theme Switcher -->
                 <div class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-full overflow-hidden border border-slate-700 text-xs shadow-inner">
-                    <span class="text-sm">🎨</span>
+                    <svg width="16" height="16" class="w-4 h-4 shrink-0 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l9.75 9.75" />
+                    </svg>
                     <select id="themeSwitcherSelect" onchange="applyAntigravityTheme(this.value)" class="appearance-none rounded-full bg-transparent border-0 outline-none w-full cursor-pointer px-3 text-xs text-slate-300">
-                        <option value="default-dark" class="bg-zinc-900 text-zinc-100">UNFINIT Classic (Default Dark)</option>
-                        <option value="catppuccin" class="bg-zinc-900 text-zinc-100">Catppuccin</option>
-                        <option value="dracula" class="bg-zinc-900 text-zinc-100">Dracula</option>
-                        <option value="tokyo-night" class="bg-zinc-900 text-zinc-100">Tokyo Night</option>
-                        <option value="vesper" class="bg-zinc-900 text-zinc-100">Vesper</option>
-                        <option value="solarized-dark" class="bg-zinc-900 text-zinc-100">Solarized Dark</option>
-                        <option value="monokai" class="bg-zinc-900 text-zinc-100">Monokai</option>
-                        <option value="one-dark-pro" class="bg-zinc-900 text-zinc-100">One Dark Pro</option>
+                        <option value="default-dark" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'default-dark' else ''}>UNFINIT Classic (Default Dark)</option>
+                        <option value="catppuccin" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'catppuccin' else ''}>Catppuccin</option>
+                        <option value="dracula" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'dracula' else ''}>Dracula</option>
+                        <option value="tokyo-night" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'tokyo-night' else ''}>Tokyo Night</option>
+                        <option value="vesper" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'vesper' else ''}>Vesper</option>
+                        <option value="solarized-dark" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'solarized-dark' else ''}>Solarized Dark</option>
+                        <option value="monokai" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'monokai' else ''}>Monokai</option>
+                        <option value="one-dark-pro" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'one-dark-pro' else ''}>One Dark Pro</option>
                     </select>
                 </div>
 
@@ -858,7 +916,7 @@ def render_dashboard_html() -> str:
 
                 <!-- Logout Button -->
                 <button type="button" onclick="handleLogout()" class="w-full py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs transition flex items-center justify-center gap-2 font-medium">
-                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg width="16" height="16" class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                     </svg>
                     خروج از حساب
@@ -879,15 +937,16 @@ def render_dashboard_html() -> str:
         <div id="mobileNavMenu" class="hidden" style="display: none !important;"><button id="m-btn-tab-downloads" class="hidden"></button></div>
 
         <!-- ================= MAIN CONTENT AREA ================= -->
-        <div class="md:ml-64 ml-0 min-h-screen flex flex-col transition-all duration-300">
+        <div id="contentWrapper" class="md:mr-64 mr-0 min-h-screen flex flex-col transition-all duration-300">
             <!-- Top Sticky Header -->
             <header class="glass sticky top-0 z-30 px-4 sm:px-6 py-3.5 border-b border-slate-800/80 flex justify-between items-center gap-3">
                 <div class="flex items-center gap-3">
-                    <button type="button" onclick="toggleMobileDrawer()" id="btnMobileMenu" class="md:hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center justify-center focus:outline-none" title="منوی ناوبری">
-                        <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button type="button" onclick="toggleSidebar()" id="btnToggleSidebar" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center justify-center focus:outline-none" title="تغییر وضعیت منوی سایدبار">
+                        <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
                     </button>
+                    <button type="button" onclick="toggleSidebar()" id="btnMobileMenu" class="hidden" style="display:none !important;"></button>
                     <div>
                         <h2 id="currentTabTitle" class="text-base sm:text-lg font-bold text-white tracking-tight">داشبورد و وضعیت زنده موتور UNFINIT</h2>
                         <p id="currentTabDesc" class="text-xs text-slate-400">پایش لحظه‌ای اتصالات، آمار فایل‌ها، سقف ایمن بله و لاگ‌های زنده</p>
@@ -899,7 +958,7 @@ def render_dashboard_html() -> str:
                         موتور پایدار و فعال
                     </div>
                     <button onclick="handleLogout()" class="rounded-full px-4 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5 font-medium">
-                        <span>🚪</span> خروج
+                        خروج
                     </button>
                 </div>
             </header>
@@ -1033,7 +1092,7 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
                 <div id="dashboardRecentLogs" dir="ltr" class="font-mono text-xs max-h-60 overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text">
-                    <div class="text-slate-500">// UNFINIT Engine v0.3.5 Live Stream initialized...</div>
+                    <div class="text-slate-500">// UNFINIT Engine v0.3.6 Live Stream initialized...</div>
                 </div>
             </div>
         </div>
@@ -1041,205 +1100,223 @@ def render_dashboard_html() -> str:
         <!-- ================= TAB 1: STUDIO & MEDIA HUB ================= -->
         <div id="tab-studio" class="hidden space-y-6">
 
-            <!-- Cross-Platform URL Dispatcher & Tools -->
-            <div class="glass p-6 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                <h2 class="text-base font-bold text-slate-100 mb-2 flex items-center gap-2">
-                    <span>🌐</span> دانلود استریم از لینک مستقیم و دیسپچ بین پلتفرم‌ها (URL Uploader)
-                </h2>
-                <p class="text-xs text-slate-400 mb-4">
-                    یک لینک مستقیم (مستقیم MP3، ویدیو یا سند) را وارد کنید و پلتفرم مقصد را انتخاب نمایید تا فایل به صورت خودکار دانلود، متادیتاگذاری و ارسال گردد.
-                </p>
-                <form id="dispatchForm" class="grid grid-cols-1 md:grid-cols-4 gap-4" onsubmit="handleDispatch(event)">
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-medium text-slate-300 mb-1">آدرس اینترنتی فایل (Direct URL)</label>
-                        <input type="url" id="directUrl" required placeholder="https://example.com/audio.mp3" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+            <!-- Cross-Platform URL Dispatcher & Tools (Accordion) -->
+            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4" open>
+                <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
+                    <div class="flex items-center gap-2">
+                        <svg width="20" height="20" class="w-5 h-5 text-cyan-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                        </svg>
+                        <span>دانلود استریم از لینک مستقیم و دیسپچ بین پلتفرم‌ها (URL Uploader)</span>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">پلتفرم مقصد ارسال</label>
-                        <select id="targetPlatform" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
-                            <option value="telegram">✈️ تلگرام (حساب ادمین)</option>
-                            <option value="rubika_user">🟣 روبیکا (پیام‌های ذخیره‌شده)</option>
-                            <option value="bale">🟢 بله (با کمپرسور خودکار {config.MAX_SAFE_BALE_SIZE_MB} MB)</option>
-                        </select>
-                    </div>
-                    <div class="flex items-end">
-                        <button type="submit" id="submitBtn" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                            <span>⚡️</span> دانلود و ارسال خودکار
-                        </button>
-                    </div>
-                </form>
-                <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
-            </div>
+                    <span class="text-xs text-slate-400 font-mono">▼</span>
+                </summary>
+                <div class="p-6 pt-2 space-y-4">
+                    <p class="text-xs text-slate-400 mb-2">
+                        یک لینک مستقیم (مستقیم MP3، ویدیو یا سند) را وارد کنید و پلتفرم مقصد را انتخاب نمایید تا فایل به صورت خودکار دانلود، متادیتاگذاری و ارسال گردد.
+                    </p>
+                    <form id="dispatchForm" class="grid grid-cols-1 md:grid-cols-4 gap-4" onsubmit="handleDispatch(event)">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-medium text-slate-300 mb-1">آدرس اینترنتی فایل (Direct URL)</label>
+                            <input type="url" id="directUrl" required placeholder="https://example.com/audio.mp3" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">پلتفرم مقصد ارسال</label>
+                            <select id="targetPlatform" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
+                                <option value="telegram">تلگرام (حساب ادمین)</option>
+                                <option value="rubika_user">روبیکا (پیام‌های ذخیره‌شده)</option>
+                                <option value="bale">بله (با کمپرسور خودکار {config.MAX_SAFE_BALE_SIZE_MB} MB)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" id="submitBtn" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                                <span>دانلود و ارسال خودکار</span>
+                            </button>
+                        </div>
+                    </form>
+                    <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
+                </div>
+            </details>
 
-            <!-- SVG Vector Studio Suite Widget -->
-            <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div class="flex justify-between items-center mb-1">
-                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                        <span>🖼</span> استودیوی وکتور SVG (SVG Studio Suite)
-                    </h2>
+            <!-- SVG Vector Studio Suite Widget (Accordion) -->
+            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4" open>
+                <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
+                    <div class="flex items-center gap-2">
+                        <svg width="20" height="20" class="w-5 h-5 text-indigo-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        <span>استودیوی وکتور SVG (SVG Studio Suite)</span>
+                    </div>
                     <span class="text-xs font-mono px-2.5 py-1 rounded-lg border text-cyan-400 bg-cyan-950/80 border-cyan-800">
-                        Vector Engine v0.3.4
+                        Vector Engine v0.3.6
                     </span>
-                </div>
-                <p class="text-xs text-slate-400">
-                    موتور برداری پیشرفته: تغییر رنگ زنده و هوشمند المان‌های SVG، تولید وکتور از متن و تبدیل بدون افت کیفیت به PNG شفاف و JPG با ابعاد بالا.
-                </p>
+                </summary>
+                <div class="p-6 pt-2 space-y-4">
+                    <p class="text-xs text-slate-400">
+                        موتور برداری پیشرفته: تغییر رنگ زنده و هوشمند المان‌های SVG، تولید وکتور از متن و تبدیل بدون افت کیفیت به PNG شفاف و JPG با ابعاد بالا.
+                    </p>
 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    <!-- Left: Upload, Recolor & Text-to-SVG Form -->
-                    <div class="lg:col-span-7 space-y-3">
-                        <form id="svgConvertForm" class="space-y-3" onsubmit="handleSvgConvert(event)">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-300 mb-1">انتخاب فایل وکتور SVG</label>
-                                    <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" onchange="handleSvgFileSelected(this.files)" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <!-- Left: Upload, Recolor & Text-to-SVG Form -->
+                        <div class="lg:col-span-7 space-y-3">
+                            <form id="svgConvertForm" class="space-y-3" onsubmit="handleSvgConvert(event)">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-300 mb-1">انتخاب فایل وکتور SVG</label>
+                                        <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" onchange="handleSvgFileSelected(this.files)" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-300 mb-1">فرمت خروجی تبدیل</label>
+                                        <select id="svgOutputFormat" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                                            <option value="png">PNG با شفافیت کامل (Alpha Transparency)</option>
+                                            <option value="jpg">JPG با پس‌زمینه سفید (HQ 300 DPI)</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-300 mb-1">فرمت خروجی تبدیل</label>
-                                    <select id="svgOutputFormat" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
-                                        <option value="png">🖼 PNG با شفافیت کامل (Alpha Transparency)</option>
-                                        <option value="jpg">🖼 JPG با پس‌زمینه سفید (HQ 300 DPI)</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            <!-- Color Palette & Smart Recolor -->
-                            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-                                <label class="block text-[11px] font-bold text-slate-300">🎨 تغییر رنگ هوشمند وکتور (Smart Recolor):</label>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <input type="color" id="svgRecolorPicker" value="#FFFFFF" onchange="syncSvgColorPicker(this.value)" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
-                                    <input type="text" id="svgHexInput" value="#FFFFFF" placeholder="#FFFFFF" maxlength="9" onchange="syncSvgHexInput(this.value)" class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-center text-cyan-300 focus:outline-none focus:border-cyan-500" dir="ltr">
-                                    <button type="button" onclick="setSvgColor('#FFFFFF')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-medium border border-slate-600 transition">⚪️ سفید (#FFF)</button>
-                                    <button type="button" onclick="setSvgColor('#000000')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700 transition">⚫️ مشکی (#000)</button>
-                                    <button type="button" onclick="setSvgColor('#3B82F6')" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 text-sky-300 text-[11px] font-medium border border-sky-800 transition">🔵 آبی (#3B82F6)</button>
-                                    <button type="button" onclick="setSvgColor('#E11D48')" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 text-[11px] font-medium border border-rose-800 transition">🔴 قرمز (#E11D48)</button>
+                                <!-- Color Palette & Smart Recolor -->
+                                <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                    <label class="block text-[11px] font-bold text-slate-300">تغییر رنگ هوشمند وکتور (Smart Recolor):</label>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <input type="color" id="svgRecolorPicker" value="#FFFFFF" onchange="syncSvgColorPicker(this.value)" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
+                                        <input type="text" id="svgHexInput" value="#FFFFFF" placeholder="#FFFFFF" maxlength="9" onchange="syncSvgHexInput(this.value)" class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-center text-cyan-300 focus:outline-none focus:border-cyan-500" dir="ltr">
+                                        <button type="button" onclick="setSvgColor('#FFFFFF')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-medium border border-slate-600 transition">سفید (#FFF)</button>
+                                        <button type="button" onclick="setSvgColor('#000000')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700 transition">مشکی (#000)</button>
+                                        <button type="button" onclick="setSvgColor('#3B82F6')" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 text-sky-300 text-[11px] font-medium border border-sky-800 transition">آبی (#3B82F6)</button>
+                                        <button type="button" onclick="setSvgColor('#E11D48')" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 text-[11px] font-medium border border-rose-800 transition">قرمز (#E11D48)</button>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 pt-1">
+                                        <button type="button" id="btnSvgRecolor" onclick="handleSvgRecolor()" class="px-3.5 py-1.5 rounded-xl bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-bold transition flex items-center gap-1">
+                                            <span>اعمال تغییر رنگ</span>
+                                        </button>
+                                        <button type="button" id="btnSvgDownload" onclick="downloadCurrentSvg()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1">
+                                            <span>دریافت فایل SVG</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="flex flex-wrap gap-2 pt-1">
-                                    <button type="button" id="btnSvgRecolor" onclick="handleSvgRecolor()" class="px-3.5 py-1.5 rounded-xl bg-cyan-800 hover:bg-cyan-700 text-white text-xs font-bold transition flex items-center gap-1">
-                                        <span>🎨</span> اعمال تغییر رنگ
+
+                                <!-- Typography: Text to SVG -->
+                                <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                    <label class="block text-[11px] font-bold text-slate-300">تولید وکتور متنی (Text to SVG Typography):</label>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <input type="text" id="svgTextInput" placeholder="متن جهت تولید لوگوتایپ یا عنوان وکتور..." class="flex-1 min-w-[200px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                                        <input type="number" id="svgTextSizeInput" value="48" min="12" max="144" class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-mono text-center text-slate-200" title="اندازه فونت">
+                                        <button type="button" onclick="handleGenerateTextSvg()" class="px-3.5 py-1.5 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1">
+                                            <span>ساخت وکتور</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="pt-1">
+                                    <button type="submit" id="btnSvgConvert" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-xs">
+                                        <span>تبدیل و دریافت تصویر</span>
                                     </button>
-                                    <button type="button" id="btnSvgDownload" onclick="downloadCurrentSvg()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center gap-1">
-                                        <span>📥</span> دریافت فایل SVG
-                                    </button>
                                 </div>
-                            </div>
+                            </form>
+                        </div>
 
-                            <!-- Typography: Text to SVG -->
-                            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-                                <label class="block text-[11px] font-bold text-slate-300">✍️ تولید وکتور متنی (Text to SVG Typography):</label>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <input type="text" id="svgTextInput" placeholder="متن جهت تولید لوگوتایپ یا عنوان وکتور..." class="flex-1 min-w-[200px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
-                                    <input type="number" id="svgTextSizeInput" value="48" min="12" max="144" class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-mono text-center text-slate-200" title="اندازه فونت">
-                                    <button type="button" onclick="handleGenerateTextSvg()" class="px-3.5 py-1.5 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1">
-                                        <span>⚡️</span> ساخت وکتور
-                                    </button>
-                                </div>
+                        <!-- Right: Live Vector Preview -->
+                        <div class="lg:col-span-5 flex flex-col">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-medium text-slate-300">پیش‌نمایش زنده وکتور:</label>
+                                <span id="svgDimensionsBadge" class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">-</span>
                             </div>
-
-                            <div class="pt-1">
-                                <button type="submit" id="btnSvgConvert" class="w-full theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-xs">
-                                    <span>⚡️</span> تبدیل و دریافت تصویر
-                                </button>
+                            <div id="svgLivePreview" class="flex-1 border border-dashed border-slate-700/80 rounded-xl p-4 bg-slate-950/70 min-h-[200px] flex items-center justify-center overflow-auto">
+                                <span class="text-xs text-slate-500">فایل SVG انتخاب شده در اینجا رسم می‌شود</span>
                             </div>
-                        </form>
+                        </div>
                     </div>
 
-                    <!-- Right: Live Vector Preview -->
-                    <div class="lg:col-span-5 flex flex-col">
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="text-xs font-medium text-slate-300">پیش‌نمایش زنده وکتور:</label>
-                            <span id="svgDimensionsBadge" class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">-</span>
-                        </div>
-                        <div id="svgLivePreview" class="flex-1 border border-dashed border-slate-700/80 rounded-xl p-4 bg-slate-950/70 min-h-[200px] flex items-center justify-center overflow-auto">
-                            <span class="text-xs text-slate-500">فایل SVG انتخاب شده در اینجا رسم می‌شود</span>
-                        </div>
-                    </div>
+                    <div id="svgConvertResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono flex items-center justify-between"></div>
                 </div>
+            </details>
 
-                <div id="svgConvertResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono flex items-center justify-between"></div>
-            </div>
-
-            <!-- Web Mp3tag Studio & Media Table -->
-            <div class="glass p-6 rounded-2xl space-y-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>🎛</span> استودیوی پیشرفته متادیتا و رسانه (Web Mp3tag Studio)
-                        </h2>
-                        <p class="text-xs text-slate-400 mt-1">
-                            ویرایش حرفه‌ای متادیتا، برش صدا با رسم موج صوتی، کاور آرت، شماره‌گذاری خودکار جلسات و ارسال مستقیم به پیام‌رسان‌ها
-                        </p>
+            <!-- Web Mp3tag Studio & Media Table (Accordion) -->
+            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4" open>
+                <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
+                    <div class="flex items-center gap-2">
+                        <svg width="20" height="20" class="w-5 h-5 text-emerald-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                        </svg>
+                        <span>استودیوی پیشرفته متادیتا و رسانه (Web Mp3tag Studio)</span>
                     </div>
                     <span class="text-xs text-cyan-400 font-mono bg-cyan-950/80 px-3 py-1 rounded-lg border border-cyan-800">
                         تعداد کل فایل‌ها: {active_drops_count}
                     </span>
-                </div>
+                </summary>
+                <div class="p-6 pt-2 space-y-4">
+                    <p class="text-xs text-slate-400">
+                        ویرایش حرفه‌ای متادیتا، برش صدا با رسم موج صوتی، کاور آرت، شماره‌گذاری خودکار جلسات و ارسال مستقیم به پیام‌رسان‌ها
+                    </p>
 
-                <!-- Drag & Drop Upload Zone -->
-                <div id="studioDropzone" onclick="document.getElementById('studioFileInput').click()" class="border-2 border-dashed p-6 rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group">
-                    <input type="file" id="studioFileInput" multiple accept="audio/*,video/*" class="hidden" onchange="handleStudioFilesSelect(this.files)">
-                    <div class="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center text-2xl text-cyan-300 group-hover:scale-110 transition">
-                        📂
-                    </div>
-                    <div>
-                        <p class="text-xs font-bold text-slate-200">فایل‌های صوتی یا ویدیویی خود را به اینجا بکشید یا برای انتخاب کلیک کنید</p>
-                        <p class="text-[11px] text-slate-400 mt-1">پشتیبانی از فرمت‌های صوتی و ویدیویی (MP3, M4A, AAC, WAV, MP4) با ثبت خودکار در سشن‌های استودیو</p>
-                    </div>
-                    <div id="studioUploadProgress" class="hidden text-xs text-cyan-400 font-mono"></div>
-                </div>
-
-                <!-- Batch Action Bar -->
-                <div class="flex flex-wrap justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 gap-3">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
-                            <input type="checkbox" id="selectAllDrops" onchange="toggleSelectAllDrops(this)" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
-                            <span>انتخاب همه</span>
-                        </label>
-                        <span id="selectedCountBadge" class="text-xs text-cyan-300 font-mono bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800/80">۰ فایل انتخاب شده</span>
-                        <button onclick="batchDeleteStudioDrops()" class="px-3.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800 transition flex items-center gap-1.5" title="حذف گروهی فایل‌های انتخاب‌شده از حافظه و دیسک">
-                            <span>🗑️</span> حذف فایل‌های انتخاب‌شده
-                        </button>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <div class="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-700">
-                            <span class="text-xs text-slate-400">مرتب‌سازی:</span>
-                            <select id="studioSortSelect" onchange="changeStudioSort(this.value)" class="bg-slate-900 border border-slate-700 text-xs text-cyan-300 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 transition cursor-pointer">
-                                <option value="newest">جدیدترین</option>
-                                <option value="oldest">قدیمی‌ترین</option>
-                                <option value="size_desc">بزرگترین حجم</option>
-                                <option value="size_asc">کمترین حجم</option>
-                                <option value="name_asc">نام فایل (الفبا)</option>
-                            </select>
+                    <!-- Drag & Drop Upload Zone -->
+                    <div id="studioDropzone" onclick="document.getElementById('studioFileInput').click()" class="border-2 border-dashed p-6 rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group">
+                        <input type="file" id="studioFileInput" multiple accept="audio/*,video/*" class="hidden" onchange="handleStudioFilesSelect(this.files)">
+                        <div class="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center text-2xl text-cyan-300 group-hover:scale-110 transition">
+                            <svg width="24" height="24" class="w-6 h-6 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
                         </div>
-                        <button onclick="openBatchTagModal()" class="theme-accent-btn px-3.5 py-1.5 rounded-xl text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
-                            <span>✏️</span> ویرایش گروهی تگ‌ها (Batch Edit)
-                        </button>
-                        <button onclick="cleanupStudioDrops()" id="btnCleanupStudio" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5" title="پاکسازی رکوردهای تکراری و سشن‌های خالی">
-                            <span>🧹</span> پاکسازی سشن‌های خالی
-                        </button>
-                        <button onclick="refreshStudioList()" class="theme-card-btn px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1">
-                            <span>🔄</span> به‌روزرسانی لیست
-                        </button>
+                        <div>
+                            <p class="text-xs font-bold text-slate-200">فایل‌های صوتی یا ویدیویی خود را به اینجا بکشید یا برای انتخاب کلیک کنید</p>
+                            <p class="text-[11px] text-slate-400 mt-1">پشتیبانی از فرمت‌های صوتی و ویدیویی (MP3, M4A, AAC, WAV, MP4) با ثبت خودکار در سشن‌های استودیو</p>
+                        </div>
+                        <div id="studioUploadProgress" class="hidden text-xs text-cyan-400 font-mono"></div>
+                    </div>
+
+                    <!-- Batch Action Bar -->
+                    <div class="flex flex-wrap justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 gap-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
+                                <input type="checkbox" id="selectAllDrops" onchange="toggleSelectAllDrops(this)" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
+                                <span>انتخاب همه</span>
+                            </label>
+                            <span id="selectedCountBadge" class="text-xs text-cyan-300 font-mono bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800/80">۰ فایل انتخاب شده</span>
+                            <button onclick="batchDeleteStudioDrops()" class="px-3.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800 transition flex items-center gap-1.5" title="حذف گروهی فایل‌های انتخاب‌شده از حافظه و دیسک">
+                                <span>حذف فایل‌های انتخاب‌شده</span>
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-700">
+                                <span class="text-xs text-slate-400">مرتب‌سازی:</span>
+                                <select id="studioSortSelect" onchange="changeStudioSort(this.value)" class="bg-slate-900 border border-slate-700 text-xs text-cyan-300 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 transition cursor-pointer">
+                                    <option value="newest">جدیدترین</option>
+                                    <option value="oldest">قدیمی‌ترین</option>
+                                    <option value="size_desc">بزرگترین حجم</option>
+                                    <option value="size_asc">کمترین حجم</option>
+                                    <option value="name_asc">نام فایل (الفبا)</option>
+                                </select>
+                            </div>
+                            <button onclick="openBatchTagModal()" class="theme-accent-btn px-3.5 py-1.5 rounded-xl text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
+                                <span>ویرایش گروهی تگ‌ها (Batch Edit)</span>
+                            </button>
+                            <button onclick="cleanupStudioDrops()" id="btnCleanupStudio" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5" title="پاکسازی رکوردهای تکراری و سشن‌های خالی">
+                                <span>پاکسازی سشن‌های خالی</span>
+                            </button>
+                            <button onclick="refreshStudioList()" class="theme-card-btn px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1">
+                                <span>به‌روزرسانی لیست</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Studio Media Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-700 text-xs text-slate-400">
+                                    <th class="py-3 px-3 text-center w-10">انتخاب</th>
+                                    <th class="py-3 px-3">عنوان و متادیتا / نام فایل</th>
+                                    <th class="py-3 px-3">مشخصات و مبدا</th>
+                                    <th class="py-3 px-3 text-left">عملیات استودیو و دیسپچ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studioTableBody">
+                                {drop_rows}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-
-                <!-- Studio Media Table -->
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-700 text-xs text-slate-400">
-                                <th class="py-3 px-3 text-center w-10">انتخاب</th>
-                                <th class="py-3 px-3">عنوان و متادیتا / نام فایل</th>
-                                <th class="py-3 px-3">مشخصات و مبدا</th>
-                                <th class="py-3 px-3 text-left">عملیات استودیو و دیسپچ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studioTableBody">
-                            {drop_rows}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            </details>
 
             <!-- Studio & Course Copilot (Integrated into Studio Tab) -->
             <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
@@ -1363,9 +1440,25 @@ def render_dashboard_html() -> str:
                         </div>
                         <textarea id="newCDesc" rows="3" oninput="updateCharCounter('newCDesc', 'counter_newCDesc', 255)" placeholder="توضیحات کامل دوره و سرفصل‌ها..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره (تحویل خودکار پس از خرید)</label>
-                        <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">شیوه تحویل محتوا</label>
+                            <select id="newCDeliveryType" onchange="togglePackageInput('newC')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                                <option value="channel">هدایت به کانال / لینک مستقیم</option>
+                                <option value="files_package">بسته چندفایله صوتی/تصویری مستقیم ربات (پکیج)</option>
+                            </select>
+                        </div>
+                        <div id="newCDownloadBox">
+                            <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره (تحویل خودکار)</label>
+                            <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                        </div>
+                    </div>
+                    <div id="newCPackageBox" class="hidden">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs text-cyan-300 font-medium">لیست فایل‌های پکیج (JSON یا خط‌به‌خط)</label>
+                            <span class="text-[10px] text-slate-400">تحویل زنجیره‌ای در تلگرام و بله</span>
+                        </div>
+                        <textarea id="newCFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"></textarea>
                     </div>
                     <div class="flex flex-wrap items-center gap-6 pt-2">
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
@@ -2222,9 +2315,25 @@ def render_dashboard_html() -> str:
                         </div>
                         <textarea id="editDesc" rows="3" oninput="updateCharCounter('editDesc', 'counter_editDesc', 255)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
                     </div>
-                    <div>
-                        <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره</label>
-                        <input type="text" id="editDl" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">شیوه تحویل محتوا</label>
+                            <select id="editDeliveryType" onchange="togglePackageInput('edit')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                                <option value="channel">هدایت به کانال / لینک مستقیم</option>
+                                <option value="files_package">بسته چندفایله صوتی/تصویری مستقیم ربات (پکیج)</option>
+                            </select>
+                        </div>
+                        <div id="editDownloadBox">
+                            <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره</label>
+                            <input type="text" id="editDl" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                        </div>
+                    </div>
+                    <div id="editPackageBox" class="hidden">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs text-cyan-300 font-medium">لیست فایل‌های پکیج (JSON یا خط‌به‌خط)</label>
+                            <span class="text-[10px] text-slate-400">تحویل زنجیره‌ای در تلگرام و بله</span>
+                        </div>
+                        <textarea id="editFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"></textarea>
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">آدرس عکس / بنر</label>
@@ -2721,42 +2830,56 @@ def render_dashboard_html() -> str:
                 }}
                 window.handleLogout = handleLogout;
 
-                function toggleMobileDrawer(forceState) {{
+                function toggleSidebar(forceState) {{
                     const sidebar = document.getElementById('mainSidebar');
-                    const drawer = document.getElementById('mobileDrawer');
+                    const content = document.getElementById('contentWrapper');
                     const overlay = document.getElementById('drawerOverlay');
-                    if (!overlay) return;
-                    let isClosed = true;
-                    if (sidebar) {{
-                        isClosed = sidebar.classList.contains('-translate-x-full');
-                    }} else if (drawer) {{
-                        isClosed = drawer.classList.contains('translate-x-full');
-                    }}
-                    const shouldOpen = (typeof forceState === 'boolean') ? forceState : isClosed;
-                    if (shouldOpen) {{
-                        overlay.classList.remove('hidden');
-                        if (sidebar) {{
-                            sidebar.classList.remove('-translate-x-full');
+                    const isMobile = window.innerWidth < 768;
+
+                    if (isMobile) {{
+                        if (!overlay || !sidebar) return;
+                        const isClosed = sidebar.classList.contains('translate-x-full');
+                        const shouldOpen = (typeof forceState === 'boolean') ? forceState : isClosed;
+                        if (shouldOpen) {{
+                            overlay.classList.remove('hidden');
+                            sidebar.classList.remove('translate-x-full');
                             sidebar.classList.add('translate-x-0');
-                        }}
-                        if (drawer) {{
-                            drawer.classList.remove('translate-x-full');
-                            drawer.classList.add('translate-x-0');
+                        }} else {{
+                            overlay.classList.add('hidden');
+                            sidebar.classList.remove('translate-x-0');
+                            sidebar.classList.add('translate-x-full');
                         }}
                     }} else {{
-                        overlay.classList.add('hidden');
-                        if (sidebar) {{
-                            sidebar.classList.remove('translate-x-0');
-                            sidebar.classList.add('-translate-x-full');
-                        }}
-                        if (drawer) {{
-                            drawer.classList.remove('translate-x-0');
-                            drawer.classList.add('translate-x-full');
+                        if (!sidebar) return;
+                        const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+                        const shouldCollapse = (typeof forceState === 'boolean') ? !forceState : !isCollapsed;
+                        if (shouldCollapse) {{
+                            sidebar.classList.add('sidebar-collapsed');
+                            if (content) content.classList.add('sidebar-collapsed');
+                            try {{ localStorage.setItem('unfinit_sidebar_collapsed', 'true'); }} catch (_) {{}}
+                        }} else {{
+                            sidebar.classList.remove('sidebar-collapsed');
+                            if (content) content.classList.remove('sidebar-collapsed');
+                            try {{ localStorage.setItem('unfinit_sidebar_collapsed', 'false'); }} catch (_) {{}}
                         }}
                     }}
                 }}
-                window.toggleMobileDrawer = toggleMobileDrawer;
-                window.toggleMobileMenu = toggleMobileDrawer;
+                window.toggleSidebar = toggleSidebar;
+                window.toggleMobileDrawer = toggleSidebar;
+                window.toggleMobileMenu = toggleSidebar;
+
+                function initSidebarState() {{
+                    try {{
+                        const isCollapsed = localStorage.getItem('unfinit_sidebar_collapsed') === 'true';
+                        if (isCollapsed && window.innerWidth >= 768) {{
+                            const sidebar = document.getElementById('mainSidebar');
+                            const content = document.getElementById('contentWrapper');
+                            if (sidebar) sidebar.classList.add('sidebar-collapsed');
+                            if (content) content.classList.add('sidebar-collapsed');
+                        }}
+                    }} catch (_) {{}}
+                }}
+                window.initSidebarState = initSidebarState;
 
                 const tabMeta = {{
                     'dashboard': {{
@@ -3092,10 +3215,17 @@ def render_dashboard_html() -> str:
                 }}
 
                 function persistTabsOrder() {{
+                    const sidebarNav = document.getElementById('sidebarNavList');
                     const desktopNav = document.getElementById('desktopNavTabs');
-                    if (!desktopNav) return;
-                    const currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab')).filter(Boolean);
+                    let currentOrder = [];
+                    if (sidebarNav) {{
+                        currentOrder = Array.from(sidebarNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab')).filter(Boolean);
+                    }}
+                    if (currentOrder.length === 0 && desktopNav) {{
+                        currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab')).filter(Boolean);
+                    }}
                     if (currentOrder.length === 0) return;
+                    localStorage.setItem('unfinit_nav_order', JSON.stringify(currentOrder));
                     localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
@@ -3113,97 +3243,123 @@ def render_dashboard_html() -> str:
                 }}
 
                 function initTabsDragAndDrop() {{
+                    const sidebarNav = document.getElementById('sidebarNavList');
                     const desktopNav = document.getElementById('desktopNavTabs');
-                    if (!desktopNav) return;
 
                     try {{
-                        const savedOrder = JSON.parse(localStorage.getItem('unfinit_tabs_order') || '[]');
+                        const savedOrder = JSON.parse(localStorage.getItem('unfinit_nav_order') || localStorage.getItem('unfinit_tabs_order') || '[]');
                         if (Array.isArray(savedOrder) && savedOrder.length > 0) {{
-                            savedOrder.forEach(tabId => {{
-                                const btn = desktopNav.querySelector(`[data-tab="${{tabId}}"]`);
-                                if (btn) desktopNav.appendChild(btn);
-                            }});
+                            if (sidebarNav) {{
+                                savedOrder.forEach(tabId => {{
+                                    const btn = sidebarNav.querySelector(`[data-tab="${{tabId}}"]`);
+                                    if (btn) sidebarNav.appendChild(btn);
+                                }});
+                            }}
+                            if (desktopNav) {{
+                                savedOrder.forEach(tabId => {{
+                                    const btn = desktopNav.querySelector(`[data-tab="${{tabId}}"]`);
+                                    if (btn) desktopNav.appendChild(btn);
+                                }});
+                            }}
                         }}
                     }} catch (e) {{
                         console.warn('[DragDrop] Error loading saved tab order:', e);
                     }}
 
-                    let draggedItem = null;
+                    function setupDragForContainer(container, isVertical) {{
+                        if (!container) return;
+                        let draggedItem = null;
 
-                    // Mouse Drag & Drop
-                    desktopNav.addEventListener('dragstart', function(e) {{
-                        const btn = e.target.closest('[data-tab]');
-                        if (!btn) return;
-                        draggedItem = btn;
-                        e.dataTransfer.effectAllowed = 'move';
-                        e.dataTransfer.setData('text/plain', btn.getAttribute('data-tab'));
-                        btn.classList.add('opacity-40');
-                    }});
+                        // Mouse Drag & Drop
+                        container.addEventListener('dragstart', function(e) {{
+                            const btn = e.target.closest('[data-tab]');
+                            if (!btn) return;
+                            draggedItem = btn;
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', btn.getAttribute('data-tab'));
+                            btn.classList.add('opacity-40');
+                        }});
 
-                    desktopNav.addEventListener('dragend', function(e) {{
-                        const btn = e.target.closest('[data-tab]');
-                        if (btn) btn.classList.remove('opacity-40');
-                        desktopNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('opacity-40'));
-                        draggedItem = null;
-                        persistTabsOrder();
-                    }});
-
-                    desktopNav.addEventListener('dragover', function(e) {{
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                        const targetBtn = e.target.closest('[data-tab]');
-                        if (targetBtn && targetBtn !== draggedItem && targetBtn.parentElement === desktopNav) {{
-                            const rect = targetBtn.getBoundingClientRect();
-                            const midpoint = rect.x + rect.width / 2;
-                            if (e.clientX < midpoint) {{
-                                desktopNav.insertBefore(draggedItem, targetBtn);
-                            }} else {{
-                                desktopNav.insertBefore(draggedItem, targetBtn.nextSibling);
-                            }}
-                        }}
-                    }});
-
-                    desktopNav.addEventListener('drop', function(e) {{
-                        e.preventDefault();
-                        persistTabsOrder();
-                    }});
-
-                    // Mobile Touch Drag & Drop
-                    let touchDraggedItem = null;
-                    desktopNav.addEventListener('touchstart', function(e) {{
-                        const btn = e.target.closest('[data-tab]');
-                        if (!btn) return;
-                        touchDraggedItem = btn;
-                        btn.classList.add('opacity-40');
-                    }}, {{ passive: true }});
-
-                    desktopNav.addEventListener('touchmove', function(e) {{
-                        if (!touchDraggedItem) return;
-                        const touch = e.touches[0];
-                        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-                        if (!targetEl) return;
-                        const targetBtn = targetEl.closest('[data-tab]');
-                        if (targetBtn && targetBtn !== touchDraggedItem && targetBtn.parentElement === desktopNav) {{
-                            const rect = targetBtn.getBoundingClientRect();
-                            const midpoint = rect.x + rect.width / 2;
-                            if (touch.clientX < midpoint) {{
-                                desktopNav.insertBefore(touchDraggedItem, targetBtn);
-                            }} else {{
-                                desktopNav.insertBefore(touchDraggedItem, targetBtn.nextSibling);
-                            }}
-                        }}
-                    }}, {{ passive: true }});
-
-                    function endTouchDrag() {{
-                        if (touchDraggedItem) {{
-                            touchDraggedItem.classList.remove('opacity-40');
-                            desktopNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('opacity-40'));
-                            touchDraggedItem = null;
+                        container.addEventListener('dragend', function(e) {{
+                            const btn = e.target.closest('[data-tab]');
+                            if (btn) btn.classList.remove('opacity-40');
+                            container.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('opacity-40'));
+                            draggedItem = null;
                             persistTabsOrder();
+                        }});
+
+                        container.addEventListener('dragover', function(e) {{
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                            const targetBtn = e.target.closest('[data-tab]');
+                            if (targetBtn && targetBtn !== draggedItem && targetBtn.parentElement === container) {{
+                                const rect = targetBtn.getBoundingClientRect();
+                                const midpoint = isVertical ? (rect.y + rect.height / 2) : (rect.x + rect.width / 2);
+                                const coord = isVertical ? e.clientY : e.clientX;
+                                if (coord < midpoint) {{
+                                    container.insertBefore(draggedItem, targetBtn);
+                                }} else {{
+                                    container.insertBefore(draggedItem, targetBtn.nextSibling);
+                                }}
+                            }}
+                        }});
+
+                        container.addEventListener('drop', function(e) {{
+                            e.preventDefault();
+                            persistTabsOrder();
+                        }});
+
+                        // Mobile Touch with 500ms long-press
+                        let touchTimer = null;
+                        let touchDraggedItem = null;
+
+                        container.addEventListener('touchstart', function(e) {{
+                            const btn = e.target.closest('[data-tab]');
+                            if (!btn) return;
+                            touchTimer = setTimeout(function() {{
+                                touchDraggedItem = btn;
+                                btn.classList.add('opacity-40', 'scale-95');
+                                if (navigator.vibrate) navigator.vibrate(50);
+                            }}, 500);
+                        }}, {{ passive: true }});
+
+                        container.addEventListener('touchmove', function(e) {{
+                            if (!touchDraggedItem) {{
+                                if (touchTimer) {{ clearTimeout(touchTimer); touchTimer = null; }}
+                                return;
+                            }}
+                            e.preventDefault();
+                            const touch = e.touches[0];
+                            const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+                            if (!targetEl) return;
+                            const targetBtn = targetEl.closest('[data-tab]');
+                            if (targetBtn && targetBtn !== touchDraggedItem && targetBtn.parentElement === container) {{
+                                const rect = targetBtn.getBoundingClientRect();
+                                const midpoint = isVertical ? (rect.y + rect.height / 2) : (rect.x + rect.width / 2);
+                                const coord = isVertical ? touch.clientY : touch.clientX;
+                                if (coord < midpoint) {{
+                                    container.insertBefore(touchDraggedItem, targetBtn);
+                                }} else {{
+                                    container.insertBefore(touchDraggedItem, targetBtn.nextSibling);
+                                }}
+                            }}
+                        }}, {{ passive: false }});
+
+                        function endTouchDrag() {{
+                            if (touchTimer) {{ clearTimeout(touchTimer); touchTimer = null; }}
+                            if (touchDraggedItem) {{
+                                touchDraggedItem.classList.remove('opacity-40', 'scale-95');
+                                container.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('opacity-40', 'scale-95'));
+                                touchDraggedItem = null;
+                                persistTabsOrder();
+                            }}
                         }}
+                        container.addEventListener('touchend', endTouchDrag);
+                        container.addEventListener('touchcancel', endTouchDrag);
                     }}
-                    desktopNav.addEventListener('touchend', endTouchDrag);
-                    desktopNav.addEventListener('touchcancel', endTouchDrag);
+
+                    setupDragForContainer(sidebarNav, true);
+                    setupDragForContainer(desktopNav, false);
                 }}
 
                 function initUptimeTicker() {{
@@ -3226,12 +3382,14 @@ def render_dashboard_html() -> str:
                     document.addEventListener('DOMContentLoaded', function() {{
                         bindNavDelegation();
                         initTabsDragAndDrop();
+                        initSidebarState();
                         initUptimeTicker();
                         checkAuthOnLoad();
                     }});
                 }} else {{
                     bindNavDelegation();
                     initTabsDragAndDrop();
+                    initSidebarState();
                     initUptimeTicker();
                     checkAuthOnLoad();
                 }}
@@ -4423,6 +4581,18 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        function togglePackageInput(prefix) {{
+            const selectEl = document.getElementById(prefix + 'DeliveryType');
+            const pkgBox = document.getElementById(prefix + 'PackageBox');
+            if (selectEl && pkgBox) {{
+                if (selectEl.value === 'files_package') {{
+                    pkgBox.classList.remove('hidden');
+                }} else {{
+                    pkgBox.classList.add('hidden');
+                }}
+            }}
+        }}
+
         function formatPriceInput(el) {{
             if (!el) return;
             const digits = el.value.replace(/[^0-9]/g, '');
@@ -4447,12 +4617,25 @@ def render_dashboard_html() -> str:
             const allow_card = document.getElementById('newCAllowCard').checked;
             const allow_bale = document.getElementById('newCAllowBale').checked;
             const requires_referral = document.getElementById('newCRequiresReferral') ? (document.getElementById('newCRequiresReferral').checked ? 1 : 0) : 0;
+            const delivery_type = document.getElementById('newCDeliveryType') ? document.getElementById('newCDeliveryType').value : 'channel';
+            let files_package = [];
+            if (delivery_type === 'files_package' && document.getElementById('newCFilesPackage')) {{
+                const rawPkg = document.getElementById('newCFilesPackage').value.trim();
+                try {{
+                    files_package = rawPkg.startsWith('[') ? JSON.parse(rawPkg) : rawPkg.split('\\n').filter(Boolean).map(l => {{
+                        const parts = l.split('|').map(s => s.trim());
+                        return {{ title: parts[0] || 'فایل آموزشی', file_id: parts[1] || parts[0] }};
+                    }});
+                }} catch(e) {{
+                    files_package = [{{ title: name, file_name: rawPkg }}];
+                }}
+            }}
 
             try {{
                 const res = await fetch('/api/courses/add', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral }})
+                    body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral, delivery_type, files_package }})
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -4469,7 +4652,7 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale, requires_referral) {{
+        function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale, requires_referral, delivery_type, files_package) {{
             document.getElementById('editProductId').value = pid;
             document.getElementById('modalProdIdBadge').innerText = pid;
             document.getElementById('editName').value = name;
@@ -4482,6 +4665,17 @@ def render_dashboard_html() -> str:
             document.getElementById('editAllowBale').checked = !!allow_bale;
             if (document.getElementById('editRequiresReferral')) {{
                 document.getElementById('editRequiresReferral').checked = !!requires_referral;
+            }}
+            if (document.getElementById('editDeliveryType')) {{
+                document.getElementById('editDeliveryType').value = delivery_type || 'channel';
+                togglePackageInput('edit');
+            }}
+            if (document.getElementById('editFilesPackage')) {{
+                if (Array.isArray(files_package)) {{
+                    document.getElementById('editFilesPackage').value = files_package.length ? JSON.stringify(files_package, null, 2) : '';
+                }} else {{
+                    document.getElementById('editFilesPackage').value = files_package ? String(files_package) : '';
+                }}
             }}
             const statusEl = document.getElementById('bannerUploadStatus_editPhoto');
             if (statusEl) statusEl.innerText = '';
@@ -4509,7 +4703,9 @@ def render_dashboard_html() -> str:
                 course.photo_url,
                 course.allow_card,
                 course.allow_bale,
-                course.requires_referral
+                course.requires_referral,
+                course.delivery_type,
+                course.files_package
             );
         }}
 
@@ -4525,12 +4721,25 @@ def render_dashboard_html() -> str:
             const allow_card = document.getElementById('editAllowCard').checked ? 1 : 0;
             const allow_bale = document.getElementById('editAllowBale').checked ? 1 : 0;
             const requires_referral = document.getElementById('editRequiresReferral') ? (document.getElementById('editRequiresReferral').checked ? 1 : 0) : 0;
+            const delivery_type = document.getElementById('editDeliveryType') ? document.getElementById('editDeliveryType').value : 'channel';
+            let files_package = [];
+            if (delivery_type === 'files_package' && document.getElementById('editFilesPackage')) {{
+                const rawPkg = document.getElementById('editFilesPackage').value.trim();
+                try {{
+                    files_package = rawPkg.startsWith('[') ? JSON.parse(rawPkg) : rawPkg.split('\\n').filter(Boolean).map(l => {{
+                        const parts = l.split('|').map(s => s.trim());
+                        return {{ title: parts[0] || 'فایل آموزشی', file_id: parts[1] || parts[0] }};
+                    }});
+                }} catch(e) {{
+                    files_package = [{{ title: name, file_name: rawPkg }}];
+                }}
+            }}
 
             try {{
                 const res = await fetch('/api/courses/update', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral }})
+                    body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral, delivery_type, files_package }})
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -5078,6 +5287,7 @@ def render_dashboard_html() -> str:
         }}
 
 
+                window.togglePackageInput = togglePackageInput;
                 window.toggleAddCourseForm = toggleAddCourseForm;
                 window.handleCreateCourse = handleCreateCourse;
                 window.openEditModal = openEditModal;
@@ -6951,6 +7161,8 @@ async def handle_store_approve_order_async(order_id: str) -> dict:
             dl_content = prod_obj.download_link or ""
             cb_awarded = res.get("cashback_awarded", 0)
             u_id = str(order_obj.user_id)
+            if getattr(prod_obj, "delivery_type", "channel") == "files_package" or (hasattr(prod_obj, "files_package") and prod_obj.files_package):
+                asyncio.create_task(StoreService.deliver_course_package(prod_obj, u_id, order_obj.platform))
             if order_obj.platform == "telegram" and ACTIVE_TG_ADAPTER and u_id.isdigit():
                 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
                 cust_msg = StoreService.format_delivery_message(prod_obj.name, order_id, dl_content, cb_awarded)

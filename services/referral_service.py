@@ -160,6 +160,22 @@ class ReferralService:
             inviter.unlocked_gifts.append(TOHID_AMALI_PACK_ID)
             unlocked_now = True
             logger.info(f"[referral_service] Unlocked {TOHID_AMALI_PACK_ID} for inviter {inviter.phone} (invites: {inviter.successful_invites})")
+            try:
+                import asyncio
+                from services.store_service import StoreService, ProductItem
+                tohid_prod = ProductItem({
+                    "product_id": TOHID_AMALI_PACK_ID,
+                    "name": "دوره جامع توحید عملی",
+                    "delivery_type": "files_package",
+                    "files_package": TOHID_AMALI_EPISODES,
+                    "requires_referral": 1
+                })
+                if inviter.telegram_id:
+                    asyncio.create_task(StoreService.deliver_course_package(tohid_prod, inviter.telegram_id, "telegram"))
+                if inviter.bale_id:
+                    asyncio.create_task(StoreService.deliver_course_package(tohid_prod, inviter.bale_id, "bale"))
+            except Exception as e_deliv:
+                logger.warning(f"[referral_service] Could not trigger auto-delivery: {e_deliv}")
 
         UserService.save_users()
         return inviter.phone, unlocked_now

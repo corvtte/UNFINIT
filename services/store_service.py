@@ -37,6 +37,7 @@ class ProductItem:
         self.allow_bale = bool(data.get("allow_bale", 1))
         self.payment_type = data.get("payment_type", "paid")
         self.requires_referral = bool(data.get("requires_referral", 0))
+        self.delivery_type = str(data.get("delivery_type") or "channel").strip()
         eps = data.get("episodes")
         if isinstance(eps, str) and eps.strip():
             try:
@@ -47,6 +48,16 @@ class ProductItem:
             self.episodes = eps
         else:
             self.episodes = []
+        fps = data.get("files_package") or data.get("files")
+        if isinstance(fps, str) and fps.strip():
+            try:
+                self.files_package = json.loads(fps)
+            except Exception:
+                self.files_package = []
+        elif isinstance(fps, list):
+            self.files_package = fps
+        else:
+            self.files_package = []
 
 class OrderItem:
     def __init__(self, d: dict):
@@ -142,7 +153,9 @@ class StoreService:
                     "allow_bale": int(r.get("allow_bale", 1)),
                     "payment_type": r.get("payment_type", "paid"),
                     "requires_referral": int(r.get("requires_referral", 0) or 0),
+                    "delivery_type": str(r.get("delivery_type") or "channel"),
                     "episodes": json.loads(r.get("episodes")) if (r.get("episodes") and isinstance(r.get("episodes"), str)) else (r.get("episodes") or []),
+                    "files_package": json.loads(r.get("files_package")) if (r.get("files_package") and isinstance(r.get("files_package"), str)) else (r.get("files_package") or []),
                     "created_at": r.get("created_at", "")
                 })
             config.DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -157,7 +170,8 @@ class StoreService:
     async def update_product_field(product_id: str, field: str, value: Any) -> bool:
         allowed = {
             "name", "price", "description", "photo_file_id", "bale_photo_file_id", "digital_file_id",
-            "active", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral", "episodes"
+            "active", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral",
+            "episodes", "delivery_type", "files_package"
         }
         if field not in allowed:
             return False
@@ -248,6 +262,8 @@ class StoreService:
             allow_bale = product.allow_bale
             requires_referral = product.requires_referral
             episodes_str = json.dumps(product.episodes or [], ensure_ascii=False)
+            delivery_type = getattr(product, "delivery_type", "channel") or "channel"
+            files_pkg_str = json.dumps(getattr(product, "files_package", []) or [], ensure_ascii=False)
         elif isinstance(product, dict):
             pid = product.get("product_id") or ("prod_" + uuid.uuid4().hex[:6])
             name = product.get("name", "")
@@ -259,6 +275,8 @@ class StoreService:
             allow_bale = product.get("allow_bale", True)
             requires_referral = product.get("requires_referral", False)
             episodes_str = json.dumps(product.get("episodes", []), ensure_ascii=False)
+            delivery_type = product.get("delivery_type", "channel") or "channel"
+            files_pkg_str = json.dumps(product.get("files_package", []), ensure_ascii=False)
         else:
             pid = kwargs.get("product_id") or ("prod_" + uuid.uuid4().hex[:6])
             name = str(product or kwargs.get("name", ""))
@@ -270,18 +288,22 @@ class StoreService:
             allow_bale = kwargs.get("allow_bale", True)
             requires_referral = kwargs.get("requires_referral", False)
             episodes_str = json.dumps(kwargs.get("episodes", []), ensure_ascii=False)
+            delivery_type = kwargs.get("delivery_type", "channel") or "channel"
+            files_pkg_str = json.dumps(kwargs.get("files_package", []), ensure_ascii=False)
 
         now_str = get_tehran_now_str()
         ptype = "free" if price == 0 else "paid"
         await execute_query(
             """INSERT INTO products (
                 product_id, name, price, description, download_link, photo_url,
-                allow_card, allow_bale, payment_type, requires_referral, episodes, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                allow_card, allow_bale, payment_type, requires_referral, episodes,
+                delivery_type, files_package, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 pid, name, price, description or "", download_link or "", photo_url or "",
                 1 if allow_card else 0, 1 if allow_bale else 0, ptype,
-                1 if requires_referral else 0, episodes_str, now_str
+                1 if requires_referral else 0, episodes_str,
+                delivery_type, files_pkg_str, now_str
             )
         )
         await StoreService.backup_products_to_disk()
@@ -297,20 +319,30 @@ class StoreService:
         photo_url: str = "",
         allow_card: bool = True,
         allow_bale: bool = True,
-        requires_referral: bool = False
+        requires_referral: bool = False,
+        delivery_type: str = "channel",
+        files_package: Any = None
     ) -> ProductItem:
         pid = "prod_" + uuid.uuid4().hex[:6]
         now_str = get_tehran_now_str()
         ptype = "free" if price == 0 else "paid"
+        files_pkg_list = files_package if isinstance(files_package, list) else []
+        if isinstance(files_package, str) and files_package.strip():
+            try:
+                files_pkg_list = json.loads(files_package)
+            except Exception:
+                files_pkg_list = []
+        files_pkg_str = json.dumps(files_pkg_list, ensure_ascii=False)
         await execute_query(
             """INSERT INTO products (
                 product_id, name, price, description, download_link, photo_url,
-                allow_card, allow_bale, payment_type, requires_referral, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                allow_card, allow_bale, payment_type, requires_referral,
+                delivery_type, files_package, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 pid, name, price, description or "", download_link or "", photo_url or "",
                 1 if allow_card else 0, 1 if allow_bale else 0, ptype,
-                1 if requires_referral else 0, now_str
+                1 if requires_referral else 0, delivery_type, files_pkg_str, now_str
             )
         )
         await StoreService.backup_products_to_disk()
@@ -1068,6 +1100,90 @@ class StoreService:
     @staticmethod
     def format_customer_course_card(product_name: str, download_link: Optional[str], index: Optional[int] = None, total: Optional[int] = None) -> Tuple[str, List[Dict[str, str]]]:
         return format_customer_course_card(product_name, download_link, index, total)
+
+    @staticmethod
+    async def deliver_course_package(product: Any, user_id: str | int, platform: str = "telegram") -> Dict[str, Any]:
+        """
+        Delivers all files/episodes in a course's files_package to the user on Telegram or Bale.
+        Uses cached file_ids to avoid server bandwidth consumption.
+        """
+        from core.database import db_get_cached_file_id, db_set_cached_file_id
+        from services.web_panel import ACTIVE_TG_ADAPTER, ACTIVE_BALE_ADAPTER
+        
+        prod_obj = product if isinstance(product, ProductItem) else await StoreService.get_product(str(product))
+        if not prod_obj:
+            return {"ok": False, "error": "دوره مورد نظر یافت نشد."}
+
+        files = list(getattr(prod_obj, "files_package", []) or getattr(prod_obj, "episodes", []) or [])
+        if not files and prod_obj.requires_referral:
+            from services.referral_service import TOHID_AMALI_EPISODES
+            files = list(TOHID_AMALI_EPISODES)
+
+        if not files:
+            return {"ok": False, "sent_count": 0, "message": "پکیج فایلی برای این دوره تعریف نشده است."}
+
+        platform = str(platform).lower().strip()
+        uid_str = str(user_id).strip()
+        sent_count = 0
+
+        header_msg = f"📦 <b>تحویل خودکار پکیج آموزشی «{prod_obj.name}»</b>\n\nفایل‌های آموزشی این دوره به ترتیب برای شما ارسال می‌گردد:"
+        if platform == "telegram" and ACTIVE_TG_ADAPTER and uid_str.isdigit():
+            try:
+                await ACTIVE_TG_ADAPTER.send_message(int(uid_str), header_msg)
+            except Exception:
+                pass
+            for i, f_item in enumerate(files, 1):
+                part = f_item.get("part", i)
+                title = f_item.get("title", f"قسمت {part}")
+                fid = f_item.get("file_id", "")
+                cache_key = f"{prod_obj.product_id}_part_{part}"
+                cached_fid = fid or await db_get_cached_file_id(cache_key, "telegram")
+                caption = f"🎧 <b>{prod_obj.name} - قسمت {part}</b>\n▫️ {title}"
+                if cached_fid:
+                    try:
+                        await ACTIVE_TG_ADAPTER.app.send_audio(int(uid_str), cached_fid, caption=caption)
+                        sent_count += 1
+                        continue
+                    except Exception as e:
+                        logger.warning(f"[deliver_package_tg] Failed cached_fid: {e}")
+                url = f_item.get("url", "")
+                if url:
+                    try:
+                        sent = await ACTIVE_TG_ADAPTER.send_audio(int(uid_str), url, title=title, caption=caption)
+                        if sent:
+                            sent_count += 1
+                    except Exception as e:
+                        logger.warning(f"[deliver_package_tg] Failed sending url {url}: {e}")
+        elif platform == "bale" and ACTIVE_BALE_ADAPTER:
+            try:
+                await ACTIVE_BALE_ADAPTER.send_message(uid_str, header_msg)
+            except Exception:
+                pass
+            for i, f_item in enumerate(files, 1):
+                part = f_item.get("part", i)
+                title = f_item.get("title", f"قسمت {part}")
+                fid = f_item.get("file_id", "")
+                cache_key = f"{prod_obj.product_id}_part_{part}"
+                cached_fid = fid or await db_get_cached_file_id(cache_key, "bale")
+                caption = f"🎧 <b>{prod_obj.name} - قسمت {part}</b>\n▫️ {title}"
+                if cached_fid:
+                    try:
+                        res = await ACTIVE_BALE_ADAPTER.send_audio(uid_str, cached_fid, title=title, caption=caption)
+                        if res and res.get("ok"):
+                            sent_count += 1
+                            continue
+                    except Exception as e:
+                        logger.warning(f"[deliver_package_bale] Failed cached_fid: {e}")
+                url = f_item.get("url", "")
+                if url:
+                    try:
+                        res = await ACTIVE_BALE_ADAPTER.send_audio(uid_str, url, title=title, caption=caption)
+                        if res and res.get("ok"):
+                            sent_count += 1
+                    except Exception as e:
+                        logger.warning(f"[deliver_package_bale] Failed sending url {url}: {e}")
+
+        return {"ok": True, "sent_count": sent_count, "total": len(files)}
 
 
 def clean_delivery_instruction(instruction: str, product_name: str = "") -> str:

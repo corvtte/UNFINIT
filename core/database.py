@@ -142,7 +142,8 @@ def sync_settings_to_json_and_env() -> None:
         "NARA_BASE_URL": config.NARA_BASE_URL,
         "GEMINI_API_KEY": config.GEMINI_API_KEY,
         "GEMINI_MODEL": config.GEMINI_MODEL,
-        "DEFAULT_ARTIST": config.DEFAULT_ARTIST
+        "DEFAULT_ARTIST": config.DEFAULT_ARTIST,
+        "THEME": getattr(config, "THEME", "default-dark")
     }
     SENSITIVE_KEYS = {
         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",
@@ -411,6 +412,10 @@ async def init_db():
             cur.execute("ALTER TABLE products ADD COLUMN requires_referral INTEGER DEFAULT 0")
         if "episodes" not in existing_cols:
             cur.execute("ALTER TABLE products ADD COLUMN episodes TEXT DEFAULT ''")
+        if "delivery_type" not in existing_cols:
+            cur.execute("ALTER TABLE products ADD COLUMN delivery_type TEXT DEFAULT 'channel'")
+        if "files_package" not in existing_cols:
+            cur.execute("ALTER TABLE products ADD COLUMN files_package TEXT DEFAULT '[]'")
 
         # Auto-clean legacy filler text and redundant titles from download_link in products
         try:

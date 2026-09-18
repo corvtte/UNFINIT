@@ -1036,6 +1036,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 allow_card = bool(payload.get("allow_card", True))
                 allow_bale = bool(payload.get("allow_bale", True))
                 requires_referral = bool(payload.get("requires_referral", False))
+                delivery_type = str(payload.get("delivery_type") or "channel").strip()
+                files_package = payload.get("files_package") or []
                 if not name:
                     raise ValueError("نام دوره الزامی است.")
                 loop = asyncio.new_event_loop()
@@ -1044,7 +1046,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     name=name, price=price, description=desc,
                     download_link=dl_link, photo_url=photo_url,
                     allow_card=allow_card, allow_bale=allow_bale,
-                    requires_referral=requires_referral
+                    requires_referral=requires_referral,
+                    delivery_type=delivery_type,
+                    files_package=files_package
                 ))
                 loop.close()
                 self.send_response(200)
@@ -1631,6 +1635,26 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+        elif path in ("/api/settings/theme", "/api/theme"):
+            try:
+                theme_val = str(payload.get("theme") or "default-dark").strip().lower()
+                valid_themes = ("default-dark", "catppuccin", "dracula", "tokyo-night", "vesper", "solarized-dark", "monokai", "one-dark-pro")
+                if theme_val not in valid_themes:
+                    theme_val = "default-dark"
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(set_system_setting("THEME", theme_val))
+                config.THEME = theme_val
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "theme": theme_val}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/settings/import":
             try:
                 pwd = (payload.get("password") or "").strip()
@@ -1732,12 +1756,14 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     raise ValueError("شناسه دوره الزامی است.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                for field in ("name", "price", "description", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral"):
+                for field in ("name", "price", "description", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral", "delivery_type", "files_package"):
                     if field in payload:
                         if field == "price":
                             val = int(str(payload[field]).replace(",", "").replace("،", "").strip() or 0)
                         elif field in ("allow_card", "allow_bale", "requires_referral"):
                             val = 1 if payload[field] else 0
+                        elif field == "files_package":
+                            val = json.dumps(payload[field], ensure_ascii=False) if isinstance(payload[field], list) else str(payload[field])
                         else:
                             val = str(payload[field])
                         loop.run_until_complete(StoreService.update_product_field(p_id, field, val))

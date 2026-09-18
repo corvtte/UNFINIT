@@ -14,7 +14,9 @@
     "allow_bale": 1,
     "payment_type": "paid",
     "requires_referral": 0,
+    "delivery_type": "channel",
     "episodes": [],
+    "files_package": [],
     "created_at": "2026-08-22"
   },
   {
@@ -32,7 +34,9 @@
     "allow_bale": 1,
     "payment_type": "paid",
     "requires_referral": 0,
+    "delivery_type": "channel",
     "episodes": [],
+    "files_package": [],
     "created_at": "2026-08-22"
   },
   {
@@ -50,7 +54,9 @@
     "allow_bale": 1,
     "payment_type": "paid",
     "requires_referral": 0,
+    "delivery_type": "channel",
     "episodes": [],
+    "files_package": [],
     "created_at": "2026-08-22"
   }
 ]
