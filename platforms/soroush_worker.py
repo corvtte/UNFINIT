@@ -94,6 +94,7 @@ class SoroushWorker:
         connected = self.is_connected()
         return {
             "connected": connected,
+            "status": "ONLINE" if connected else "REQUIRE_AUTH",
             "masked_phone": self.get_masked_phone() if connected else "",
             "phone": self._session_data.get("phone", "") if (connected and self._session_data) else "",
             "platform": "soroush"
@@ -128,28 +129,39 @@ class SoroushWorker:
             elif not clean_phone.startswith("98"):
                 clean_phone = "+98" + clean_phone
 
-        url = f"{self.WEB_API_BASE}auth/requestCode"
-        headers = {"Content-Type": "application/json"}
+        candidate_urls = [
+            f"{self.WEB_API_BASE}auth/requestCode",
+            f"{self.WEB_API_BASE}auth/sendCode",
+            "https://chat.splus.ir/api/auth/requestCode",
+            "https://core.splus.ir/api/v1/auth/requestCode"
+        ]
+        headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         payload = {"phone": clean_phone}
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, headers=headers, timeout=15) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return {
-                            "ok": True,
-                            "phone": clean_phone,
-                            "sms_id": data.get("sms_id") or data.get("result", {}).get("sms_id") or "",
-                            "message": "کد تأیید پیامک شد."
-                        }
-                    else:
-                        text = await resp.text()
-                        logger.warning(f"[soroush_worker] requestCode failed HTTP {resp.status}: {text}")
-                        return {"ok": False, "error": f"خطا در ارسال کد ({resp.status})", "detail": text}
-        except Exception as e:
-            logger.error(f"[soroush_worker] requestCode network error: {e}")
-            return {"ok": False, "error": f"خطای شبکه در ارتباط با سرور سروش: {e}"}
+        last_error = ""
+        for url in candidate_urls:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(url, json=payload, headers=headers, timeout=8) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return {
+                                "ok": True,
+                                "phone": clean_phone,
+                                "sms_id": data.get("sms_id") or data.get("result", {}).get("sms_id") or "",
+                                "message": "کد تأیید پیامک شد."
+                            }
+                        else:
+                            last_error = f"HTTP {resp.status}"
+            except Exception as e:
+                last_error = str(e)
+
+        logger.warning(f"[soroush_worker] requestCode failed across candidates: {last_error}")
+        return {
+            "ok": False,
+            "error": "درگاه وب سروش‌پلاس در دسترس نیست یا نیازمند تنظیم دستی توکن است.",
+            "detail": last_error
+        }
 
     async def verify_code(self, phone: str, code: str, sms_id: Optional[str] = None) -> Dict[str, Any]:
         """

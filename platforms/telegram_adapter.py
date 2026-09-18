@@ -1067,13 +1067,21 @@ class TelegramAdapter:
                         buttons.append([InlineKeyboardButton(f"🔒 {g.name} (نیازمند ۱ دعوت)", callback_data=f"tg_gift_locked:{g.product_id}")])
                     else:
                         buttons.append([InlineKeyboardButton(f"🎁 {g.name} (رایگان)", callback_data=f"cview:{g.product_id}")])
-            buttons.append([InlineKeyboardButton("🎁 طرح دعوت از دوستان و دریافت هدایا", callback_data="referral_info")])
+            buttons.append([InlineKeyboardButton("👥 طرح دعوت از دوستان و دریافت هدیه", callback_data="referral_info")])
             session_manager.set_user_action(f"tg_{message.from_user.id}", "await_support_msg", "none")
-            txt = (
-                "🎁 <b>فایل‌ها و هدایای آموزشی رایگان:</b>\n\n"
-                "جهت دریافت هر فایل، روی دکمه مربوطه در زیر کلیک فرمایید.\n\n"
-                "📩 <b>ارسال پیام به پشتیبانی:</b> همچنین می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت ثبت گردد."
-            )
+            support_custom = getattr(config, "SUPPORT_CENTER_TEXT", "").strip()
+            if support_custom:
+                txt = (
+                    f"💬 <b>مرکز پشتیبانی و ارتباط با ما:</b>\n\n"
+                    f"{support_custom}\n\n"
+                    "📩 <b>ارسال پیام به پشتیبانی:</b> همچنین می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت ثبت گردد."
+                )
+            else:
+                txt = (
+                    "🎁 <b>فایل‌ها و هدایای آموزشی رایگان:</b>\n\n"
+                    "جهت دریافت هر فایل، روی دکمه مربوطه در زیر کلیک فرمایید.\n\n"
+                    "📩 <b>ارسال پیام به پشتیبانی:</b> همچنین می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت ثبت گردد."
+                )
             await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
         # Product View Callback
@@ -1311,9 +1319,11 @@ class TelegramAdapter:
             unlocked = UserService.is_gift_unlocked_by_platform("telegram", user_id, TOHID_AMALI_PACK_ID)
 
             st_txt = "✅ <b>باز شده و آماده دریافت</b>" if unlocked else "🔒 <b>قفل (نیاز به ۱ دعوت موفق)</b>"
+            inv_custom = getattr(config, "INVITE_FRIENDS_TEXT", "").strip()
+            inv_body = inv_custom if inv_custom else "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!"
             msg_text = (
-                "🎁 <b>طرح دعوت از دوستان و هدیه ویژه توحید عملی:</b>\n\n"
-                "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!\n\n"
+                "🎁 <b>طرح دعوت از دوستان و دریافت هدایا:</b>\n\n"
+                f"{inv_body}\n\n"
                 f"🔗 <b>لینک اختصاصی دعوت شما:</b>\n<code>{ref_link}</code>\n\n"
                 f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} نفر</b>\n"
                 f"🎧 <b>وضعیت بسته صوتی:</b> {st_txt}\n"

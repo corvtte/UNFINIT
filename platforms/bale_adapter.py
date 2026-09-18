@@ -801,11 +801,15 @@ def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) ->
     if mtype == "video":
         rows = [
             [
-                {"text": f"✏️ تغییر نام فایل{fn_check}", "callback_data": f"bmeta:fn:{drop_id}"}
+                {"text": "🎙 ویرایش تگ‌ها", "callback_data": f"bmeta:tags_menu:{drop_id}"},
+                {"text": "➕ افزودن به سرفصل‌های دوره", "callback_data": f"bmeta:add_to_course:{drop_id}"}
             ],
             [
-                {"text": f"🗣 تغییر نام خواننده{perf_check}", "callback_data": f"bmeta:perf:{drop_id}"},
-                {"text": f"🎵 تغییر نام موزیک{title_check}", "callback_data": f"bmeta:title:{drop_id}"}
+                {"text": "⚡ فشرده‌سازی خودکار", "callback_data": f"bmeta:compress:{drop_id}"},
+                {"text": "📊 مشخصات فنی", "callback_data": f"bmeta:audio_specs:{drop_id}"}
+            ],
+            [
+                {"text": f"✏️ تغییر نام فایل{fn_check}", "callback_data": f"bmeta:fn:{drop_id}"}
             ],
             [
                 {"text": "🎵 تبدیل به صوت / دریافت MP3", "callback_data": f"bmeta:to_mp3:{drop_id}"},
@@ -824,11 +828,19 @@ def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) ->
 
     rows = [
         [
+            {"text": "🎙 ویرایش تگ‌ها", "callback_data": f"bmeta:tags_menu:{drop_id}"},
+            {"text": "➕ افزودن به سرفصل‌های دوره", "callback_data": f"bmeta:add_to_course:{drop_id}"}
+        ],
+        [
+            {"text": "⚡ فشرده‌سازی خودکار", "callback_data": f"bmeta:compress:{drop_id}"},
+            {"text": "📊 مشخصات فنی", "callback_data": f"bmeta:audio_specs:{drop_id}"}
+        ],
+        [
             {"text": f"✏️ تغییر نام فایل{fn_check}", "callback_data": f"bmeta:fn:{drop_id}"}
         ],
         [
-            {"text": f"🗣 تغییر نام خواننده{perf_check}", "callback_data": f"bmeta:perf:{drop_id}"},
-            {"text": f"🎵 تغییر نام موزیک{title_check}", "callback_data": f"bmeta:title:{drop_id}"}
+            {"text": f"🗣 نام خواننده{perf_check}", "callback_data": f"bmeta:perf:{drop_id}"},
+            {"text": f"🎵 عنوان موزیک{title_check}", "callback_data": f"bmeta:title:{drop_id}"}
         ],
         [
             {"text": "✂️ برش فایل صوتی", "callback_data": f"bmeta:trim:{drop_id}"},
@@ -836,18 +848,11 @@ def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) ->
         ],
         [
             {"text": "📋 اطلاعات تگ‌ها", "callback_data": f"bmeta:tag_details:{drop_id}"},
-            {"text": "📊 مشخصات فنی صوت", "callback_data": f"bmeta:audio_specs:{drop_id}"}
+            {"text": f"🖼 تصویر کاور{thumb_check}", "callback_data": f"bmeta:change_cov:{drop_id}"}
         ],
         [
-            {"text": f"🖼 تغییر تصویر بند انگشتی{thumb_check}", "callback_data": f"bmeta:change_cov:{drop_id}"}
-        ],
-        [
-            {"text": "📥 دریافت تصویر بند انگشتی", "callback_data": f"bmeta:view_cov:{drop_id}"},
+            {"text": "📥 دریافت تصویر کاور", "callback_data": f"bmeta:view_cov:{drop_id}"},
             {"text": "🧹 حذف کامل متادیتا", "callback_data": f"bmeta:strip_tags:{drop_id}"}
-        ],
-        [
-            {"text": "➕ افزودن به دوره", "callback_data": f"bmeta:add_to_course:{drop_id}"},
-            {"text": "⚡ فشرده‌سازی", "callback_data": f"bmeta:compress:{drop_id}"}
         ],
         [
             {"text": "⚡️ اعمال سریع", "callback_data": f"bmeta:quick_send:{drop_id}"},
@@ -1551,6 +1556,32 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if action == "cancel":
                                             session_manager.remove_session(drop_id)
                                             await bale.edit_message_text(chat_id, msg_id, "❌ عملیات مدیریت رسانه لغو شد.")
+                                        elif action == "tags_menu":
+                                            e_f = drop.get("edited_fields", {})
+                                            d_t = drop.get("draft_tags", {})
+                                            fn_c = " ✅" if e_f.get("filename") else ""
+                                            perf_c = " ✅" if ("artist" in d_t or e_f.get("artist")) else ""
+                                            title_c = " ✅" if ("title" in d_t or e_f.get("title")) else ""
+                                            thumb_c = " ✅" if e_f.get("thumb") else ""
+                                            txt = "🎙 <b>منوی ویرایش تگ‌ها و متادیتای رسانه:</b>\nلطفاً بخش مورد نظر را انتخاب فرمایید:"
+                                            kb = {
+                                                "inline_keyboard": [
+                                                    [{"text": f"✏️ ویرایش نام فایل{fn_c}", "callback_data": f"bmeta:fn:{drop_id}"}],
+                                                    [
+                                                        {"text": f"🗣 تغییر نام خواننده{perf_c}", "callback_data": f"bmeta:perf:{drop_id}"},
+                                                        {"text": f"🎵 تغییر عنوان اثر{title_c}", "callback_data": f"bmeta:title:{drop_id}"}
+                                                    ],
+                                                    [
+                                                        {"text": f"🖼 تغییر تصویر کاور{thumb_c}", "callback_data": f"bmeta:change_cov:{drop_id}"},
+                                                        {"text": "📋 نمایش جزئیات تگ‌ها", "callback_data": f"bmeta:tag_details:{drop_id}"}
+                                                    ],
+                                                    [
+                                                        {"text": "🧹 حذف متادیتا", "callback_data": f"bmeta:strip_tags:{drop_id}"},
+                                                        {"text": "🔙 بازگشت به منوی اصلی", "callback_data": f"bmeta:back:{drop_id}"}
+                                                    ]
+                                                ]
+                                            }
+                                            await bale.edit_message_text(chat_id, msg_id, txt, reply_markup=kb)
                                         elif action == "tag_details":
                                             await ensure_bale_binary()
                                             MediaService.inspect_full(drop_id)
@@ -2299,10 +2330,11 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         invites = usr.successful_invites
                                         unlocked = UserService.is_gift_unlocked_by_platform("bale", c_id, TOHID_AMALI_PACK_ID)
 
-                                        st_txt = "✅ <b>باز شده و آماده دریافت</b>" if unlocked else "🔒 <b>قفل (نیاز به ۱ دعوت موفق)</b>"
+                                        inv_custom = getattr(config, "INVITE_FRIENDS_TEXT", "").strip()
+                                        inv_body = inv_custom if inv_custom else "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!"
                                         msg_text = (
-                                            "🎁 <b>طرح دعوت از دوستان و هدیه ویژه توحید عملی:</b>\n\n"
-                                            "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!\n\n"
+                                            "🎁 <b>طرح دعوت از دوستان و دریافت هدایا:</b>\n\n"
+                                            f"{inv_body}\n\n"
                                             f"🔗 <b>لینک اختصاصی دعوت شما در بله:</b>\n<code>{ref_link}</code>\n\n"
                                             f"👥 <b>تعداد دعوت‌های موفق شما:</b> <b>{invites} نفر</b>\n"
                                             f"🎧 <b>وضعیت بسته صوتی:</b> {st_txt}\n"
@@ -3190,7 +3222,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 "inline_keyboard": [
                                                     [{"text": "📚 لیست دوره‌های آموزشی", "callback_data": "bnav:courses"}],
                                                     [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
-                                                    [{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}],
+                                                    [{"text": "👥 دعوت از دوستان و دریافت هدیه", "callback_data": "bnav:referral"}],
                                                     [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
                                                 ]
                                             }
@@ -3200,7 +3232,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                  "inline_keyboard": [
                                                      [{"text": f"📚 مشاهده دوره‌های من ({len(purchased)})", "callback_data": "bnav:courses_my"}],
                                                      [{"text": "🎁 هدایا و دانلودهای رایگان", "callback_data": "bnav:gifts"}],
-                                                     [{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}],
+                                                     [{"text": "👥 دعوت از دوستان و دریافت هدیه", "callback_data": "bnav:referral"}],
                                                      [{"text": "💬 پشتیبانی و تیکت", "callback_data": "bnav:support"}]
                                                  ]
                                              }
@@ -3219,13 +3251,21 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     buttons.append([{"text": f"🔒 {g.name} (نیازمند ۱ دعوت)", "callback_data": f"bgift_locked:{g.product_id}"}])
                                                 else:
                                                     buttons.append([{"text": f"🎁 {g.name} (رایگان)", "callback_data": f"bcview:{g.product_id}"}])
-                                        buttons.append([{"text": "🎁 طرح دعوت از دوستان و دریافت هدایا", "callback_data": "bnav:referral"}])
+                                        buttons.append([{"text": "👥 دعوت از دوستان و دریافت هدیه", "callback_data": "bnav:referral"}])
                                         session_manager.set_user_action(f"bale_{chat_id}", "await_support", "none")
-                                        support_txt = (
-                                            "💬 <b>مرکز پشتیبانی و هدایای آموزشی:</b>\n\n"
-                                            "🎁 <b>دوره‌ها و هدایای آموزشی رایگان:</b> در دکمه‌های زیر آماده دریافت هستند.\n\n"
-                                            "📩 <b>ارسال پیام به پشتیبانی:</b> هم‌اکنون می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت شما ثبت گردد."
-                                        )
+                                        support_custom = getattr(config, "SUPPORT_CENTER_TEXT", "").strip()
+                                        if support_custom:
+                                            support_txt = (
+                                                f"💬 <b>مرکز پشتیبانی و ارتباط با ما:</b>\n\n"
+                                                f"{support_custom}\n\n"
+                                                "📩 <b>ارسال پیام به پشتیبانی:</b> هم‌اکنون می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت شما ثبت گردد."
+                                            )
+                                        else:
+                                            support_txt = (
+                                                "💬 <b>مرکز پشتیبانی و هدایای آموزشی:</b>\n\n"
+                                                "🎁 <b>دوره‌ها و هدایای آموزشی رایگان:</b> در دکمه‌های زیر آماده دریافت هستند.\n\n"
+                                                "📩 <b>ارسال پیام به پشتیبانی:</b> هم‌اکنون می‌توانید متن پیام، سوال یا شماره پیگیری خود را ارسال فرمایید تا تیکت شما ثبت گردد."
+                                            )
                                         if buttons:
                                             await bale.send_message(chat_id, support_txt, reply_markup={"inline_keyboard": buttons})
                                         else:
@@ -3319,8 +3359,11 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     logger.error(f"Failed to forward receipt to admin {admin_id}: {err}")
                                             continue
 
-                                    # Handle Incoming Audio/Video in Bale (Admin Only)
+                                    # Handle Incoming / Forwarded Audio/Video in Bale (Admin Only)
+                                    fwd = msg.get("forward_message") or msg.get("reply_to_message")
                                     media_item = msg.get("audio") or msg.get("document") or msg.get("voice") or msg.get("video")
+                                    if not media_item and isinstance(fwd, dict):
+                                        media_item = fwd.get("audio") or fwd.get("document") or fwd.get("voice") or fwd.get("video")
                                     if media_item and not user_act:
                                         raw_file_name = str(media_item.get("file_name") or "")
                                         mime_type = str(media_item.get("mime_type") or "").lower()
@@ -3352,7 +3395,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             )
                                             continue
 
-                                        is_v = bool(msg.get("video")) or raw_file_name.lower().endswith((".mp4", ".mkv", ".mov", ".avi"))
+                                        is_v = bool(msg.get("video")) or (isinstance(fwd, dict) and bool(fwd.get("video"))) or raw_file_name.lower().endswith((".mp4", ".mkv", ".mov", ".avi"))
                                         if not bale.is_admin(chat_id):
                                             await bale.send_message(
                                                 chat_id,

@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 
 from core.config import config
 from core.logger import get_logger
-from core.database import db_save_media_session, db_delete_media_session, get_system_setting
+from core.database import db_save_media_session, db_delete_media_session, get_system_setting, set_system_setting
 from core.formatters import human_size, format_duration
 from media.inspector import inspect_technical_metadata
 from services.store_service import StoreService
@@ -77,25 +77,25 @@ def get_system_health() -> Dict[str, Any]:
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
-                "name": "تلگرام (MTProto)",
+                "name": "تلگرام",
                 "status": "ONLINE" if config.TELEGRAM_BOT_TOKEN else "OFFLINE",
                 "owner_id": config.TELEGRAM_OWNER_ID,
                 "badge": "bg-sky-600"
             },
             "bale": {
-                "name": "پیام‌رسان بله (Bot API)",
+                "name": "پیام‌رسان بله",
                 "status": "ONLINE" if config.BALE_BOT_TOKEN else "OFFLINE",
                 "owner_id": config.BALE_OWNER_ID,
                 "badge": "bg-emerald-600"
             },
             "rubika_user": {
-                "name": "روبیکا سشن کاربری (Saved Messages)",
+                "name": "روبیکا کاربری",
                 "status": "ONLINE" if rub_user_active else "REQUIRE_AUTH",
                 "masked_phone": rub_phone,
                 "badge": "bg-indigo-600" if rub_user_active else "bg-amber-600"
             },
             "soroush": {
-                "name": "سروش‌پلاس سشن کاربری (Saved Messages)",
+                "name": "سروش‌پلاس",
                 "status": "ONLINE" if splus_active else "REQUIRE_AUTH",
                 "masked_phone": splus_phone,
                 "badge": "bg-cyan-600" if splus_active else "bg-amber-600"
@@ -221,6 +221,7 @@ def render_dashboard_html() -> str:
     health = get_system_health()
     p = health["platforms"]
     s = health["stats"]
+    connected_platforms_count = sum(1 for p_val in p.values() if p_val.get("status") == "ONLINE")
 
     # Gather products safely
     products = []
@@ -1020,8 +1021,8 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400">۴ پلتفرم</div>
-                    <p class="text-[11px] text-slate-500 mt-1">تلگرام • بله • روبیکا • سروش+</p>
+                    <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400" id="dashConnectedPlatforms">{connected_platforms_count} پلتفرم فعال</div>
+                    <p class="text-[11px] text-slate-500 mt-1" id="dashConnectedSummary">از ۴ درگاه پیام‌رسان</p>
                 </div>
 
                 <!-- Metric 3: System Health -->
@@ -1050,7 +1051,11 @@ def render_dashboard_html() -> str:
                     </div>
                     <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400 flex items-center justify-between">
                         <span id="dashBaleSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span>
-                        <button type="button" onclick="editBaleSafeLimit()" class="text-xs p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition" title="ویرایش سریع سقف ایمن بله">✏️</button>
+                        <button type="button" onclick="editBaleSafeLimit()" class="text-xs p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center justify-center" title="ویرایش سریع سقف ایمن بله">
+                            <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                            </svg>
+                        </button>
                     </div>
                     <p class="text-[11px] text-slate-500 mt-1">فشرده‌سازی غیرمسدودکننده</p>
                 </div>
@@ -1062,8 +1067,12 @@ def render_dashboard_html() -> str:
                 <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div>
                         <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="text-2xl">✈️</span>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center border border-sky-500/20 shrink-0">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                                    </svg>
+                                </div>
                                 <h3 class="font-bold text-sm text-slate-200">{p['telegram']['name']}</h3>
                             </div>
                             <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
@@ -1071,10 +1080,10 @@ def render_dashboard_html() -> str:
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">شناسه ادمین: <code style="color: var(--accent-color);">{p['telegram']['owner_id']}</code></p>
-                        <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300">Pyrogram MTProto v2</span></p>
+                        <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300 font-mono text-[11px]">Pyrogram MTProto v2</span></p>
                     </div>
-                    <div class="mt-3 pt-2 border-t border-white/5 text-[11px] text-emerald-400">
-                        🟢 متصل و آماده تبادل رسانه
+                    <div class="mt-3 pt-2 border-t border-white/5 text-[11px] text-emerald-400 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> متصل و آماده تبادل رسانه
                     </div>
                 </div>
 
@@ -1082,8 +1091,12 @@ def render_dashboard_html() -> str:
                 <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div>
                         <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="text-2xl">🟢</span>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12c0 1.93.55 3.73 1.5 5.26L2.36 21.64c-.13.39.24.76.63.63l4.38-1.14A9.96 9.96 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 15c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3-6H9c-.55 0-1-.45-1-1s.45-1 1-1h6c.55 0 1 .45 1 1s-.45 1-1 1z"/>
+                                    </svg>
+                                </div>
                                 <h3 class="font-bold text-sm text-slate-200">{p['bale']['name']}</h3>
                             </div>
                             <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
@@ -1095,7 +1108,10 @@ def render_dashboard_html() -> str:
                     </div>
                     <div class="mt-3">
                         <button type="button" onclick="editBaleSafeLimit()" class="w-full py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-medium transition flex items-center justify-center gap-1.5">
-                            <span>✏️</span> ویرایش سقف ایمن حجم
+                            <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                            </svg>
+                            <span>ویرایش سقف ایمن حجم</span>
                         </button>
                     </div>
                 </div>
@@ -1104,8 +1120,12 @@ def render_dashboard_html() -> str:
                 <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div>
                         <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="text-2xl">👤</span>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shrink-0">
+                                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                                    </svg>
+                                </div>
                                 <h3 class="font-bold text-sm text-slate-200 truncate">{p['rubika_user']['name']}</h3>
                             </div>
                             <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['rubika_user']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
@@ -1117,7 +1137,7 @@ def render_dashboard_html() -> str:
                         <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
                     <div class="mt-3">
-                        {f'''<button type="button" onclick="disconnectSession('rubika')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1"><span>🔌</span> قطع اتصال / خروج از حساب</button>''' if p['rubika_user']['status'] == 'ONLINE' else '''<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>'''}
+                        {f'''<button type="button" onclick="disconnectSession('rubika')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['rubika_user']['status'] == 'ONLINE' else '''<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>'''}
                     </div>
                 </div>
 
@@ -1125,12 +1145,16 @@ def render_dashboard_html() -> str:
                 <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div>
                         <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="text-2xl">💬</span>
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20 shrink-0">
+                                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-.82-.82 4.498 4.498 0 00.978-2.222A7.777 7.777 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                                    </svg>
+                                </div>
                                 <h3 class="font-bold text-sm text-slate-200 truncate">{p['soroush']['name']}</h3>
                             </div>
                             <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['soroush']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
-                                {p['soroush']['status']}
+                                {p['soroush']['status'] if p['soroush']['status'] == 'ONLINE' else 'نیازمند راه‌اندازی'}
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-cyan-400">ارسال به Saved Messages</span></p>
@@ -1138,7 +1162,7 @@ def render_dashboard_html() -> str:
                         <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
                     <div class="mt-3">
-                        {f'''<button type="button" onclick="disconnectSession('soroush')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1"><span>🔌</span> قطع اتصال / خروج از حساب</button>''' if p['soroush']['status'] == 'ONLINE' else '''<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1"><span>🔑</span> ورود به حساب سروش‌پلاس</button>'''}
+                        {f'''<button type="button" onclick="disconnectSession('soroush')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['soroush']['status'] == 'ONLINE' else '''<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg><span>ورود به حساب سروش‌پلاس</span></button>'''}
                     </div>
                 </div>
             </div>
@@ -1165,27 +1189,43 @@ def render_dashboard_html() -> str:
 
         <!-- Slide-Over Live Logs Drawer (Hugging Face / Modern DevOps style) -->
         <div id="logsDrawerOverlay" onclick="toggleLogsDrawer(false)" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity"></div>
-        <aside id="logsDrawer" class="fixed left-0 top-0 bottom-0 w-full max-w-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-r shadow-2xl" style="background: var(--bg-color, #0a0f1d); border-color: var(--card-border, #1e293b);">
-            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <aside id="logsDrawer" class="fixed left-0 top-0 bottom-0 w-full max-w-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-r shadow-2xl" style="background: var(--panel-bg, #0a0f1d); border-color: var(--card-border, #1e293b);">
+            <div class="p-3 border-b flex items-center justify-between gap-2" style="border-color: var(--card-border); background: var(--table-head-bg);">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <h3 class="font-bold text-sm text-white font-mono flex items-center gap-2">
-                        <span>📋 Live Engine Console Logs</span>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">STREAM</span>
+                    <h3 class="font-bold text-xs text-white font-mono flex items-center gap-2">
+                        <span>Console Stream</span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800">LIVE</span>
                     </h3>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="loadDashboardData()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition" title="تازه‌سازی">🔄</button>
-                    <button type="button" onclick="toggleLogsDrawer(false)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">✕</button>
+                    <!-- Minimal Toolbar: Filter input, Auto-scroll, Copy, Refresh, Close -->
+                    <input type="text" id="drawerLogSearch" oninput="filterDrawerLogs()" placeholder="جستجو در لاگ..." class="w-24 sm:w-36 px-2 py-1 rounded text-[11px] font-sans border text-slate-200 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg, #111827); border-color: var(--card-border);">
+                    <label class="flex items-center gap-1 text-[11px] text-slate-400 cursor-pointer font-sans select-none" title="اسکرول خودکار به انتهای لاگ">
+                        <input type="checkbox" id="drawerAutoScroll" checked class="rounded accent-cyan-500 w-3.5 h-3.5">
+                        <span class="hidden sm:inline">Auto-scroll</span>
+                    </label>
+                    <button type="button" onclick="copyDrawerLogs()" id="drawerCopyBtn" class="p-1.5 rounded-lg border hover:bg-white/5 text-slate-300 text-xs transition inline-flex items-center gap-1" style="border-color: var(--card-border);" title="کپی همه لاگ‌ها">
+                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </button>
+                    <button type="button" onclick="loadDashboardData()" class="p-1.5 rounded-lg border hover:bg-white/5 text-slate-300 text-xs transition inline-flex items-center" style="border-color: var(--card-border);" title="تازه‌سازی">
+                        <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </button>
+                    <button type="button" onclick="toggleLogsDrawer(false)" class="p-1.5 rounded-lg border hover:bg-white/5 text-slate-300 text-xs transition" style="border-color: var(--card-border);" title="بستن">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
             </div>
-            <div class="flex-1 p-4 overflow-hidden flex flex-col">
-                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 font-mono text-xs overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text no-scrollbar">
-                    <div class="text-slate-500">// UNFINIT Engine v0.3.7 Live Stream initialized...</div>
+            <div class="flex-1 p-3 overflow-hidden flex flex-col">
+                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 font-mono text-xs overflow-y-auto p-3 rounded-xl border space-y-1 select-text no-scrollbar" style="background: var(--card-bg, #030712); border-color: var(--card-border); color: #34d399;">
+                    <div class="text-slate-500">// UNFINIT Engine v0.3.8 Live Stream initialized...</div>
                 </div>
             </div>
-            <div class="p-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                <span>پروتکل لاگینگ: Async Ring Stream</span>
+            <div class="p-2.5 border-t flex items-center justify-between text-[11px] text-slate-400 font-sans" style="border-color: var(--card-border); background: var(--table-head-bg);">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>پروتکل لاگینگ: Ring Stream v0.3.8</span>
+                </span>
                 <button type="button" onclick="switchTab('settings'); toggleLogsDrawer(false);" class="text-cyan-400 hover:underline">مشاهده همه لاگ‌ها در تب تنظیمات ←</button>
             </div>
         </aside>
@@ -1860,10 +1900,16 @@ def render_dashboard_html() -> str:
             <!-- User Sub-Tabs Navigation Buttons -->
             <div class="flex items-center gap-2 border-b border-slate-800 pb-3 flex-wrap">
                 <button type="button" onclick="switchUserSubTab('list')" id="btnUserSubTabList" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-accent-btn">
-                    <span>👥</span> فهرست و مشخصات کاربران و خریداران
+                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                    فهرست و مشخصات کاربران و خریداران
                 </button>
                 <button type="button" onclick="switchUserSubTab('referrals')" id="btnUserSubTabRef" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-card-btn text-slate-300">
-                    <span>🌐</span> شبکه رفرال و آمار زیرمجموعه‌گیری
+                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                    </svg>
+                    شبکه رفرال و آمار زیرمجموعه‌گیری
                 </button>
             </div>
 
@@ -1874,27 +1920,39 @@ def render_dashboard_html() -> str:
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h3 class="text-base font-bold text-white flex items-center gap-2">
-                                <span>👥</span> فهرست کاربران و خریداران
+                                <svg class="w-5 h-5 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                </svg>
+                                <span>فهرست کاربران و خریداران</span>
                             </h3>
                             <p class="text-xs text-slate-400">اطلاعات کاربران، شماره تلفن‌ها و سابقه عضویت در بات‌های تلگرام و بله</p>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
-                            <button type="button" onclick="exportUsersCsv()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition flex items-center gap-1.5">
+                            <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <button type="button" onclick="purgeTestUsers()" class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5" title="پاکسازی کاربران تستی">
+                                <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                                پاکسازی تست
+                            </button>
+                            <button type="button" onclick="exportUsersCsv()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition flex items-center gap-1.5" style="background: var(--input-bg); border-color: var(--card-border);">
                                 <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                 </svg>
                                 خروجی CSV
                             </button>
                             <button type="button" onclick="loadUsersData()" class="px-3 py-1.5 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center gap-1.5">
-                                🔄 بروزرسانی
+                                <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                بروزرسانی
                             </button>
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto block whitespace-nowrap rounded-xl border border-slate-800">
+                    <div class="overflow-x-auto block whitespace-nowrap rounded-xl border" style="border-color: var(--card-border);">
                         <table class="w-full text-right text-xs whitespace-nowrap">
-                            <thead class="bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                            <thead class="text-slate-400 border-b" style="background: var(--table-head-bg); border-color: var(--card-border);">
                                 <tr>
                                     <th class="p-3">پلتفرم</th>
                                     <th class="p-3">شناسه کاربری</th>
@@ -1903,11 +1961,12 @@ def render_dashboard_html() -> str:
                                     <th class="p-3">معرف رفرال</th>
                                     <th class="p-3">موجودی کیف پول</th>
                                     <th class="p-3">وضعیت تعهدنامه</th>
+                                    <th class="p-3 text-center">عملیات</th>
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-mono">
                                 <tr>
-                                    <td colspan="7" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
+                                    <td colspan="8" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -2091,7 +2150,7 @@ def render_dashboard_html() -> str:
                                     </div>
                                     <div class="md:col-span-1">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">آدرس پایه API (AI_BASE_URL)</label>
-                                        <input type="url" id="cfg_AI_BASE_URL" placeholder="https://api.vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                        <input type="url" id="cfg_AI_BASE_URL" placeholder="https://vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                     </div>
                                     <div class="md:col-span-1">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی فعال (AI_MODEL)</label>
@@ -2300,6 +2359,14 @@ def render_dashboard_html() -> str:
                                 <div class="md:col-span-2">
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">جمله گرم پایان پیام تحویل دوره‌ها (COURSE_DELIVERY_NOTE)</label>
                                     <textarea id="cfg_COURSE_DELIVERY_NOTE" rows="2" placeholder="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-emerald-400 transition"></textarea>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">متن مرکز پشتیبانی و ارتباط با مشتریان (SUPPORT_CENTER_TEXT)</label>
+                                    <textarea id="cfg_SUPPORT_CENTER_TEXT" rows="2" placeholder="جهت ارتباط با واحد پشتیبانی و ارسال تیکت..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition"></textarea>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">متن طرح دعوت از دوستان و هدیه وایرال (INVITE_FRIENDS_TEXT)</label>
+                                    <textarea id="cfg_INVITE_FRIENDS_TEXT" rows="2" placeholder="با ارسال لینک اختصاصی خود به دوستان، هدایای ویژه دریافت کنید..." class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition"></textarea>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">کانال قفل تلگرام (tg_fjoin_channel)</label>
@@ -3175,15 +3242,56 @@ def render_dashboard_html() -> str:
                 }}
                 window.switchTab = switchTab;
 
+                let drawerAllLines = [];
+
+                function filterDrawerLogs() {{
+                    const q = (document.getElementById('drawerLogSearch')?.value || '').toLowerCase().trim();
+                    const streamBox = document.getElementById('dashboardRecentLogs');
+                    if (!streamBox) return;
+                    if (!q) {{
+                        streamBox.innerText = drawerAllLines.slice(-30).join('\\n') || '// لاگی برای نمایش موجود نیست.';
+                    }} else {{
+                        const filtered = drawerAllLines.filter(l => l.toLowerCase().includes(q));
+                        streamBox.innerText = filtered.join('\\n') || '// موردی یافت نشد.';
+                    }}
+                    const autoScroll = document.getElementById('drawerAutoScroll');
+                    if (!autoScroll || autoScroll.checked) {{
+                        streamBox.scrollTop = streamBox.scrollHeight;
+                    }}
+                }}
+                window.filterDrawerLogs = filterDrawerLogs;
+
+                async function copyDrawerLogs() {{
+                    const streamBox = document.getElementById('dashboardRecentLogs');
+                    if (!streamBox) return;
+                    try {{
+                        await navigator.clipboard.writeText(streamBox.innerText);
+                        const btn = document.getElementById('drawerCopyBtn');
+                        if (btn) {{
+                            const orig = btn.innerHTML;
+                            btn.innerHTML = '<span class="text-emerald-400 font-sans text-xs">کپی شد ✓</span>';
+                            setTimeout(() => {{ btn.innerHTML = orig; }}, 2000);
+                        }}
+                    }} catch (e) {{
+                        alert('خطا در کپی لاگ‌ها: ' + e.message);
+                    }}
+                }}
+                window.copyDrawerLogs = copyDrawerLogs;
+
                 async function loadDashboardData() {{
                     try {{
                         const streamBox = document.getElementById('dashboardRecentLogs');
                         const mainLogs = document.getElementById('logContainer');
                         if (streamBox && mainLogs && mainLogs.innerText.trim()) {{
                             const lines = mainLogs.innerText.trim().split('\\n').filter(Boolean);
-                            const recent = lines.slice(-20).join('\\n');
-                            if (recent) {{
-                                streamBox.innerText = recent;
+                            drawerAllLines = lines;
+                            const q = (document.getElementById('drawerLogSearch')?.value || '').trim();
+                            if (!q) {{
+                                const recent = lines.slice(-30).join('\\n');
+                                if (recent) streamBox.innerText = recent;
+                            }}
+                            const autoScroll = document.getElementById('drawerAutoScroll');
+                            if (!autoScroll || autoScroll.checked) {{
                                 streamBox.scrollTop = streamBox.scrollHeight;
                             }}
                             const prev = document.getElementById('dashboardLatestLogPreview');
@@ -3231,32 +3339,36 @@ def render_dashboard_html() -> str:
                     if (!inputVal) return;
                     const valFloat = parseFloat(inputVal.trim());
                     if (isNaN(valFloat) || valFloat <= 0 || valFloat > 50) {{
-                        alert('❌ مقدار سقف باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
+                        alert('مقدار سقف باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
                         return;
                     }}
                     try {{
-                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const pwd = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/settings/save', {{
                             method: 'POST',
+                            credentials: 'same-origin',
                             headers: {{
                                 'Content-Type': 'application/json',
                                 'Authorization': 'Bearer ' + pwd,
                                 'X-Admin-Password': pwd
                             }},
-                            body: JSON.stringify({{ MAX_SAFE_BALE_SIZE_MB: valFloat.toFixed(2) }})
+                            body: JSON.stringify({{
+                                password: pwd,
+                                settings: {{ MAX_SAFE_BALE_SIZE_MB: valFloat.toFixed(2) }},
+                                MAX_SAFE_BALE_SIZE_MB: valFloat.toFixed(2)
+                            }})
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            alert('✅ سقف ایمن بله با موفقیت به ' + valFloat.toFixed(2) + ' MB به‌روزرسانی شد.');
                             const d1 = document.getElementById('dashBaleSafeSize');
                             const d2 = document.getElementById('baleCardSafeSize');
                             if (d1) d1.textContent = valFloat.toFixed(2) + ' MB';
                             if (d2) d2.textContent = valFloat.toFixed(2) + ' MB';
                         }} else {{
-                            alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || 'عملیات ناموفق بود'));
+                            alert('خطا در ذخیره تنظیمات: ' + (data.error || 'عملیات ناموفق بود'));
                         }}
                     }} catch (e) {{
-                        alert('❌ خطا: ' + e.message);
+                        alert('خطا در برقراری ارتباط: ' + e.message);
                     }}
                 }}
                 window.editBaleSafeLimit = editBaleSafeLimit;
@@ -3437,7 +3549,7 @@ def render_dashboard_html() -> str:
                 async function loadUsersData() {{
                     const tbody = document.getElementById('usersTableBody');
                     if (!tbody) return;
-                    tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400 font-sans">در حال دریافت فهرست اعضا و خریداران...</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400 font-sans">در حال دریافت فهرست اعضا و خریداران...</td></tr>';
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users', {{
@@ -3446,15 +3558,27 @@ def render_dashboard_html() -> str:
                         const data = await res.json();
                         const users = data.users || [];
                         const customers = data.customers || [];
-                        allLoadedUsers = users.length ? users : customers.map(c => ({{
-                            platform: c.platform || 'bale',
-                            user_id: c.user_id,
-                            username: c.username || c.customer_name,
-                            phone: c.phone || '',
-                            referred_by: c.referred_by || '',
-                            wallet_balance: c.wallet_balance || 0,
-                            commitment_signed: !!c.commitment_signed
-                        }}));
+                        const rawList = (users && users.length) ? users : customers;
+                        allLoadedUsers = rawList.map(c => {{
+                            const p = (c.platform || 'bale').toLowerCase();
+                            const uid = c.user_id || c.id || c.chat_id || '';
+                            let uname = c.username || c.customer_name || c.name || c.full_name || '';
+                            if (!uname || uname === 'undefined' || uname === 'None') {{
+                                if (p.includes('tele')) uname = 'کاربر تلگرام';
+                                else if (p.includes('soroush')) uname = 'کاربر سروش‌پلاس';
+                                else if (p.includes('rubika')) uname = 'کاربر روبیکا';
+                                else uname = 'کاربر بله';
+                            }}
+                            return {{
+                                platform: p,
+                                user_id: uid,
+                                username: uname,
+                                phone: (c.phone && c.phone !== 'None' && c.phone !== 'undefined') ? c.phone : '',
+                                referred_by: (c.referred_by && c.referred_by !== 'None' && c.referred_by !== 'undefined') ? c.referred_by : '',
+                                wallet_balance: Number(c.wallet_balance) || 0,
+                                commitment_signed: !!c.commitment_signed
+                            }};
+                        }});
 
                         const statTotal = document.getElementById('statTotalUsers');
                         if (statTotal) statTotal.innerText = allLoadedUsers.length;
@@ -3470,7 +3594,7 @@ def render_dashboard_html() -> str:
                         renderUsersTable(allLoadedUsers);
                     }} catch (err) {{
                         console.error('loadUsersData error:', err);
-                        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-rose-400 font-sans">خطا در بارگذاری فهرست کاربران</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-rose-400 font-sans">خطا در بارگذاری فهرست کاربران</td></tr>';
                     }}
                 }}
                 window.loadUsersData = loadUsersData;
@@ -3479,33 +3603,94 @@ def render_dashboard_html() -> str:
                     const tbody = document.getElementById('usersTableBody');
                     if (!tbody) return;
                     if (!users || users.length === 0) {{
-                        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-500 font-sans">هیچ کاربری ثبت نشده است.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-500 font-sans">هیچ کاربری ثبت نشده است.</td></tr>';
                         return;
                     }}
                     tbody.innerHTML = users.map(u => {{
-                        const isBale = (u.platform === 'bale');
-                        const platformBadge = isBale
-                            ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">بله</span>'
-                            : '<span class="px-2 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-800">تلگرام</span>';
+                        const p = (u.platform || 'bale').toLowerCase();
+                        let platformBadge = '';
+                        if (p.includes('tele')) {{
+                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> تلگرام</span>';
+                        }} else if (p.includes('soroush')) {{
+                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-sky-950 text-sky-400 border border-sky-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg> سروش‌پلاس</span>';
+                        }} else if (p.includes('rubika')) {{
+                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-purple-950 text-purple-400 border border-purple-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg> روبیکا</span>';
+                        }} else {{
+                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> بله</span>';
+                        }}
                         const phone = u.phone ? ('<span dir="ltr">' + escapeHtml(u.phone) + '</span>') : '<span class="text-slate-600 font-sans">-</span>';
-                        const name = escapeHtml(u.username || u.name || ('کاربر ' + u.user_id));
+                        const name = escapeHtml(u.username || ('کاربر ' + (u.user_id || '')));
                         const ref = u.referred_by ? ('<span class="text-indigo-400" dir="ltr">' + escapeHtml(String(u.referred_by)) + '</span>') : '<span class="text-slate-600 font-sans">مستقیم</span>';
                         const wallet = (Number(u.wallet_balance) || 0).toLocaleString('fa-IR') + ' ت';
                         const commitment = u.commitment_signed 
                             ? '<span class="text-emerald-400 font-sans">امضا شده ✓</span>'
                             : '<span class="text-slate-500 font-sans">در انتظار</span>';
-                        return `<tr class="hover:bg-slate-900/60 transition">
+                        const userIdClean = escapeHtml(String(u.user_id || '-'));
+                        return `<tr class="hover:bg-white/[0.03] transition">
                             <td class="p-3">${{platformBadge}}</td>
-                            <td class="p-3 text-cyan-300 font-mono" dir="ltr">${{escapeHtml(String(u.user_id))}}</td>
+                            <td class="p-3 text-cyan-300 font-mono" dir="ltr">${{userIdClean}}</td>
                             <td class="p-3 text-slate-200 font-sans font-medium">${{name}}</td>
                             <td class="p-3 text-slate-300">${{phone}}</td>
                             <td class="p-3">${{ref}}</td>
                             <td class="p-3 text-amber-400 font-bold">${{wallet}}</td>
                             <td class="p-3 text-xs">${{commitment}}</td>
+                            <td class="p-3 text-center">
+                                <button type="button" onclick="deleteUserRow('${{userIdClean}}')" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    <span>حذف</span>
+                                </button>
+                            </td>
                         </tr>`;
                     }}).join('');
                 }}
                 window.renderUsersTable = renderUsersTable;
+
+                async function deleteUserRow(userId) {{
+                    if (!userId || userId === '-' || userId === 'undefined') return;
+                    if (!confirm(`آیا از حذف کامل کاربر با شناسه ${{userId}} از پایگاه داده اطمینان دارید؟`)) return;
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/users/delete', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            body: JSON.stringify({{ user_id: userId, admin_password: pwd }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            allLoadedUsers = allLoadedUsers.filter(u => String(u.user_id) !== String(userId));
+                            renderUsersTable(allLoadedUsers);
+                            const statTotal = document.getElementById('statTotalUsers');
+                            if (statTotal) statTotal.innerText = allLoadedUsers.length;
+                        }} else {{
+                            alert('خطا در حذف کاربر: ' + (data.error || 'نامشخص'));
+                        }}
+                    }} catch (e) {{
+                        alert('خطای ارتباط: ' + e.message);
+                    }}
+                }}
+                window.deleteUserRow = deleteUserRow;
+
+                async function purgeTestUsers() {{
+                    if (!confirm('هشدار: آیا مطمئن هستید که می‌خواهید تمام کاربران آزمایشی و ساختگی را پاکسازی کنید؟')) return;
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/users/purge_test', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            body: JSON.stringify({{ admin_password: pwd }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            alert(`پاکسازی انجام شد. ${{data.deleted_count || 0}} کاربر آزمایشی حذف شدند.`);
+                            loadUsersData();
+                        }} else {{
+                            alert('خطا در پاکسازی: ' + (data.error || 'نامشخص'));
+                        }}
+                    }} catch (e) {{
+                        alert('خطای ارتباط: ' + e.message);
+                    }}
+                }}
+                window.purgeTestUsers = purgeTestUsers;
 
                 function filterUsersTable() {{
                     const q = (document.getElementById('usersSearchInput')?.value || '').toLowerCase().trim();
@@ -4632,7 +4817,7 @@ def render_dashboard_html() -> str:
                         product_id: pid,
                         title: title,
                         url: url,
-                        filename: title ? (title.replace(/[^\w\s\-\.\u0600-\u06FF]/gi, '') + (pendingFeedActiveFormat === 'video' ? '.mp4' : '.mp3')) : ''
+                        filename: title ? (title.replace(/[^\\w\\s\\-\\.\\u0600-\\u06FF]/gi, '') + (pendingFeedActiveFormat === 'video' ? '.mp4' : '.mp3')) : ''
                     }})
                 }});
                 const data = await res.json();
@@ -4913,7 +5098,7 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok && data.svg) {{
-                            currentSvgFilename = (text.replace(/[^\w\s\-\.\u0600-\u06FF]/gi, '').slice(0, 20) || 'typography') + '.svg';
+                            currentSvgFilename = (text.replace(/[^\\w\\s\\-\\.\\u0600-\\u06FF]/gi, '').slice(0, 20) || 'typography') + '.svg';
                             renderSvgInPreview(data.svg);
                             alert('✅ وکتور متنی با موفقیت ایجاد شد.');
                         }} else {{
@@ -6095,7 +6280,7 @@ def render_dashboard_html() -> str:
 
                 if (p === 'vyceai') {{
                     if (urlInput && (!urlInput.value || urlInput.value.includes('bynara') || urlInput.value.includes('googleapis'))) {{
-                        urlInput.value = 'https://api.vyceai.com/v1';
+                        urlInput.value = 'https://vyceai.com/v1';
                     }}
                     if (vyceBox) vyceBox.style.opacity = '1';
                 }} else if (p === 'nara') {{
@@ -6127,6 +6312,7 @@ def render_dashboard_html() -> str:
                 if (!s || typeof s !== 'object') return;
                 const fields = [
                     'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
+                    'SUPPORT_CENTER_TEXT', 'INVITE_FRIENDS_TEXT',
                     'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
                     'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
                     'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',
@@ -6273,6 +6459,7 @@ def render_dashboard_html() -> str:
             const settings = {{}};
             const fields = [
                 'STORE_NAME', 'WELCOME_TEXT', 'COURSE_DELIVERY_NOTE',
+                'SUPPORT_CENTER_TEXT', 'INVITE_FRIENDS_TEXT',
                 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_OWNER_ID', 'TELEGRAM_FORUM_GROUP_ID', 'ADMIN_USER_IDS',
                 'BALE_BOT_TOKEN', 'BALE_OWNER_ID', 'BALE_PAYMENT_TOKEN',
                 'RUBIKA_BOT_TOKEN', 'RUBIKA_OWNER_ID',

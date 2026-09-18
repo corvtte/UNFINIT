@@ -29,13 +29,13 @@ from services.referral_service import ReferralService
 class TestUNFINITV032Upgrade(unittest.TestCase):
 
     def setUp(self):
-        config.ENGINE_VERSION = VersionStr("v0.3.7")
+        config.ENGINE_VERSION = VersionStr("v0.3.8")
 
     def test_01_version_configuration(self):
         self.assertIn("v0.3.", config.ENGINE_VERSION)
-        self.assertIn(config.ENGINE_VERSION.clean, ("v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7"))
+        self.assertIn(config.ENGINE_VERSION.clean, ("v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7", "v0.3.8"))
         health = get_system_health()
-        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7")))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.3.2", "v0.3.3", "v0.3.4", "v0.3.5", "v0.3.6", "v0.3.7", "v0.3.8")))
         # self.assertIn("v0.3.1", str(health["engine_version"]))
         # self.assertIn("v0.1.0", str(health["engine_version"]))
         html = render_dashboard_html()

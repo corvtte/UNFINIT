@@ -59,39 +59,56 @@ def normalize_phone(phone: Any) -> Optional[str]:
 
 class UserModel:
     def __init__(self, data: Dict[str, Any]):
-        self.phone: str = normalize_phone(data.get("phone", ""))
-        self.full_name: str = str(data.get("full_name", "") or "").strip()
-        self.telegram_id: Optional[str] = str(data.get("telegram_id")).strip() if data.get("telegram_id") else None
-        self.bale_id: Optional[str] = str(data.get("bale_id")).strip() if data.get("bale_id") else None
+        self.phone: Optional[str] = normalize_phone(data.get("phone", ""))
+        self.username: str = str(data.get("username") or "").strip()
+        self.full_name: str = str(data.get("full_name") or data.get("name") or self.username or "").strip()
+        self.user_id: Optional[str] = str(data.get("user_id")).strip() if data.get("user_id") else None
+        self.platform: str = str(data.get("platform") or "").strip().lower()
+        self.telegram_id: Optional[str] = str(data.get("telegram_id")).strip() if data.get("telegram_id") else (self.user_id if "tele" in self.platform else None)
+        self.bale_id: Optional[str] = str(data.get("bale_id")).strip() if data.get("bale_id") else (self.user_id if "bale" in self.platform else None)
         self.purchased_courses: List[str] = list(data.get("purchased_courses") or [])
         self.unlocked_gifts: List[str] = list(data.get("unlocked_gifts") or [])
         self.referral_code: str = str(data.get("referral_code") or "").strip()
-        self.invited_by: Optional[str] = str(data.get("invited_by")).strip() if data.get("invited_by") else None
+        self.invited_by: Optional[str] = str(data.get("invited_by") or data.get("referred_by") or "").strip() if (data.get("invited_by") or data.get("referred_by")) else None
         self.successful_invites: int = int(data.get("successful_invites", 0) or 0)
-        self.terms_accepted: bool = bool(data.get("terms_accepted", False))
+        self.terms_accepted: bool = bool(data.get("terms_accepted", False) or data.get("commitment_signed", False))
+        self.wallet_balance: int = int(data.get("wallet_balance", 0) or 0)
         self.created_at: str = str(data.get("created_at") or get_tehran_now_str())
 
     def to_dict(self) -> Dict[str, Any]:
+        u_id = self.user_id or self.telegram_id or self.bale_id or self.phone or ""
+        plat = self.platform or ("telegram" if self.telegram_id else ("bale" if self.bale_id else "web"))
+        uname = self.username or self.full_name or (f"کاربر {u_id}" if u_id else "کاربر")
+        fname = self.full_name or self.username or uname
         return {
+            "user_id": u_id,
+            "platform": plat,
+            "username": uname,
+            "full_name": fname,
+            "name": fname,
             "phone": self.phone,
-            "full_name": self.full_name,
             "telegram_id": self.telegram_id,
             "bale_id": self.bale_id,
             "purchased_courses": self.purchased_courses,
             "unlocked_gifts": self.unlocked_gifts,
             "referral_code": self.referral_code,
             "invited_by": self.invited_by,
+            "referred_by": self.invited_by,
             "successful_invites": self.successful_invites,
             "terms_accepted": self.terms_accepted,
+            "commitment_signed": self.terms_accepted,
+            "wallet_balance": getattr(self, "wallet_balance", 0),
             "created_at": self.created_at
         }
 
 class UserService:
+    _users: Dict[str, UserModel] = {}
     _users_cache: Optional[Dict[str, UserModel]] = None
 
     @classmethod
     def clear_cache(cls) -> None:
         cls._users_cache = None
+        cls._users = {}
 
     @classmethod
     def _get_enc_file(cls) -> Path:
@@ -100,9 +117,10 @@ class UserService:
     @classmethod
     def load_users(cls, force_reload: bool = False) -> Dict[str, UserModel]:
         if cls._users_cache is not None and not force_reload:
+            cls._users = cls._users_cache
             return cls._users_cache
 
-        users: Dict[str, UserModel] = {}
+        users: Dict[str, UserModel] = dict(cls._users)
         enc_file = cls._get_enc_file()
 
         # 1. Check if encrypted users file exists
@@ -140,8 +158,47 @@ class UserService:
             except Exception as e:
                 logger.error(f"[user_service] Error reading legacy {legacy_file}: {e}")
 
+        cls._users = users
         cls._users_cache = users
         return cls._users_cache
+
+    @classmethod
+    def delete_user(cls, identifier: str) -> bool:
+        users = cls.load_users()
+        found = False
+        target_keys = []
+        clean_id = str(identifier).strip()
+        for key, u in list(users.items()):
+            u_ident = getattr(u, 'user_id', None)
+            if clean_id in (key, u.phone, u.telegram_id, u.bale_id, u_ident):
+                target_keys.append(key)
+                found = True
+        for k in target_keys:
+            users.pop(k, None)
+            if hasattr(cls, '_users') and isinstance(cls._users, dict):
+                cls._users.pop(k, None)
+        if found:
+            cls.save_users()
+        return found
+
+    @classmethod
+    def purge_test_users(cls) -> int:
+        users = cls.load_users()
+        to_del = []
+        for k, u in list(users.items()):
+            fn = (u.full_name or "").lower()
+            un = (getattr(u, 'username', '') or "").lower()
+            ph = (u.phone or "")
+            uid = str(u.telegram_id or u.bale_id or getattr(u, 'user_id', '') or "").lower()
+            if any(t in fn for t in ["test", "تست", "demo", "کاربر تستی"]) or any(t in un for t in ["test", "تست", "demo", "fake"]) or ph.startswith("0900") or ph.startswith("09999") or "test" in uid or "fake" in uid or "demo" in uid or "fake" in k.lower():
+                to_del.append(k)
+        for k in to_del:
+            users.pop(k, None)
+            if hasattr(cls, '_users') and isinstance(cls._users, dict):
+                cls._users.pop(k, None)
+        if to_del:
+            cls.save_users()
+        return len(to_del)
 
     @classmethod
     def save_users(cls) -> None:

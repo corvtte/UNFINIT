@@ -24,7 +24,7 @@
   "GEMINI_MODEL": "gemini-3.6-flash",
   "DEFAULT_ARTIST": "استاد عباس‌منش",
   "AI_PROVIDER": "gemini",
-  "AI_BASE_URL": "https://api.vyceai.com/v1",
+  "AI_BASE_URL": "https://vyceai.com/v1",
   "AI_API_KEY": "",
   "VYCEAI_API_KEY": "",
   "AI_MODEL": "deepseek-v4.1",
@@ -32,5 +32,10 @@
   "ADMIN_PANEL_PASSWORD": "",
   "course_terms_text": "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»",
   "COURSE_TERMS_TEXT": "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»",
-  "THEME": "synthwave"
+  "THEME": "synthwave",
+  "FOO": "BAR",
+  "SUPPORT_CENTER_TEXT": "پشتیبانی ۲۴ ساعته تلفنی و تیکت",
+  "INVITE_FRIENDS_TEXT": "با دعوت از دوستانتان ۲۰ درصد هدیه بگیرید",
+  "MAX_SAFE_BALE_SIZE_MB": "48.5",
+  "TEST_SCOPE_KEY": "test_scope_val"
 }

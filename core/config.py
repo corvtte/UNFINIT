@@ -50,7 +50,7 @@ class VersionStr(str):
         return str.__str__(self)
 
 class Config:
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.7").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.8").strip())
     THEME: str = (os.environ.get("THEME") or "default-dark").strip()
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
@@ -96,6 +96,8 @@ class Config:
     # 5. Store & Payment Settings
     STORE_NAME: str = _clean_text(os.environ.get("STORE_NAME") or "فروشگاه دوره‌های آموزشی UNFINIT", default="فروشگاه دوره‌های آموزشی UNFINIT")
     WELCOME_TEXT: str = _clean_text(os.environ.get("WELCOME_TEXT") or "به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.", default="به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.")
+    SUPPORT_CENTER_TEXT: str = _clean_text(os.environ.get("SUPPORT_CENTER_TEXT") or "مرکز پشتیبانی و ارتباط با اساتید: در صورت نیاز به راهنمایی با پشتیبانی در تماس باشید.", default="مرکز پشتیبانی و ارتباط با اساتید: در صورت نیاز به راهنمایی با پشتیبانی در تماس باشید.")
+    INVITE_FRIENDS_TEXT: str = _clean_text(os.environ.get("INVITE_FRIENDS_TEXT") or "طرح دعوت از دوستان: با اشتراک‌گذاری لینک اختصاصی خود، از اعتبار هدیه بهره‌مند شوید.", default="طرح دعوت از دوستان: با اشتراک‌گذاری لینک اختصاصی خود، از اعتبار هدیه بهره‌مند شوید.")
     TERMS_TEXT: str = (os.environ.get("TERMS_TEXT") or "کلیه حقوق مادی و معنوی دوره‌ها متعلق به این مجموعه می‌باشد.").strip()
     COURSE_TERMS_TEXT: str = _clean_text(os.environ.get("COURSE_TERMS_TEXT") or "«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»", default="«این دوره متعلق به خریدار است و هرگونه بازنشر، فروش، اشتراک‌گذاری یا قرار دادن آن در اختیار دیگران شرعاً و قانوناً غیرمجاز بوده و پیگرد قانونی دارد.»")
     CARD_NUMBER: str = (os.environ.get("CARD_NUMBER") or "6037991122334455").strip()
@@ -110,7 +112,7 @@ class Config:
 
     # AI Hub Settings
     AI_PROVIDER: str = (os.environ.get("AI_PROVIDER") or "vyceai").strip().lower()
-    AI_BASE_URL: str = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
+    AI_BASE_URL: str = (os.environ.get("AI_BASE_URL") or "https://vyceai.com/v1").strip()
     AI_API_KEY: str = (os.environ.get("AI_API_KEY") or os.environ.get("VYCEAI_API_KEY") or "").strip()
     VYCEAI_API_KEY: str = (os.environ.get("VYCEAI_API_KEY") or os.environ.get("AI_API_KEY") or "").strip()
     AI_MODEL: str = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
@@ -158,6 +160,8 @@ class Config:
 
         self.STORE_NAME = _clean_text(os.environ.get("STORE_NAME") or "فروشگاه دوره‌های آموزشی UNFINIT", default="فروشگاه دوره‌های آموزشی UNFINIT")
         self.WELCOME_TEXT = _clean_text(os.environ.get("WELCOME_TEXT") or "به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.", default="به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.")
+        self.SUPPORT_CENTER_TEXT = _clean_text(os.environ.get("SUPPORT_CENTER_TEXT") or "مرکز پشتیبانی و ارتباط با اساتید: در صورت نیاز به راهنمایی با پشتیبانی در تماس باشید.", default="مرکز پشتیبانی و ارتباط با اساتید: در صورت نیاز به راهنمایی با پشتیبانی در تماس باشید.")
+        self.INVITE_FRIENDS_TEXT = _clean_text(os.environ.get("INVITE_FRIENDS_TEXT") or "طرح دعوت از دوستان: با اشتراک‌گذاری لینک اختصاصی خود، از اعتبار هدیه بهره‌مند شوید.", default="طرح دعوت از دوستان: با اشتراک‌گذاری لینک اختصاصی خود، از اعتبار هدیه بهره‌مند شوید.")
         self.TERMS_TEXT = (os.environ.get("TERMS_TEXT") or "کلیه حقوق مادی و معنوی دوره‌ها متعلق به این مجموعه می‌باشد.").strip()
         self.CARD_NUMBER = (os.environ.get("CARD_NUMBER") or "6037991122334455").strip()
         self.CARD_HOLDER = (os.environ.get("CARD_HOLDER") or "نام صاحب حساب").strip()
@@ -183,7 +187,7 @@ class Config:
         self.ZARINPAL_MERCHANT_ID = (os.environ.get("ZARINPAL_MERCHANT_ID") or "").strip()
         self.ZARINPAL_SANDBOX = (os.environ.get("ZARINPAL_SANDBOX", "false").lower() in ("true", "1", "yes"))
 
-        self.AI_BASE_URL = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
+        self.AI_BASE_URL = (os.environ.get("AI_BASE_URL") or "https://vyceai.com/v1").strip()
         self.AI_API_KEY = (os.environ.get("AI_API_KEY") or os.environ.get("VYCEAI_API_KEY") or "").strip()
         self.VYCEAI_API_KEY = (os.environ.get("VYCEAI_API_KEY") or os.environ.get("AI_API_KEY") or "").strip()
         self.AI_MODEL = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
@@ -201,7 +205,7 @@ class Config:
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
         self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
         self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.7").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.8").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -264,7 +268,7 @@ class Config:
     ADMIN_PANEL_PASSWORD: str = (os.environ.get("ADMIN_PANEL_PASSWORD") or "").strip()
 
     # 10. AI Agent Settings (VyceAI / OpenAI Compatible)
-    AI_BASE_URL: str = (os.environ.get("AI_BASE_URL") or "https://api.vyceai.com/v1").strip()
+    AI_BASE_URL: str = (os.environ.get("AI_BASE_URL") or "https://vyceai.com/v1").strip()
     AI_API_KEY: str = (os.environ.get("AI_API_KEY") or "").strip()
     AI_MODEL: str = (os.environ.get("AI_MODEL") or "deepseek-v4.1").strip()
     AI_PROVIDER: str = (os.environ.get("AI_PROVIDER") or "gemini").strip()
@@ -277,7 +281,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.7").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.3.8").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)

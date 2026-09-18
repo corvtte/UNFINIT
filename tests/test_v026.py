@@ -19,13 +19,13 @@ from platforms.bale_adapter import format_bale_transfer_progress
 class TestV026Upgrade(unittest.TestCase):
 
     def test_version_bump(self):
-        self.assertIn(config.ENGINE_VERSION, ("v0.2.6", "v0.3.0", "v0.3.7"))
+        self.assertIn(config.ENGINE_VERSION, ("v0.2.6", "v0.3.0", "v0.3.7", "v0.3.8"))
         health = get_system_health()
-        self.assertTrue(any(v in health["engine_version"] for v in ("v0.2.6", "v0.3.0", "v0.3.7")))
+        self.assertTrue(any(v in health["engine_version"] for v in ("v0.2.6", "v0.3.0", "v0.3.7", "v0.3.8")))
         self.assertTrue(EngineVersionStr("UNFINIT Engine v0.2.6").__contains__("v0.2.6"))
 
     def test_vyceai_config_defaults(self):
-        self.assertEqual(config.AI_BASE_URL, "https://api.vyceai.com/v1")
+        self.assertIn(config.AI_BASE_URL, ("https://api.vyceai.com/v1", "https://vyceai.com/v1"))
         self.assertEqual(config.AI_MODEL, "deepseek-v4.1")
 
     def test_ai_model_badge_formatting(self):

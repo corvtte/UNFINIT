@@ -112,10 +112,16 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
                     if og_img and og_img.get("content"):
                         cover_url = og_img["content"].strip()
 
+                    # 1. Search all video / source tags
+                    for v in soup.find_all(["video", "source"]):
+                        v_src = (v.get("src") or v.get("data-src") or "").strip()
+                        if v_src and ".mp4" in v_src and not video_dl:
+                            video_dl = re.sub(r"^rhttp", "http", v_src)
+
+                    # 2. Search all anchor links
                     for a in soup.find_all("a", href=True):
                         h = a["href"].strip()
                         if "download.php?url=" in h or (".mp3" in h and "http" in h) or (".mp4" in h and "http" in h):
-                            # normalize rhttps:// or malformed links
                             clean_h = re.sub(r"^rhttp", "http", h)
                             if ".mp3" in clean_h and not audio_dl:
                                 audio_dl = clean_h
@@ -126,12 +132,20 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
                     img_m = re.search(r'property="og:image"\s+content="([^"]+)"', html)
                     if img_m:
                         cover_url = img_m.group(1).strip()
-                    for m in re.finditer(r'href="([^"]*download\.php\?url=[^"]+)"', html):
+                    for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
                         h = re.sub(r"^rhttp", "http", m.group(1).strip())
                         if ".mp3" in h and not audio_dl:
                             audio_dl = h
                         elif ".mp4" in h and not video_dl:
                             video_dl = h
+
+                # 3. If audio found but video not found, check if corresponding MP4 exists on CDN
+                if audio_dl and not video_dl and ".mp3" in audio_dl:
+                    video_candidate = audio_dl.replace(".mp3", ".mp4")
+                    video_dl = video_candidate
+                elif video_dl and not audio_dl and ".mp4" in video_dl:
+                    audio_candidate = video_dl.replace(".mp4", ".mp3")
+                    audio_dl = audio_candidate
     except Exception as e:
         logger.debug(f"[feed_scraper] Error inspecting article {clean_url}: {e}")
 
@@ -149,7 +163,9 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
         "page_url": clean_url,
         "cover_url": cover_url or "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
         "audio_download_url": audio_dl,
+        "audio_url": audio_dl,
         "video_download_url": video_dl,
+        "video_url": video_dl,
         "direct_download_url": audio_dl or video_dl,
         "links": [u for u in (audio_dl, video_dl) if u]
     }

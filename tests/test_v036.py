@@ -19,10 +19,10 @@ class TestV036Features(unittest.TestCase):
 
     def test_01_version_and_health(self):
         """Rule 1.1 / v0.3.6 & v0.3.7: Verify clean ENGINE_VERSION and system health."""
-        self.assertIn(str(config.ENGINE_VERSION), ("v0.3.6", "v0.3.7"))
-        self.assertIn(config.ENGINE_VERSION.clean, ("v0.3.6", "v0.3.7"))
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.3.6", "v0.3.7", "v0.3.8"))
+        self.assertIn(config.ENGINE_VERSION.clean, ("v0.3.6", "v0.3.7", "v0.3.8"))
         health = get_system_health()
-        self.assertTrue(any(v in str(health.get("engine_version", "")) for v in ("v0.3.6", "v0.3.7")))
+        self.assertTrue(any(v in str(health.get("engine_version", "")) for v in ("v0.3.6", "v0.3.7", "v0.3.8")))
 
     def test_02_collapsible_right_sidebar_and_wrapper(self):
         """Web Panel: Collapsible right sidebar layout and header toggle button."""

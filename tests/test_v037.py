@@ -42,7 +42,7 @@ class TestV037Release(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from core.config import VersionStr
-        config.ENGINE_VERSION = VersionStr("v0.3.7")
+        config.ENGINE_VERSION = VersionStr("v0.3.8")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(init_db())
@@ -50,16 +50,16 @@ class TestV037Release(unittest.TestCase):
 
     def setUp(self):
         from core.config import VersionStr
-        config.ENGINE_VERSION = VersionStr("v0.3.7")
+        config.ENGINE_VERSION = VersionStr("v0.3.8")
 
     def test_01_version_and_system_health(self):
         """Rule 1.1 / v0.3.7: Clean ENGINE_VERSION string."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.3.7")
-        self.assertEqual(config.ENGINE_VERSION.clean, "v0.3.7")
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.3.7", "v0.3.8"))
+        self.assertIn(config.ENGINE_VERSION.clean, ("v0.3.7", "v0.3.8"))
         self.assertNotIn("(", str(config.ENGINE_VERSION))
         self.assertNotIn(")", str(config.ENGINE_VERSION))
         health = get_system_health()
-        self.assertIn("v0.3.7", str(health.get("engine_version", "")))
+        self.assertTrue(any(v in str(health.get('engine_version', '')) for v in ('v0.3.7', 'v0.3.8')))
         # Verify Soroush Plus is represented in platforms dict
         platforms = health.get("platforms", {})
         self.assertIn("soroush", platforms)

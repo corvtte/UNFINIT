@@ -143,6 +143,8 @@ def sync_settings_to_json_and_env() -> None:
         "GEMINI_API_KEY": config.GEMINI_API_KEY,
         "GEMINI_MODEL": config.GEMINI_MODEL,
         "DEFAULT_ARTIST": config.DEFAULT_ARTIST,
+        "SUPPORT_CENTER_TEXT": getattr(config, "SUPPORT_CENTER_TEXT", ""),
+        "INVITE_FRIENDS_TEXT": getattr(config, "INVITE_FRIENDS_TEXT", ""),
         "THEME": getattr(config, "THEME", "default-dark")
     }
     SENSITIVE_KEYS = {
@@ -585,8 +587,12 @@ async def init_db():
                             # If key exists in os.environ with a non-empty value, do not override config attribute
                             if os.environ.get(k):
                                 continue
-                            if isinstance(getattr(config, k), int):
+                            if isinstance(getattr(config, k), bool):
+                                setattr(config, k, str(v_str).lower() in ("true", "1", "yes"))
+                            elif isinstance(getattr(config, k), int):
                                 setattr(config, k, int(v_str or 0))
+                            elif isinstance(getattr(config, k), float):
+                                setattr(config, k, float(v_str or 0.0))
                             else:
                                 setattr(config, k, v_str)
                         except Exception:

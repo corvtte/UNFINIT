@@ -197,6 +197,18 @@ class StoreService:
         return []
 
     @staticmethod
+    def extract_episode_number(title: str, filename: str = "", default_part: int = 1) -> int:
+        text_to_check = f"{title} {filename}"
+        fa_to_en = str.maketrans("۰۱۲۳۴۵۶۷۸۹", "0123456789")
+        m = re.search(r'(?:قسمت|بخش|part|ep|episode)\s*([۰-۹\d]+)', text_to_check, re.IGNORECASE)
+        if m:
+            try:
+                return int(m.group(1).translate(fa_to_en))
+            except Exception:
+                pass
+        return default_part
+
+    @staticmethod
     async def add_course_episode(
         product_id: str,
         title: str,
@@ -212,7 +224,10 @@ class StoreService:
             return {"ok": False, "error": f"دوره با شناسه {product_id} یافت نشد."}
 
         episodes = list(getattr(prod, "episodes", []) or [])
-        ep_part = part or (len(episodes) + 1)
+        ep_part = part
+        if ep_part is None:
+            ep_part = StoreService.extract_episode_number(title, filename, default_part=len(episodes) + 1)
+
         new_ep = {
             "part": ep_part,
             "title": str(title).strip() or f"قسمت {ep_part}",
