@@ -143,7 +143,7 @@ def build_telegram_frequency_nav_keyboard(category: str, current_idx: int, total
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("◀️ قبلی", callback_data=f"freq_page:{category}:{prev_idx}"),
-            InlineKeyboardButton(f"{current_idx + 1} از {total}", callback_data="freq_noop"),
+            InlineKeyboardButton(f"({current_idx + 1} از {total})", callback_data="freq_noop"),
             InlineKeyboardButton("بعدی ▶️", callback_data=f"freq_page:{category}:{next_idx}")
         ],
         [
@@ -1014,7 +1014,7 @@ class TelegramAdapter:
             card_text = FrequencyService.format_card(item, curr_num, total)
             await callback_query.edit_message_text(
                 card_text,
-                parse_mode=enums.ParseMode.HTML,
+                parse_mode=enums.ParseMode.MARKDOWN,
                 reply_markup=build_telegram_frequency_nav_keyboard(category, curr_num - 1, total)
             )
 

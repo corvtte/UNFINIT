@@ -80,7 +80,7 @@ def build_bale_frequency_nav_keyboard(category: str, current_idx: int, total: in
         "inline_keyboard": [
             [
                 {"text": "◀️ قبلی", "callback_data": f"freq_page:{category}:{prev_idx}"},
-                {"text": f"{current_idx + 1} از {total}", "callback_data": "freq_noop"},
+                {"text": f"({current_idx + 1} از {total})", "callback_data": "freq_noop"},
                 {"text": "بعدی ▶️", "callback_data": f"freq_page:{category}:{next_idx}"}
             ],
             [

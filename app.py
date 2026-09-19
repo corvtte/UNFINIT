@@ -713,6 +713,21 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path == "/api/frequencies/export":
+            try:
+                from core.frequency_service import FrequencyService
+                items = FrequencyService.get_all()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="frequencies_backup.json"')
+                self.end_headers()
+                self.wfile.write(json.dumps(items, ensure_ascii=False, indent=2).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path == "/api/feed/latest":
             try:
                 from services.feed_scraper import get_latest_free_downloads
@@ -1000,6 +1015,26 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": ok}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/frequencies/import":
+            try:
+                raw_items = payload.get("items")
+                if raw_items is None and isinstance(payload, list):
+                    raw_items = payload
+                mode = payload.get("mode", "replace") if isinstance(payload, dict) else "replace"
+                if not isinstance(raw_items, list):
+                    raise ValueError("داده‌های ورودی باید شامل لیستی از باورها (آرایه JSON) باشند.")
+                from core.frequency_service import FrequencyService
+                ok, count, msg = FrequencyService.import_items(raw_items, mode=mode)
+                self.send_response(200 if ok else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": ok, "count": count, "message": msg}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")

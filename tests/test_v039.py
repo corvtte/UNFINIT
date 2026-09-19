@@ -112,6 +112,15 @@ class TestUNFINITv039(unittest.IsolatedAsyncioTestCase):
         self.assertIn("freq_page:MORNING:3", bale_nav_cbs)
         self.assertIn("freq_cats", bale_nav_cbs)
 
+        # Check Bale RTL layout: first button should be Previous (◀️ قبلی), middle is count with parentheses, last is Next (بعدی ▶️)
+        bale_row0 = bale_nav["inline_keyboard"][0]
+        self.assertEqual(len(bale_row0), 3)
+        self.assertIn("قبلی", bale_row0[0]["text"])
+        self.assertIn("از", bale_row0[1]["text"])
+        self.assertIn("(", bale_row0[1]["text"])
+        self.assertIn(")", bale_row0[1]["text"])
+        self.assertIn("بعدی", bale_row0[2]["text"])
+
     # --- 3. Soroush Plus Worker & Manual Token Storage ---
     def test_soroush_worker_manual_token_and_endpoints(self):
         """Verify Soroush worker has manual token storage and invalid core.splus.ir is removed."""
@@ -145,16 +154,37 @@ class TestUNFINITv039(unittest.IsolatedAsyncioTestCase):
         # Slide-over drawer exists
         self.assertIn('id="logsDrawer"', html)
 
-    # --- 5. Web Panel Frequency Management Section in Settings Tab ---
+    # --- 5. Web Panel Standalone Frequency Tab & Export/Import ---
     def test_web_panel_frequency_management_section(self):
-        """Verify frequency management HTML table and JS functions exist."""
+        """Verify standalone frequency tab, sidebar button, HTML table, export/import and JS functions exist."""
         html = render_dashboard_html()
+        self.assertIn('id="tab-frequencies"', html)
+        self.assertIn('id="s-btn-tab-frequencies"', html)
+        self.assertIn('id="btn-tab-frequencies"', html)
         self.assertIn('id="frequencyContent"', html)
         self.assertIn('id="frequencyTableBody"', html)
         self.assertIn('id="addFrequencyForm"', html)
         self.assertIn('loadFrequenciesTable', html)
         self.assertIn('submitAddNewFrequency', html)
         self.assertIn('deleteFrequencyItem', html)
+        self.assertIn('exportFrequenciesJSON', html)
+        self.assertIn('handleImportFrequenciesFile', html)
+
+    def test_frequency_service_import_items(self):
+        """Verify FrequencyService.import_items successfully validates and replaces items."""
+        sample_items = [
+            {"id": "test_1", "title": "تست ۱", "text": "متن تستی ۱", "category": "MORNING"},
+            {"id": "test_2", "title": "تست ۲", "text": "متن تستی ۲", "category": "NIGHT"},
+        ]
+        original = FrequencyService.get_all()
+        try:
+            ok, count, msg = FrequencyService.import_items(sample_items, mode="replace")
+            self.assertTrue(ok)
+            self.assertEqual(count, 2)
+            self.assertEqual(len(FrequencyService.get_all()), 2)
+        finally:
+            FrequencyService.import_items(original, mode="replace")
+            self.assertEqual(len(FrequencyService.get_all()), len(original))
 
     # --- 6. Theme Variables Compliance ---
     def test_theme_variables_compliance(self):

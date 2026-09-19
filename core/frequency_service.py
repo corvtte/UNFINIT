@@ -132,21 +132,70 @@ class FrequencyService:
         return False
 
     @classmethod
+    def import_items(cls, incoming_items: List[Dict[str, Any]], mode: str = "replace") -> Tuple[bool, int, str]:
+        """
+        Imports frequency items. If mode == 'replace', completely rewrites the list.
+        If mode == 'merge', appends new ones without duplicate texts.
+        """
+        if not isinstance(incoming_items, list):
+            return False, 0, "داده ارسالی باید به صورت لیست JSON باشد."
+
+        valid_list = []
+        for idx, it in enumerate(incoming_items):
+            if not isinstance(it, dict):
+                continue
+            title = str(it.get("title", "")).strip()
+            text = str(it.get("text", "")).strip()
+            if not title or not text:
+                continue
+            cat_raw = str(it.get("category", "")).upper()
+            cat = "NIGHT" if "NIGHT" in cat_raw or "شب" in cat_raw else "MORNING"
+            item_id = str(it.get("id") or f"freq_{cat.lower()[:1]}_{uuid.uuid4().hex[:4]}")
+            order = int(it.get("order") or (idx + 1))
+            valid_list.append({
+                "id": item_id,
+                "category": cat,
+                "title": title,
+                "text": text,
+                "order": order
+            })
+
+        if not valid_list:
+            return False, 0, "هیچ باور معتبری در فایل یافت نشد."
+
+        if mode == "replace":
+            cls.save_all(valid_list)
+            logger.info(f"[frequency_service] Replaced frequencies with {len(valid_list)} items")
+            return True, len(valid_list), f"{len(valid_list)} باور با موفقیت جایگزین گردید."
+        else:
+            current = cls.get_all()
+            curr_texts = {c.get("text", "").strip() for c in current}
+            added = 0
+            for v in valid_list:
+                if v["text"] not in curr_texts:
+                    current.append(v)
+                    curr_texts.add(v["text"])
+                    added += 1
+            cls.save_all(current)
+            logger.info(f"[frequency_service] Merged {added} new frequencies (Total: {len(current)})")
+            return True, added, f"{added} باور جدید به سامانه اضافه گردید."
+
+    @classmethod
     def format_card(cls, item: Dict[str, Any], index: int, total: int) -> str:
         cat = item.get("category", "").upper()
         if cat == "MORNING":
-            header = "☀️ <b>باور صبحگاهی</b>"
+            header = "☀️ *باور صبحگاهی*"
         else:
-            header = "🌙 <b>باور شبانگاهی</b>"
+            header = "🌙 *باور شبانگاهی*"
 
-        title = item.get("title", "")
-        text = item.get("text", "")
+        title = item.get("title", "").strip()
+        text = item.get("text", "").strip()
 
         return (
-            f"💎 <b>فرکانس فراوانی</b> | {header}\n"
+            f"💎 *فرکانس فراوانی* | {header}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"✨ <b>{title}</b>\n\n"
+            f"✨ *{title}*\n\n"
             f"«{text}»\n\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📄 <b>کارت {index} از {total}</b>"
+            f"📄 *کارت {index} از {total}*"
         )

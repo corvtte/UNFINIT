@@ -188,25 +188,50 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
             </td>
             <td class="py-3 px-3 text-left">
                 <div class="flex flex-wrap items-center justify-end gap-1.5">
-                    <button onclick="openSpecsModal('{d['drop_id']}')" class="px-2 py-1 rounded-lg bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800 text-xs font-semibold flex items-center gap-1 transition" title="مشاهده بیت‌ریت، سمپل‌ریت، کانال و کدک">
-                        <span>📊</span> مشخصات
+                    <button onclick="openSpecsModal('{d['drop_id']}')" class="px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition theme-card-btn" style="border-color: var(--card-border); color: var(--accent-color);" title="مشاهده بیت‌ریت، سمپل‌ریت، کانال و کدک">
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                        </svg>
+                        <span>مشخصات</span>
                     </button>
-                    <button type="button" onclick="openCutterModal(this.getAttribute('data-drop-id'), this.getAttribute('data-filename'))" data-drop-id="{d['drop_id']}" data-filename="{safe_fn}" class="px-2 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-xs font-semibold flex items-center gap-1 transition cursor-pointer" title="برش آنلاین صدا با رسم موج صوتی">
-                        <span>✂️</span> برش صدا
+                    <button type="button" onclick="openCutterModal(this.getAttribute('data-drop-id'), this.getAttribute('data-filename'))" data-drop-id="{d['drop_id']}" data-filename="{safe_fn}" class="px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition theme-card-btn cursor-pointer" style="border-color: var(--card-border); color: #34d399;" title="برش آنلاین صدا با رسم موج صوتی">
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.165 2.165 0 011.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.2M9.384 9.137L20.25 15.41M12.602 11.36a3 3 0 115.196 3 3 3 0 01-5.196-3zm-1.142-.023L7.848 15.75m3.612-4.413a2.166 2.166 0 01-.08 2.863l-2.077 1.2" />
+                        </svg>
+                        <span>برش صدا</span>
                     </button>
-                    <button onclick="openTagModal('{d['drop_id']}', '{safe_title}', '{safe_artist}', '{safe_album}', '{safe_fn}')" class="px-2 py-1 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-semibold flex items-center gap-1 transition" title="ویرایش عنوان، هنرمند، آلبوم، کاور و نام فایل">
-                        <span>✏️</span> تگ و کاور
+                    <button onclick="openTagModal('{d['drop_id']}', '{safe_title}', '{safe_artist}', '{safe_album}', '{safe_fn}')" class="px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition theme-card-btn" style="border-color: var(--card-border); color: #38bdf8;" title="ویرایش عنوان، هنرمند، آلبوم، کاور و نام فایل">
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                        </svg>
+                        <span>تگ و کاور</span>
                     </button>
-                    <a href="/dl/{d['drop_id']}" target="_blank" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold inline-flex items-center gap-1 transition" title="دانلود مستقیم فایل">
-                        <span>📥</span>
+                    <a href="/dl/{d['drop_id']}" target="_blank" class="p-1.5 rounded-xl border text-xs font-semibold inline-flex items-center justify-center transition theme-card-btn text-slate-300" style="border-color: var(--card-border);" title="دانلود مستقیم فایل">
+                        <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
                     </a>
-                    <button onclick="deleteStudioDrop('{d['drop_id']}')" class="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-semibold transition" title="حذف سشن و فایل از سرور">
-                        <span>🗑️</span>
+                    <button onclick="deleteStudioDrop('{d['drop_id']}')" class="p-1.5 rounded-xl border text-rose-400 hover:bg-rose-500/20 text-xs font-semibold transition" style="border-color: rgba(244, 63, 94, 0.3); background: rgba(244, 63, 94, 0.08);" title="حذف سشن و فایل از سرور">
+                        <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
                     </button>
-                    <div class="inline-flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
-                        <button onclick="dispatchDrop('{d['drop_id']}', 'telegram')" class="px-1.5 py-1 rounded hover:bg-sky-900/60 text-sky-300 text-xs font-bold transition" title="ارسال به تلگرام">✈️</button>
-                        <button onclick="dispatchDrop('{d['drop_id']}', 'bale')" class="px-1.5 py-1 rounded hover:bg-emerald-900/60 text-emerald-300 text-xs font-bold transition" title="ارسال به بله (با فشرده‌سازی خودکار)">🟢</button>
-                        <button onclick="dispatchDrop('{d['drop_id']}', 'rubika')" class="px-1.5 py-1 rounded hover:bg-purple-900/60 text-purple-300 text-xs font-bold transition" title="ارسال به روبیکا">🟣</button>
+                    <div class="inline-flex items-center rounded-xl p-0.5 gap-0.5 border" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <button onclick="dispatchDrop('{d['drop_id']}', 'telegram')" class="p-1 rounded-lg hover:bg-sky-500/20 transition flex items-center justify-center" title="ارسال به تلگرام">
+                            <svg class="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                            </svg>
+                        </button>
+                        <button onclick="dispatchDrop('{d['drop_id']}', 'bale')" class="p-1 rounded-lg hover:bg-emerald-500/20 transition flex items-center justify-center" title="ارسال به بله (با کمپرسور خودکار)">
+                            <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12c0 1.93.55 3.73 1.5 5.26L2.36 21.64c-.13.39.24.76.63.63l4.38-1.14A9.96 9.96 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 15c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3-6H9c-.55 0-1-.45-1-1s.45-1 1-1h6c.55 0 1 .45 1 1s-.45 1-1 1z"/>
+                            </svg>
+                        </button>
+                        <button onclick="dispatchDrop('{d['drop_id']}', 'rubika')" class="p-1 rounded-lg hover:bg-purple-500/20 transition flex items-center justify-center" title="ارسال به روبیکا">
+                            <svg class="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2.5a9.5 9.5 0 00-9.5 9.5c0 2.2.75 4.23 2 5.86L3.2 21.3a.75.75 0 00.9.9l3.44-1.3A9.46 9.46 0 0012 21.5a9.5 9.5 0 100-19zm-3 7a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm6 6H9a.75.75 0 010-1.5h6a.75.75 0 010 1.5zm0-3a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </td>
@@ -342,6 +367,12 @@ def render_dashboard_html() -> str:
 
     drop_rows = render_studio_table_rows()
     active_drops_count = len([s for s in session_manager._sessions if not s.startswith("url_") and not s.startswith("rurl_")])
+    frequencies_count = 20
+    try:
+        from core.frequency_service import FrequencyService
+        frequencies_count = len(FrequencyService.get_all())
+    except Exception:
+        frequencies_count = 20
     course_terms_escaped = html.escape(getattr(config, "COURSE_TERMS_TEXT", ""))
 
     return f"""<!DOCTYPE html>
@@ -361,14 +392,15 @@ def render_dashboard_html() -> str:
         * {{ font-family: 'Vazirmatn', 'Roboto', sans-serif !important; }}
         :root, body.theme-default-dark {{
             --bg-color: #080e1e;
-            --fg-color: #f1f5f9;
+            --fg-color: #f4f4f5;
             --accent-color: #06b6d4;
-            --glass-bg: rgba(15, 23, 42, 0.85);
+            --panel-bg: #09090b;
+            --glass-bg: rgba(18, 18, 22, 0.85);
             --card-border: rgba(6, 182, 212, 0.2);
-            --input-bg: #0f172a; /* #1e293b */
+            --input-bg: #141418;
             --card-bg: #0f172a;
-            --table-head-bg: #111a2e;
-            --table-row-hover: rgba(30, 41, 59, 0.5);
+            --table-head-bg: #18181f;
+            --table-row-hover: rgba(39, 39, 42, 0.5);
         }}
         body.theme-catppuccin {{
             --bg-color: #24273A;
@@ -828,14 +860,18 @@ def render_dashboard_html() -> str:
                         <div class="overflow-hidden">
                             <h1 class="text-sm font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
                                 <span>UNFINIT Hub</span>
-                                <span class="text-amber-400 text-xs" title="پنل مدیریت ارشد">👑</span>
+                                <span class="text-amber-400 inline-flex items-center" title="پنل مدیریت ارشد">
+                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M2.5 19h19v2h-19v-2zm1.2-14.5l4.8 6.5 3.5-5 3.5 5 4.8-6.5 1.7 12.5h-20l1.7-12.5z"/>
+                                    </svg>
+                                </span>
                                 <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">{config.ENGINE_VERSION}</span>
                             </h1>
                             <p class="text-[11px] text-slate-400 truncate">Store &amp; Media Studio</p>
                         </div>
                     </div>
-                    <button type="button" onclick="toggleSidebar(false)" class="md:hidden p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
-                        ✕
+                    <button type="button" onclick="toggleSidebar(false)" class="md:hidden p-1.5 rounded-lg border text-slate-400 hover:text-white transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
             </div>
@@ -901,7 +937,16 @@ def render_dashboard_html() -> str:
                     <span class="flex-1 text-right">سکرت‌ها و هوش مصنوعی</span>
                 </button>
 
-                <!-- 8. Settings & Logs -->
+                <!-- 8. Frequencies -->
+                <button draggable="true" type="button" onclick="switchTab('frequencies'); toggleSidebar(false);" data-tab="frequencies" id="s-btn-tab-frequencies" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span class="flex-1 text-right">فرکانس فراوانی</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-indigo-400 font-mono">{frequencies_count}</span>
+                </button>
+
+                <!-- 9. Settings & Logs -->
                 <button draggable="true" type="button" onclick="switchTab('settings'); toggleSidebar(false);" data-tab="settings" id="s-btn-tab-settings" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.241.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -955,17 +1000,21 @@ def render_dashboard_html() -> str:
             <button draggable="true" data-tab="downloads" id="btn-tab-downloads" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
             <button draggable="true" data-tab="orders" id="btn-tab-orders" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
             <button draggable="true" data-tab="tokens" id="btn-tab-tokens" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
+            <button draggable="true" data-tab="frequencies" id="btn-tab-frequencies" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
             <button draggable="true" data-tab="settings" id="btn-tab-settings" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
         </div>
         <div id="mobileDrawer" class="hidden" style="display: none !important;"></div>
-        <div id="mobileNavMenu" class="hidden" style="display: none !important;"><button id="m-btn-tab-downloads" class="hidden"></button></div>
+        <div id="mobileNavMenu" class="hidden" style="display: none !important;">
+            <button id="m-btn-tab-downloads" class="hidden"></button>
+            <button id="m-btn-tab-frequencies" class="hidden"></button>
+        </div>
 
         <!-- ================= MAIN CONTENT AREA ================= -->
         <div id="contentWrapper" class="md:mr-64 mr-0 min-h-screen flex flex-col transition-all duration-300">
             <!-- Top Sticky Header -->
             <header class="glass sticky top-0 z-30 px-4 sm:px-6 py-3.5 border-b border-slate-800/80 flex justify-between items-center gap-3">
                 <div class="flex items-center gap-3">
-                    <button type="button" onclick="toggleSidebar()" id="btnToggleSidebar" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center justify-center focus:outline-none" title="تغییر وضعیت منوی سایدبار">
+                    <button type="button" onclick="toggleSidebar()" id="btnToggleSidebar" class="theme-card-btn p-2 rounded-xl transition flex items-center justify-center focus:outline-none" style="border: 1px solid var(--card-border);" title="تغییر وضعیت منوی سایدبار">
                         <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
@@ -1054,7 +1103,7 @@ def render_dashboard_html() -> str:
                     </div>
                     <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400 flex items-center justify-between">
                         <span id="dashBaleSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span>
-                        <button type="button" onclick="editBaleSafeLimit()" class="text-xs p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center justify-center" title="ویرایش سریع سقف ایمن بله">
+                        <button type="button" onclick="editBaleSafeLimit()" class="theme-card-btn text-xs p-1.5 rounded-xl transition flex items-center justify-center" style="border: 1px solid var(--card-border);" title="ویرایش سریع سقف ایمن بله">
                             <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
                             </svg>
@@ -1110,7 +1159,7 @@ def render_dashboard_html() -> str:
                         <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="font-semibold" style="color: var(--accent-color);"><span id="baleCardSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span> (کمپرس خودکار)</span></p>
                     </div>
                     <div class="mt-3">
-                        <button type="button" onclick="editBaleSafeLimit()" class="w-full py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-medium transition flex items-center justify-center gap-1.5">
+                        <button type="button" onclick="editBaleSafeLimit()" class="theme-card-btn w-full py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5" style="border: 1px solid var(--card-border);">
                             <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
                             </svg>
@@ -1201,14 +1250,14 @@ def render_dashboard_html() -> str:
                 </div>
             </div>
             <div class="flex-1 p-3 overflow-hidden flex flex-col">
-                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 font-mono text-xs overflow-y-auto p-3 rounded-xl border space-y-1 select-text no-scrollbar" style="background: var(--card-bg, #030712); border-color: var(--card-border); color: #34d399;">
-                    <div class="text-slate-500">// UNFINIT Engine v0.3.8 Live Stream initialized...</div>
+                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 font-mono text-xs overflow-y-auto p-3 rounded-xl border space-y-1 select-text no-scrollbar" style="background: var(--card-bg, #09090b); border-color: var(--card-border); color: #34d399;">
+                    <div class="text-slate-500">// UNFINIT Engine {config.ENGINE_VERSION} Live Stream initialized...</div>
                 </div>
             </div>
             <div class="p-2.5 border-t flex items-center justify-between text-[11px] text-slate-400 font-sans" style="border-color: var(--card-border); background: var(--table-head-bg);">
                 <span class="flex items-center gap-1.5">
                     <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>پروتکل لاگینگ: Ring Stream v0.3.8</span>
+                    <span>پروتکل لاگینگ: Ring Stream {config.ENGINE_VERSION}</span>
                 </span>
                 <button type="button" onclick="switchTab('settings'); toggleLogsDrawer(false);" class="text-cyan-400 hover:underline">مشاهده همه لاگ‌ها در تب تنظیمات ←</button>
             </div>
@@ -2416,33 +2465,40 @@ def render_dashboard_html() -> str:
             <div class="glass p-6 rounded-2xl space-y-3">
                 <div class="flex justify-between items-center">
                     <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                        <span>📟</span> لاگ زنده و لحظه‌ای سرور (Live Cloud Logs)
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>لاگ زنده و لحظه‌ای سرور (Live Cloud Logs)</span>
                     </h2>
                     <div class="flex items-center gap-2">
                         <span id="logStatus" class="text-xs text-emerald-400 flex items-center gap-1">
                             <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> همگام‌سازی هر ۴ ثانیه
                         </span>
                         <a href="/api/logs/download" target="_blank" class="theme-card-btn px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition shadow-sm">
-                            <span>📥</span> دانلود فایل لاگ (.txt)
+                            <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>دانلود فایل لاگ (.txt)</span>
                         </a>
                         <button type="button" onclick="copyAllLogs()" id="copyBtn" class="px-2.5 py-1 rounded bg-cyan-950/80 hover:bg-cyan-900 text-xs font-semibold text-cyan-300 border border-cyan-800 flex items-center gap-1 transition">
-                            <span>📋</span> <span id="copyBtnText">کپی کل لاگ‌ها</span>
+                            <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span id="copyBtnText">کپی کل لاگ‌ها</span>
                         </button>
                         <button type="button" onclick="clearLiveLogs()" class="px-2.5 py-1 rounded bg-rose-950/80 hover:bg-rose-900 text-xs font-semibold text-rose-300 border border-rose-800 flex items-center gap-1 transition">
-                            <span>🗑️</span> پاکسازی لاگ
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>پاکسازی لاگ</span>
                         </button>
-                        <button type="button" onclick="fetchLogs()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition">
-                            🔄 بازخوانی
+                        <button type="button" onclick="fetchLogs()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>بازخوانی</span>
                         </button>
                     </div>
                 </div>
                 <div class="relative group">
                     <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                         <button type="button" onclick="copyAllLogs()" title="کپی لاگ‌ها" class="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
-                            <span>📋</span> کپی
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>کپی</span>
                         </button>
                         <button type="button" onclick="clearLiveLogs()" title="پاکسازی لاگ‌ها" class="px-2.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
-                            <span>🗑️</span> پاکسازی
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            <span>پاکسازی</span>
                         </button>
                     </div>
                     <div id="logContainer" dir="ltr" class="text-left font-mono text-xs max-h-96 overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text">
@@ -2450,8 +2506,10 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- ================= SECTION C: FREQUENCY OF ABUNDANCE MANAGEMENT ================= -->
+        <!-- ================= 9. FREQUENCIES TAB (ورق‌زن فرکانس فراوانی) ================= -->
+        <div id="tab-frequencies" class="hidden space-y-6">
             <div id="frequencyContent" class="glass p-6 rounded-2xl space-y-6 border" style="border-color: var(--card-border); background: var(--glass-bg);">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
                     <div>
@@ -2465,12 +2523,25 @@ def render_dashboard_html() -> str:
                         </h3>
                         <p class="text-xs text-slate-400 mt-1">مدیریت کارت‌های ورق‌زن فرکانس فراوانی در تلگرام و بله (ذخیره مستقیم و پایدار در data/frequencies.json)</p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center flex-wrap gap-2">
+                        <button type="button" onclick="exportFrequenciesJSON()" class="theme-card-btn px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition shadow-sm" title="دریافت خروجی فایل JSON">
+                            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>دریافت نسخه پشتیبان JSON</span>
+                        </button>
+                        <input type="file" id="frequenciesImportFileInput" accept=".json,application/json" class="hidden" onchange="handleImportFrequenciesFile(this)">
+                        <button type="button" onclick="document.getElementById('frequenciesImportFileInput').click()" class="theme-card-btn px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition shadow-sm" title="بارگذاری فایل JSON پشتیبان">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+                            </svg>
+                            <span>بارگذاری فایل JSON</span>
+                        </button>
                         <button type="button" onclick="loadFrequenciesTable()" class="theme-card-btn px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition shadow-sm">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
-                            بازخوانی لیست
+                            <span>بازخوانی لیست</span>
                         </button>
                     </div>
                 </div>
@@ -2539,9 +2610,12 @@ def render_dashboard_html() -> str:
             <div class="glass p-6 rounded-2xl w-full max-w-lg border border-slate-700 space-y-4 max-h-[90vh] overflow-y-auto relative">
                 <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                        <span>✏️</span> ویرایش دوره <span id="modalProdIdBadge" class="text-xs font-mono text-cyan-400"></span>
+                        <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <span>ویرایش دوره</span> <span id="modalProdIdBadge" class="text-xs font-mono text-cyan-400"></span>
                     </h3>
-                    <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-base">✕</button>
+                    <button onclick="closeEditModal()" class="p-1 rounded-lg border text-slate-400 hover:text-white transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                 </div>
                 <form id="editForm" onsubmit="handleSaveEdit(event)" class="space-y-3">
                     <input type="hidden" id="editProductId">
@@ -3260,6 +3334,10 @@ def render_dashboard_html() -> str:
                         title: 'هاب هوش مصنوعی و مدیریت سکرت‌ها',
                         desc: 'پیکربندی هوش چندمدله (VyceAI, Nara, Gemini) و توکن‌های پلتفرم‌ها'
                     }},
+                    'frequencies': {{
+                        title: 'ورق‌زن فرکانس فراوانی',
+                        desc: 'مدیریت کارت‌های جملات تاکیدی، دسته‌بندی‌ها و نسخه پشتیبان JSON'
+                    }},
                     'settings': {{
                         title: 'تنظیمات سیستمی، دیتابیس و لاگ‌ها',
                         desc: 'پیکربندی سقف بله، پایگاه داده رمزنگاری‌شده AES-256 و کنسول لاگ'
@@ -3270,7 +3348,7 @@ def render_dashboard_html() -> str:
                     try {{
                         if (!tabId) tabId = 'dashboard';
                         let rawTab = tabId.startsWith('tab-') ? tabId.replace('tab-', '') : tabId;
-                        const validTabs = ['dashboard', 'downloads', 'studio', 'courses', 'orders', 'users', 'tokens', 'settings'];
+                        const validTabs = ['dashboard', 'downloads', 'studio', 'courses', 'orders', 'users', 'tokens', 'frequencies', 'settings'];
                         if (!validTabs.includes(rawTab)) {{
                             rawTab = 'dashboard';
                         }}
@@ -3324,6 +3402,9 @@ def render_dashboard_html() -> str:
                         }}
                         if (rawTab === 'users') {{
                             if (typeof window.loadUsersData === 'function') window.loadUsersData();
+                        }}
+                        if (rawTab === 'frequencies') {{
+                            if (typeof window.loadFrequenciesTable === 'function') window.loadFrequenciesTable();
                         }}
                         if (rawTab === 'settings' || rawTab === 'tokens') {{
                             if (typeof window.loadSettings === 'function') window.loadSettings();
@@ -6965,6 +7046,56 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        function exportFrequenciesJSON() {{
+            const link = document.createElement('a');
+            link.href = '/api/frequencies/export';
+            link.download = 'frequencies_backup.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }}
+
+        async function handleImportFrequenciesFile(input) {{
+            if (!input || !input.files || !input.files[0]) return;
+            const file = input.files[0];
+            try {{
+                const text = await file.text();
+                let parsed;
+                try {{
+                    parsed = JSON.parse(text);
+                }} catch (e) {{
+                    alert('خطا در تحلیل ساختار فایل JSON: ' + e.message);
+                    input.value = '';
+                    return;
+                }}
+                if (!Array.isArray(parsed)) {{
+                    alert('قالب فایل نامعتبر است. فایل JSON باید شامل آرایه‌ای از اشیاء کارت‌های فرکانس باشد.');
+                    input.value = '';
+                    return;
+                }}
+                if (!confirm(`آیا از بارگذاری و بازنویسی ${{parsed.length}} عبارت فرکانس فراوانی اطمینان دارید؟`)) {{
+                    input.value = '';
+                    return;
+                }}
+                const res = await fetch('/api/frequencies/import', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify(parsed)
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert(`بانک فرکانس فراوانی با موفقیت به‌روزرسانی شد (${{data.count}} عبارت فعال).`);
+                    loadFrequenciesTable();
+                }} else {{
+                    alert('خطا در بارگذاری فایل: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (err) {{
+                alert('خطا در پردازش فایل: ' + err.message);
+            }} finally {{
+                input.value = '';
+            }}
+        }}
+
         // =========================================================================
 
                 window.clearHermesChat = clearHermesChat;
@@ -6978,6 +7109,8 @@ def render_dashboard_html() -> str:
                 window.loadFrequenciesTable = loadFrequenciesTable;
                 window.submitAddNewFrequency = submitAddNewFrequency;
                 window.deleteFrequencyItem = deleteFrequencyItem;
+                window.exportFrequenciesJSON = exportFrequenciesJSON;
+                window.handleImportFrequenciesFile = handleImportFrequenciesFile;
                 window.handleAiProviderChange = handleAiProviderChange;
                 window.updateAiProviderView = updateAiProviderView;
                 window.populateSettingsForm = populateSettingsForm;
