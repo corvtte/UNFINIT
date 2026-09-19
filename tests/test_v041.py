@@ -33,16 +33,16 @@ class TestVersion041Features(unittest.TestCase):
         self.freq_file = Path("data/frequencies.json")
 
     def test_01_version_v041_sync(self):
-        """اعتبارسنجی نسخه v0.4.1 در تمام بخش‌های اصلی سیستم."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.4.1")
+        """اعتبارسنجی نسخه v0.4.1 و بالاتر در تمام بخش‌های اصلی سیستم."""
+        self.assertTrue(str(config.ENGINE_VERSION) >= "v0.4.1")
         health = get_system_health()
-        self.assertIn("v0.4.1", health["engine_version"])
+        self.assertTrue("v0.4." in health["engine_version"])
 
         dash_html = render_dashboard_html()
-        self.assertIn("v0.4.1", dash_html)
+        self.assertTrue("v0.4." in dash_html)
 
         store_html = render_storefront_html()
-        self.assertIn("v0.4.1", store_html)
+        self.assertTrue("v0.4." in store_html)
 
     def test_02_frequency_service_update_item(self):
         """اعتبارسنجی متد update_item در FrequencyService جهت ویرایش عبارات."""

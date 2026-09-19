@@ -1176,21 +1176,21 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <h3 class="font-bold text-sm text-slate-200 truncate">{p['rubika_user']['name']}</h3>
                             </div>
-                            <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['rubika_user']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                            <span id="rubikaStatusBadge" class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['rubika_user']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
                                 {p['rubika_user']['status']}
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-emerald-400">ارسال به Saved Messages</span></p>
-                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code class="font-mono text-cyan-300">{p['rubika_user'].get('masked_phone') or 'بدون شماره'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code id="rubikaPhoneDisplay" class="font-mono text-cyan-300">{p['rubika_user'].get('masked_phone') or 'بدون شماره'}</code></p>
                         <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
-                    <div class="mt-3">
+                    <div id="rubikaBtnContainer" class="mt-3">
                         {f'''<button type="button" onclick="disconnectSession('rubika')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['rubika_user']['status'] == 'ONLINE' else '''<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>'''}
                     </div>
                 </div>
 
                 <!-- Soroush Plus Session Card -->
-                <div class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div id="soroushSessionCard" class="glass p-5 rounded-2xl relative overflow-hidden group transition border flex flex-col justify-between" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div>
                         <div class="flex justify-between items-start mb-3">
                             <div class="flex items-center gap-2.5">
@@ -1201,15 +1201,15 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <h3 class="font-bold text-sm text-slate-200 truncate">{p['soroush']['name']}</h3>
                             </div>
-                            <span class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['soroush']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                            <span id="soroushStatusBadge" class="px-2 py-0.5 rounded text-xs font-bold {'bg-emerald-950 text-emerald-400 border border-emerald-800' if p['soroush']['status'] == 'ONLINE' else 'bg-amber-950 text-amber-400 border border-amber-800'}">
                                 {p['soroush']['status'] if p['soroush']['status'] == 'ONLINE' else 'نیازمند راه‌اندازی'}
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-cyan-400">ارسال به Saved Messages</span></p>
-                        <p class="text-xs text-slate-400 mt-1">وضعیت حساب: <code class="font-mono text-cyan-300">{p['soroush'].get('masked_phone') or 'عدم اتصال'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">وضعیت حساب: <code id="soroushPhoneDisplay" class="font-mono text-cyan-300">{p['soroush'].get('masked_phone') or 'عدم اتصال'}</code></p>
                         <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
-                    <div class="mt-3">
+                    <div id="soroushBtnContainer" class="mt-3">
                         {f'''<button type="button" onclick="disconnectSession('soroush')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['soroush']['status'] == 'ONLINE' else '''<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg><span>ورود به حساب سروش‌پلاس</span></button>'''}
                     </div>
                 </div>
@@ -1882,23 +1882,30 @@ def render_dashboard_html() -> str:
                             آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
                         </p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="testTodaySign()" id="btnTestTodaySign" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
+                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>
+                            <span>دریافت نشانه تصادفی (تست ادمین)</span>
+                        </button>
                         <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
-                            <span>🔄</span> به‌روزرسانی صفحه
+                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                            <span>به‌روزرسانی صفحه</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Pagination Controls: Top -->
                 <div class="flex items-center justify-between gap-2 p-2 rounded-xl border" style="background: var(--glass-bg); border-color: var(--card-border);">
-                    <button type="button" id="btnPrevFeedPage" onclick="changeFeedPage(currentFeedPage - 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                        <span>◀️</span> صفحه قبلی
+                    <button type="button" id="btnPrevFeedPage" onclick="changeFeedPage(currentFeedPage - 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        <span>صفحه قبلی</span>
                     </button>
                     <span id="feedPaginationInfo" class="text-xs text-slate-300 font-mono font-bold">
                         صفحه <span id="feedCurrentPage" class="text-cyan-400 font-bold">۱</span> از ۳۹
                     </span>
-                    <button type="button" id="btnNextFeedPage" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                        صفحه بعدی <span>▶️</span>
+                    <button type="button" id="btnNextFeedPage" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <span>صفحه بعدی</span>
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                     </button>
                 </div>
 
@@ -1911,14 +1918,16 @@ def render_dashboard_html() -> str:
 
                 <!-- Pagination Controls: Bottom -->
                 <div class="flex items-center justify-between gap-2 p-2 rounded-xl border" style="background: var(--glass-bg); border-color: var(--card-border);">
-                    <button type="button" onclick="changeFeedPage(currentFeedPage - 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                        <span>◀️</span> صفحه قبلی
+                    <button type="button" onclick="changeFeedPage(currentFeedPage - 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                        <span>صفحه قبلی</span>
                     </button>
                     <span class="text-xs text-slate-300 font-mono font-bold">
                         صفحه <span id="feedCurrentPageBottom" class="text-cyan-400 font-bold">۱</span> از ۳۹
                     </span>
-                    <button type="button" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
-                        صفحه بعدی <span>▶️</span>
+                    <button type="button" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <span>صفحه بعدی</span>
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                     </button>
                 </div>
             </div>
@@ -2617,81 +2626,102 @@ def render_dashboard_html() -> str:
                     <input type="hidden" id="editProductId">
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs text-slate-300">نام دوره</label>
+                            <label class="block text-xs" style="color: var(--text-main);">نام دوره</label>
                             <span id="counter_editName" class="text-[11px] font-mono text-slate-400">0 / 32</span>
                         </div>
-                        <input type="text" id="editName" required maxlength="32" oninput="updateCharCounter('editName', 'counter_editName', 32)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                        <input type="text" id="editName" required maxlength="32" oninput="updateCharCounter('editName', 'counter_editName', 32)" class="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-300 mb-1">قیمت (تومان)</label>
-                        <input type="text" inputmode="numeric" id="editPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                        <label class="block text-xs mb-1" style="color: var(--text-main);">قیمت (تومان)</label>
+                        <input type="text" inputmode="numeric" id="editPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <div class="flex items-center gap-2">
-                                <label class="block text-xs text-slate-300">توضیحات دوره</label>
-                                <button type="button" onclick="aiSummarizeDescription('editDesc', 'counter_editDesc')" id="btnAiSummarizeEdit" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-[11px] flex items-center gap-1 transition">
-                                    <span>✨</span> خلاصه هوشمند برای بله (زیر ۲۵۵ کاراکتر)
+                                <label class="block text-xs" style="color: var(--text-main);">توضیحات دوره</label>
+                                <button type="button" onclick="aiSummarizeDescription('editDesc', 'counter_editDesc')" id="btnAiSummarizeEdit" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-[11px] flex items-center gap-1.5 transition">
+                                    <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                                    <span>خلاصه هوشمند برای بله (زیر ۲۵۵ کاراکتر)</span>
                                 </button>
                             </div>
                             <span id="counter_editDesc" class="text-[11px] font-mono text-slate-400">0 / 255</span>
                         </div>
-                        <textarea id="editDesc" rows="3" oninput="updateCharCounter('editDesc', 'counter_editDesc', 255)" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
+                        <textarea id="editDesc" rows="3" oninput="updateCharCounter('editDesc', 'counter_editDesc', 255)" class="w-full rounded-xl p-3 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);"></textarea>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs text-slate-300 mb-1">شیوه تحویل محتوا</label>
-                            <select id="editDeliveryType" onchange="togglePackageInput('edit')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <label class="block text-xs mb-1" style="color: var(--text-main);">شیوه تحویل محتوا</label>
+                            <select id="editDeliveryType" onchange="togglePackageInput('edit')" class="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                                 <option value="channel">هدایت به کانال / لینک مستقیم</option>
                                 <option value="files_package">بسته چندفایله صوتی/تصویری مستقیم ربات (پکیج)</option>
                             </select>
                         </div>
                         <div id="editDownloadBox">
-                            <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره</label>
-                            <input type="text" id="editDl" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <label class="block text-xs mb-1" style="color: var(--text-main);">لینک دانلود فایل دوره</label>
+                            <input type="text" id="editDl" class="w-full rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                         </div>
                     </div>
-                    <div id="editPackageBox" class="hidden">
+                    <!-- مدیریت تعاملی جلسات پکیج دوره (Package Lessons UI) -->
+                    <div id="editPackageBox" class="hidden space-y-2.5 p-3.5 rounded-xl border" style="background: var(--glass-bg); border-color: var(--card-border);">
                         <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs text-cyan-300 font-medium">لیست فایل‌های پکیج (JSON یا خط‌به‌خط)</label>
-                            <span class="text-[10px] text-slate-400">تحویل زنجیره‌ای در تلگرام و بله</span>
+                            <label class="block text-xs text-cyan-300 font-bold flex items-center gap-1.5">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" /></svg>
+                                <span>مدیریت تعاملی جلسات پکیج</span>
+                            </label>
+                            <span class="text-[10px] text-slate-400">تحویل زنجیره‌ای خودکار در تلگرام و بله</span>
                         </div>
-                        <textarea id="editFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"></textarea>
+                        
+                        <!-- لیست جلسات تعاملی با تغییر ترتیب و حذف -->
+                        <div id="editPackageLessonsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+                        
+                        <!-- نوار افزودن جلسه جدید -->
+                        <div class="p-2.5 rounded-xl border flex flex-col sm:flex-row gap-2 items-center" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="text" id="newLessonTitle" placeholder="عنوان جلسه (مثال: جلسه اول: مقدمه)" class="w-full sm:w-1/2 px-2.5 py-1.5 rounded-lg text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);">
+                            <input type="text" id="newLessonFile" placeholder="شناسه فایل یا نام فایل (مثال: lesson1.mp3)" class="w-full sm:w-1/2 px-2.5 py-1.5 rounded-lg text-xs font-mono border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);" dir="ltr">
+                            <button type="button" onclick="addPackageLessonRow()" class="w-full sm:w-auto px-3.5 py-1.5 rounded-lg theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 shadow-sm">
+                                <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                <span>افزودن جلسه</span>
+                            </button>
+                        </div>
+                        
+                        <!-- تکست‌اریا همگام‌سازی و پشتیبان JSON -->
+                        <textarea id="editFilesPackage" rows="2" class="hidden w-full font-mono text-[11px]"></textarea>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-300 mb-1">آدرس عکس / بنر</label>
+                        <label class="block text-xs mb-1" style="color: var(--text-main);">آدرس عکس / بنر</label>
                         <div class="flex gap-2 items-center">
-                            <input type="text" id="editPhoto" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
-                            <label class="cursor-pointer px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 font-medium transition flex items-center gap-1 shrink-0">
-                                <span>📷</span> تغییر بنر
+                            <input type="text" id="editPhoto" class="flex-1 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            <label class="cursor-pointer px-3 py-2 rounded-xl border text-xs text-cyan-300 font-medium transition flex items-center gap-1 shrink-0" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
+                                <span>تغییر بنر</span>
                                 <input type="file" accept="image/*" class="hidden" onchange="uploadBannerFile(this, 'editPhoto')">
                             </label>
                         </div>
                         <div class="flex justify-between items-center mt-1">
                             <span id="bannerUploadStatus_editPhoto" class="text-[11px] text-slate-400"></span>
-                            <span class="text-[10px] text-amber-300/80">⚡️ حجم بهینه بنر: زیر 500KB جهت بارگذاری فوق سریع</span>
+                            <span class="text-[10px] text-amber-300/80">حجم بهینه بنر: زیر 500KB جهت بارگذاری فوق سریع</span>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-300 mb-1">روش‌های پرداخت و شرایط دوره</label>
-                        <div class="flex flex-wrap items-center gap-6 bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
-                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-                                <input type="checkbox" id="editAllowCard" class="w-4 h-4 rounded text-cyan-600 focus:ring-0 bg-slate-900 border-slate-600">
-                                <span>💳 پرداخت کارت‌به‌کارت</span>
+                        <label class="block text-xs mb-1" style="color: var(--text-main);">روش‌های پرداخت و شرایط دوره</label>
+                        <div class="flex flex-wrap items-center gap-6 p-2.5 rounded-xl border" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs" style="color: var(--text-main);">
+                                <input type="checkbox" id="editAllowCard" class="w-4 h-4 rounded text-cyan-600 focus:ring-0">
+                                <span>پرداخت کارت‌به‌کارت</span>
                             </label>
-                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-                                <input type="checkbox" id="editAllowBale" class="w-4 h-4 rounded text-emerald-600 focus:ring-0 bg-slate-900 border-slate-600">
-                                <span>🌐 درگاه پرداخت بله</span>
+                            <label class="flex items-center gap-2 cursor-pointer text-xs" style="color: var(--text-main);">
+                                <input type="checkbox" id="editAllowBale" class="w-4 h-4 rounded text-emerald-600 focus:ring-0">
+                                <span>درگاه پرداخت بله</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300">
-                                <input type="checkbox" id="editRequiresReferral" class="w-4 h-4 rounded text-amber-500 focus:ring-0 bg-slate-900 border-slate-600">
-                                <span>🎁 نیازمند ۱ دعوت موفق (هدیه وایرال)</span>
+                                <input type="checkbox" id="editRequiresReferral" class="w-4 h-4 rounded text-amber-500 focus:ring-0">
+                                <span>نیازمند ۱ دعوت موفق (هدیه وایرال)</span>
                             </label>
                         </div>
                     </div>
-                    <div class="flex justify-end gap-2 pt-3 border-t border-slate-700 sticky bottom-0 bg-slate-900 p-3 -mx-6 -mb-6 rounded-b-2xl z-10">
-                        <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition">انصراف</button>
-                        <button type="submit" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white shadow-lg shadow-cyan-600/20 transition">ذخیره تغییرات</button>
+                    <div class="flex justify-end gap-2 pt-3 border-t sticky bottom-0 p-3 -mx-6 -mb-6 rounded-b-2xl z-10" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl text-xs transition border theme-card-btn" style="color: var(--text-main);">انصراف</button>
+                        <button type="submit" class="px-5 py-2 rounded-xl theme-accent-btn text-xs font-bold transition shadow-md">ذخیره تغییرات</button>
                     </div>
                 </form>
             </div>
@@ -3080,14 +3110,14 @@ def render_dashboard_html() -> str:
                 <!-- Manual Token Mode -->
                 <div id="soroushStepManual" class="hidden space-y-3">
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        توکن نشست، کلید <code class="text-cyan-400">dc2_auth_key</code> یا آبجکت JSON سشن نسخه وب سروش‌پلاس / تلگرام GramJS (<code class="text-cyan-400">{{"dcId":2,"dc2_auth_key":"..."}}</code>) را وارد نمایید:
+                        کلید نشست یا آبجکت کامل <code class="text-cyan-400">account1</code> از لوکال استوریج وب سروش‌پلاس را وارد نمایید (شامل <code class="text-cyan-400">userId, phone, firstName, dcId, dc2_auth_key</code>):
                     </p>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">کلید سشن یا آبجکت JSON نسخه وب GramJS</label>
-                        <textarea id="soroushManualTokenInput" rows="3" placeholder='dc2_auth_key یا {{"dcId":2,"dc2_auth_key":"...","userId":"..."}}' class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr"></textarea>
+                        <label class="block text-[11px] text-slate-400 mb-1">کلید سشن یا آبجکت JSON کامل account1 نسخه وب GramJS</label>
+                        <textarea id="soroushManualTokenInput" rows="4" placeholder='{{"dcId":2,"dc2_auth_key":"...","userId":"...","phone":"0912...","firstName":"..."}}' class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr"></textarea>
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">شماره موبایل یا برچسب سشن (اختیاری)</label>
+                        <label class="block text-[11px] text-slate-400 mb-1">شماره موبایل یا برچسب سشن (اختیاری - در صورت وجود در JSON خودکار استخراج می‌شود)</label>
                         <input type="text" id="soroushManualPhoneInput" placeholder="09121234567 یا سشن دستی وب" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     </div>
                     <button type="button" onclick="submitSoroushManualToken()" id="btnSoroushManualSubmit" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
@@ -3595,6 +3625,11 @@ def render_dashboard_html() -> str:
                 }}
                 window.editBaleSafeLimit = editBaleSafeLimit;
 
+                /**
+                 * تابع قطع ارتباط و حذف نشست پلتفرم‌ها به صورت غیرهمگام (AJAX)
+                 * طبق قانون اکشن‌های بدون رفرش (Zero Page-Reload Principle)، المان‌های DOM را بدون بارگذاری مجدد صفحه به‌روزرسانی می‌کند.
+                 * @param {{string}} platform - نام پلتفرم ('soroush' یا 'rubika')
+                 */
                 async function disconnectSession(platform) {{
                     const platName = (platform === 'soroush' ? 'سروش‌پلاس' : 'روبیکا');
                     if (!confirm('آیا از قطع اتصال و حذف امن سشن ' + platName + ' اطمینان دارید؟')) return;
@@ -3611,8 +3646,32 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
+                            if (platform === 'soroush') {{
+                                const b = document.getElementById('soroushStatusBadge');
+                                if (b) {{
+                                    b.className = 'px-2 py-0.5 rounded text-xs font-bold bg-amber-950 text-amber-400 border border-amber-800';
+                                    b.textContent = 'نیازمند راه‌اندازی';
+                                }}
+                                const pEl = document.getElementById('soroushPhoneDisplay');
+                                if (pEl) pEl.textContent = 'عدم اتصال';
+                                const btnBox = document.getElementById('soroushBtnContainer');
+                                if (btnBox) {{
+                                    btnBox.innerHTML = '<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg><span>ورود به حساب سروش‌پلاس</span></button>';
+                                }}
+                            }} else if (platform === 'rubika') {{
+                                const b = document.getElementById('rubikaStatusBadge');
+                                if (b) {{
+                                    b.className = 'px-2 py-0.5 rounded text-xs font-bold bg-amber-950 text-amber-400 border border-amber-800';
+                                    b.textContent = 'REQUIRE_AUTH';
+                                }}
+                                const pEl = document.getElementById('rubikaPhoneDisplay');
+                                if (pEl) pEl.textContent = 'بدون شماره';
+                                const btnBox = document.getElementById('rubikaBtnContainer');
+                                if (btnBox) {{
+                                    btnBox.innerHTML = '<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>';
+                                }}
+                            }}
                             alert('✅ سشن ' + platName + ' با موفقیت قطع و از سرور پاکسازی شد.');
-                            window.location.reload();
                         }} else {{
                             alert('❌ خطا: ' + (data.error || 'عملیات ناموفق بود'));
                         }}
@@ -3742,11 +3801,15 @@ def render_dashboard_html() -> str:
                         if (btn) {{ btn.disabled = false; btn.textContent = 'دریافت کد تایید پیامکی'; }}
                     }}
                 }}
+                /**
+                 * ارسال کد تایید پیامکی و تایید نهایی سشن سروش‌پلاس
+                 * المان‌های کارت داشبورد را بدون بارگذاری مجدد صفحه به‌روزرسانی می‌کند.
+                 */
                 async function submitSoroushCode() {{
                     const codeInput = document.getElementById('soroushCodeInput');
                     const code = codeInput ? codeInput.value.trim() : '';
                     if (!code) {{
-                        alert('کد تایید را وارد نمایید.');
+                        alert('لطفاً کد تایید را وارد نمایید.');
                         return;
                     }}
                     const btn = document.getElementById('btnSoroushVerifyCode');
@@ -3766,9 +3829,19 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
+                            const b = document.getElementById('soroushStatusBadge');
+                            if (b) {{
+                                b.className = 'px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800';
+                                b.textContent = 'ONLINE';
+                            }}
+                            const pEl = document.getElementById('soroushPhoneDisplay');
+                            if (pEl) pEl.textContent = data.masked_phone || pendingSoroushPhone || 'متصل';
+                            const btnBox = document.getElementById('soroushBtnContainer');
+                            if (btnBox) {{
+                                btnBox.innerHTML = '<button type="button" onclick="disconnectSession(\'soroush\')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>';
+                            }}
                             alert('ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
                             closeSoroushLoginModal();
-                            window.location.reload();
                         }} else {{
                             if (errBox) {{
                                 errBox.textContent = data.error || 'کد تایید اشتباه است.';
@@ -3784,6 +3857,10 @@ def render_dashboard_html() -> str:
                     }}
                 }}
 
+                /**
+                 * ثبت دستی سشن سروش‌پلاس (توکن یا آبجکت JSON کامل account1)
+                 * پس از رمزنگاری و اعتبارسنجی سرور، کارت را در DOM بدون رفرش به‌روز می‌کند.
+                 */
                 async function submitSoroushManualToken() {{
                     const tokInput = document.getElementById('soroushManualTokenInput');
                     const phInput = document.getElementById('soroushManualPhoneInput');
@@ -3810,9 +3887,19 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            alert('سشن سروش‌پلاس با توکن دستی با موفقیت ثبت و فعال شد.');
+                            const b = document.getElementById('soroushStatusBadge');
+                            if (b) {{
+                                b.className = 'px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800';
+                                b.textContent = 'ONLINE';
+                            }}
+                            const pEl = document.getElementById('soroushPhoneDisplay');
+                            if (pEl) pEl.textContent = data.masked_phone || phone || 'متصل';
+                            const btnBox = document.getElementById('soroushBtnContainer');
+                            if (btnBox) {{
+                                btnBox.innerHTML = '<button type="button" onclick="disconnectSession(\'soroush\')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>';
+                            }}
+                            alert('سشن سروش‌پلاس با موفقیت ثبت و فعال شد.');
                             closeSoroushLoginModal();
-                            window.location.reload();
                         }} else {{
                             if (errBox) {{
                                 errBox.textContent = data.error || 'خطا در ثبت توکن';
@@ -4898,6 +4985,49 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        /**
+         * تبدیل ارقام انگلیسی به فارسی جهت یکپارچگی طبق استاندارد زبان بصری
+         */
+        function toPersianDigits(n) {{
+            const farsiDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return String(n).replace(/[0-9]/g, function(w) {{ return farsiDigits[+w]; }});
+        }}
+        window.toPersianDigits = toPersianDigits;
+
+        /**
+         * متد تست ادمین برای دریافت نشانه امروز من
+         * یک نشانه تصادفی از صفحات دانلود سایت را استعلام نموده و در دیالوگ شفاف نمایش می‌دهد.
+         */
+        async function testTodaySign() {{
+            const btn = document.getElementById('btnTestTodaySign');
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>در حال دریافت نشانه...</span>';
+            }}
+            try {{
+                const res = await fetch('/api/sign/test');
+                const data = await res.json();
+                if (data.ok && data.sign) {{
+                    const s = data.sign;
+                    alert('🔮 نشانه تصادفی تست ادمین:\n\n' +
+                          'عنوان: ' + (s.title || 'نشانه امروز') + '\n' +
+                          'شماره صفحه: ' + toPersianDigits(s.page || 1) + '\n' +
+                          'لینک فایل صوتی: ' + (s.audio_url || 'ندارد') + '\n' +
+                          'لینک مستقیم: ' + (s.link || 'ندارد'));
+                }} else {{
+                    alert('خطا در دریافت نشانه: ' + (data.error || 'پاسخ نامعتبر'));
+                }}
+            }} catch (err) {{
+                alert('خطای ارتباط با سرور: ' + err.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg><span>دریافت نشانه تصادفی (تست ادمین)</span>';
+                }}
+            }}
+        }}
+        window.testTodaySign = testTodaySign;
+
         let currentFeedPage = 1;
         const totalFeedPages = 39;
         window.currentFeedPage = 1;
@@ -4912,15 +5042,15 @@ def render_dashboard_html() -> str:
             }}
             const curPageEl = document.getElementById('feedCurrentPage');
             const curPageBottomEl = document.getElementById('feedCurrentPageBottom');
-            if (curPageEl) curPageEl.textContent = currentFeedPage;
-            if (curPageBottomEl) curPageBottomEl.textContent = currentFeedPage;
+            if (curPageEl) curPageEl.textContent = toPersianDigits(currentFeedPage);
+            if (curPageBottomEl) curPageBottomEl.textContent = toPersianDigits(currentFeedPage);
 
             if (btn) {{
                 btn.disabled = true;
-                btn.innerHTML = '<span>⏳</span> در حال رصد سایت...';
+                btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>در حال رصد سایت...</span>';
             }}
             if (force || container.children.length === 0 || container.innerText.includes('در حال بارگذاری')) {{
-                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">⏳ در حال دریافت ۲۵ هدیه دانلودی صفحه ' + currentFeedPage + ' از سایت...</div>';
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">در حال دریافت ۲۵ هدیه دانلودی صفحه ' + toPersianDigits(currentFeedPage) + ' از سایت...</div>';
             }}
             try {{
                 const res = await fetch('/api/feed/latest?page=' + currentFeedPage + '&limit=25' + (force ? '&force=1' : ''));
@@ -4975,7 +5105,7 @@ def render_dashboard_html() -> str:
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
-                    btn.innerHTML = '<span>🔄</span> به‌روزرسانی صفحه';
+                    btn.innerHTML = '<svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg><span>به‌روزرسانی صفحه</span>';
                 }}
             }}
         }}
@@ -4995,8 +5125,8 @@ def render_dashboard_html() -> str:
             window.currentFeedPage = target;
             const curPageEl = document.getElementById('feedCurrentPage');
             const curPageBottomEl = document.getElementById('feedCurrentPageBottom');
-            if (curPageEl) curPageEl.textContent = currentFeedPage;
-            if (curPageBottomEl) curPageBottomEl.textContent = currentFeedPage;
+            if (curPageEl) curPageEl.textContent = toPersianDigits(currentFeedPage);
+            if (curPageBottomEl) curPageBottomEl.textContent = toPersianDigits(currentFeedPage);
 
             fetchFeedDownloads(false, currentFeedPage);
         }}
@@ -5650,6 +5780,123 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        window._currentPackageLessons = [];
+
+        /**
+         * رندر مجدد لیست تعاملی جلسات پکیج دوره در DOM
+         * این تابع امکان تغییر ترتیب، ویرایش عناوین، و حذف جلسات را با هماهنگی کامل فرم فراهم می‌سازد.
+         */
+        function renderPackageLessons() {{
+            const listEl = document.getElementById('editPackageLessonsList');
+            const hiddenTa = document.getElementById('editFilesPackage');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            const lessons = window._currentPackageLessons || [];
+            if (hiddenTa) {{
+                hiddenTa.value = lessons.length ? JSON.stringify(lessons, null, 2) : '';
+            }}
+            if (lessons.length === 0) {{
+                listEl.innerHTML = '<div class="text-center py-3 text-xs text-slate-400 font-mono">هیچ جلسه‌ای برای این پکیج ثبت نشده است. از فرم زیر جلسه جدید اضافه کنید.</div>';
+                return;
+            }}
+            lessons.forEach(function(item, idx) {{
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2 p-2 rounded-xl border text-xs';
+                row.style.background = 'var(--input-bg)';
+                row.style.borderColor = 'var(--card-border)';
+                
+                const safeTitle = (item.title || '').replace(/"/g, '&quot;');
+                const safeFile = (item.file_name || item.file_id || item.link || '').replace(/"/g, '&quot;');
+                const isFirst = (idx === 0);
+                const isLast = (idx === lessons.length - 1);
+
+                row.innerHTML = '<span class="w-6 h-6 rounded-lg bg-cyan-950/80 text-cyan-400 border border-cyan-800 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold">#' + (idx + 1) + '</span>' +
+                    '<input type="text" value="' + safeTitle + '" onchange="updatePackageLesson(' + idx + ', \'title\', this.value)" placeholder="عنوان جلسه" class="flex-1 px-2 py-1 rounded-lg border text-xs focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);">' +
+                    '<input type="text" value="' + safeFile + '" onchange="updatePackageLesson(' + idx + ', \'file_name\', this.value)" placeholder="فایل / شناسه" class="w-1/3 px-2 py-1 rounded-lg border text-xs font-mono focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);" dir="ltr">' +
+                    '<div class="flex items-center gap-1 shrink-0">' +
+                        '<button type="button" onclick="movePackageLesson(' + idx + ', -1)" ' + (isFirst ? 'disabled' : '') + ' class="p-1 rounded-lg border text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:hover:text-slate-300 transition" style="background: var(--card-bg); border-color: var(--card-border);" title="انتقال به بالا">' +
+                            '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>' +
+                        '</button>' +
+                        '<button type="button" onclick="movePackageLesson(' + idx + ', 1)" ' + (isLast ? 'disabled' : '') + ' class="p-1 rounded-lg border text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:hover:text-slate-300 transition" style="background: var(--card-bg); border-color: var(--card-border);" title="انتقال به پایین">' +
+                            '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>' +
+                        '</button>' +
+                        '<button type="button" onclick="removePackageLesson(' + idx + ')" class="p-1 rounded-lg border text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition" style="background: var(--card-bg); border-color: var(--card-border);" title="حذف جلسه">' +
+                            '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>' +
+                        '</button>' +
+                    '</div>';
+                listEl.appendChild(row);
+            }});
+        }}
+        window.renderPackageLessons = renderPackageLessons;
+
+        /**
+         * افزودن ردیف جلسه جدید به پکیج دوره
+         */
+        function addPackageLessonRow() {{
+            const titleInp = document.getElementById('newLessonTitle');
+            const fileInp = document.getElementById('newLessonFile');
+            const title = titleInp ? titleInp.value.trim() : '';
+            const file_name = fileInp ? fileInp.value.trim() : '';
+            if (!file_name) {{
+                alert('لطفاً شناسه فایل یا نام فایل جلسه را وارد نمایید.');
+                return;
+            }}
+            const lessons = window._currentPackageLessons || [];
+            lessons.push({{
+                title: title || ('جلسه ' + (lessons.length + 1)),
+                file_name: file_name,
+                duration: 0
+            }});
+            window._currentPackageLessons = lessons;
+            if (titleInp) titleInp.value = '';
+            if (fileInp) fileInp.value = '';
+            renderPackageLessons();
+        }}
+        window.addPackageLessonRow = addPackageLessonRow;
+
+        /**
+         * به‌روزرسانی فیلدهای یک جلسه پکیج
+         */
+        function updatePackageLesson(idx, field, val) {{
+            if (window._currentPackageLessons && window._currentPackageLessons[idx]) {{
+                window._currentPackageLessons[idx][field] = val;
+                const hiddenTa = document.getElementById('editFilesPackage');
+                if (hiddenTa) hiddenTa.value = JSON.stringify(window._currentPackageLessons, null, 2);
+            }}
+        }}
+        window.updatePackageLesson = updatePackageLesson;
+
+        /**
+         * جابجایی ترتیب جلسه با دکمه‌های بالا / پایین
+         */
+        function movePackageLesson(idx, dir) {{
+            const lessons = window._currentPackageLessons || [];
+            const target = idx + dir;
+            if (target < 0 || target >= lessons.length) return;
+            const temp = lessons[idx];
+            lessons[idx] = lessons[target];
+            lessons[target] = temp;
+            window._currentPackageLessons = lessons;
+            renderPackageLessons();
+        }}
+        window.movePackageLesson = movePackageLesson;
+
+        /**
+         * حذف یک جلسه از پکیج دوره
+         */
+        function removePackageLesson(idx) {{
+            const lessons = window._currentPackageLessons || [];
+            if (idx >= 0 && idx < lessons.length) {{
+                lessons.splice(idx, 1);
+                window._currentPackageLessons = lessons;
+                renderPackageLessons();
+            }}
+        }}
+        window.removePackageLesson = removePackageLesson;
+
+        /**
+         * باز کردن مودال ویرایش دوره و مقداردهی فرم‌ها
+         */
         function openEditModal(pid, name, price, desc, dl, photo, allow_card, allow_bale, requires_referral, delivery_type, files_package) {{
             document.getElementById('editProductId').value = pid;
             document.getElementById('modalProdIdBadge').innerText = pid;
@@ -5668,13 +5915,23 @@ def render_dashboard_html() -> str:
                 document.getElementById('editDeliveryType').value = delivery_type || 'channel';
                 togglePackageInput('edit');
             }}
-            if (document.getElementById('editFilesPackage')) {{
-                if (Array.isArray(files_package)) {{
-                    document.getElementById('editFilesPackage').value = files_package.length ? JSON.stringify(files_package, null, 2) : '';
-                }} else {{
-                    document.getElementById('editFilesPackage').value = files_package ? String(files_package) : '';
+            
+            let pkgList = [];
+            if (Array.isArray(files_package)) {{
+                pkgList = JSON.parse(JSON.stringify(files_package));
+            }} else if (typeof files_package === 'string' && files_package.trim()) {{
+                try {{
+                    pkgList = JSON.parse(files_package);
+                }} catch(e) {{
+                    pkgList = files_package.split('\\n').filter(Boolean).map(function(l) {{
+                        const parts = l.split('|').map(function(s) {{ return s.trim(); }});
+                        return {{ title: parts[0] || 'فایل آموزشی', file_name: parts[1] || parts[0] }};
+                    }});
                 }}
             }}
+            window._currentPackageLessons = Array.isArray(pkgList) ? pkgList : [];
+            renderPackageLessons();
+
             const statusEl = document.getElementById('bannerUploadStatus_editPhoto');
             if (statusEl) statusEl.innerText = '';
             updateCharCounter('editName', 'counter_editName', 32);
@@ -5707,6 +5964,9 @@ def render_dashboard_html() -> str:
             );
         }}
 
+        /**
+         * ذخیره تغییرات دوره به صورت ایجکس بدون رفرش صفحه (Zero Page-Reload)
+         */
         async function handleSaveEdit(e) {{
             e.preventDefault();
             const product_id = document.getElementById('editProductId').value;
@@ -5721,15 +5981,19 @@ def render_dashboard_html() -> str:
             const requires_referral = document.getElementById('editRequiresReferral') ? (document.getElementById('editRequiresReferral').checked ? 1 : 0) : 0;
             const delivery_type = document.getElementById('editDeliveryType') ? document.getElementById('editDeliveryType').value : 'channel';
             let files_package = [];
-            if (delivery_type === 'files_package' && document.getElementById('editFilesPackage')) {{
-                const rawPkg = document.getElementById('editFilesPackage').value.trim();
-                try {{
-                    files_package = rawPkg.startsWith('[') ? JSON.parse(rawPkg) : rawPkg.split('\\n').filter(Boolean).map(l => {{
-                        const parts = l.split('|').map(s => s.trim());
-                        return {{ title: parts[0] || 'فایل آموزشی', file_id: parts[1] || parts[0] }};
-                    }});
-                }} catch(e) {{
-                    files_package = [{{ title: name, file_name: rawPkg }}];
+            if (delivery_type === 'files_package') {{
+                if (window._currentPackageLessons && window._currentPackageLessons.length > 0) {{
+                    files_package = window._currentPackageLessons;
+                }} else if (document.getElementById('editFilesPackage')) {{
+                    const rawPkg = document.getElementById('editFilesPackage').value.trim();
+                    try {{
+                        files_package = rawPkg.startsWith('[') ? JSON.parse(rawPkg) : rawPkg.split('\\n').filter(Boolean).map(function(l) {{
+                            const parts = l.split('|').map(function(s) {{ return s.trim(); }});
+                            return {{ title: parts[0] || 'فایل آموزشی', file_id: parts[1] || parts[0] }};
+                        }});
+                    }} catch(e) {{
+                        files_package = [{{ title: name, file_name: rawPkg }}];
+                    }}
                 }}
             }}
 
@@ -5741,8 +6005,31 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
+                    // به‌روزرسانی کش درون حافظه کلاینت
+                    if (window.coursesData && window.coursesData[product_id]) {{
+                        Object.assign(window.coursesData[product_id], {{
+                            name: name,
+                            price: price,
+                            description: description,
+                            download_link: download_link,
+                            photo_url: photo_url,
+                            allow_card: allow_card,
+                            allow_bale: allow_bale,
+                            requires_referral: requires_referral,
+                            delivery_type: delivery_type,
+                            files_package: files_package
+                        }});
+                    }}
+                    // به‌روزرسانی زنده کارت دوره در DOM بدون رفرش
+                    const card = document.getElementById('course_card_' + product_id);
+                    if (card) {{
+                        const titleEl = card.querySelector('h3');
+                        if (titleEl) titleEl.textContent = name;
+                        const descEl = card.querySelector('p');
+                        if (descEl) descEl.textContent = description || 'توضیحاتی برای این دوره ثبت نشده است.';
+                    }}
+                    closeEditModal();
                     alert('✅ تغییرات دوره با موفقیت ذخیره شد!');
-                    location.reload();
                 }} else {{
                     alert('❌ خطا: ' + (data.error || 'ویرایش ناموفق بود'));
                 }}
@@ -6291,8 +6578,12 @@ def render_dashboard_html() -> str:
                 window.openEditModal = openEditModal;
                 window.openEditModalById = openEditModalById;
                 window.openEditCourseModal = openEditModalById;
-                window.closeEditModal = closeEditModal;
                 window.handleSaveEdit = handleSaveEdit;
+                window.renderPackageLessons = renderPackageLessons;
+                window.addPackageLessonRow = addPackageLessonRow;
+                window.updatePackageLesson = updatePackageLesson;
+                window.movePackageLesson = movePackageLesson;
+                window.removePackageLesson = removePackageLesson;
                 window.toggleCourseActive = toggleCourseActive;
                 window.deleteCourse = deleteCourse;
                 window.toggleSelectAllOrders = toggleSelectAllOrders;

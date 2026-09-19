@@ -728,6 +728,28 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path in ("/api/sign/today", "/api/sign/test"):
+            try:
+                from core.sign_service import SignService
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                query_params = urllib.parse.parse_qs(parsed.query)
+                uid = query_params.get("user_id", ["web_admin"])[0]
+                if path == "/api/sign/test":
+                    res = loop.run_until_complete(SignService.get_random_sign_for_test())
+                else:
+                    res = loop.run_until_complete(SignService.get_user_today_sign(uid))
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "sign": res}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path == "/api/feed/latest":
             try:
                 from services.feed_scraper import get_latest_free_downloads
@@ -864,9 +886,11 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
-        elif path == "/api/sessions/disconnect":
+        elif path in ("/api/sessions/disconnect", "/api/soroush/logout", "/api/soroush/disconnect"):
             try:
                 platform = payload.get("platform", "").strip().lower()
+                if not platform and "soroush" in path:
+                    platform = "soroush"
                 ok = False
                 if platform in ("rubika", "rubika_user"):
                     from platforms.rubika_adapter import RubikaUserClient
@@ -1617,8 +1641,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path in ("/api/courses/episodes/add", "/api/courses/add-episode"):
             try:
-                from services.store_service import StoreService
-
                 product_id = str(payload.get("product_id") or "").strip()
                 title = str(payload.get("title") or payload.get("name") or "").strip()
                 url = str(payload.get("url") or payload.get("download_link") or "").strip()

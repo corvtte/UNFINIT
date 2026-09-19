@@ -121,8 +121,8 @@ def get_customer_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             ["📚 لیست دوره‌های آموزشی"],
-            ["💎 فرکانس فراوانی", "👤 حساب کاربری"],
-            [GiftButtonStr("🎁 فایل‌های هدیه")]
+            ["🔮 نشانه امروز من", "💎 فرکانس فراوانی"],
+            ["👤 حساب کاربری", GiftButtonStr("🎁 فایل‌های هدیه")]
         ],
         resize_keyboard=True
     )
@@ -987,6 +987,34 @@ class TelegramAdapter:
             buttons.append([InlineKeyboardButton("🎁 دوره‌ها و هدایای رایگان", callback_data="cnav:gifts")])
             buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
             await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🔮\s*نشانه امروز من|نشانه امروز من|نشانه امروز|نشانه|/sign)$"))
+        async def customer_sign_handler(client: Client, message: Message):
+            """
+            ارسال فایل صوتی و پیام الهام‌بخش لید مگنت «نشانه امروز من».
+            این متد بر مبنای هش پایدار ۲۴ ساعته شناسه کاربری و تاریخ روز عمل می‌کند.
+            """
+            user_id = message.from_user.id
+            wait_msg = await message.reply_text("🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>", parse_mode=enums.ParseMode.HTML)
+            try:
+                from core.sign_service import SignService
+                sign = await SignService.get_user_today_sign(user_id)
+                caption = SignService.format_sign_caption(sign)
+                audio_url = sign.get("audio_url")
+                if audio_url:
+                    await wait_msg.delete()
+                    await message.reply_audio(
+                        audio=audio_url,
+                        caption=caption,
+                        title=sign.get("title", "نشانه امروز من"),
+                        performer="UNFINIT - نشانه امروز",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                else:
+                    await wait_msg.edit_text(caption, parse_mode=enums.ParseMode.HTML)
+            except Exception as e:
+                logger.error(f"[tg_sign] Error sending sign to {user_id}: {e}")
+                await wait_msg.edit_text("❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.", parse_mode=enums.ParseMode.HTML)
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*فرکانس فراوانی|فرکانس فراوانی|فرکانس|/frequency)$"))
         async def customer_frequency_menu(client: Client, message: Message):

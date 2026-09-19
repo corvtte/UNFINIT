@@ -91,12 +91,13 @@ class SoroushWorker:
         if not clean_tok:
             return False
 
-        clean_ph = (phone or "").strip() or "سشن دستی وب"
+        clean_ph = (phone or "").strip()
         user_id = "manual"
+        first_name = ""
         extra = {}
 
         # Check if user provided JSON object (GramJS / Telegram / Soroush Web client format)
-        if isinstance(token, dict) or (clean_tok.startswith("{") and clean_tok.endswith("}")) or any(k in clean_tok for k in ("dc2_auth_key", "userId", "account1", "authKey")):
+        if isinstance(token, dict) or (clean_tok.startswith("{") and clean_tok.endswith("}")) or any(k in clean_tok for k in ("dc2_auth_key", "userId", "account1", "authKey", "firstName")):
             try:
                 parsed = token if isinstance(token, dict) else json.loads(clean_tok)
                 if isinstance(parsed, dict):
@@ -117,14 +118,29 @@ class SoroushWorker:
                     raw_user_id = acc.get("userId") or acc.get("user_id") or acc.get("id")
                     if raw_user_id:
                         user_id = str(raw_user_id).strip()
-                    if clean_ph == "سشن دستی وب" and acc.get("phone"):
+
+                    raw_name = acc.get("firstName") or acc.get("first_name") or acc.get("name")
+                    if raw_name:
+                        first_name = str(raw_name).strip()
+
+                    if acc.get("phone"):
                         clean_ph = str(acc.get("phone")).strip()
+
                     dc_id = acc.get("dcId") or acc.get("dc_id") or 2
-                    extra = {"gramjs": True, "dcId": dc_id, "parsed_json": parsed, "userId": user_id}
+                    extra = {
+                        "gramjs": True,
+                        "dcId": dc_id,
+                        "parsed_json": parsed,
+                        "userId": user_id,
+                        "firstName": first_name
+                    }
                     if extracted_key:
                         clean_tok = str(extracted_key).strip()
             except Exception as e:
                 logger.debug(f"[soroush_worker] JSON parse error in manual token: {e}")
+
+        if not clean_ph:
+            clean_ph = f"حساب {user_id}" if user_id != "manual" else "سشن وب سروش"
 
         return self.save_session(token=clean_tok, phone=clean_ph, user_id=user_id, extra=extra)
 
@@ -136,38 +152,49 @@ class SoroushWorker:
         return bool(data and data.get("token"))
 
     def get_masked_phone(self) -> str:
-        """Returns masked phone number or friendly user identity label (e.g. حساب متصل: ۵۹۶۴۵۷۵۶)."""
+        """
+        تولید برچسب هویتی کاملاً پویا و شفاف برای کاربر سروش‌پلاس بدون هیچ هاردکد.
+        شامل نام کاربر، شماره ماسک‌شده و شناسه عددی.
+        """
         if not self.is_connected() or not self._session_data:
             return ""
 
-        # 1. Prefer explicit userId from session
-        user_id = str(self._session_data.get("user_id", "")).strip()
-        if user_id and user_id not in ("manual", "gramjs_user", "0", ""):
-            return f"حساب متصل: {user_id}"
-
-        # 2. Check standard phone number
-        phone = str(self._session_data.get("phone", "")).strip().replace("+", "")
-        if len(phone) >= 10 and phone.isdigit():
-            return f"{phone[:4]}***{phone[-4:]}"
-        elif phone and phone not in ("سشن دستی وب", "دستی"):
-            return phone
-
-        # 3. Check extra metadata
         extra = self._session_data.get("extra") or {}
-        extra_uid = str(extra.get("userId") or extra.get("user_id") or "").strip()
-        if extra_uid and extra_uid not in ("manual", "gramjs_user", "0", ""):
-            return f"حساب متصل: {extra_uid}"
+        first_name = str(extra.get("firstName") or extra.get("first_name") or "").strip()
+        user_id = str(self._session_data.get("user_id", "")).strip()
+        phone = str(self._session_data.get("phone", "")).strip().replace("+", "")
 
+        masked_ph = ""
+        if len(phone) >= 10 and phone.isdigit():
+            masked_ph = f"{phone[:4]}***{phone[-4:]}"
+        elif phone and phone not in ("سشن وب سروش", "سشن دستی وب", "دستی", f"حساب {user_id}"):
+            masked_ph = phone
+
+        parts = []
+        if first_name:
+            parts.append(first_name)
+        if masked_ph:
+            parts.append(masked_ph)
+        if user_id and user_id not in ("manual", "gramjs_user", "0", "", phone):
+            parts.append(f"شناسه: {user_id}")
+
+        if parts:
+            return " | ".join(parts)
+        if masked_ph:
+            return masked_ph
         return "حساب متصل (سشن وب)"
 
     def get_status(self) -> Dict[str, Any]:
         """Returns status payload for Web Panel dashboard and API."""
         connected = self.is_connected()
+        extra = (self._session_data.get("extra") or {}) if (connected and self._session_data) else {}
         return {
             "connected": connected,
             "status": "ONLINE" if connected else "REQUIRE_AUTH",
             "masked_phone": self.get_masked_phone() if connected else "",
             "phone": self._session_data.get("phone", "") if (connected and self._session_data) else "",
+            "user_id": self._session_data.get("user_id", "") if (connected and self._session_data) else "",
+            "first_name": extra.get("firstName") or extra.get("first_name") or "",
             "platform": "soroush"
         }
 
@@ -311,7 +338,7 @@ class SoroushWorker:
         ]
 
         file_id = None
-        last_error = ""
+        last_error = "سرورهای ابری آپلود سروش‌پلاس در این لحظه پاسخگو نبودند"
 
         # ۱. تلاش برای آپلود در اندپوینت‌های وب‌سرویس سروش‌پلاس
         for endpoint in upload_endpoints:
@@ -330,14 +357,16 @@ class SoroushWorker:
                             up_res = await up_resp.json()
                             file_id = up_res.get("file_id") or up_res.get("result", {}).get("file_id")
                             if file_id:
+                                logger.info(f"[soroush_worker] File uploaded successfully to {endpoint}: file_id={file_id}")
                                 break
                         else:
-                            last_error = f"HTTP {up_resp.status}"
+                            last_error = f"HTTP {up_resp.status} on {endpoint}"
+                            logger.debug(f"[soroush_worker] Upload attempt on {endpoint} returned status {up_resp.status}")
             except aiohttp.ClientConnectorError as e:
-                last_error = f"عدم دسترسی به سرور: {e}"
+                last_error = f"عدم دسترسی به سرور {endpoint}: {e}"
                 logger.debug(f"[soroush_worker] Endpoint {endpoint} unreachable: {e}")
             except Exception as e:
-                last_error = str(e)
+                last_error = f"خطا در {endpoint}: {e}"
                 logger.debug(f"[soroush_worker] Upload error on {endpoint}: {e}")
 
         # در صورت عدم موفقیت آپلود (مانند پاسخ ۴۰۴ یا قطعی موقت)، فایل در صف باینری امن ذخیره می‌شود

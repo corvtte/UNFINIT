@@ -55,8 +55,8 @@ def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
             [{"text": "📚 لیست دوره‌های آموزشی"}],
-            [{"text": "💎 فرکانس فراوانی"}, {"text": "👤 حساب کاربری"}],
-            [{"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
+            [{"text": "🔮 نشانه امروز من"}, {"text": "💎 فرکانس فراوانی"}],
+            [{"text": "👤 حساب کاربری"}, {"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
         ],
         "resize_keyboard": True
     }
@@ -2756,6 +2756,29 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 await bale.send_message(chat_id, card_txt, reply_markup=c_kb)
                                         continue
 
+                                    # لید مگنت «نشانه امروز من» (پایدار ۲۴ ساعته بر مبنای شناسه کاربری)
+                                    if any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
+                                        wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
+                                        try:
+                                            from core.sign_service import SignService
+                                            sign = await SignService.get_user_today_sign(chat_id)
+                                            caption = SignService.format_sign_caption(sign)
+                                            audio_url = sign.get("audio_url")
+                                            if audio_url:
+                                                await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    audio_path_or_url=audio_url,
+                                                    title=sign.get("title", "نشانه امروز من"),
+                                                    performer="UNFINIT - نشانه امروز",
+                                                    caption=caption
+                                                )
+                                            else:
+                                                await bale.send_message(chat_id, caption)
+                                        except Exception as ex_sign:
+                                            logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")
+                                            await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
+                                        continue
+
                                     if (text in ["💾 بک‌آپ دیتابیس", "بک‌آپ دیتابیس", "/backup_db"]) and bale.is_admin(chat_id):
                                         if config.DB_PATH.exists():
                                             await bale.send_document(chat_id, config.DB_PATH, caption=f"💾 <b>نسخه پشتیبان SQLite</b>\nنگارش: {config.ENGINE_VERSION}")
@@ -3287,6 +3310,28 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             card_txt, buttons = StoreService.format_customer_course_card(c_name, c.get("download_link"), i, len(purchased))
                                             c_kb = {"inline_keyboard": [[{"text": b["text"], "url": b["url"]}] for b in buttons]} if buttons else None
                                             await bale.send_message(chat_id, card_txt, reply_markup=c_kb)
+                                        continue
+
+                                    if any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
+                                        wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
+                                        try:
+                                            from core.sign_service import SignService
+                                            sign = await SignService.get_user_today_sign(chat_id)
+                                            caption = SignService.format_sign_caption(sign)
+                                            audio_url = sign.get("audio_url")
+                                            if audio_url:
+                                                await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    audio_path_or_url=audio_url,
+                                                    title=sign.get("title", "نشانه امروز من"),
+                                                    performer="UNFINIT - نشانه امروز",
+                                                    caption=caption
+                                                )
+                                            else:
+                                                await bale.send_message(chat_id, caption)
+                                        except Exception as ex_sign:
+                                            logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")
+                                            await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
                                         continue
 
                                     if any(text.startswith(cmd) for cmd in ["💎 فرکانس فراوانی", "فرکانس فراوانی", "فرکانس", "/frequency"]):
