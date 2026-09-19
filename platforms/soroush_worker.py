@@ -22,7 +22,8 @@ class SoroushWorker:
     Zero unencrypted credentials or plain session files are written to disk.
     """
     WEB_API_BASE = "https://web.splus.ir/api/"
-    FILE_API_BASE = "https://file.splus.ir/"
+    API_BASE = "https://api.splus.ir/"
+    BOT_API_BASE = "https://bot.splus.ir/"
 
     def __init__(self, session_name: str = "soroush"):
         self.session_name = session_name
@@ -71,37 +72,53 @@ class SoroushWorker:
             logger.error(f"[soroush_worker] Error saving encrypted session: {e}")
             return False
 
-    def save_manual_token(self, token: str, phone: Optional[str] = None) -> bool:
+    def save_manual_token(self, token: Any, phone: str = "") -> bool:
         """
-        Saves a manually provided session token.
-        Supports:
-          1. Direct dc2_auth_key hex/base64 string
-          2. GramJS Web JSON object: {"dcId":2,"dc2_auth_key":"...","userId":"..."}
+        Saves a manually extracted GramJS auth token/key into persistent storage.
+        Accepts:
+          1. Raw string dc2_auth_key (e.g. 32/64 byte hex or base64)
+          2. GramJS Web JSON string or dict: {"dcId":2,"dc2_auth_key":"...","userId":"59645756"}
+          3. GramJS Account object: {"account1": {"dcId":2,"authKey":"...","userId":59645756}}
         Persists with AES-256 encryption in data/sessions/soroush.session.enc.
         """
-        clean_tok = (token or "").strip()
+        if isinstance(token, dict):
+            clean_tok = json.dumps(token)
+        else:
+            clean_tok = str(token or "").strip()
+
         if not clean_tok:
             return False
+
         clean_ph = (phone or "").strip() or "سشن دستی وب"
         user_id = "manual"
         extra = {}
 
         # Check if user provided JSON object (GramJS / Telegram / Soroush Web client format)
-        if (clean_tok.startswith("{") and clean_tok.endswith("}")) or ("dc2_auth_key" in clean_tok):
+        if isinstance(token, dict) or (clean_tok.startswith("{") and clean_tok.endswith("}")) or any(k in clean_tok for k in ("dc2_auth_key", "userId", "account1", "authKey")):
             try:
-                parsed = json.loads(clean_tok)
+                parsed = token if isinstance(token, dict) else json.loads(clean_tok)
                 if isinstance(parsed, dict):
+                    acc = parsed
+                    if "account1" in parsed and isinstance(parsed["account1"], dict):
+                        acc = parsed["account1"]
+                    elif "account" in parsed and isinstance(parsed["account"], dict):
+                        acc = parsed["account"]
+
                     extracted_key = (
-                        parsed.get("dc2_auth_key")
-                        or parsed.get("dc1_auth_key")
-                        or parsed.get("authKey")
-                        or parsed.get("auth_key")
-                        or parsed.get("key")
-                        or parsed.get("token")
+                        acc.get("dc2_auth_key")
+                        or acc.get("dc1_auth_key")
+                        or acc.get("authKey")
+                        or acc.get("auth_key")
+                        or acc.get("key")
+                        or acc.get("token")
                     )
-                    user_id = str(parsed.get("userId") or parsed.get("user_id") or "gramjs_user")
-                    dc_id = parsed.get("dcId") or parsed.get("dc_id") or 2
-                    extra = {"gramjs": True, "dcId": dc_id, "parsed_json": parsed}
+                    raw_user_id = acc.get("userId") or acc.get("user_id") or acc.get("id")
+                    if raw_user_id:
+                        user_id = str(raw_user_id).strip()
+                    if clean_ph == "سشن دستی وب" and acc.get("phone"):
+                        clean_ph = str(acc.get("phone")).strip()
+                    dc_id = acc.get("dcId") or acc.get("dc_id") or 2
+                    extra = {"gramjs": True, "dcId": dc_id, "parsed_json": parsed, "userId": user_id}
                     if extracted_key:
                         clean_tok = str(extracted_key).strip()
             except Exception as e:
@@ -117,15 +134,29 @@ class SoroushWorker:
         return bool(data and data.get("token"))
 
     def get_masked_phone(self) -> str:
-        """Returns masked phone number (e.g. 0912***4855) or friendly label."""
+        """Returns masked phone number or friendly user identity label (e.g. حساب متصل: ۵۹۶۴۵۷۵۶)."""
         if not self.is_connected() or not self._session_data:
             return ""
+
+        # 1. Prefer explicit userId from session
+        user_id = str(self._session_data.get("user_id", "")).strip()
+        if user_id and user_id not in ("manual", "gramjs_user", "0", ""):
+            return f"حساب متصل: {user_id}"
+
+        # 2. Check standard phone number
         phone = str(self._session_data.get("phone", "")).strip().replace("+", "")
         if len(phone) >= 10 and phone.isdigit():
             return f"{phone[:4]}***{phone[-4:]}"
-        elif phone:
+        elif phone and phone not in ("سشن دستی وب", "دستی"):
             return phone
-        return "متصل"
+
+        # 3. Check extra metadata
+        extra = self._session_data.get("extra") or {}
+        extra_uid = str(extra.get("userId") or extra.get("user_id") or "").strip()
+        if extra_uid and extra_uid not in ("manual", "gramjs_user", "0", ""):
+            return f"حساب متصل: {extra_uid}"
+
+        return "حساب متصل (سشن وب)"
 
     def get_status(self) -> Dict[str, Any]:
         """Returns status payload for Web Panel dashboard and API."""
@@ -240,7 +271,8 @@ class SoroushWorker:
         mime_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Uploads file to Soroush Plus CDN and dispatches it to 'Saved Messages' (پیام‌های ذخیره‌شده).
+        Uploads file to Soroush Plus and dispatches it to 'Saved Messages' (پیام‌های ذخیره‌شده).
+        Uses official Soroush+ Web APIs with resilient fallback and safe error handling.
         """
         if not self.is_connected():
             return {"ok": False, "error": "سشن سروش‌پلاس متصل نیست."}
@@ -258,45 +290,72 @@ class SoroushWorker:
             if not mime_type:
                 mime_type = "application/octet-stream"
 
-        try:
-            # 1. Upload to Soroush File API
-            upload_url = f"{self.FILE_API_BASE}upload"
-            async with aiohttp.ClientSession() as session:
-                data = aiohttp.FormData()
-                data.add_field(
-                    "file",
-                    open(str(p), "rb"),
-                    filename=p.name,
-                    content_type=mime_type
-                )
-                async with session.post(upload_url, data=data, headers=headers, timeout=120) as up_resp:
-                    if up_resp.status != 200:
-                        up_text = await up_resp.text()
-                        logger.warning(f"[soroush_worker] File upload failed: HTTP {up_resp.status}: {up_text}")
-                        return {"ok": False, "error": f"خطا در آپلود فایل سروش ({up_resp.status})"}
+        upload_endpoints = [
+            f"{self.WEB_API_BASE}upload",
+            f"{self.API_BASE}upload",
+        ]
 
-                    up_res = await up_resp.json()
-                    file_id = up_res.get("file_id") or up_res.get("result", {}).get("file_id")
+        file_id = None
+        last_error = ""
 
-                # 2. Dispatch to Saved Messages (dialog/saved_messages or chat with self)
-                msg_url = f"{self.WEB_API_BASE}messages/send"
-                msg_payload = {
-                    "peer": "saved_messages",
-                    "text": caption or p.name,
-                    "file_id": file_id,
-                    "mime_type": mime_type
-                }
-                async with session.post(msg_url, json=msg_payload, headers=headers, timeout=20) as msg_resp:
-                    if msg_resp.status == 200:
-                        logger.info(f"[soroush_worker] File successfully dispatched to Saved Messages: {p.name}")
-                        return {"ok": True, "file_id": file_id}
-                    else:
-                        msg_text = await msg_resp.text()
-                        logger.warning(f"[soroush_worker] Dispatch message failed: HTTP {msg_resp.status}: {msg_text}")
-                        return {"ok": False, "error": f"خطا در ارسال پیام به Saved Messages ({msg_resp.status})"}
-        except Exception as e:
-            logger.error(f"[soroush_worker] send_file error: {e}")
-            return {"ok": False, "error": str(e)}
+        # 1. Upload file
+        for endpoint in upload_endpoints:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    data = aiohttp.FormData()
+                    data.add_field(
+                        "file",
+                        open(str(p), "rb"),
+                        filename=p.name,
+                        content_type=mime_type
+                    )
+                    async with session.post(endpoint, data=data, headers=headers, timeout=60) as up_resp:
+                        if up_resp.status == 200:
+                            up_res = await up_resp.json()
+                            file_id = up_res.get("file_id") or up_res.get("result", {}).get("file_id")
+                            if file_id:
+                                break
+                        else:
+                            last_error = f"HTTP {up_resp.status}"
+            except aiohttp.ClientConnectorError as e:
+                last_error = f"عدم دسترسی به سرور: {e}"
+                logger.debug(f"[soroush_worker] Endpoint {endpoint} unreachable: {e}")
+            except Exception as e:
+                last_error = str(e)
+                logger.debug(f"[soroush_worker] Upload error on {endpoint}: {e}")
+
+        if not file_id:
+            logger.warning(f"[soroush_worker] File upload failed: {last_error}")
+            return {
+                "ok": False,
+                "error": f"عدم امکان آپلود فایل در وب‌سرویس سروش‌پلاس ({last_error})"
+            }
+
+        # 2. Dispatch to Saved Messages
+        send_endpoints = [
+            f"{self.WEB_API_BASE}messages/send",
+            f"{self.API_BASE}messages/send"
+        ]
+        msg_payload = {
+            "peer": "saved_messages",
+            "text": caption or p.name,
+            "file_id": file_id,
+            "mime_type": mime_type
+        }
+
+        for s_url in send_endpoints:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(s_url, json=msg_payload, headers=headers, timeout=20) as msg_resp:
+                        if msg_resp.status == 200:
+                            logger.info(f"[soroush_worker] File successfully dispatched to Saved Messages: {p.name}")
+                            return {"ok": True, "file_id": file_id}
+                        else:
+                            last_error = f"HTTP {msg_resp.status}"
+            except Exception as e:
+                last_error = str(e)
+
+        return {"ok": False, "error": f"خطا در ارسال پیام به Saved Messages ({last_error})"}
 
 # Singleton worker instance
 soroush_worker = SoroushWorker()

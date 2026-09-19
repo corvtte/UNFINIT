@@ -73,15 +73,17 @@ def build_bale_frequency_cats_keyboard() -> dict:
     }
 
 
-def build_bale_frequency_nav_keyboard(category: str, current_idx: int, total: int) -> dict:
-    prev_idx = (current_idx - 1) % total
-    next_idx = (current_idx + 1) % total
+def build_bale_frequency_nav_keyboard(category: str = "MORNING", current_idx: int = 0, total: int = 1, total_count: Optional[int] = None, **kwargs) -> dict:
+    actual_total = total_count if total_count is not None else total
+    actual_total = max(1, actual_total)
+    prev_idx = (current_idx - 1) % actual_total
+    next_idx = (current_idx + 1) % actual_total
     return {
         "inline_keyboard": [
             [
-                {"text": "◀️ قبلی", "callback_data": f"freq_page:{category}:{prev_idx}"},
-                {"text": f"({current_idx + 1} از {total})", "callback_data": "freq_noop"},
-                {"text": "بعدی ▶️", "callback_data": f"freq_page:{category}:{next_idx}"}
+                {"text": "بعدی ▶️", "callback_data": f"freq_page:{category}:{next_idx}"},
+                {"text": f"({current_idx + 1} از {actual_total})", "callback_data": "freq_noop"},
+                {"text": "◀️ قبلی", "callback_data": f"freq_page:{category}:{prev_idx}"}
             ],
             [
                 {"text": "🔙 بازگشت به دسته‌ها", "callback_data": "freq_cats"}

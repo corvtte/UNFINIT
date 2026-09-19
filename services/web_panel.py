@@ -462,10 +462,30 @@ def render_dashboard_html() -> str:
         }}
         body {{
             font-family: 'Vazirmatn', 'Roboto', sans-serif !important;
-            background: var(--bg-color) !important;
-            color: var(--fg-color) !important;
+            background-color: var(--bg-main, var(--bg-color, #080e1e)) !important;
+            color: var(--text-main, var(--fg-color, #f4f4f5)) !important;
             min-height: 100vh;
             transition: background-color 0.2s ease, color 0.2s ease;
+        }}
+        /* هدایت کلیه سطوح و کارت‌های تیلویند به متغیر تم فعال */
+        .bg-slate-900, .bg-slate-950, .bg-slate-850, [class*="bg-slate-9"] {{
+            background-color: var(--bg-main, var(--bg-color, #080e1e)) !important;
+        }}
+        .bg-slate-800, .card, [class*="bg-slate-8"], [class*="rounded-xl bg-slate-800"] {{
+            background-color: var(--bg-card, var(--card-bg, #0f172a)) !important;
+        }}
+        .bg-slate-700, input, select, textarea {{
+            background-color: var(--bg-input, var(--card-bg, #141418)) !important;
+            color: var(--text-main, var(--fg-color, #f4f4f5)) !important;
+        }}
+        .border-slate-700, .border-slate-800, .border-slate-600, [class*="border-slate-"] {{
+            border-color: var(--border-color, var(--card-border, rgba(6, 182, 212, 0.2))) !important;
+        }}
+        .text-slate-100, .text-white {{
+            color: var(--text-main, var(--fg-color, #f4f4f5)) !important;
+        }}
+        .text-slate-400, .text-slate-300 {{
+            color: var(--text-muted, #94a3b8) !important;
         }}
         code, pre, .font-mono {{ font-family: 'Roboto', monospace !important; }}
         .glass, .settings-box, .setting-card, .glass-card, .store-card, details.settings-accordion {{
@@ -908,7 +928,7 @@ def render_dashboard_html() -> str:
                 <!-- 8. Frequencies -->
                 <button draggable="true" type="button" onclick="switchTab('frequencies'); toggleSidebar(false);" data-tab="frequencies" id="s-btn-tab-frequencies" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                     </svg>
                     <span class="flex-1 text-right">فرکانس فراوانی</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-indigo-400 font-mono">{frequencies_count}</span>
@@ -1171,7 +1191,7 @@ def render_dashboard_html() -> str:
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-cyan-400">ارسال به Saved Messages</span></p>
-                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code class="font-mono text-cyan-300">{p['soroush'].get('masked_phone') or 'بدون شماره'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">وضعیت حساب: <code class="font-mono text-cyan-300">{p['soroush'].get('masked_phone') or 'عدم اتصال'}</code></p>
                         <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
                     <div class="mt-3">
