@@ -35,6 +35,7 @@ from services.session_manager import session_manager
 from services.url_service import UrlService
 from services.user_service import UserService, normalize_phone
 from services.referral_service import ReferralService, TOHID_AMALI_PACK_ID, TOHID_AMALI_EPISODES
+from core.frequency_service import FrequencyService
 from media.inspector import inspect_technical_metadata
 from media.tagger import generate_video_thumbnail
 
@@ -120,11 +121,35 @@ def get_customer_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             ["📚 لیست دوره‌های آموزشی"],
-            ["👤 حساب کاربری"],
+            ["💎 فرکانس فراوانی", "👤 حساب کاربری"],
             [GiftButtonStr("🎁 فایل‌های هدیه")]
         ],
         resize_keyboard=True
     )
+
+
+def build_telegram_frequency_cats_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("☀️ باورهای صبحگاهی", callback_data="freq_page:MORNING:0"),
+            InlineKeyboardButton("🌙 باورهای شبانگاهی", callback_data="freq_page:NIGHT:0")
+        ]
+    ])
+
+
+def build_telegram_frequency_nav_keyboard(category: str, current_idx: int, total: int) -> InlineKeyboardMarkup:
+    prev_idx = (current_idx - 1) % total
+    next_idx = (current_idx + 1) % total
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("◀️ قبلی", callback_data=f"freq_page:{category}:{prev_idx}"),
+            InlineKeyboardButton(f"{current_idx + 1} از {total}", callback_data="freq_noop"),
+            InlineKeyboardButton("بعدی ▶️", callback_data=f"freq_page:{category}:{next_idx}")
+        ],
+        [
+            InlineKeyboardButton("🔙 بازگشت به دسته‌ها", callback_data="freq_cats")
+        ]
+    ])
 
 
 def get_admin_keyboard() -> ReplyKeyboardMarkup:
@@ -956,6 +981,46 @@ class TelegramAdapter:
             buttons.append([InlineKeyboardButton("🎁 دوره‌ها و هدایای رایگان", callback_data="cnav:gifts")])
             buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
             await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*فرکانس فراوانی|فرکانس فراوانی|فرکانس|/frequency)$"))
+        async def customer_frequency_menu(client: Client, message: Message):
+            txt = (
+                "💎 <b>فرکانس فراوانی و آرامش درون</b>\n\n"
+                "با انتخاب هر بخش، باورهای ثروت‌ساز و آرامش‌بخش روزانه را ورق بزنید و ذهن خود را روی مدار توانگری و دریافت برکت الهی تنظیم کنید:"
+            )
+            await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=build_telegram_frequency_cats_keyboard())
+
+        @self.app.on_callback_query(filters.regex(r"^freq_cats$"))
+        async def handle_freq_cats_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            txt = (
+                "💎 <b>فرکانس فراوانی و آرامش درون</b>\n\n"
+                "دسته‌بندی مورد نظر خود را انتخاب نمایید:"
+            )
+            await callback_query.edit_message_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=build_telegram_frequency_cats_keyboard())
+
+        @self.app.on_callback_query(filters.regex(r"^freq_page:(MORNING|NIGHT):(\d+)$"))
+        async def handle_freq_page_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            match = re.match(r"^freq_page:(MORNING|NIGHT):(\d+)$", callback_query.data)
+            if not match:
+                return
+            category = match.group(1)
+            idx = int(match.group(2))
+            item, curr_num, total = FrequencyService.get_item(category, idx)
+            if not item:
+                await callback_query.answer("هیچ باوری در این بخش یافت نشد.", show_alert=True)
+                return
+            card_text = FrequencyService.format_card(item, curr_num, total)
+            await callback_query.edit_message_text(
+                card_text,
+                parse_mode=enums.ParseMode.HTML,
+                reply_markup=build_telegram_frequency_nav_keyboard(category, curr_num - 1, total)
+            )
+
+        @self.app.on_callback_query(filters.regex(r"^freq_noop$"))
+        async def handle_freq_noop_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
 
         @self.app.on_callback_query(filters.regex(r"^btn_my_courses$"))
         async def handle_btn_my_courses_cb(client: Client, callback_query: CallbackQuery):

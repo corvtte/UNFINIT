@@ -71,6 +71,14 @@ class SoroushWorker:
             logger.error(f"[soroush_worker] Error saving encrypted session: {e}")
             return False
 
+    def save_manual_token(self, token: str, phone: Optional[str] = None) -> bool:
+        """Saves a manually provided session token."""
+        clean_tok = (token or "").strip()
+        if not clean_tok:
+            return False
+        clean_ph = (phone or "").strip() or "دستی"
+        return self.save_session(token=clean_tok, phone=clean_ph, user_id="manual")
+
     def is_connected(self) -> bool:
         """Returns True if a valid session exists."""
         if self._session_data and self._session_data.get("token"):
@@ -132,8 +140,7 @@ class SoroushWorker:
         candidate_urls = [
             f"{self.WEB_API_BASE}auth/requestCode",
             f"{self.WEB_API_BASE}auth/sendCode",
-            "https://chat.splus.ir/api/auth/requestCode",
-            "https://core.splus.ir/api/v1/auth/requestCode"
+            "https://api.splus.ir/auth/requestCode"
         ]
         headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         payload = {"phone": clean_phone}
@@ -156,10 +163,10 @@ class SoroushWorker:
             except Exception as e:
                 last_error = str(e)
 
-        logger.warning(f"[soroush_worker] requestCode failed across candidates: {last_error}")
+        logger.debug(f"[soroush_worker] requestCode candidates not responding: {last_error}")
         return {
             "ok": False,
-            "error": "درگاه وب سروش‌پلاس در دسترس نیست یا نیازمند تنظیم دستی توکن است.",
+            "error": "درگاه پیامک خودکار وب سروش‌پلاس موقتاً پاسخگو نیست. لطفاً از گزینه «ثبت دستی توکن نشست» استفاده فرمایید.",
             "detail": last_error
         }
 

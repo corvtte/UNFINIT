@@ -977,8 +977,11 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button" onclick="toggleLogsDrawer()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="مشاهده لاگ‌های زنده موتور">
-                        <span>☰</span> Logs
+                    <button type="button" id="btnHeaderLogsDrawer" onclick="toggleLogsDrawer(true)" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm theme-card-btn" style="border: 1px solid var(--card-border);" title="کنسول لاگ‌های زنده موتور">
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                        </svg>
+                        <span>لاگ‌های زنده</span>
                     </button>
                     <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
@@ -1021,7 +1024,7 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-400" id="dashConnectedPlatforms">{connected_platforms_count} پلتفرم فعال</div>
+                    <div class="text-xl sm:text-2xl font-bold text-emerald-400" style="letter-spacing: normal !important;" id="dashConnectedPlatforms"><span class="font-mono">{connected_platforms_count}</span> پلتفرم فعال</div>
                     <p class="text-[11px] text-slate-500 mt-1" id="dashConnectedSummary">از ۴ درگاه پیام‌رسان</p>
                 </div>
 
@@ -1164,25 +1167,6 @@ def render_dashboard_html() -> str:
                     <div class="mt-3">
                         {f'''<button type="button" onclick="disconnectSession('soroush')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['soroush']['status'] == 'ONLINE' else '''<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg><span>ورود به حساب سروش‌پلاس</span></button>'''}
                     </div>
-                </div>
-            </div>
-
-            <!-- Compact Live Stream Banner & Drawer Trigger -->
-            <div class="glass p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div class="flex items-center gap-3 overflow-hidden">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-                    <div class="overflow-hidden">
-                        <h4 class="text-xs font-bold text-slate-200">کنسول فعالیت‌های زنده موتور (Live Engine Console Stream)</h4>
-                        <p id="dashboardLatestLogPreview" class="text-[11px] text-emerald-400 font-mono truncate" dir="ltr">// UNFINIT Engine v0.3.7 Live Stream active...</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                    <button type="button" onclick="loadDashboardData()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700 transition">
-                        🔄 تازه‌سازی
-                    </button>
-                    <button type="button" onclick="toggleLogsDrawer(true)" class="px-3.5 py-1.5 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <span>☰</span> باز کردن لاگ‌ها (Drawer)
-                    </button>
                 </div>
             </div>
         </div>
@@ -2466,6 +2450,88 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
             </div>
+
+            <!-- ================= SECTION C: FREQUENCY OF ABUNDANCE MANAGEMENT ================= -->
+            <div id="frequencyContent" class="glass p-6 rounded-2xl space-y-6 border" style="border-color: var(--card-border); background: var(--glass-bg);">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 inline-flex items-center justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </span>
+                            مدیریت فرکانس فراوانی (بانک باورهای صبحگاهی و شبانگاهی)
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">مدیریت کارت‌های ورق‌زن فرکانس فراوانی در تلگرام و بله (ذخیره مستقیم و پایدار در data/frequencies.json)</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="loadFrequenciesTable()" class="theme-card-btn px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            بازخوانی لیست
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add New Frequency Form -->
+                <form id="addFrequencyForm" onsubmit="submitAddNewFrequency(event)" class="p-4 rounded-xl border space-y-4" style="background: var(--glass-bg); border-color: var(--card-border);">
+                    <div class="text-xs font-bold text-sky-400 flex items-center gap-2 pb-2 border-b border-white/5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        افزودن باور جدید به سامانه
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="text-slate-300 font-medium text-xs mb-1.5 block">دسته‌بندی زمان</label>
+                            <select id="freqNewCategory" class="w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                                <option value="MORNING">باور صبحگاهی (MORNING)</option>
+                                <option value="NIGHT">باور شبانگاهی (NIGHT)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-slate-300 font-medium text-xs mb-1.5 block">عنوان باور</label>
+                            <input type="text" id="freqNewTitle" required placeholder="مثال: ذهن ثروت‌ساز" class="w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                        </div>
+                        <div>
+                            <label class="text-slate-300 font-medium text-xs mb-1.5 block">متن تأکیدی باور</label>
+                            <input type="text" id="freqNewText" required placeholder="مثال: ذهن من سرشار از ایده‌های طلایی است." class="w-full border rounded-xl px-3 py-2 text-xs focus:outline-none transition" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-1">
+                        <button type="submit" id="btnSubmitFrequency" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="background: var(--accent-color); color: #fff;">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            ثبت عبارت در بانک باورها
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Frequencies Table Container -->
+                <div class="overflow-x-auto rounded-xl border" style="border-color: var(--card-border);">
+                    <table class="w-full text-right text-xs">
+                        <thead>
+                            <tr class="border-b" style="background: var(--table-head-bg); border-color: var(--card-border); color: var(--text-muted);">
+                                <th class="py-3 px-4 w-12 text-center">#</th>
+                                <th class="py-3 px-4 w-40">عنوان باور</th>
+                                <th class="py-3 px-4 w-32 text-center">دسته‌بندی</th>
+                                <th class="py-3 px-4">متن تأکیدی</th>
+                                <th class="py-3 px-4 w-20 text-center">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="frequencyTableBody" class="divide-y" style="border-color: var(--card-border);">
+                            <tr>
+                                <td colspan="5" class="py-8 text-center text-slate-400">
+                                    در حال بارگذاری لیست فرکانس‌ها...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Edit Course Modal -->
@@ -2894,35 +2960,72 @@ def render_dashboard_html() -> str:
         <!-- Soroush Plus Login Modal -->
         <div id="soroushLoginModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="glass-card max-w-sm w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
-                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--card-border);">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                        <span>💬</span> ورود به حساب کاربری سروش‌پلاس
+                        <svg class="w-4 h-4 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-.774-.75 4.975 4.975 0 01.75-2.618A7.842 7.842 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                        </svg>
+                        <span>اتصال حساب کاربری سروش‌پلاس</span>
                     </h3>
                     <button type="button" onclick="closeSoroushLoginModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
                 </div>
-                <!-- Step 1: Phone -->
+
+                <!-- Sub-Tabs for Mode -->
+                <div class="flex items-center gap-1 p-1 rounded-xl" style="background: var(--input-bg); border: 1px solid var(--card-border);">
+                    <button type="button" id="tabBtnSoroushSms" onclick="switchSoroushTab('sms')" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition theme-card-btn">
+                        دریافت کد پیامک
+                    </button>
+                    <button type="button" id="tabBtnSoroushManual" onclick="switchSoroushTab('manual')" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">
+                        ثبت دستی توکن
+                    </button>
+                </div>
+
+                <!-- SMS Mode: Step 1 Phone -->
                 <div id="soroushStepPhone" class="space-y-3">
                     <p class="text-xs text-slate-300 leading-relaxed">
                         شماره موبایل حساب سروش‌پلاس خود را جهت دریافت پیامک تایید وارد نمایید:
                     </p>
-                    <input type="text" id="soroushPhoneInput" placeholder="09121234567" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 text-left" dir="ltr">
+                    <input type="text" id="soroushPhoneInput" placeholder="09121234567" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     <button type="button" onclick="submitSoroushPhone()" id="btnSoroushSendCode" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                        <span>📩</span> دریافت کد تایید پیامکی
+                        <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                        <span>دریافت کد تایید پیامکی</span>
                     </button>
                 </div>
-                <!-- Step 2: Code -->
+
+                <!-- SMS Mode: Step 2 Code -->
                 <div id="soroushStepCode" class="hidden space-y-3">
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        کد ۵ رقمی ارسال‌شده به شماره <b id="soroushTargetPhoneDisplay" class="text-cyan-300 font-mono"></b> را وارد نمایید:
+                        کد تایید ارسال‌شده به شماره <b id="soroushTargetPhoneDisplay" class="text-cyan-300 font-mono"></b> را وارد نمایید:
                     </p>
-                    <input type="text" id="soroushCodeInput" placeholder="12345" maxlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 text-center tracking-widest text-lg" dir="ltr">
+                    <input type="text" id="soroushCodeInput" placeholder="12345" maxlength="6" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-center text-lg" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     <button type="button" onclick="submitSoroushCode()" id="btnSoroushVerifyCode" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                        <span>✅</span> تایید و فعال‌سازی سشن امن
+                        <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                        <span>تایید و فعال‌سازی سشن امن</span>
                     </button>
                     <button type="button" onclick="resetSoroushLoginForm()" class="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition">
                         ← تغییر شماره موبایل
                     </button>
                 </div>
+
+                <!-- Manual Token Mode -->
+                <div id="soroushStepManual" class="hidden space-y-3">
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        در صورت اختلال وب‌سرویس پیامکی، توکن دسترسی وب سشن سروش‌پلاس را وارد نمایید:
+                    </p>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">توکن نشست (Bearer Token)</label>
+                        <input type="text" id="soroushManualTokenInput" placeholder="eyJhbGciOiJIUzI1NiIsIn..." class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-slate-400 mb-1">شماره موبایل مرتبط (اختیاری)</label>
+                        <input type="text" id="soroushManualPhoneInput" placeholder="09121234567" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                    </div>
+                    <button type="button" onclick="submitSoroushManualToken()" id="btnSoroushManualSubmit" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+                        <span>ذخیره مستقیم توکن و فعال‌سازی سشن</span>
+                    </button>
+                </div>
+
                 <div id="soroushLoginError" class="hidden p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-xs text-rose-300 font-mono"></div>
             </div>
         </div>
@@ -3224,6 +3327,7 @@ def render_dashboard_html() -> str:
                         }}
                         if (rawTab === 'settings' || rawTab === 'tokens') {{
                             if (typeof window.loadSettings === 'function') window.loadSettings();
+                            if (typeof window.loadFrequenciesTable === 'function') window.loadFrequenciesTable();
                         }}
                         if (rawTab === 'courses') {{
                             if (typeof window.loadStoreAnalytics === 'function') window.loadStoreAnalytics();
@@ -3440,28 +3544,51 @@ def render_dashboard_html() -> str:
                     const modal = document.getElementById('soroushLoginModal');
                     if (modal) modal.classList.add('hidden');
                 }}
-                function resetSoroushLoginForm() {{
-                    const pStep = document.getElementById('soroushStepPhone');
-                    const cStep = document.getElementById('soroushStepCode');
+                function switchSoroushTab(tab) {{
+                    const smsPhone = document.getElementById('soroushStepPhone');
+                    const smsCode = document.getElementById('soroushStepCode');
+                    const manStep = document.getElementById('soroushStepManual');
+                    const btnSms = document.getElementById('tabBtnSoroushSms');
+                    const btnMan = document.getElementById('tabBtnSoroushManual');
                     const errBox = document.getElementById('soroushLoginError');
-                    if (pStep) pStep.classList.remove('hidden');
-                    if (cStep) cStep.classList.add('hidden');
+                    if (errBox) errBox.classList.add('hidden');
+                    if (tab === 'manual') {{
+                        if (smsPhone) smsPhone.classList.add('hidden');
+                        if (smsCode) smsCode.classList.add('hidden');
+                        if (manStep) manStep.classList.remove('hidden');
+                        if (btnMan) {{ btnMan.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition theme-card-btn'; }}
+                        if (btnSms) {{ btnSms.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition'; }}
+                    }} else {{
+                        if (manStep) manStep.classList.add('hidden');
+                        if (smsPhone) smsPhone.classList.remove('hidden');
+                        if (smsCode) smsCode.classList.add('hidden');
+                        if (btnSms) {{ btnSms.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition theme-card-btn'; }}
+                        if (btnMan) {{ btnMan.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition'; }}
+                    }}
+                }}
+                function resetSoroushLoginForm() {{
+                    switchSoroushTab('sms');
+                    const errBox = document.getElementById('soroushLoginError');
                     if (errBox) {{ errBox.classList.add('hidden'); errBox.textContent = ''; }}
                     const phoneInput = document.getElementById('soroushPhoneInput');
                     if (phoneInput) phoneInput.value = '';
                     const codeInput = document.getElementById('soroushCodeInput');
                     if (codeInput) codeInput.value = '';
+                    const manTokInput = document.getElementById('soroushManualTokenInput');
+                    if (manTokInput) manTokInput.value = '';
+                    const manPhInput = document.getElementById('soroushManualPhoneInput');
+                    if (manPhInput) manPhInput.value = '';
                 }}
                 async function submitSoroushPhone() {{
                     const phoneInput = document.getElementById('soroushPhoneInput');
                     const phone = phoneInput ? phoneInput.value.trim() : '';
                     if (!phone || phone.length < 10) {{
-                        alert('❌ شماره تلفن نامعتبر است.');
+                        alert('شماره تلفن نامعتبر است.');
                         return;
                     }}
                     const btn = document.getElementById('btnSoroushSendCode');
                     const errBox = document.getElementById('soroushLoginError');
-                    if (btn) {{ btn.disabled = true; btn.textContent = '⏳ در حال ارسال درخواست...'; }}
+                    if (btn) {{ btn.disabled = true; btn.textContent = 'در حال ارسال درخواست...'; }}
                     if (errBox) errBox.classList.add('hidden');
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
@@ -3485,28 +3612,28 @@ def render_dashboard_html() -> str:
                             if (cStep) cStep.classList.remove('hidden');
                         }} else {{
                             if (errBox) {{
-                                errBox.textContent = '❌ ' + (data.error || 'خطا در ارسال کد');
+                                errBox.textContent = data.error || 'خطا در ارسال کد';
                                 errBox.classList.remove('hidden');
                             }} else {{
-                                alert('❌ ' + (data.error || 'خطا در ارسال کد'));
+                                alert(data.error || 'خطا در ارسال کد');
                             }}
                         }}
                     }} catch (e) {{
-                        alert('❌ خطا: ' + e.message);
+                        alert('خطا: ' + e.message);
                     }} finally {{
-                        if (btn) {{ btn.disabled = false; btn.innerHTML = '<span>📩</span> دریافت کد تایید پیامکی'; }}
+                        if (btn) {{ btn.disabled = false; btn.textContent = 'دریافت کد تایید پیامکی'; }}
                     }}
                 }}
                 async function submitSoroushCode() {{
                     const codeInput = document.getElementById('soroushCodeInput');
                     const code = codeInput ? codeInput.value.trim() : '';
                     if (!code) {{
-                        alert('❌ کد تایید را وارد نمایید.');
+                        alert('کد تایید را وارد نمایید.');
                         return;
                     }}
                     const btn = document.getElementById('btnSoroushVerifyCode');
                     const errBox = document.getElementById('soroushLoginError');
-                    if (btn) {{ btn.disabled = true; btn.textContent = '⏳ در حال تایید...'; }}
+                    if (btn) {{ btn.disabled = true; btn.textContent = 'در حال تایید...'; }}
                     if (errBox) errBox.classList.add('hidden');
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
@@ -3521,28 +3648,75 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            alert('✅ ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
+                            alert('ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
                             closeSoroushLoginModal();
                             window.location.reload();
                         }} else {{
                             if (errBox) {{
-                                errBox.textContent = '❌ ' + (data.error || 'کد تایید اشتباه است.');
+                                errBox.textContent = data.error || 'کد تایید اشتباه است.';
                                 errBox.classList.remove('hidden');
                             }} else {{
-                                alert('❌ ' + (data.error || 'کد تایید اشتباه است.'));
+                                alert(data.error || 'کد تایید اشتباه است.');
                             }}
                         }}
                     }} catch (e) {{
-                        alert('❌ خطا: ' + e.message);
+                        alert('خطا: ' + e.message);
                     }} finally {{
-                        if (btn) {{ btn.disabled = false; btn.innerHTML = '<span>✅</span> تایید و فعال‌سازی سشن امن'; }}
+                        if (btn) {{ btn.disabled = false; btn.textContent = 'تایید و فعال‌سازی سشن امن'; }}
                     }}
                 }}
+
+                async function submitSoroushManualToken() {{
+                    const tokInput = document.getElementById('soroushManualTokenInput');
+                    const phInput = document.getElementById('soroushManualPhoneInput');
+                    const token = tokInput ? tokInput.value.trim() : '';
+                    const phone = phInput ? phInput.value.trim() : '';
+                    if (!token) {{
+                        alert('توکن نشست الزامی است.');
+                        return;
+                    }}
+                    const btn = document.getElementById('btnSoroushManualSubmit');
+                    const errBox = document.getElementById('soroushLoginError');
+                    if (btn) {{ btn.disabled = true; btn.textContent = 'در حال ذخیره‌سازی...'; }}
+                    if (errBox) errBox.classList.add('hidden');
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/soroush/login/manual', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + pwd,
+                                'X-Admin-Password': pwd
+                            }},
+                            body: JSON.stringify({{ token: token, phone: phone }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            alert('سشن سروش‌پلاس با توکن دستی با موفقیت ثبت و فعال شد.');
+                            closeSoroushLoginModal();
+                            window.location.reload();
+                        }} else {{
+                            if (errBox) {{
+                                errBox.textContent = data.error || 'خطا در ثبت توکن';
+                                errBox.classList.remove('hidden');
+                            }} else {{
+                                alert(data.error || 'خطا در ثبت توکن');
+                            }}
+                        }}
+                    }} catch (e) {{
+                        alert('خطا: ' + e.message);
+                    }} finally {{
+                        if (btn) {{ btn.disabled = false; btn.textContent = 'ذخیره مستقیم توکن و فعال‌سازی سشن'; }}
+                    }}
+                }}
+
                 window.openSoroushLoginModal = openSoroushLoginModal;
                 window.closeSoroushLoginModal = closeSoroushLoginModal;
+                window.switchSoroushTab = switchSoroushTab;
                 window.resetSoroushLoginForm = resetSoroushLoginForm;
                 window.submitSoroushPhone = submitSoroushPhone;
                 window.submitSoroushCode = submitSoroushCode;
+                window.submitSoroushManualToken = submitSoroushManualToken;
 
                 let allLoadedUsers = [];
 
@@ -6701,6 +6875,96 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        async function loadFrequenciesTable() {{
+            const tbody = document.getElementById('frequencyTableBody');
+            if (!tbody) return;
+            try {{
+                tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400 animate-pulse">در حال فراخوانی داده‌ها...</td></tr>';
+                const res = await fetch('/api/frequencies');
+                const data = await res.json();
+                if (!data.ok || !Array.isArray(data.frequencies) || data.frequencies.length === 0) {{
+                    tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">هیچ عبارتی ثبت نشده است.</td></tr>';
+                    return;
+                }}
+                tbody.innerHTML = data.frequencies.map((item, idx) => {{
+                    const isMorning = item.category === 'MORNING';
+                    const catBadge = isMorning 
+                        ? '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">صبحگاهی</span>'
+                        : '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">شبانگاهی</span>';
+                    return `
+                        <tr class="hover:bg-white/[0.02] transition">
+                            <td class="py-3 px-4 text-center font-mono text-slate-400">${{idx + 1}}</td>
+                            <td class="py-3 px-4 font-bold text-slate-100">${{escapeHtml(item.title || '')}}</td>
+                            <td class="py-3 px-4 text-center">${{catBadge}}</td>
+                            <td class="py-3 px-4 text-slate-300 leading-relaxed">${{escapeHtml(item.text || '')}}</td>
+                            <td class="py-3 px-4 text-center">
+                                <button type="button" onclick="deleteFrequencyItem('${{escapeHtml(item.id)}}')" title="حذف عبارت" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition inline-flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }}).join('');
+            }} catch (err) {{
+                console.error('[loadFrequenciesTable error]:', err);
+                tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-rose-400">خطا در بارگذاری لیست فرکانس‌ها.</td></tr>';
+            }}
+        }}
+
+        async function submitAddNewFrequency(e) {{
+            if (e) e.preventDefault();
+            const cat = document.getElementById('freqNewCategory')?.value || 'MORNING';
+            const title = (document.getElementById('freqNewTitle')?.value || '').trim();
+            const text = (document.getElementById('freqNewText')?.value || '').trim();
+            if (!title || !text) {{
+                alert('لطفاً عنوان و متن عبارت را وارد نمایید.');
+                return;
+            }}
+            const btn = document.getElementById('btnSubmitFrequency');
+            if (btn) btn.disabled = true;
+            try {{
+                const res = await fetch('/api/frequencies/add', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ category: cat, title: title, text: text }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    document.getElementById('freqNewTitle').value = '';
+                    document.getElementById('freqNewText').value = '';
+                    loadFrequenciesTable();
+                }} else {{
+                    alert('خطا در ثبت عبارت: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (err) {{
+                alert('خطای ارتباط با سرور: ' + err.message);
+            }} finally {{
+                if (btn) btn.disabled = false;
+            }}
+        }}
+
+        async function deleteFrequencyItem(id) {{
+            if (!id) return;
+            if (!confirm('آیا از حذف این عبارت فرکانس فراوانی اطمینان دارید؟')) return;
+            try {{
+                const res = await fetch('/api/frequencies/delete', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ id: id }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    loadFrequenciesTable();
+                }} else {{
+                    alert('خطا در حذف عبارت: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (err) {{
+                alert('خطای ارتباط با سرور: ' + err.message);
+            }}
+        }}
+
         // =========================================================================
 
                 window.clearHermesChat = clearHermesChat;
@@ -6711,6 +6975,9 @@ def render_dashboard_html() -> str:
                 window.handleLogoFileSelect = handleLogoFileSelect;
                 window.uploadCustomLogo = uploadCustomLogo;
                 window.loadSettings = loadSettings;
+                window.loadFrequenciesTable = loadFrequenciesTable;
+                window.submitAddNewFrequency = submitAddNewFrequency;
+                window.deleteFrequencyItem = deleteFrequencyItem;
                 window.handleAiProviderChange = handleAiProviderChange;
                 window.updateAiProviderView = updateAiProviderView;
                 window.populateSettingsForm = populateSettingsForm;

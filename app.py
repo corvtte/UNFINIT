@@ -694,6 +694,25 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
+        elif path == "/api/frequencies":
+            try:
+                from core.frequency_service import FrequencyService
+                q_params = urllib.parse.parse_qs(parsed.query) if parsed.query else {}
+                cat = q_params.get("category", [""])[0].strip()
+                if cat:
+                    items = FrequencyService.get_by_category(cat)
+                else:
+                    items = FrequencyService.get_all()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "frequencies": items}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path == "/api/feed/latest":
             try:
                 from services.feed_scraper import get_latest_free_downloads
@@ -926,6 +945,63 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/soroush/login/manual":
+            try:
+                token = payload.get("token", "").strip()
+                phone = payload.get("phone", "").strip()
+                if not token:
+                    raise ValueError("توکن نشست سروش‌پلاس الزامی است.")
+                from platforms.soroush_worker import soroush_worker
+                ok = soroush_worker.save_manual_token(token, phone)
+                self.send_response(200 if ok else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": ok,
+                    "message": "نشست سروش‌پلاس با توکن دستی با موفقیت ذخیره و فعال شد." if ok else "خطا در ذخیره‌سازی نشست"
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/frequencies/add":
+            try:
+                title = payload.get("title", "").strip()
+                text = payload.get("text", "").strip()
+                category = payload.get("category", "MORNING").strip()
+                if not title or not text:
+                    raise ValueError("عنوان و متن عبارت الزامی است.")
+                from core.frequency_service import FrequencyService
+                new_item = FrequencyService.add_item(title, text, category)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "item": new_item}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/frequencies/delete":
+            try:
+                freq_id = payload.get("id", "").strip()
+                if not freq_id:
+                    raise ValueError("شناسه عبارت الزامی است.")
+                from core.frequency_service import FrequencyService
+                ok = FrequencyService.delete_item(freq_id)
+                self.send_response(200 if ok else 404)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": ok}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))

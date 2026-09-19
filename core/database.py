@@ -651,8 +651,6 @@ async def init_db():
                     with open(courses_file, "r", encoding="utf-8") as f:
                         b_items = json.load(f)
                     for item in b_items:
-                        if not bool(item.get("active", 1)):
-                            continue
                         cur.execute(
                             """INSERT INTO products (
                                 product_id, name, price, description, download_link, photo_url,
@@ -709,45 +707,9 @@ async def init_db():
             except Exception:
                 pass
 
-        # Permanent cleanup of legacy ghost sessions, extra courses, and fake test tokens
         try:
-            cur.execute("""
-            DELETE FROM media_sessions
-            WHERE drop_id LIKE 'test_%'
-               OR drop_id LIKE 'cleanup_%'
-               OR drop_id LIKE 'unique_test_%'
-               OR drop_id IN (
-                   '2fca0108', '0f911a3c', '634565a0', '4ee8ea80',
-                   '4c050e8b', '1e832d9d', 'eec9b85a', 'test_drop_v24_9',
-                   'drop_test_persistence', '2f555dc7', 'bfb26c62', 'c98a561f'
-               )
-            """)
-
-            cur.execute("""
-            UPDATE system_settings SET value = ''
-            WHERE key = 'bale_payment_token' AND value LIKE '%secret_123456%'
-            """)
-
             cur.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('course_terms_text', ?)", (config.COURSE_TERMS_TEXT,))
             cur.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('COURSE_TERMS_TEXT', ?)", (config.COURSE_TERMS_TEXT,))
-
-            cur.execute("""
-            UPDATE system_settings SET value = ''
-            WHERE key = 'tg_fjoin_channel' AND value LIKE '%unfinit%'
-            """)
-            cur.execute("""
-            DELETE FROM system_settings
-            WHERE key IN ('admin_password', 'ADMIN_PANEL_PASSWORD') AND value = 'unfinit2026'
-            """)
-
-            cur.execute("""
-            UPDATE system_settings SET value = 'فروشگاه دوره‌های آموزشی UNFINIT'
-            WHERE key = 'STORE_NAME' OR value LIKE '%Ù%' OR value LIKE '%Ø%'
-            """)
-            cur.execute("""
-            UPDATE system_settings SET value = 'stepfun-3.7-flash'
-            WHERE key = 'nara_model' AND value = 'mistral-large'
-            """)
             config.STORE_NAME = fix_mojibake(config.STORE_NAME)
             config.WELCOME_TEXT = fix_mojibake(config.WELCOME_TEXT, default="به فروشگاه دوره‌های آموزشی و دانلودی UNFINIT خوش آمدید.")
 
@@ -760,9 +722,8 @@ async def init_db():
                 config.BALE_PAYMENT_TOKEN = env_bale_pay
 
             conn.commit()
-            logger.info("[init_db] Cleaned up legacy test sessions, extra courses, and fake tokens successfully.")
-        except Exception as ex_clean:
-            logger.error(f"[init_db] Error during cleanup: {ex_clean}")
+        except Exception as ex_settings:
+            logger.error(f"[init_db] Error setting defaults: {ex_settings}")
 
         conn.close()
 

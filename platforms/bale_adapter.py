@@ -25,6 +25,7 @@ from services.session_manager import session_manager
 from services.url_service import UrlService
 from services.user_service import UserService, normalize_phone
 from services.referral_service import ReferralService, TOHID_AMALI_PACK_ID, TOHID_AMALI_EPISODES
+from core.frequency_service import FrequencyService
 from media.inspector import inspect_technical_metadata
 from media.tagger import extract_cover_image, generate_video_thumbnail
 
@@ -34,7 +35,9 @@ _BALE_POLLING_RUNNING: bool = False
 
 class GiftButtonStr(str):
     def __eq__(self, other: Any) -> bool:
-        if str.__eq__(self, str(other)):
+        if not isinstance(other, str):
+            return False
+        if str.__eq__(self, other):
             return True
         if str(other) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
             return True
@@ -52,10 +55,38 @@ def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
             [{"text": "📚 لیست دوره‌های آموزشی"}],
-            [{"text": "👤 حساب کاربری"}],
+            [{"text": "💎 فرکانس فراوانی"}, {"text": "👤 حساب کاربری"}],
             [{"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
         ],
         "resize_keyboard": True
+    }
+
+
+def build_bale_frequency_cats_keyboard() -> dict:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "☀️ باورهای صبحگاهی", "callback_data": "freq_page:MORNING:0"},
+                {"text": "🌙 باورهای شبانگاهی", "callback_data": "freq_page:NIGHT:0"}
+            ]
+        ]
+    }
+
+
+def build_bale_frequency_nav_keyboard(category: str, current_idx: int, total: int) -> dict:
+    prev_idx = (current_idx - 1) % total
+    next_idx = (current_idx + 1) % total
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "◀️ قبلی", "callback_data": f"freq_page:{category}:{prev_idx}"},
+                {"text": f"{current_idx + 1} از {total}", "callback_data": "freq_noop"},
+                {"text": "بعدی ▶️", "callback_data": f"freq_page:{category}:{next_idx}"}
+            ],
+            [
+                {"text": "🔙 بازگشت به دسته‌ها", "callback_data": "freq_cats"}
+            ]
+        ]
     }
 
 def get_bale_admin_keyboard() -> dict:
@@ -1021,6 +1052,31 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         else:
                                             channel_ch = await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE)
                                             await bale.send_message(chat_id, "⚠️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا در کانال عضو شده و مجدداً دکمه تایید را لمس فرمایید.", reply_markup=build_bale_force_join_keyboard(channel_ch))
+                                        continue
+
+                                    if cb_data == "freq_cats":
+                                        txt = (
+                                            "💎 <b>فرکانس فراوانی و آرامش درون</b>\n\n"
+                                            "دسته‌بندی مورد نظر خود را انتخاب نمایید:"
+                                        )
+                                        await bale.edit_message_text(chat_id, msg_id, txt, reply_markup=build_bale_frequency_cats_keyboard())
+                                        continue
+
+                                    if cb_data.startswith("freq_page:"):
+                                        parts = cb_data.split(":")
+                                        if len(parts) >= 3:
+                                            category = parts[1]
+                                            idx = int(parts[2])
+                                            item, curr_num, total = FrequencyService.get_item(category, idx)
+                                            if item:
+                                                card_txt = FrequencyService.format_card(item, curr_num, total)
+                                                await bale.edit_message_text(
+                                                    chat_id, msg_id, card_txt,
+                                                    reply_markup=build_bale_frequency_nav_keyboard(category, curr_num - 1, total)
+                                                )
+                                        continue
+
+                                    if cb_data == "freq_noop":
                                         continue
 
                                     # URL Uploader Callbacks in Bale
@@ -3203,6 +3259,14 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             card_txt, buttons = StoreService.format_customer_course_card(c_name, c.get("download_link"), i, len(purchased))
                                             c_kb = {"inline_keyboard": [[{"text": b["text"], "url": b["url"]}] for b in buttons]} if buttons else None
                                             await bale.send_message(chat_id, card_txt, reply_markup=c_kb)
+                                        continue
+
+                                    if any(text.startswith(cmd) for cmd in ["💎 فرکانس فراوانی", "فرکانس فراوانی", "فرکانس", "/frequency"]):
+                                        txt = (
+                                            "💎 <b>فرکانس فراوانی و آرامش درون</b>\n\n"
+                                            "با انتخاب هر بخش، باورهای ثروت‌ساز و آرامش‌بخش روزانه را ورق بزنید و ذهن خود را روی مدار توانگری و دریافت برکت الهی تنظیم کنید:"
+                                        )
+                                        await bale.send_message(chat_id, txt, reply_markup=build_bale_frequency_cats_keyboard())
                                         continue
 
                                     if any(text.startswith(cmd) for cmd in ["👤 حساب کاربری", "حساب کاربری", "📦 خریدهای من", "خریدهای من", "/profile"]):
