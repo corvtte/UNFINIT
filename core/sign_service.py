@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import time
+import urllib.parse
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -188,3 +189,48 @@ class SignService:
             msg += f"🌐 <a href=\"{page_url}\">مشاهده صفحه کامل و نظرات در سایت</a>\n\n"
         msg += "💎 <b>UNFINIT Store Engine</b>"
         return msg
+
+    @classmethod
+    async def ensure_audio_downloaded(cls, sign_data: Dict[str, Any]) -> Optional[Path]:
+        """
+        دانلود و نگهداری فایل صوتی نشانه در کش محلی دیسک جهت ارسال امن و پرسرعت.
+
+        این متد نشانی اینترنتی صوت نشانه را بررسی کرده و در صورتی که قبلاً دانلود نشده باشد،
+        با استفاده از خط لوله استریم UrlService آن را در مسیر اختصاصی data/sign_cache ذخیره می‌کند.
+        این فرآیند از خطای CURL تلگرام و عدم پشتیبانی URL مستقیم در بله جلوگیری می‌نماید.
+
+        ورودی‌ها:
+            sign_data (Dict[str, Any]): دیکشنری مشخصات نشانه دریافتی کاربر
+
+        خروجی:
+            Optional[Path]: مسیر شیء Path فایل صوتی دانلودشده روی دیسک، یا None در صورت بروز خطا
+        """
+        cls._ensure_storage()
+        audio_url = (sign_data.get("audio_url") or "").strip()
+        if not audio_url:
+            return None
+
+        try:
+            url_hash = hashlib.md5(audio_url.encode("utf-8")).hexdigest()[:12]
+            parsed = urllib.parse.urlparse(audio_url)
+            ext = Path(parsed.path).suffix.lower()
+            if ext not in [".mp3", ".m4a", ".ogg", ".wav", ".aac"]:
+                ext = ".mp3"
+            dest_file = cls.CACHE_DIR / f"sign_audio_{url_hash}{ext}"
+
+            if dest_file.exists() and dest_file.stat().st_size > 1024:
+                return dest_file
+
+            from services.url_service import UrlService
+            logger.info(f"[sign_service] Downloading sign audio locally: {audio_url} -> {dest_file.name}")
+            ok = await UrlService.download_file_stream(audio_url, dest_file)
+            if ok and dest_file.exists() and dest_file.stat().st_size > 0:
+                logger.info(f"[sign_service] Sign audio cached successfully: {dest_file} ({dest_file.stat().st_size} bytes)")
+                return dest_file
+            else:
+                logger.warning(f"[sign_service] Failed to download sign audio: {audio_url}")
+                return None
+        except Exception as e:
+            logger.error(f"[sign_service] Error ensuring audio downloaded: {e}")
+            return None
+

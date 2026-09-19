@@ -992,7 +992,7 @@ class TelegramAdapter:
         async def customer_sign_handler(client: Client, message: Message):
             """
             ارسال فایل صوتی و پیام الهام‌بخش لید مگنت «نشانه امروز من».
-            این متد بر مبنای هش پایدار ۲۴ ساعته شناسه کاربری و تاریخ روز عمل می‌کند.
+            این متد با دانلود محلی در کش و ارسال فایل به صورت دیسک از خطاهای CURL و MessageIdInvalid جلوگیری می‌کند.
             """
             user_id = message.from_user.id
             wait_msg = await message.reply_text("🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>", parse_mode=enums.ParseMode.HTML)
@@ -1001,8 +1001,24 @@ class TelegramAdapter:
                 sign = await SignService.get_user_today_sign(user_id)
                 caption = SignService.format_sign_caption(sign)
                 audio_url = sign.get("audio_url")
+
+                local_audio_path = None
                 if audio_url:
-                    await wait_msg.delete()
+                    local_audio_path = await SignService.ensure_audio_downloaded(sign)
+
+                if local_audio_path and local_audio_path.exists():
+                    await message.reply_audio(
+                        audio=str(local_audio_path),
+                        caption=caption,
+                        title=sign.get("title", "نشانه امروز من"),
+                        performer="UNFINIT - نشانه امروز",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    try:
+                        await wait_msg.delete()
+                    except Exception:
+                        pass
+                elif audio_url:
                     await message.reply_audio(
                         audio=audio_url,
                         caption=caption,
@@ -1010,11 +1026,21 @@ class TelegramAdapter:
                         performer="UNFINIT - نشانه امروز",
                         parse_mode=enums.ParseMode.HTML
                     )
+                    try:
+                        await wait_msg.delete()
+                    except Exception:
+                        pass
                 else:
-                    await wait_msg.edit_text(caption, parse_mode=enums.ParseMode.HTML)
+                    try:
+                        await wait_msg.edit_text(caption, parse_mode=enums.ParseMode.HTML)
+                    except Exception:
+                        await message.reply_text(caption, parse_mode=enums.ParseMode.HTML)
             except Exception as e:
                 logger.error(f"[tg_sign] Error sending sign to {user_id}: {e}")
-                await wait_msg.edit_text("❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.", parse_mode=enums.ParseMode.HTML)
+                try:
+                    await wait_msg.edit_text("❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.", parse_mode=enums.ParseMode.HTML)
+                except Exception:
+                    pass
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*فرکانس فراوانی|فرکانس فراوانی|فرکانس|/frequency)$"))
         async def customer_frequency_menu(client: Client, message: Message):

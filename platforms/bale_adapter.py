@@ -714,16 +714,25 @@ class BaleAdapter:
     async def send_audio(
         self,
         chat_id: str | int,
-        file_path: str | Path,
+        file_path: Optional[str | Path] = None,
         title: Optional[str] = None,
         performer: Optional[str] = None,
         caption: Optional[str] = None,
-        duration: Optional[int] = None
+        duration: Optional[int] = None,
+        **kwargs
     ) -> Dict[str, Any]:
+        """
+        ارسال فایل صوتی به چت بله از طریق sendAudio.
+        این متد ورودی‌های متنوع نظیر file_path یا audio_path_or_url را از طریق kwargs پشتیبانی می‌کند.
+        """
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
-        
-        path_obj = Path(str(file_path))
+
+        actual_path = file_path or kwargs.get("audio_path_or_url") or kwargs.get("audio") or kwargs.get("path")
+        if not actual_path:
+            return {"ok": False, "error": "file_path is required for send_audio"}
+
+        path_obj = Path(str(actual_path))
         url_audio = f"{self.base_url}/sendAudio"
 
         clean_title = urllib.parse.unquote(str(title)).strip() if title else None
@@ -733,7 +742,7 @@ class BaleAdapter:
         if not path_obj.exists():
             payload = {
                 "chat_id": str(chat_id),
-                "audio": str(file_path)
+                "audio": str(actual_path)
             }
             if clean_title: payload["title"] = clean_title
             if clean_performer: payload["performer"] = clean_performer
@@ -2764,10 +2773,22 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             sign = await SignService.get_user_today_sign(chat_id)
                                             caption = SignService.format_sign_caption(sign)
                                             audio_url = sign.get("audio_url")
+                                            local_audio_path = None
                                             if audio_url:
+                                                local_audio_path = await SignService.ensure_audio_downloaded(sign)
+
+                                            if local_audio_path and local_audio_path.exists():
                                                 await bale.send_audio(
                                                     chat_id=chat_id,
-                                                    audio_path_or_url=audio_url,
+                                                    file_path=str(local_audio_path),
+                                                    title=sign.get("title", "نشانه امروز من"),
+                                                    performer="UNFINIT - نشانه امروز",
+                                                    caption=caption
+                                                )
+                                            elif audio_url:
+                                                await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    file_path=audio_url,
                                                     title=sign.get("title", "نشانه امروز من"),
                                                     performer="UNFINIT - نشانه امروز",
                                                     caption=caption
@@ -3319,10 +3340,22 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             sign = await SignService.get_user_today_sign(chat_id)
                                             caption = SignService.format_sign_caption(sign)
                                             audio_url = sign.get("audio_url")
+                                            local_audio_path = None
                                             if audio_url:
+                                                local_audio_path = await SignService.ensure_audio_downloaded(sign)
+
+                                            if local_audio_path and local_audio_path.exists():
                                                 await bale.send_audio(
                                                     chat_id=chat_id,
-                                                    audio_path_or_url=audio_url,
+                                                    file_path=str(local_audio_path),
+                                                    title=sign.get("title", "نشانه امروز من"),
+                                                    performer="UNFINIT - نشانه امروز",
+                                                    caption=caption
+                                                )
+                                            elif audio_url:
+                                                await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    file_path=audio_url,
                                                     title=sign.get("title", "نشانه امروز من"),
                                                     performer="UNFINIT - نشانه امروز",
                                                     caption=caption

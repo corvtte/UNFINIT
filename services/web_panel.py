@@ -3838,7 +3838,13 @@ def render_dashboard_html() -> str:
                             if (pEl) pEl.textContent = data.masked_phone || pendingSoroushPhone || 'متصل';
                             const btnBox = document.getElementById('soroushBtnContainer');
                             if (btnBox) {{
-                                btnBox.innerHTML = '<button type="button" onclick="disconnectSession(\'soroush\')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>';
+                                const dcBtn = document.createElement('button');
+                                dcBtn.type = 'button';
+                                dcBtn.onclick = function() {{ disconnectSession('soroush'); }};
+                                dcBtn.className = 'w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5';
+                                dcBtn.innerHTML = '<svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span>';
+                                btnBox.innerHTML = '';
+                                btnBox.appendChild(dcBtn);
                             }}
                             alert('ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
                             closeSoroushLoginModal();
@@ -3896,7 +3902,13 @@ def render_dashboard_html() -> str:
                             if (pEl) pEl.textContent = data.masked_phone || phone || 'متصل';
                             const btnBox = document.getElementById('soroushBtnContainer');
                             if (btnBox) {{
-                                btnBox.innerHTML = '<button type="button" onclick="disconnectSession(\'soroush\')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>';
+                                const dcBtn = document.createElement('button');
+                                dcBtn.type = 'button';
+                                dcBtn.onclick = function() {{ disconnectSession('soroush'); }};
+                                dcBtn.className = 'w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5';
+                                dcBtn.innerHTML = '<svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span>';
+                                btnBox.innerHTML = '';
+                                btnBox.appendChild(dcBtn);
                             }}
                             alert('سشن سروش‌پلاس با موفقیت ثبت و فعال شد.');
                             closeSoroushLoginModal();
@@ -5009,10 +5021,10 @@ def render_dashboard_html() -> str:
                 const data = await res.json();
                 if (data.ok && data.sign) {{
                     const s = data.sign;
-                    alert('🔮 نشانه تصادفی تست ادمین:\n\n' +
-                          'عنوان: ' + (s.title || 'نشانه امروز') + '\n' +
-                          'شماره صفحه: ' + toPersianDigits(s.page || 1) + '\n' +
-                          'لینک فایل صوتی: ' + (s.audio_url || 'ندارد') + '\n' +
+                    alert('🔮 نشانه تصادفی تست ادمین:\\n\\n' +
+                          'عنوان: ' + (s.title || 'نشانه امروز') + '\\n' +
+                          'شماره صفحه: ' + toPersianDigits(s.page || 1) + '\\n' +
+                          'لینک فایل صوتی: ' + (s.audio_url || 'ندارد') + '\\n' +
                           'لینک مستقیم: ' + (s.link || 'ندارد'));
                 }} else {{
                     alert('خطا در دریافت نشانه: ' + (data.error || 'پاسخ نامعتبر'));
@@ -5805,25 +5817,70 @@ def render_dashboard_html() -> str:
                 row.style.background = 'var(--input-bg)';
                 row.style.borderColor = 'var(--card-border)';
                 
-                const safeTitle = (item.title || '').replace(/"/g, '&quot;');
-                const safeFile = (item.file_name || item.file_id || item.link || '').replace(/"/g, '&quot;');
-                const isFirst = (idx === 0);
-                const isLast = (idx === lessons.length - 1);
+                const badge = document.createElement('span');
+                badge.className = 'w-6 h-6 rounded-lg bg-cyan-950/80 text-cyan-400 border border-cyan-800 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold';
+                badge.textContent = '#' + (idx + 1);
+                row.appendChild(badge);
 
-                row.innerHTML = '<span class="w-6 h-6 rounded-lg bg-cyan-950/80 text-cyan-400 border border-cyan-800 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold">#' + (idx + 1) + '</span>' +
-                    '<input type="text" value="' + safeTitle + '" onchange="updatePackageLesson(' + idx + ', \'title\', this.value)" placeholder="عنوان جلسه" class="flex-1 px-2 py-1 rounded-lg border text-xs focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);">' +
-                    '<input type="text" value="' + safeFile + '" onchange="updatePackageLesson(' + idx + ', \'file_name\', this.value)" placeholder="فایل / شناسه" class="w-1/3 px-2 py-1 rounded-lg border text-xs font-mono focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);" dir="ltr">' +
-                    '<div class="flex items-center gap-1 shrink-0">' +
-                        '<button type="button" onclick="movePackageLesson(' + idx + ', -1)" ' + (isFirst ? 'disabled' : '') + ' class="p-1 rounded-lg border text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:hover:text-slate-300 transition" style="background: var(--card-bg); border-color: var(--card-border);" title="انتقال به بالا">' +
-                            '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>' +
-                        '</button>' +
-                        '<button type="button" onclick="movePackageLesson(' + idx + ', 1)" ' + (isLast ? 'disabled' : '') + ' class="p-1 rounded-lg border text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:hover:text-slate-300 transition" style="background: var(--card-bg); border-color: var(--card-border);" title="انتقال به پایین">' +
-                            '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>' +
-                        '</button>' +
-                        '<button type="button" onclick="removePackageLesson(' + idx + ')" class="p-1 rounded-lg border text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition" style="background: var(--card-bg); border-color: var(--card-border);" title="حذف جلسه">' +
-                            '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>' +
-                        '</button>' +
-                    '</div>';
+                const titleInp = document.createElement('input');
+                titleInp.type = 'text';
+                titleInp.value = item.title || '';
+                titleInp.placeholder = 'عنوان جلسه';
+                titleInp.className = 'flex-1 px-2 py-1 rounded-lg border text-xs focus:outline-none focus:border-cyan-500';
+                titleInp.style.background = 'var(--card-bg)';
+                titleInp.style.borderColor = 'var(--card-border)';
+                titleInp.style.color = 'var(--text-main)';
+                titleInp.oninput = function() {{ updatePackageLesson(idx, 'title', this.value); }};
+                row.appendChild(titleInp);
+
+                const fileInp = document.createElement('input');
+                fileInp.type = 'text';
+                fileInp.value = item.file_name || item.file_id || item.link || '';
+                fileInp.placeholder = 'فایل / شناسه';
+                fileInp.className = 'w-1/3 px-2 py-1 rounded-lg border text-xs font-mono focus:outline-none focus:border-cyan-500';
+                fileInp.style.background = 'var(--card-bg)';
+                fileInp.style.borderColor = 'var(--card-border)';
+                fileInp.style.color = 'var(--text-main)';
+                fileInp.dir = 'ltr';
+                fileInp.oninput = function() {{ updatePackageLesson(idx, 'file_name', this.value); }};
+                row.appendChild(fileInp);
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex items-center gap-1 shrink-0';
+
+                const upBtn = document.createElement('button');
+                upBtn.type = 'button';
+                upBtn.title = 'انتقال به بالا';
+                upBtn.disabled = (idx === 0);
+                upBtn.className = 'p-1 rounded-lg border text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:hover:text-slate-300 transition';
+                upBtn.style.background = 'var(--card-bg)';
+                upBtn.style.borderColor = 'var(--card-border)';
+                upBtn.onclick = function() {{ movePackageLesson(idx, -1); }};
+                upBtn.innerHTML = '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>';
+                actionsDiv.appendChild(upBtn);
+
+                const downBtn = document.createElement('button');
+                downBtn.type = 'button';
+                downBtn.title = 'انتقال به پایین';
+                downBtn.disabled = (idx === lessons.length - 1);
+                downBtn.className = 'p-1 rounded-lg border text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:hover:text-slate-300 transition';
+                downBtn.style.background = 'var(--card-bg)';
+                downBtn.style.borderColor = 'var(--card-border)';
+                downBtn.onclick = function() {{ movePackageLesson(idx, 1); }};
+                downBtn.innerHTML = '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>';
+                actionsDiv.appendChild(downBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.title = 'حذف جلسه';
+                delBtn.className = 'p-1 rounded-lg border text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition';
+                delBtn.style.background = 'var(--card-bg)';
+                delBtn.style.borderColor = 'var(--card-border)';
+                delBtn.onclick = function() {{ removePackageLesson(idx); }};
+                delBtn.innerHTML = '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>';
+                actionsDiv.appendChild(delBtn);
+
+                row.appendChild(actionsDiv);
                 listEl.appendChild(row);
             }});
         }}

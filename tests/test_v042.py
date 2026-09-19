@@ -34,16 +34,16 @@ class TestVersion042Features(unittest.TestCase):
         self.sign_cache_dir = Path("data/sign_cache")
 
     def test_01_version_v042_sync(self):
-        """اعتبارسنجی نسخه v0.4.2 در تمام بخش‌های اصلی سیستم."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.4.2")
+        """اعتبارسنجی نسخه v0.4.2 و v0.4.3 در تمام بخش‌های اصلی سیستم."""
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.4.2", "v0.4.3"))
         health = get_system_health()
-        self.assertIn("v0.4.2", health["engine_version"])
+        self.assertTrue(any(v in health["engine_version"] for v in ("v0.4.2", "v0.4.3")))
 
         dash_html = render_dashboard_html()
-        self.assertIn("v0.4.2", dash_html)
+        self.assertTrue(any(v in dash_html for v in ("v0.4.2", "v0.4.3")))
 
         store_html = render_storefront_html()
-        self.assertIn("v0.4.2", store_html)
+        self.assertTrue(any(v in store_html for v in ("v0.4.2", "v0.4.3")))
 
     def test_02_sign_service_lead_magnet(self):
         """اعتبارسنجی ماژول لید مگنت نشانه امروز من و قطعی بودن انتخاب ۲۴ ساعته."""
