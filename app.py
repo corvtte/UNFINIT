@@ -1893,7 +1893,11 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
         elif path in ("/api/settings/theme", "/api/theme"):
             try:
                 theme_val = str(payload.get("theme") or "default-dark").strip().lower()
-                valid_themes = ("default-dark", "catppuccin", "dracula", "tokyo-night", "vesper", "solarized-dark", "monokai", "one-dark-pro")
+                try:
+                    from services.web_panel import get_all_themes
+                    valid_themes = tuple(get_all_themes().keys())
+                except Exception:
+                    valid_themes = ("default-dark", "catppuccin", "dracula", "tokyo-night", "vesper", "solarized-dark", "monokai", "one-dark-pro", "pure-dark")
                 if theme_val not in valid_themes:
                     theme_val = "default-dark"
                 loop = asyncio.new_event_loop()

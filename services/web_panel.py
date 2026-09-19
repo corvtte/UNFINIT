@@ -44,6 +44,55 @@ class EngineVersionStr(str):
         return False
 
 
+def get_all_themes() -> Dict[str, Any]:
+    themes_path = Path(getattr(config, "DATA_DIR", "data")) / "themes.json"
+    if not themes_path.exists():
+        themes_path = Path("data") / "themes.json"
+    if themes_path.exists():
+        try:
+            with open(themes_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load themes.json: {e}")
+    return {
+        "default-dark": {
+            "name": "default-dark",
+            "label": "UNFINIT Classic (Default Dark)",
+            "accent": "#06b6d4",
+            "variables": {
+                "--bg-main": "#080e1e",
+                "--bg-card": "#0f172a",
+                "--bg-input": "#141418",
+                "--text-main": "#f4f4f5",
+                "--text-muted": "#94a3b8",
+                "--border-color": "rgba(6, 182, 212, 0.2)",
+                "--accent-color": "#06b6d4",
+                "--table-head-bg": "#18181f",
+                "--bg-color": "#080e1e",
+                "--fg-color": "#f4f4f5",
+                "--panel-bg": "#09090b",
+                "--glass-bg": "rgba(18, 18, 22, 0.85)",
+                "--card-border": "rgba(6, 182, 212, 0.2)",
+                "--card-bg": "#0f172a",
+                "--input-bg": "#141418",
+                "--table-row-hover": "rgba(39, 39, 42, 0.5)"
+            }
+        }
+    }
+
+
+def build_themes_css(all_themes: Dict[str, Any]) -> str:
+    css_blocks = []
+    for theme_key, theme_info in all_themes.items():
+        variables = theme_info.get("variables", {})
+        vars_css = "\n".join([f"            {k}: {v};" for k, v in variables.items()])
+        if theme_key == "default-dark":
+            css_blocks.append(f"        :root, html[data-theme=\"{theme_key}\"], body.theme-{theme_key} {{\n{vars_css}\n        }}")
+        else:
+            css_blocks.append(f"        html[data-theme=\"{theme_key}\"], body.theme-{theme_key} {{\n{vars_css}\n        }}")
+    return "\n".join(css_blocks)
+
+
 def get_system_health() -> Dict[str, Any]:
     uptime_sec = int(time.time() - SERVER_START_TIME)
     h = uptime_sec // 3600
@@ -268,12 +317,20 @@ def render_dashboard_html() -> str:
             asyncio.set_event_loop(loop)
             products = loop.run_until_complete(StoreService.get_all_products())
             saved_theme = loop.run_until_complete(get_system_setting("THEME", "default-dark"))
-            loop.close()
-        if not saved_theme or saved_theme not in ["default-dark", "catppuccin", "dracula", "tokyo-night", "vesper", "solarized-dark", "monokai", "one-dark-pro"]:
+        all_themes = get_all_themes()
+        if not saved_theme or saved_theme not in all_themes:
             saved_theme = "default-dark"
     except Exception as e:
         logger.warning(f"Web panel data fetch error: {e}")
+        all_themes = get_all_themes()
         saved_theme = "default-dark"
+
+    dynamic_themes_css = build_themes_css(all_themes)
+    themes_data_json = json.dumps(all_themes, ensure_ascii=False)
+    theme_options_html = "\n".join([
+        f'<option value="{tk}" class="bg-zinc-900 text-zinc-100" {"selected" if saved_theme == tk else ""}>{tinfo.get("label", tk)}</option>'
+        for tk, tinfo in all_themes.items()
+    ])
 
     active_count = sum(1 for prod in products if prod.active)
 
@@ -376,7 +433,7 @@ def render_dashboard_html() -> str:
     course_terms_escaped = html.escape(getattr(config, "COURSE_TERMS_TEXT", ""))
 
     return f"""<!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa" dir="rtl" data-theme="{saved_theme}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -388,97 +445,9 @@ def render_dashboard_html() -> str:
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Vazirmatn:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
+    <style id="dynamicThemeStyles">
         * {{ font-family: 'Vazirmatn', 'Roboto', sans-serif !important; }}
-        :root, body.theme-default-dark {{
-            --bg-color: #080e1e;
-            --fg-color: #f4f4f5;
-            --accent-color: #06b6d4;
-            --panel-bg: #09090b;
-            --glass-bg: rgba(18, 18, 22, 0.85);
-            --card-border: rgba(6, 182, 212, 0.2);
-            --input-bg: #141418;
-            --card-bg: #0f172a;
-            --table-head-bg: #18181f;
-            --table-row-hover: rgba(39, 39, 42, 0.5);
-        }}
-        body.theme-catppuccin {{
-            --bg-color: #24273A;
-            --fg-color: #CAD3F5;
-            --accent-color: #C6A0F6;
-            --glass-bg: rgba(36, 39, 58, 0.85);
-            --card-border: rgba(198, 160, 246, 0.2);
-            --input-bg: #1e2030;
-            --card-bg: #1e2030;
-            --table-head-bg: #2a2e45;
-            --table-row-hover: rgba(54, 58, 79, 0.5);
-        }}
-        body.theme-dracula {{
-            --bg-color: #282A36;
-            --fg-color: #F8F8F2;
-            --accent-color: #BD93F9;
-            --glass-bg: rgba(40, 42, 54, 0.85);
-            --card-border: rgba(189, 147, 249, 0.2);
-            --input-bg: #21222c;
-            --card-bg: #21222c;
-            --table-head-bg: #343746;
-            --table-row-hover: rgba(68, 71, 90, 0.5);
-        }}
-        body.theme-tokyo-night {{
-            --bg-color: #1A1B26;
-            --fg-color: #A9B1D6;
-            --accent-color: #7AA2F7;
-            --glass-bg: rgba(26, 27, 38, 0.85);
-            --card-border: rgba(122, 162, 247, 0.2);
-            --input-bg: #16161e;
-            --card-bg: #16161e;
-            --table-head-bg: #1f2335;
-            --table-row-hover: rgba(41, 46, 66, 0.5);
-        }}
-        body.theme-vesper {{
-            --bg-color: #101010;
-            --fg-color: #FFFFFF;
-            --accent-color: #FFC799;
-            --glass-bg: rgba(18, 18, 18, 0.88);
-            --card-border: rgba(255, 199, 153, 0.2);
-            --input-bg: #181818;
-            --card-bg: #181818;
-            --table-head-bg: #1e1e1e;
-            --table-row-hover: rgba(38, 38, 38, 0.5);
-        }}
-        body.theme-solarized-dark {{
-            --bg-color: #002B36;
-            --fg-color: #93A1A1;
-            --accent-color: #268BD2;
-            --glass-bg: rgba(0, 43, 54, 0.85);
-            --card-border: rgba(38, 139, 210, 0.2);
-            --input-bg: #073642;
-            --card-bg: #073642;
-            --table-head-bg: #0b4352;
-            --table-row-hover: rgba(10, 76, 93, 0.5);
-        }}
-        body.theme-monokai {{
-            --bg-color: #272822;
-            --fg-color: #F8F8F2;
-            --accent-color: #F92672;
-            --glass-bg: rgba(39, 40, 34, 0.85);
-            --card-border: rgba(249, 38, 114, 0.2);
-            --input-bg: #1e1f1c;
-            --card-bg: #1e1f1c;
-            --table-head-bg: #32302f;
-            --table-row-hover: rgba(62, 59, 63, 0.5);
-        }}
-        body.theme-one-dark-pro {{
-            --bg-color: #282C34;
-            --fg-color: #ABB2BF;
-            --accent-color: #61AFEF;
-            --glass-bg: rgba(40, 44, 52, 0.85);
-            --card-border: rgba(97, 175, 239, 0.2);
-            --input-bg: #21252b;
-            --card-bg: #21252b;
-            --table-head-bg: #2e3440;
-            --table-row-hover: rgba(53, 59, 69, 0.5);
-        }}
+{dynamic_themes_css}
         @media (min-width: 768px) {{
             #mainSidebar.sidebar-collapsed {{
                 transform: translateX(100%) !important;
@@ -788,29 +757,28 @@ def render_dashboard_html() -> str:
                 }}
 
                 
-        // ================= ANTIGRAVITY OFFICIAL THEMES =================
-        var themeAccents = {{
-            'default-dark': '#06b6d4',
-            'catppuccin': '#C6A0F6',
-            'dracula': '#BD93F9',
-            'tokyo-night': '#7AA2F7',
-            'vesper': '#FFC799',
-            'solarized-dark': '#268BD2',
-            'monokai': '#F92672',
-            'one-dark-pro': '#61AFEF'
-        }};
+        // ================= ANTIGRAVITY OFFICIAL THEMES (Single Source of Truth) =================
+        window.UNFINIT_THEMES = {themes_data_json};
         function applyAntigravityTheme(themeKey, syncServer) {{
-            var validThemes = ['default-dark', 'catppuccin', 'dracula', 'tokyo-night', 'vesper', 'solarized-dark', 'monokai', 'one-dark-pro'];
-            if (!validThemes.includes(themeKey)) themeKey = 'default-dark';
-            validThemes.forEach(function(t) {{
-                document.body.classList.remove('theme-' + t);
-            }});
-            document.body.classList.add('theme-' + themeKey);
-            var currentThemeAccent = themeAccents[themeKey] || '#06b6d4';
+            var themes = window.UNFINIT_THEMES || {{}};
+            if (!themes[themeKey]) themeKey = 'default-dark';
+            var themeObj = themes[themeKey] || {{}};
+            var vars = themeObj.variables || {{}};
+
             try {{
-                document.documentElement.style.setProperty('--accent-color', currentThemeAccent);
+                document.documentElement.setAttribute('data-theme', themeKey);
+                Object.keys(themes).forEach(function(t) {{
+                    document.body.classList.remove('theme-' + t);
+                }});
+                document.body.classList.add('theme-' + themeKey);
+
+                // Apply CSS variables to :root directly
+                Object.keys(vars).forEach(function(k) {{
+                    document.documentElement.style.setProperty(k, vars[k]);
+                }});
                 localStorage.setItem('unfinit_theme', themeKey);
             }} catch(e) {{}}
+
             var sel = document.getElementById('themeSwitcherSelect');
             if (sel && sel.value !== themeKey) {{
                 sel.value = themeKey;
@@ -963,14 +931,7 @@ def render_dashboard_html() -> str:
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l9.75 9.75" />
                     </svg>
                     <select id="themeSwitcherSelect" onchange="applyAntigravityTheme(this.value)" class="appearance-none rounded-full bg-transparent border-0 outline-none w-full cursor-pointer px-3 text-xs text-slate-300">
-                        <option value="default-dark" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'default-dark' else ''}>UNFINIT Classic (Default Dark)</option>
-                        <option value="catppuccin" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'catppuccin' else ''}>Catppuccin</option>
-                        <option value="dracula" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'dracula' else ''}>Dracula</option>
-                        <option value="tokyo-night" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'tokyo-night' else ''}>Tokyo Night</option>
-                        <option value="vesper" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'vesper' else ''}>Vesper</option>
-                        <option value="solarized-dark" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'solarized-dark' else ''}>Solarized Dark</option>
-                        <option value="monokai" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'monokai' else ''}>Monokai</option>
-                        <option value="one-dark-pro" class="bg-zinc-900 text-zinc-100" {'selected' if saved_theme == 'one-dark-pro' else ''}>One Dark Pro</option>
+{theme_options_html}
                     </select>
                 </div>
 
@@ -1314,7 +1275,7 @@ def render_dashboard_html() -> str:
                         <span>استودیوی وکتور SVG (SVG Studio Suite)</span>
                     </div>
                     <span class="text-xs font-mono px-2.5 py-1 rounded-lg border text-cyan-400 bg-cyan-950/80 border-cyan-800">
-                        Vector Engine v0.3.6
+                        Vector Engine {config.ENGINE_VERSION}
                     </span>
                 </summary>
                 <div class="p-6 pt-2 space-y-4">
@@ -3084,19 +3045,19 @@ def render_dashboard_html() -> str:
                 <!-- Manual Token Mode -->
                 <div id="soroushStepManual" class="hidden space-y-3">
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        در صورت اختلال وب‌سرویس پیامکی، توکن دسترسی وب سشن سروش‌پلاس را وارد نمایید:
+                        توکن نشست، کلید <code class="text-cyan-400">dc2_auth_key</code> یا آبجکت JSON سشن نسخه وب سروش‌پلاس / تلگرام GramJS (<code class="text-cyan-400">{{"dcId":2,"dc2_auth_key":"..."}}</code>) را وارد نمایید:
                     </p>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">توکن نشست (Bearer Token)</label>
-                        <input type="text" id="soroushManualTokenInput" placeholder="eyJhbGciOiJIUzI1NiIsIn..." class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                        <label class="block text-[11px] text-slate-400 mb-1">کلید سشن یا آبجکت JSON نسخه وب GramJS</label>
+                        <textarea id="soroushManualTokenInput" rows="3" placeholder='dc2_auth_key یا {{"dcId":2,"dc2_auth_key":"...","userId":"..."}}' class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr"></textarea>
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">شماره موبایل مرتبط (اختیاری)</label>
-                        <input type="text" id="soroushManualPhoneInput" placeholder="09121234567" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                        <label class="block text-[11px] text-slate-400 mb-1">شماره موبایل یا برچسب سشن (اختیاری)</label>
+                        <input type="text" id="soroushManualPhoneInput" placeholder="09121234567 یا سشن دستی وب" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     </div>
                     <button type="button" onclick="submitSoroushManualToken()" id="btnSoroushManualSubmit" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                         <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
-                        <span>ذخیره مستقیم توکن و فعال‌سازی سشن</span>
+                        <span>ذخیره مستقیم سشن و فعال‌سازی آنلاین</span>
                     </button>
                 </div>
 
@@ -8502,7 +8463,7 @@ def render_storefront_html() -> str:
                 <div>
                     <h1 class="text-sm font-black tracking-wide text-white flex items-center gap-2">
                         UNFINIT STORE
-                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">v0.1.0</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">{config.ENGINE_VERSION}</span>
                     </h1>
                     <p class="text-[11px] text-slate-400">فروشگاه آنلاین و هوشمند دوره‌های آموزشی</p>
                 </div>

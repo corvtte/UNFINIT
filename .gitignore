@@ -35,8 +35,13 @@ sessions/
 *.db-journal
 *.db-wal
 *.db-shm
-store_database.db
-data/
+data/*
+!data/courses.json
+!data/courses_backup.json
+!data/settings.json
+!data/frequencies.json
+!data/themes.json
+data/sessions/
 *.enc
 users.json
 data/users.json.enc

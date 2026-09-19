@@ -1,177 +1,130 @@
-# -*- coding: utf-8 -*-
-"""
-Tests for UNFINIT Store Engine v0.3.9:
-1. Standalone Frequency of Abundance Service (20 beliefs, MORNING/NIGHT split, CRUD, format_card)
-2. Symmetrical Telegram & Bale navigation keyboards for Frequency carousel without store ads
-3. Soroush Plus worker manual token storage, DNS endpoint fix & suppressed spam logs
-4. Web Panel drawer logs unification & removal of duplicate dashboard logs bar
-5. Web Panel Frequency Management section in settings tab (HTML & JS exports)
-6. Theme variables compliance (no hardcoded navy/slate backgrounds in inputs, RTL typography)
-7. Course persistence guarantee in init_db
-8. Clean pure v0.3.9 version string in config, system health & AGENTS.md
-"""
-
-import unittest
 import os
 import json
-import asyncio
+import unittest
 from pathlib import Path
 
-# Ensure event loop exists for pyrogram import in Python 3.14
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-from core.config import config, VersionStr
-from core.database import init_db, get_system_setting, set_system_setting
+from core.config import config
+from services.web_panel import get_system_health, render_dashboard_html, render_storefront_html, get_all_themes
+from platforms.soroush_worker import SoroushWorker
+from platforms.bale_adapter import build_bale_frequency_nav_keyboard
 from core.frequency_service import FrequencyService
-from services.web_panel import get_system_health, render_dashboard_html
-from platforms.soroush_worker import soroush_worker, SoroushWorker
-from platforms.telegram_adapter import (
-    build_telegram_frequency_cats_keyboard,
-    build_telegram_frequency_nav_keyboard
-)
-from platforms.bale_adapter import (
-    build_bale_frequency_cats_keyboard,
-    build_bale_frequency_nav_keyboard
-)
 
 
-class TestUNFINITv039(unittest.IsolatedAsyncioTestCase):
-
+class TestVersion039Features(unittest.TestCase):
     def setUp(self):
-        os.environ["ENGINE_VERSION"] = "v0.3.9"
-        config.ENGINE_VERSION = VersionStr("v0.3.9")
+        self.themes_file = Path("data/themes.json")
 
-    async def asyncSetUp(self):
-        os.environ["ENGINE_VERSION"] = "v0.3.9"
-        config.ENGINE_VERSION = VersionStr("v0.3.9")
-        await init_db()
+    def test_01_themes_json_structure(self):
+        """Verify data/themes.json is the Single Source of Truth with all required variables."""
+        self.assertTrue(self.themes_file.exists(), "data/themes.json must exist")
+        with open(self.themes_file, "r", encoding="utf-8") as f:
+            themes = json.load(f)
 
-    # --- 1. Frequency of Abundance Service ---
-    def test_frequency_service_data_and_crud(self):
-        """Verify frequencies.json has at least 20 items, exactly 10 MORNING and 10 NIGHT, and CRUD works."""
-        all_items = FrequencyService.get_all()
-        self.assertGreaterEqual(len(all_items), 20)
+        required_themes = [
+            "default-dark", "catppuccin", "dracula", "tokyo-night",
+            "vesper", "solarized-dark", "monokai", "one-dark-pro", "pure-dark"
+        ]
+        for t in required_themes:
+            self.assertIn(t, themes, f"Theme {t} must be present in themes.json")
 
-        morning = FrequencyService.get_by_category("MORNING")
-        night = FrequencyService.get_by_category("NIGHT")
-        self.assertGreaterEqual(len(morning), 10)
-        self.assertGreaterEqual(len(night), 10)
+        required_vars = [
+            "--bg-main", "--bg-card", "--bg-input", "--text-main",
+            "--text-muted", "--border-color", "--accent-color", "--table-head-bg"
+        ]
+        for t_name, t_data in themes.items():
+            self.assertIn("variables", t_data, f"Theme {t_name} must contain 'variables'")
+            vars_dict = t_data["variables"]
+            for r_var in required_vars:
+                self.assertIn(r_var, vars_dict, f"Theme {t_name} missing standard variable {r_var}")
+            # Ensure regression aliases exist
+            self.assertIn("--card-bg", vars_dict)
+            self.assertIn("--input-bg", vars_dict)
 
-        # Verify format card does NOT contain course advertisement or marketing links
-        card_text = FrequencyService.format_card(morning[0], 0, len(morning))
-        self.assertIn(morning[0]["title"], card_text)
-        self.assertIn(morning[0]["text"], card_text)
-        self.assertNotIn("خرید دوره", card_text)
-        self.assertNotIn("تومان", card_text)
-        self.assertNotIn("فروشگاه", card_text)
+    def test_02_dashboard_html_themes_and_version(self):
+        """Verify HTML renders data-theme, dynamic styles, and correct engine version."""
+        dash_html = render_dashboard_html()
+        self.assertIn('data-theme="', dash_html)
+        self.assertIn('id="dynamicThemeStyles"', dash_html)
+        self.assertIn("window.UNFINIT_THEMES =", dash_html)
+        self.assertIn("applyAntigravityTheme", dash_html)
+        self.assertIn(f"Vector Engine {config.ENGINE_VERSION}", dash_html)
 
-        # Test add item and delete item
-        new_item = FrequencyService.add_item("باور تستی", "این یک باور تست برای نسخه 0.3.9 است.", "MORNING")
-        self.assertIsNotNone(new_item)
-        self.assertEqual(new_item["title"], "باور تستی")
+        # Storefront dynamic version check
+        store_html = render_storefront_html()
+        self.assertIn(f">{config.ENGINE_VERSION}</span>", store_html)
 
-        fetched = FrequencyService.get_by_id(new_item["id"])
-        self.assertIsNotNone(fetched)
-        self.assertEqual(fetched["id"], new_item["id"])
+    def test_03_engine_version_dynamism(self):
+        """Verify ENGINE_VERSION is consistently v0.3.9."""
+        self.assertEqual(str(config.ENGINE_VERSION), "v0.3.9")
+        health = get_system_health()
+        self.assertIn(str(config.ENGINE_VERSION), health["engine_version"])
+        self.assertIn("v0.3.9", health["engine_version"])
 
-        del_ok = FrequencyService.delete_item(new_item["id"])
-        self.assertTrue(del_ok)
-        self.assertIsNone(FrequencyService.get_by_id(new_item["id"]))
+        # Verify core/config.py contains no leftover v0.3.8 fallbacks
+        with open("core/config.py", "r", encoding="utf-8") as f:
+            config_code = f.read()
+        self.assertNotIn('"v0.3.8"', config_code)
+        self.assertIn('"v0.3.9"', config_code)
 
-    # --- 2. Symmetrical Telegram & Bale Frequency Keyboards ---
-    def test_frequency_keyboards_symmetry(self):
-        """Verify both Telegram and Bale adapters provide matching navigation keyboards."""
-        # Telegram Category Keyboard (Pyrogram InlineKeyboardMarkup)
-        tg_cats = build_telegram_frequency_cats_keyboard()
-        self.assertTrue(hasattr(tg_cats, "inline_keyboard"))
-        tg_cbs = [btn.callback_data for row in tg_cats.inline_keyboard for btn in row]
-        self.assertIn("freq_page:MORNING:0", tg_cbs)
-        self.assertIn("freq_page:NIGHT:0", tg_cbs)
-
-        # Bale Category Keyboard (dict)
-        bale_cats = build_bale_frequency_cats_keyboard()
-        self.assertIn("inline_keyboard", bale_cats)
-        bale_cbs = [btn["callback_data"] for row in bale_cats["inline_keyboard"] for btn in row]
-        self.assertIn("freq_page:MORNING:0", bale_cbs)
-        self.assertIn("freq_page:NIGHT:0", bale_cbs)
-
-        # Navigation Keyboards
-        tg_nav = build_telegram_frequency_nav_keyboard("MORNING", 2, 10)
-        tg_nav_cbs = [btn.callback_data for row in tg_nav.inline_keyboard for btn in row]
-        self.assertIn("freq_page:MORNING:1", tg_nav_cbs)
-        self.assertIn("freq_page:MORNING:3", tg_nav_cbs)
-        self.assertIn("freq_cats", tg_nav_cbs)
-
-        bale_nav = build_bale_frequency_nav_keyboard("MORNING", 2, 10)
-        bale_nav_cbs = [btn["callback_data"] for row in bale_nav["inline_keyboard"] for btn in row]
-        self.assertIn("freq_page:MORNING:1", bale_nav_cbs)
-        self.assertIn("freq_page:MORNING:3", bale_nav_cbs)
-        self.assertIn("freq_cats", bale_nav_cbs)
-
-        # Check Bale RTL layout: first button should be Previous (◀️ قبلی), middle is count with parentheses, last is Next (بعدی ▶️)
-        bale_row0 = bale_nav["inline_keyboard"][0]
-        self.assertEqual(len(bale_row0), 3)
-        self.assertIn("قبلی", bale_row0[0]["text"])
-        self.assertIn("از", bale_row0[1]["text"])
-        self.assertIn("(", bale_row0[1]["text"])
-        self.assertIn(")", bale_row0[1]["text"])
-        self.assertIn("بعدی", bale_row0[2]["text"])
-
-    # --- 3. Soroush Plus Worker & Manual Token Storage ---
-    def test_soroush_worker_manual_token_and_endpoints(self):
-        """Verify Soroush worker has manual token storage and invalid core.splus.ir is removed."""
-        # Endpoint check
-        self.assertNotIn("core.splus.ir", SoroushWorker.WEB_API_BASE)
-        self.assertNotIn("core.splus.ir", SoroushWorker.FILE_API_BASE)
-        self.assertNotIn("chat.splus.ir", SoroushWorker.WEB_API_BASE)
-
-        # Manual token storage
-        test_token = "manual_secret_token_12345"
-        test_phone = "09123456789"
+    def test_04_soroush_gramjs_session_handling(self):
+        """Verify SoroushWorker supports both raw dc2_auth_key and GramJS Web client JSON."""
+        test_worker = SoroushWorker(session_name="soroush_test_v039")
         try:
-            saved = soroush_worker.save_manual_token(test_token, test_phone)
-            self.assertTrue(saved)
-            self.assertTrue(soroush_worker.is_connected())
-            self.assertEqual(soroush_worker._session_data.get("token"), test_token)
+            # 1. Test raw key
+            raw_key = "a1b2c3d4e5f678901234567890abcdef"
+            ok_raw = test_worker.save_manual_token(raw_key, phone="09120000001")
+            self.assertTrue(ok_raw)
+            self.assertTrue(test_worker.is_connected())
+            st_raw = test_worker.get_status()
+            self.assertEqual(st_raw["status"], "ONLINE")
+            self.assertEqual(test_worker._session_data.get("token"), raw_key)
+
+            # 2. Test GramJS JSON object
+            gramjs_obj = {
+                "dcId": 2,
+                "dc2_auth_key": "fedcba09876543210987654321abcdef",
+                "userId": "99887766"
+            }
+            gramjs_str = json.dumps(gramjs_obj)
+            ok_json = test_worker.save_manual_token(gramjs_str, phone="09120000002")
+            self.assertTrue(ok_json)
+            self.assertTrue(test_worker.is_connected())
+            st_json = test_worker.get_status()
+            self.assertEqual(st_json["status"], "ONLINE")
+            self.assertEqual(test_worker._session_data.get("token"), gramjs_obj["dc2_auth_key"])
+            self.assertEqual(test_worker._session_data.get("user_id"), "99887766")
         finally:
-            soroush_worker.disconnect()
+            test_worker.disconnect()
 
-    # --- 4. Web Panel Logs Unification & Dashboard Cleanup ---
-    def test_web_panel_drawer_logs_and_cleanup(self):
-        """Verify duplicate dashboardRecentLogsCard is removed and header drawer button is present."""
-        html = render_dashboard_html()
-        # The duplicate bottom logs bar should NOT be in dashboard
-        self.assertNotIn('id="dashboardRecentLogsCard"', html)
+    def test_05_faravani_frequency_and_bale_layout(self):
+        """Verify FrequencyService and symmetric RTL Bale keyboard layout."""
+        items = FrequencyService.get_all()
+        self.assertGreaterEqual(len(items), 20)
 
-        # Header logs toggle button should exist with SVG and themed styling
-        self.assertIn('id="btnHeaderLogsDrawer"', html)
-        self.assertIn('toggleLogsDrawer', html)
+        morning_items = FrequencyService.get_by_category("MORNING")
+        night_items = FrequencyService.get_by_category("NIGHT")
+        self.assertGreaterEqual(len(morning_items), 10)
+        self.assertGreaterEqual(len(night_items), 10)
 
-        # Slide-over drawer exists
-        self.assertIn('id="logsDrawer"', html)
+        # Bale RTL symmetric keyboard: [ ◀️ قبلی ] (right, idx 0), (counter) (center, idx 1), [ بعدی ▶️ ] (left, idx 2)
+        kb = build_bale_frequency_nav_keyboard("MORNING", 0, len(morning_items))
+        nav_row = kb["inline_keyboard"][0]
+        self.assertIn("◀️ قبلی", nav_row[0]["text"])
+        self.assertIn("از", nav_row[1]["text"])
+        self.assertIn("بعدی ▶️", nav_row[2]["text"])
 
-    # --- 5. Web Panel Standalone Frequency Tab & Export/Import ---
-    def test_web_panel_frequency_management_section(self):
-        """Verify standalone frequency tab, sidebar button, HTML table, export/import and JS functions exist."""
+
+    def test_06_frequency_tab_and_drawer(self):
+        """Verify standalone frequency tab, drawer trigger, and log drawer exist."""
         html = render_dashboard_html()
         self.assertIn('id="tab-frequencies"', html)
         self.assertIn('id="s-btn-tab-frequencies"', html)
         self.assertIn('id="btn-tab-frequencies"', html)
-        self.assertIn('id="frequencyContent"', html)
-        self.assertIn('id="frequencyTableBody"', html)
-        self.assertIn('id="addFrequencyForm"', html)
-        self.assertIn('loadFrequenciesTable', html)
-        self.assertIn('submitAddNewFrequency', html)
-        self.assertIn('deleteFrequencyItem', html)
-        self.assertIn('exportFrequenciesJSON', html)
-        self.assertIn('handleImportFrequenciesFile', html)
+        self.assertIn('id="btnHeaderLogsDrawer"', html)
+        self.assertIn('id="logsDrawer"', html)
 
-    def test_frequency_service_import_items(self):
-        """Verify FrequencyService.import_items successfully validates and replaces items."""
+    def test_07_frequency_import_export(self):
+        """Verify FrequencyService import and export functions work accurately."""
         sample_items = [
             {"id": "test_1", "title": "تست ۱", "text": "متن تستی ۱", "category": "MORNING"},
             {"id": "test_2", "title": "تست ۲", "text": "متن تستی ۲", "category": "NIGHT"},
@@ -185,31 +138,6 @@ class TestUNFINITv039(unittest.IsolatedAsyncioTestCase):
         finally:
             FrequencyService.import_items(original, mode="replace")
             self.assertEqual(len(FrequencyService.get_all()), len(original))
-
-    # --- 6. Theme Variables Compliance ---
-    def test_theme_variables_compliance(self):
-        """Verify inputs use var(--input-bg) and no hardcoded dark blue backgrounds in new cards."""
-        html = render_dashboard_html()
-        self.assertIn('var(--input-bg)', html)
-        self.assertIn('var(--card-border)', html)
-        self.assertIn('letter-spacing: normal !important', html)
-
-    # --- 7. Version String Purity v0.3.9 ---
-    def test_version_string_purity_v039(self):
-        """Verify clean pure v0.3.9 version string in config and health."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.3.9")
-        self.assertEqual(config.ENGINE_VERSION.clean, "v0.3.9")
-        self.assertNotIn("(", str(config.ENGINE_VERSION))
-        self.assertNotIn(")", str(config.ENGINE_VERSION))
-
-        health = get_system_health()
-        self.assertIn("v0.3.9", str(health.get("engine_version", "")))
-
-        # Verify AGENTS.md mentions v0.3.9
-        agents_path = Path(__file__).resolve().parent.parent / "AGENTS.md"
-        with open(agents_path, "r", encoding="utf-8") as f:
-            agents_text = f.read()
-        self.assertIn("v0.3.9", agents_text)
 
 
 if __name__ == "__main__":

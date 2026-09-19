@@ -72,12 +72,42 @@ class SoroushWorker:
             return False
 
     def save_manual_token(self, token: str, phone: Optional[str] = None) -> bool:
-        """Saves a manually provided session token."""
+        """
+        Saves a manually provided session token.
+        Supports:
+          1. Direct dc2_auth_key hex/base64 string
+          2. GramJS Web JSON object: {"dcId":2,"dc2_auth_key":"...","userId":"..."}
+        Persists with AES-256 encryption in data/sessions/soroush.session.enc.
+        """
         clean_tok = (token or "").strip()
         if not clean_tok:
             return False
-        clean_ph = (phone or "").strip() or "دستی"
-        return self.save_session(token=clean_tok, phone=clean_ph, user_id="manual")
+        clean_ph = (phone or "").strip() or "سشن دستی وب"
+        user_id = "manual"
+        extra = {}
+
+        # Check if user provided JSON object (GramJS / Telegram / Soroush Web client format)
+        if (clean_tok.startswith("{") and clean_tok.endswith("}")) or ("dc2_auth_key" in clean_tok):
+            try:
+                parsed = json.loads(clean_tok)
+                if isinstance(parsed, dict):
+                    extracted_key = (
+                        parsed.get("dc2_auth_key")
+                        or parsed.get("dc1_auth_key")
+                        or parsed.get("authKey")
+                        or parsed.get("auth_key")
+                        or parsed.get("key")
+                        or parsed.get("token")
+                    )
+                    user_id = str(parsed.get("userId") or parsed.get("user_id") or "gramjs_user")
+                    dc_id = parsed.get("dcId") or parsed.get("dc_id") or 2
+                    extra = {"gramjs": True, "dcId": dc_id, "parsed_json": parsed}
+                    if extracted_key:
+                        clean_tok = str(extracted_key).strip()
+            except Exception as e:
+                logger.debug(f"[soroush_worker] JSON parse error in manual token: {e}")
+
+        return self.save_session(token=clean_tok, phone=clean_ph, user_id=user_id, extra=extra)
 
     def is_connected(self) -> bool:
         """Returns True if a valid session exists."""
@@ -87,14 +117,14 @@ class SoroushWorker:
         return bool(data and data.get("token"))
 
     def get_masked_phone(self) -> str:
-        """Returns masked phone number (e.g. 0912***4855)."""
+        """Returns masked phone number (e.g. 0912***4855) or friendly label."""
         if not self.is_connected() or not self._session_data:
             return ""
         phone = str(self._session_data.get("phone", "")).strip().replace("+", "")
-        if len(phone) >= 10:
+        if len(phone) >= 10 and phone.isdigit():
             return f"{phone[:4]}***{phone[-4:]}"
         elif phone:
-            return f"{phone[:2]}***{phone[-2:]}"
+            return phone
         return "متصل"
 
     def get_status(self) -> Dict[str, Any]:
