@@ -1021,6 +1021,35 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path in ("/api/frequencies/edit", "/api/frequencies/update"):
+            # اندپوینت ویرایش مشخصات عبارت فرکانس فراوانی
+            # ورودی‌ها: شناسه عبارت (id)، عنوان (title)، متن (text) و دسته‌بندی (category)
+            # خروجی: شیء به‌روزرسانی‌شده عبارت فرکانس به صورت JSON
+            try:
+                freq_id = str(payload.get("id", "")).strip()
+                if not freq_id:
+                    raise ValueError("شناسه عبارت جهت ویرایش الزامی است.")
+                title = payload.get("title")
+                text = payload.get("text")
+                category = payload.get("category")
+                from core.frequency_service import FrequencyService
+                updated = FrequencyService.update_item(freq_id, title=title, text=text, category=category)
+                if not updated:
+                    self.send_response(404)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"ok": False, "error": "عبارت فرکانس فراوانی مورد نظر یافت نشد."}, ensure_ascii=False).encode("utf-8"))
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "item": updated}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
         elif path == "/api/frequencies/import":
             try:
                 raw_items = payload.get("items")
@@ -1723,7 +1752,19 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     for k, val in new_settings.items():
                         if k in mapping and val is not None:
                             if k == "NAV_TABS_ORDER":
-                                val_str = json.dumps(val) if isinstance(val, (list, dict)) else str(val).strip()
+                                # تثبیت قطعی جایگاه داشبورد در رتبه اول تب‌ها (index: 0)
+                                raw_order = val if isinstance(val, list) else []
+                                if not raw_order and isinstance(val, str) and val.strip().startswith("["):
+                                    try:
+                                        raw_order = json.loads(val.strip())
+                                    except Exception:
+                                        raw_order = []
+                                if isinstance(raw_order, list) and raw_order:
+                                    clean_order = ["dashboard"] + [t for t in raw_order if t != "dashboard"]
+                                else:
+                                    clean_order = ["dashboard"]
+                                val = clean_order
+                                val_str = json.dumps(val, ensure_ascii=False)
                                 try:
                                     settings_path = config.DATA_DIR / "settings.json"
                                     s_data = {}
@@ -1732,7 +1773,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                             s_data = json.loads(settings_path.read_text(encoding="utf-8") or "{}")
                                         except Exception:
                                             s_data = {}
-                                    s_data["NAV_TABS_ORDER"] = val if isinstance(val, (list, dict)) else json.loads(val_str)
+                                    s_data["NAV_TABS_ORDER"] = val
                                     settings_path.write_text(json.dumps(s_data, ensure_ascii=False, indent=2), encoding="utf-8")
                                 except Exception as err:
                                     logger.warning(f"Error persisting NAV_TABS_ORDER to settings.json: {err}")

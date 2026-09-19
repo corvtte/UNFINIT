@@ -281,6 +281,11 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
                                 <path d="M12 2.5a9.5 9.5 0 00-9.5 9.5c0 2.2.75 4.23 2 5.86L3.2 21.3a.75.75 0 00.9.9l3.44-1.3A9.46 9.46 0 0012 21.5a9.5 9.5 0 100-19zm-3 7a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm6 6H9a.75.75 0 010-1.5h6a.75.75 0 010 1.5zm0-3a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/>
                             </svg>
                         </button>
+                        <button onclick="dispatchDrop('{d['drop_id']}', 'soroush')" class="p-1 rounded-lg hover:bg-blue-500/20 transition flex items-center justify-center" title="ارسال به پیام‌های ذخیره‌شده سروش‌پلاس">
+                            <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </td>
@@ -481,11 +486,21 @@ def render_dashboard_html() -> str:
         .border-slate-700, .border-slate-800, .border-slate-600, [class*="border-slate-"] {{
             border-color: var(--border-color, var(--card-border, rgba(6, 182, 212, 0.2))) !important;
         }}
-        .text-slate-100, .text-white {{
+        .text-slate-100, .text-slate-200, .text-white, .font-bold.text-slate-100, [class*="text-slate-1"], [class*="text-slate-2"] {{
             color: var(--text-main, var(--fg-color, #f4f4f5)) !important;
         }}
-        .text-slate-400, .text-slate-300 {{
+        .text-slate-400, .text-slate-300, .text-slate-500, .text-gray-400, .text-gray-300, [class*="text-slate-4"], [class*="text-slate-3"] {{
             color: var(--text-muted, #94a3b8) !important;
+        }}
+        table, table th, table td {{
+            color: var(--text-main, var(--fg-color, #f4f4f5));
+        }}
+        table td.text-slate-400, table td.text-slate-300, table td.text-slate-500 {{
+            color: var(--text-muted, #94a3b8) !important;
+        }}
+        .metric-val-health {{
+            font-family: 'Vazirmatn', sans-serif !important;
+            letter-spacing: normal !important;
         }}
         code, pre, .font-mono {{ font-family: 'Roboto', monospace !important; }}
         .glass, .settings-box, .setting-card, .glass-card, .store-card, details.settings-accordion {{
@@ -1068,7 +1083,7 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-cyan-400">{health['system_health']}</div>
+                    <div class="text-xl sm:text-2xl font-bold text-cyan-400 metric-val-health" style="font-family: 'Vazirmatn', sans-serif !important; letter-spacing: normal !important;">{health['system_health']}</div>
                     <p class="text-[11px] text-slate-500 mt-1">تأخیر: {health['latency_ms']}ms</p>
                 </div>
 
@@ -3085,6 +3100,47 @@ def render_dashboard_html() -> str:
             </div>
         </div>
 
+        <!-- Modal: Edit Frequency Item (مودال ویرایش باور و فرکانس فراوانی) -->
+        <div id="modalEditFrequency" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="glass-card max-w-lg w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
+                <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--card-border);">
+                    <h3 class="text-sm font-bold flex items-center gap-2" style="color: var(--text-main);">
+                        <svg class="w-4 h-4 text-cyan-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                        </svg>
+                        <span>ویرایش کارت فرکانس فراوانی</span>
+                    </h3>
+                    <button type="button" onclick="closeEditFrequencyModal()" class="text-slate-400 hover:text-white text-base transition">✕</button>
+                </div>
+                <form id="formEditFrequency" onsubmit="submitEditFrequency(event)" class="space-y-4">
+                    <input type="hidden" id="freqEditId" value="">
+                    <div>
+                        <label class="block text-xs mb-1" style="color: var(--text-muted);">دسته‌بندی زمانی *</label>
+                        <select id="freqEditCategory" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            <option value="MORNING">☀️ باورهای صبحگاهی (MORNING)</option>
+                            <option value="NIGHT">🌙 باورهای شبانگاهی (NIGHT)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs mb-1" style="color: var(--text-muted);">عنوان باور *</label>
+                        <input type="text" id="freqEditTitle" required placeholder="مثال: مغناطیس ثروت" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                    </div>
+                    <div>
+                        <label class="block text-xs mb-1" style="color: var(--text-muted);">متن عبارت فرکانس *</label>
+                        <textarea id="freqEditText" required rows="3" placeholder="متن باور و فرکانس فراوانی..." class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500 leading-relaxed" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2 border-t" style="border-color: var(--card-border);">
+                        <button type="button" onclick="closeEditFrequencyModal()" class="px-4 py-2 rounded-xl text-xs border hover:bg-white/5 transition" style="border-color: var(--card-border); color: var(--text-muted);">
+                            انصراف
+                        </button>
+                        <button type="submit" id="btnSubmitEditFrequency" class="px-5 py-2 rounded-xl text-xs font-bold text-white transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/20" style="background: var(--accent-color);">
+                            <span>💾</span> ذخیره تغییرات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800/80">
             طراحی شده با استانداردهای مدرن یونیکس، FFmpeg، Mutagen و معماری چندپلتفرمه {health['engine_version']}
@@ -4054,6 +4110,8 @@ def render_dashboard_html() -> str:
                         currentOrder = Array.from(desktopNav.querySelectorAll('[data-tab]')).map(b => b.getAttribute('data-tab')).filter(Boolean);
                     }}
                     if (currentOrder.length === 0) return;
+                    // تضمین قطعی قرار گرفتن تب داشبورد در نخستین جایگاه سایدبار (index: 0)
+                    currentOrder = ['dashboard', ...currentOrder.filter(t => t !== 'dashboard')];
                     localStorage.setItem('unfinit_nav_order', JSON.stringify(currentOrder));
                     localStorage.setItem('unfinit_tabs_order', JSON.stringify(currentOrder));
                     try {{
@@ -4076,8 +4134,10 @@ def render_dashboard_html() -> str:
                     const desktopNav = document.getElementById('desktopNavTabs');
 
                     try {{
-                        const savedOrder = JSON.parse(localStorage.getItem('unfinit_nav_order') || localStorage.getItem('unfinit_tabs_order') || '[]');
+                        let savedOrder = JSON.parse(localStorage.getItem('unfinit_nav_order') || localStorage.getItem('unfinit_tabs_order') || '[]');
                         if (Array.isArray(savedOrder) && savedOrder.length > 0) {{
+                            // تثبیت رتبه اول برای داشبورد در هنگام بارگذاری
+                            savedOrder = ['dashboard', ...savedOrder.filter(t => t !== 'dashboard')];
                             if (sidebarNav) {{
                                 savedOrder.forEach(tabId => {{
                                     const btn = sidebarNav.querySelector(`[data-tab="${{tabId}}"]`);
@@ -4505,8 +4565,12 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        /**
+         * ارسال مستقیم یک فایل از استودیوی رسانه به پلتفرم‌های پیام‌رسان (تلگرام، بله، روبیکا، سروش‌پلاس).
+         * ورودی‌ها: dropId (شناسه دراپ فیزیکی)، target (نام پلتفرم مقصد)
+         */
         async function dispatchDrop(dropId, target) {{
-            const names = {{ telegram: 'تلگرام', bale: 'بله', rubika: 'روبیکا' }};
+            const names = {{ telegram: 'تلگرام', bale: 'بله', rubika: 'روبیکا', soroush: 'سروش‌پلاس', splus: 'سروش‌پلاس' }};
             const targetName = names[target] || target;
             if (!confirm(`آیا می‌خواهید این فایل مستقیماً به ${{targetName}} ارسال شود؟`)) return;
 
@@ -6937,6 +7001,9 @@ def render_dashboard_html() -> str:
             }}
         }}
 
+        /**
+         * بارگذاری لیست کامل کارت‌های فرکانس فراوانی و رندر سطرها به همراه دکمه‌های ویرایش و حذف.
+         */
         async function loadFrequenciesTable() {{
             const tbody = document.getElementById('frequencyTableBody');
             if (!tbody) return;
@@ -6945,9 +7012,11 @@ def render_dashboard_html() -> str:
                 const res = await fetch('/api/frequencies');
                 const data = await res.json();
                 if (!data.ok || !Array.isArray(data.frequencies) || data.frequencies.length === 0) {{
+                    window.UNFINIT_FREQUENCIES = [];
                     tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">هیچ عبارتی ثبت نشده است.</td></tr>';
                     return;
                 }}
+                window.UNFINIT_FREQUENCIES = data.frequencies;
                 tbody.innerHTML = data.frequencies.map((item, idx) => {{
                     const isMorning = item.category === 'MORNING';
                     const catBadge = isMorning 
@@ -6960,11 +7029,18 @@ def render_dashboard_html() -> str:
                             <td class="py-3 px-4 text-center">${{catBadge}}</td>
                             <td class="py-3 px-4 text-slate-300 leading-relaxed">${{escapeHtml(item.text || '')}}</td>
                             <td class="py-3 px-4 text-center">
-                                <button type="button" onclick="deleteFrequencyItem('${{escapeHtml(item.id)}}')" title="حذف عبارت" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition inline-flex items-center justify-center">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <button type="button" onclick="openEditFrequencyModal('${{escapeHtml(item.id)}}')" title="ویرایش عبارت" class="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition inline-flex items-center justify-center">
+                                        <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" onclick="deleteFrequencyItem('${{escapeHtml(item.id)}}')" title="حذف عبارت" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition inline-flex items-center justify-center">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -6972,6 +7048,76 @@ def render_dashboard_html() -> str:
             }} catch (err) {{
                 console.error('[loadFrequenciesTable error]:', err);
                 tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-rose-400">خطا در بارگذاری لیست فرکانس‌ها.</td></tr>';
+            }}
+        }}
+
+        /**
+         * باز کردن مودال ویرایش کارت فرکانس فراوانی و تکمیل فیلدها با اطلاعات موجود.
+         * ورودی: id (شناسه منحصربه‌فرد عبارت)
+         */
+        function openEditFrequencyModal(id) {{
+            if (!id) return;
+            const items = window.UNFINIT_FREQUENCIES || [];
+            const item = items.find(x => String(x.id) === String(id));
+            if (!item) {{
+                alert('عبارت مورد نظر در حافظه یافت نشد.');
+                return;
+            }}
+            const idInput = document.getElementById('freqEditId');
+            const catSelect = document.getElementById('freqEditCategory');
+            const titleInput = document.getElementById('freqEditTitle');
+            const textInput = document.getElementById('freqEditText');
+
+            if (idInput) idInput.value = item.id;
+            if (catSelect) catSelect.value = item.category || 'MORNING';
+            if (titleInput) titleInput.value = item.title || '';
+            if (textInput) textInput.value = item.text || '';
+
+            const m = document.getElementById('modalEditFrequency');
+            if (m) m.classList.remove('hidden');
+        }}
+
+        /**
+         * بستن مودال ویرایش کارت فرکانس فراوانی.
+         */
+        function closeEditFrequencyModal() {{
+            const m = document.getElementById('modalEditFrequency');
+            if (m) m.classList.add('hidden');
+        }}
+
+        /**
+         * ارسال درخواست ویرایش عبارت فرکانس فراوانی به سرور (/api/frequencies/edit).
+         * ورودی: رویداد ارسال فرم (e)
+         */
+        async function submitEditFrequency(e) {{
+            if (e) e.preventDefault();
+            const id = (document.getElementById('freqEditId')?.value || '').trim();
+            const cat = document.getElementById('freqEditCategory')?.value || 'MORNING';
+            const title = (document.getElementById('freqEditTitle')?.value || '').trim();
+            const text = (document.getElementById('freqEditText')?.value || '').trim();
+            if (!id || !title || !text) {{
+                alert('لطفاً عنوان و متن عبارت را وارد نمایید.');
+                return;
+            }}
+            const btn = document.getElementById('btnSubmitEditFrequency');
+            if (btn) btn.disabled = true;
+            try {{
+                const res = await fetch('/api/frequencies/edit', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ id: id, category: cat, title: title, text: text }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    closeEditFrequencyModal();
+                    loadFrequenciesTable();
+                }} else {{
+                    alert('خطا در ویرایش عبارت: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (err) {{
+                alert('خطای ارتباط با سرور: ' + err.message);
+            }} finally {{
+                if (btn) btn.disabled = false;
             }}
         }}
 
@@ -7088,6 +7234,9 @@ def render_dashboard_html() -> str:
                 window.uploadCustomLogo = uploadCustomLogo;
                 window.loadSettings = loadSettings;
                 window.loadFrequenciesTable = loadFrequenciesTable;
+                window.openEditFrequencyModal = openEditFrequencyModal;
+                window.closeEditFrequencyModal = closeEditFrequencyModal;
+                window.submitEditFrequency = submitEditFrequency;
                 window.submitAddNewFrequency = submitAddNewFrequency;
                 window.deleteFrequencyItem = deleteFrequencyItem;
                 window.exportFrequenciesJSON = exportFrequenciesJSON;
@@ -7682,6 +7831,15 @@ def get_studio_cover_bytes(drop_id: str) -> tuple[bytes | None, str]:
 
 
 async def handle_studio_dispatch(payload: dict) -> dict:
+    """
+    ارسال مستقیم و دیسپچ فایل پردازش‌شده از استودیوی رسانه به پلتفرم‌های مقصد (تلگرام، بله، روبیکا، سروش‌پلاس).
+
+    ورودی‌ها:
+        payload (dict): حاوی drop_id (شناسه نشست فایل) و target (پلتفرم مقصد).
+
+    خروجی:
+        dict: نتیجه عملیات شامل فیلد ok، پیام موفقیت یا شرح خطا به زبان فارسی.
+    """
     drop_id = (payload.get("drop_id") or "").strip()
     target = (payload.get("target") or "telegram").strip()
     session = session_manager.get_session(drop_id)
@@ -7764,6 +7922,18 @@ async def handle_studio_dispatch(payload: dict) -> dict:
                 session_manager.update_session(drop_id, session)
                 return {"ok": True, "message": f"✅ فایل {send_name} ({human_size(final_sz)}) به روبیکا ارسال گردید!"}
             return {"ok": False, "error": f"خطا در ارسال به روبیکا: {res.get('error') or res}"}
+
+        elif target in ("soroush", "splus"):
+            from platforms.soroush_worker import soroush_worker
+            if not soroush_worker.is_connected():
+                return {"ok": False, "error": "سشن کاربری سروش‌پلاس متصل نیست. لطفاً ابتدا در پنل وب لاگین کنید."}
+            res = await soroush_worker.send_file_to_saved_messages(final_path, caption=caption)
+            if res.get("ok"):
+                session["current_status"] = "SENT_TO_SOROUSH"
+                session_manager.update_session(drop_id, session)
+                queue_note = " (در صف ارسال محلی امن قرار گرفت)" if res.get("queued") else ""
+                return {"ok": True, "message": f"✅ فایل {send_name} ({human_size(final_sz)}){queue_note} به پیام‌های ذخیره‌شده سروش‌پلاس ارسال گردید!"}
+            return {"ok": False, "error": f"خطا در ارسال به سروش‌پلاس: {res.get('error') or res}"}
 
         return {"ok": False, "error": f"پلتفرم نامعتبر: {target}"}
     except Exception as e:

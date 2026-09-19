@@ -132,6 +132,52 @@ class FrequencyService:
         return False
 
     @classmethod
+    def update_item(
+        cls,
+        item_id: str,
+        title: Optional[str] = None,
+        text: Optional[str] = None,
+        category: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        ویرایش و به‌روزرسانی کامل یک کارت فرکانس فراوانی در دیتابیس JSON.
+
+        ورودی‌ها (پارامترها):
+            item_id (str): شناسه منحصربه‌فرد عبارت جهت جستجو در لیست
+            title (Optional[str]): عنوان جدید باور و فرکانس
+            text (Optional[str]): متن انگیزشی یا باوری جدید
+            category (Optional[str]): دسته‌بندی جدید (MORNING یا NIGHT)
+
+        خروجی:
+            Optional[Dict[str, Any]]: شیء به‌روزرسانی‌شده عبارت فرکانس یا None در صورت عدم یافتن شناسه
+        """
+        if not item_id:
+            return None
+
+        all_items = cls.get_all()
+        target: Optional[Dict[str, Any]] = None
+        for it in all_items:
+            if str(it.get("id")) == str(item_id):
+                target = it
+                break
+
+        if not target:
+            logger.warning(f"[frequency_service] Frequency item not found for edit: {item_id}")
+            return None
+
+        if title is not None and str(title).strip():
+            target["title"] = str(title).strip()
+        if text is not None and str(text).strip():
+            target["text"] = str(text).strip()
+        if category is not None and str(category).strip():
+            cat_raw = str(category).strip().upper()
+            target["category"] = "NIGHT" if ("NIGHT" in cat_raw or "شب" in cat_raw) else "MORNING"
+
+        cls.save_all(all_items)
+        logger.info(f"[frequency_service] Successfully updated frequency item {item_id}")
+        return target
+
+    @classmethod
     def import_items(cls, incoming_items: List[Dict[str, Any]], mode: str = "replace") -> Tuple[bool, int, str]:
         """
         Imports frequency items. If mode == 'replace', completely rewrites the list.

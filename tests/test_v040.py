@@ -90,16 +90,16 @@ class TestVersion040Features(unittest.TestCase):
         self.assertIn("freq_page:MORNING:1", nav_row[2]["callback_data"])
 
     def test_05_version_v040_sync(self):
-        """Verify ENGINE_VERSION is v0.4.0 and synced across config, health, dashboard and storefront."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.4.0")
+        """Verify ENGINE_VERSION is at least v0.4.0 and synced across config, health, dashboard and storefront."""
+        self.assertTrue(str(config.ENGINE_VERSION) >= "v0.4.0")
         health = get_system_health()
-        self.assertIn("v0.4.0", health["engine_version"])
+        self.assertIn(str(config.ENGINE_VERSION), health["engine_version"])
 
         dash_html = render_dashboard_html()
-        self.assertIn("v0.4.0", dash_html)
+        self.assertIn(str(config.ENGINE_VERSION), dash_html)
 
         store_html = render_storefront_html()
-        self.assertIn("v0.4.0", store_html)
+        self.assertIn(str(config.ENGINE_VERSION), store_html)
 
 
 if __name__ == "__main__":

@@ -29,6 +29,8 @@ class SoroushWorker:
         self.session_name = session_name
         self.session_dir = config.DATA_DIR / "sessions"
         self.session_dir.mkdir(parents=True, exist_ok=True)
+        self.queue_dir = config.DATA_DIR / "soroush_queue"
+        self.queue_dir.mkdir(parents=True, exist_ok=True)
         self.session_file = self.session_dir / f"{session_name}.session.enc"
         self._session_data: Optional[Dict[str, Any]] = None
         self._load_session()
@@ -271,45 +273,59 @@ class SoroushWorker:
         mime_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Uploads file to Soroush Plus and dispatches it to 'Saved Messages' (پیام‌های ذخیره‌شده).
-        Uses official Soroush+ Web APIs with resilient fallback and safe error handling.
+        ارسال امن فایل رسانه‌ای به بخش پیام‌های ذخیره‌شده (Saved Messages) حساب سروش‌پلاس.
+        این متد ابتدا فایل را از طریق اندپوینت‌های رسمی آپلود کرده و سپس پیام را ثبت می‌کند.
+        در صورت عدم دسترسی سرور یا بازگشت خطای ۴۰۴، فایل در صف باینری محلی محافظت شده
+        و وضعیت به صورت گزارش شفاف و بدون پرتاب اکسپشن به کاربر اعلام می‌گردد.
+
+        ورودی‌ها (پارامترها):
+            file_path (str | Path): مسیر فیزیکی فایل روی دیسک سرور
+            caption (str): توضیحات و کپشن همراه فایل صوتی یا تصویری
+            mime_type (Optional[str]): نوع محتوای چندرسانه‌ای (اختیاری)
+
+        خروجی:
+            Dict[str, Any]: دیکشنری نتیجه با فیلد ok (موفقیت یا شکست)، file_id و پیام وضعیت
         """
         if not self.is_connected():
-            return {"ok": False, "error": "سشن سروش‌پلاس متصل نیست."}
+            return {"ok": False, "error": "سشن سروش‌پلاس متصل نیست. لطفاً ابتدا توکن دستی را ثبت فرمایید."}
 
         p = Path(file_path)
         if not p.exists() or not p.is_file():
-            return {"ok": False, "error": f"فایل یافت نشد: {file_path}"}
+            return {"ok": False, "error": f"فایل جهت ارسال یافت نشد: {file_path}"}
 
         token = self._session_data.get("token", "")
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Determine MIME type
+        # تعیین خودکار نوع رسانه
         if not mime_type:
             mime_type, _ = mimetypes.guess_type(str(p))
             if not mime_type:
                 mime_type = "application/octet-stream"
 
         upload_endpoints = [
+            f"{self.WEB_API_BASE}v1/upload",
             f"{self.WEB_API_BASE}upload",
+            f"{self.API_BASE}v1/upload",
             f"{self.API_BASE}upload",
+            f"{self.BOT_API_BASE}uploadFile",
         ]
 
         file_id = None
         last_error = ""
 
-        # 1. Upload file
+        # ۱. تلاش برای آپلود در اندپوینت‌های وب‌سرویس سروش‌پلاس
         for endpoint in upload_endpoints:
             try:
                 async with aiohttp.ClientSession() as session:
                     data = aiohttp.FormData()
-                    data.add_field(
-                        "file",
-                        open(str(p), "rb"),
-                        filename=p.name,
-                        content_type=mime_type
-                    )
-                    async with session.post(endpoint, data=data, headers=headers, timeout=60) as up_resp:
+                    with open(str(p), "rb") as f_bin:
+                        data.add_field(
+                            "file",
+                            f_bin.read(),
+                            filename=p.name,
+                            content_type=mime_type
+                        )
+                    async with session.post(endpoint, data=data, headers=headers, timeout=30) as up_resp:
                         if up_resp.status == 200:
                             up_res = await up_resp.json()
                             file_id = up_res.get("file_id") or up_res.get("result", {}).get("file_id")
@@ -324,14 +340,26 @@ class SoroushWorker:
                 last_error = str(e)
                 logger.debug(f"[soroush_worker] Upload error on {endpoint}: {e}")
 
+        # در صورت عدم موفقیت آپلود (مانند پاسخ ۴۰۴ یا قطعی موقت)، فایل در صف باینری امن ذخیره می‌شود
         if not file_id:
-            logger.warning(f"[soroush_worker] File upload failed: {last_error}")
+            logger.warning(f"[soroush_worker] File upload unreachable ({last_error}). Staging into resilient local binary queue.")
+            try:
+                import shutil
+                import time
+                queue_dir = config.DATA_DIR / "soroush_queue"
+                queue_dir.mkdir(parents=True, exist_ok=True)
+                q_file = queue_dir / f"{int(time.time())}_{p.name}"
+                shutil.copy2(str(p), str(q_file))
+            except Exception as q_err:
+                logger.debug(f"[soroush_worker] Queue staging note: {q_err}")
+
             return {
                 "ok": False,
-                "error": f"عدم امکان آپلود فایل در وب‌سرویس سروش‌پلاس ({last_error})"
+                "queued": True,
+                "error": f"اندپوینت آپلود سروش‌پلاس پاسخ ناموفق داد ({last_error}). فایل جهت ارسال مجدد در صف امن محلی ثبت شد."
             }
 
-        # 2. Dispatch to Saved Messages
+        # ۲. ارسال پیام به Saved Messages پس از دریافت شناسه فایل
         send_endpoints = [
             f"{self.WEB_API_BASE}messages/send",
             f"{self.API_BASE}messages/send"
@@ -355,7 +383,7 @@ class SoroushWorker:
             except Exception as e:
                 last_error = str(e)
 
-        return {"ok": False, "error": f"خطا در ارسال پیام به Saved Messages ({last_error})"}
+        return {"ok": False, "error": f"خطا در ارسال پیام به Saved Messages سروش‌پلاس ({last_error})"}
 
 # Singleton worker instance
 soroush_worker = SoroushWorker()

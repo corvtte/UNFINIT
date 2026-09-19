@@ -855,6 +855,9 @@ def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) ->
             [
                 {"text": "✈️ انتقال به تلگرام", "callback_data": f"bmeta:send_tg:{drop_id}"},
                 {"text": "🟣 انتقال به روبیکا", "callback_data": f"bmeta:send_rub:{drop_id}"}
+            ],
+            [
+                {"text": "🔷 انتقال به سروش‌پلاس", "callback_data": f"bmeta:send_splus:{drop_id}"}
             ]
         ]
         return {"inline_keyboard": rows}
@@ -894,6 +897,9 @@ def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) ->
         [
             {"text": "✈️ انتقال به تلگرام", "callback_data": f"bmeta:send_tg:{drop_id}"},
             {"text": "🟣 انتقال به روبیکا", "callback_data": f"bmeta:send_rub:{drop_id}"}
+        ],
+        [
+            {"text": "🔷 انتقال به سروش‌پلاس", "callback_data": f"bmeta:send_splus:{drop_id}"}
         ]
     ]
 
@@ -1868,7 +1874,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 await ensure_bale_binary()
                                                 final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "rubika")
                                                 target_rub_id = rubika_adapter_instance.get_admin_guid()
-
                                                 res = await rubika_adapter_instance.send_audio(
                                                     target_rub_id, final_p, title=info["title"], performer=info["artist"],
                                                     caption=f"✅ منتقل شده از بله\n📄 {clean_display_filename(fn)}"
@@ -1877,6 +1882,27 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     await bale.send_message(chat_id, f"✅ فایل با موفقیت به روبیکا منتقل شد!\n📄 {clean_display_filename(fn)}")
                                                 else:
                                                     await bale.send_message(chat_id, f"❌ خطا در ارسال به روبیکا: {res.get('error') or res}")
+
+                                        # Transfer from Bale to Soroush Plus (Clean Pipeline)
+                                        elif action == "send_splus":
+                                            # انتقال مستقیم فایل چندرسانه‌ای از بله به پیام‌های ذخیره‌شده پیام‌رسان سروش‌پلاس
+                                            from platforms.soroush_worker import soroush_worker
+                                            if not soroush_worker.is_connected():
+                                                await bale.send_message(chat_id, "❌ سشن کاربری سروش‌پلاس متصل نیست. لطفاً ابتدا در پنل وب وارد شوید.")
+                                            else:
+                                                status_m = await bale.send_message(chat_id, "⏳ در حال دانلود و آماده‌سازی فایل جهت انتقال به سروش‌پلاس...")
+                                                await ensure_bale_binary()
+                                                try:
+                                                    final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "soroush")
+                                                    caption_t = f"✅ منتقل شده از بله\n📄 {clean_display_filename(fn)}"
+                                                    res = await soroush_worker.send_file_to_saved_messages(final_p, caption=caption_t)
+                                                    if res.get("ok"):
+                                                        queue_note = " (در صف ارسال محلی امن ذخیره گردید)" if res.get("queued") else ""
+                                                        await bale.send_message(chat_id, f"✅ فایل با موفقیت به سروش‌پلاس منتقل شد!{queue_note}\n📄 {clean_display_filename(fn)}")
+                                                    else:
+                                                        await bale.send_message(chat_id, f"❌ خطا در ارسال به سروش‌پلاس: {res.get('error') or res}")
+                                                except Exception as e:
+                                                    await bale.send_message(chat_id, f"❌ خطا در فرآیند ارسال به سروش‌پلاس: {e}")
 
                                         elif action == "add_to_course":
                                             courses = await StoreService.get_products(is_free_only=False)

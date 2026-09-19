@@ -531,6 +531,9 @@ class TelegramAdapter:
                 [
                     InlineKeyboardButton("🟢 ارسال به بله", callback_data=f"smeta:send_bale:{drop_id}"),
                     InlineKeyboardButton("🟣 ارسال به روبیکا", callback_data=f"smeta:choose_rubika:{drop_id}")
+                ],
+                [
+                    InlineKeyboardButton("🔷 ارسال به سروش‌پلاس", callback_data=f"smeta:send_splus:{drop_id}")
                 ]
             ]
             return InlineKeyboardMarkup(rows)
@@ -569,6 +572,9 @@ class TelegramAdapter:
             [
                 InlineKeyboardButton("🟢 ارسال به بله", callback_data=f"smeta:send_bale:{drop_id}"),
                 InlineKeyboardButton("🟣 ارسال به روبیکا", callback_data=f"smeta:choose_rubika:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("🔷 ارسال به سروش‌پلاس", callback_data=f"smeta:send_splus:{drop_id}")
             ]
         ]
         return InlineKeyboardMarkup(rows)
@@ -3073,6 +3079,45 @@ class TelegramAdapter:
                         await status_msg.edit_text(f"❌ <b>خطا در ارتباط با سرورهای بله:</b>\n<code>{escape(str(err_info))}</code>", parse_mode=enums.ParseMode.HTML)
                 except Exception as e:
                     await status_msg.edit_text(f"❌ <b>خطا در ارتباط با سرورهای بله:</b>\n<code>{escape(str(e))}</code>", parse_mode=enums.ParseMode.HTML)
+
+            elif action == "send_splus":
+                # انتقال مستقیم فایل از تلگرام به پیام‌های ذخیره‌شده پیام‌رسان سروش‌پلاس
+                from platforms.soroush_worker import soroush_worker
+                if not soroush_worker.is_connected():
+                    await callback_query.message.reply_text(
+                        "❌ <b>سشن کاربری سروش‌پلاس متصل نیست.</b>\nلطفاً ابتدا در پنل وب وارد حساب کاربری شوید.",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    return
+
+                status_msg = await callback_query.message.reply_text(
+                    "📥 <b>در حال دانلود و آماده‌سازی فایل جهت انتقال به سروش‌پلاس...</b>",
+                    parse_mode=enums.ParseMode.HTML
+                )
+                await ensure_binary()
+
+                try:
+                    final_path, send_name, transfer_info = MediaService.prepare_for_transfer(drop_id, "soroush")
+                    await status_msg.edit_text("📤 <b>در حال ارسال فایل به پیام‌های ذخیره‌شده سروش‌پلاس...</b>", parse_mode=enums.ParseMode.HTML)
+                    caption_text = f"✅ منتقل شده از تلگرام\n📄 <b>{escape(send_name)}</b>"
+                    res = await soroush_worker.send_file_to_saved_messages(final_path, caption=caption_text)
+                    if res.get("ok"):
+                        queue_note = " (در صف ارسال محلی امن ذخیره گردید)" if res.get("queued") else ""
+                        await status_msg.edit_text(
+                            f"✅ <b>فایل با موفقیت به سروش‌پلاس منتقل شد!</b>{queue_note}\n📄 <code>{escape(send_name)}</code>",
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                    else:
+                        err_info = res.get("error") or str(res)
+                        await status_msg.edit_text(
+                            f"❌ <b>خطا در ارتباط با سرورهای سروش‌پلاس:</b>\n<code>{escape(str(err_info))}</code>",
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                except Exception as e:
+                    await status_msg.edit_text(
+                        f"❌ <b>خطا در انتقال فایل به سروش‌پلاس:</b>\n<code>{escape(str(e))}</code>",
+                        parse_mode=enums.ParseMode.HTML
+                    )
 
         # Text input handler for Metadata, Trimming, URLs, Support, and Force Join
         @self.app.on_message(filters.private & (filters.text | filters.caption))
