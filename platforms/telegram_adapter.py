@@ -142,9 +142,9 @@ def build_telegram_frequency_nav_keyboard(category: str, current_idx: int, total
     next_idx = (current_idx + 1) % total
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("◀️ قبلی", callback_data=f"freq_page:{category}:{prev_idx}"),
+            InlineKeyboardButton("بعدی ▶️", callback_data=f"freq_page:{category}:{next_idx}"),
             InlineKeyboardButton(f"({current_idx + 1} از {total})", callback_data="freq_noop"),
-            InlineKeyboardButton("بعدی ▶️", callback_data=f"freq_page:{category}:{next_idx}")
+            InlineKeyboardButton("◀️ قبلی", callback_data=f"freq_page:{category}:{prev_idx}")
         ],
         [
             InlineKeyboardButton("🔙 بازگشت به دسته‌ها", callback_data="freq_cats")
@@ -663,7 +663,7 @@ class TelegramAdapter:
                     session_manager.set_user_action(f"tg_ref_{user_id}", ref_code, ref_code)
                     logger.info(f"[Telegram] User {user_id} started bot with referral code {ref_code}")
                     try:
-                        await ReferralService.record_referral(
+                        ReferralService.record_referral(
                             referred_id=user_id,
                             referrer_id=ref_code,
                             platform="telegram"
@@ -998,20 +998,30 @@ class TelegramAdapter:
             wait_msg = await message.reply_text("🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>", parse_mode=enums.ParseMode.HTML)
             try:
                 from core.sign_service import SignService
+                from core.database import get_system_setting
+                reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
+                extract_chapters = (await get_system_setting("sign_extract_chapters", "1")) == "1"
+
                 sign = await SignService.get_user_today_sign(user_id)
-                caption = SignService.format_sign_caption(sign)
+                caption = SignService.format_sign_caption(sign, reader_tag=reader_tag, include_chapters=extract_chapters)
                 audio_url = sign.get("audio_url")
+
+                vip_kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💎 عضویت در باشگاه پریمیوم VIP", callback_data="vip_club_info")]
+                ])
 
                 local_audio_path = None
                 if audio_url:
-                    local_audio_path = await SignService.ensure_audio_downloaded(sign)
+                    local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
 
+                perf_title = reader_tag or "نشانه امروز"
                 if local_audio_path and local_audio_path.exists():
                     await message.reply_audio(
                         audio=str(local_audio_path),
                         caption=caption,
                         title=sign.get("title", "نشانه امروز من"),
-                        performer="UNFINIT - نشانه امروز",
+                        performer=perf_title,
+                        reply_markup=vip_kb,
                         parse_mode=enums.ParseMode.HTML
                     )
                     try:
@@ -1023,7 +1033,8 @@ class TelegramAdapter:
                         audio=audio_url,
                         caption=caption,
                         title=sign.get("title", "نشانه امروز من"),
-                        performer="UNFINIT - نشانه امروز",
+                        performer=perf_title,
+                        reply_markup=vip_kb,
                         parse_mode=enums.ParseMode.HTML
                     )
                     try:
@@ -1032,15 +1043,64 @@ class TelegramAdapter:
                         pass
                 else:
                     try:
-                        await wait_msg.edit_text(caption, parse_mode=enums.ParseMode.HTML)
+                        await wait_msg.edit_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
                     except Exception:
-                        await message.reply_text(caption, parse_mode=enums.ParseMode.HTML)
+                        await message.reply_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
             except Exception as e:
                 logger.error(f"[tg_sign] Error sending sign to {user_id}: {e}")
                 try:
                     await wait_msg.edit_text("❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.", parse_mode=enums.ParseMode.HTML)
                 except Exception:
                     pass
+
+        @self.app.on_callback_query(filters.regex(r"^vip_club_info$"))
+        async def handle_vip_club_info_cb(client: Client, callback_query: CallbackQuery):
+            """
+            نمایش توضیحات، شرایط و تعرفه عضویت در باشگاه پریمیوم VIP برای کاربر با دکمه شیشه‌ای.
+            """
+            await callback_query.answer()
+            from core.database import get_system_setting
+            price = await get_system_setting("vip_monthly_price", "111000")
+            try:
+                price_formatted = f"{int(price):,}"
+            except Exception:
+                price_formatted = price
+            days = await get_system_setting("vip_duration_days", "30")
+            card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
+            txt = (
+                "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
+                "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت نامحدود یا دوره اشتراک دسترسی خواهید داشت.\n\n"
+                f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
+            )
+            if card_num:
+                txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
+            else:
+                txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
+            await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML)
+
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|باشگاه پریمیوم|اشتراک VIP|/vip)$"))
+        async def handle_vip_command_tg(client: Client, message: Message):
+            """
+            دستور مستقیم تلگرام جهت دریافت اطلاعات پلن اشتراک ماهانه VIP.
+            """
+            from core.database import get_system_setting
+            price = await get_system_setting("vip_monthly_price", "111000")
+            try:
+                price_formatted = f"{int(price):,}"
+            except Exception:
+                price_formatted = price
+            days = await get_system_setting("vip_duration_days", "30")
+            card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
+            txt = (
+                "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
+                "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت نامحدود یا دوره اشتراک دسترسی خواهید داشت.\n\n"
+                f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
+            )
+            if card_num:
+                txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
+            else:
+                txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
+            await message.reply_text(txt, parse_mode=enums.ParseMode.HTML)
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*فرکانس فراوانی|فرکانس فراوانی|فرکانس|/frequency)$"))
         async def customer_frequency_menu(client: Client, message: Message):

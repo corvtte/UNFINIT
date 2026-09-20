@@ -149,6 +149,19 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
     except Exception as e:
         logger.debug(f"[feed_scraper] Error inspecting article {clean_url}: {e}")
 
+    chapters = []
+    if BeautifulSoup:
+        try:
+            for heading in soup.find_all(["h2", "h3", "strong", "b"]):
+                txt = heading.get_text().strip()
+                if 8 <= len(txt) <= 75 and not any(skip in txt for skip in ["دیدگاه", "نظرات", "پاسخ", "ارسال", "ورود", "ثبت", "دانلود", "کلیک", "سبد خرید"]):
+                    if txt not in chapters and txt != title:
+                        chapters.append(txt)
+                if len(chapters) >= 4:
+                    break
+        except Exception:
+            pass
+
     tag = "هدیه دانلودی"
     if "توحید" in title:
         tag = "سریال توحید عملی"
@@ -167,6 +180,7 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
         "video_download_url": video_dl,
         "video_url": video_dl,
         "direct_download_url": audio_dl or video_dl,
+        "chapters": chapters,
         "links": [u for u in (audio_dl, video_dl) if u]
     }
 

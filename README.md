@@ -8,9 +8,9 @@ app_file: app.py
 pinned: false
 ---
 
-# ⚡ هاب چندپلتفرمه و موتور رسانه‌ای و فروشگاهی UNFINIT (v0.4.3)
+# ⚡ هاب چندپلتفرمه و موتور رسانه‌ای و فروشگاهی UNFINIT (v0.4.4)
 
-[![Engine Version](https://img.shields.io/badge/version-v0.4.3-blue.svg)](https://github.com/corvtte/UNFINIT)
+[![Engine Version](https://img.shields.io/badge/version-v0.4.4-blue.svg)](https://github.com/corvtte/UNFINIT)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-brightgreen.svg)](https://python.org)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces/Foadian/UNFINIT)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -19,7 +19,29 @@ pinned: false
 
 ---
 
-## 🌟 قابلیت‌های برجسته در نگارش v0.4.3
+## 🌟 قابلیت‌های برجسته در نگارش v0.4.4
+
+### ۱. هات‌فیکس بحرانی و ریشه‌ای ثبت رفرال (Referral Sync Fix)
+- **حذف فراخوانی ناهمگام نامعتبر (`await`):** اصلاح فراخوانی متد کاملاً سنکرون `ReferralService.record_referral` در تلگرام و بله و برطرف شدن قطعی خطای `TypeError: object tuple can't be used in 'await' expression`.
+
+### ۲. ساختار جامع باشگاه پریمیوم VIP (VIP Club)
+- **تب ۸ سایدبار پنل وب:** تجمیع فرکانس فراوانی و نشانه امروز من ذیل عنوان «💎 اشتراک پریمیوم و محتوا».
+- **تنظیمات پلن اشتراک ماهانه:** تعیین هزینه ماهانه، دوره، شماره کارت و توکن درگاه بله، ذخیره‌سازی ابری، ستون `vip_until` در دیتابیس و دکمه شیشه‌ای دعوت در تلگرام و بله.
+
+### ۳. شخصی‌سازی و اصلاح متادیتای «نشانه امروز من»
+- **تاریخ شمسی رسمی با ارقام فارسی:** جایگزینی کامل با فرمت پاک بدون برندینگ و فوترهای اضافی.
+- **تگ خواننده متادیتا و سرفصل‌های آگاهی:** تعیین داینامیک `sign_reader_tag` و استخراج هوشمند `chapters` با سوییچ فعال‌سازی.
+
+### ۴. بهینه‌سازی فرانت‌اند و اکشن‌های بدون رفرش (Zero Page-Reload)
+- **اصلاح بستن مودال‌ها:** خروج متدهای `closeEditModal` به اسکوپ سراسری و رفع خطای دکمه‌های انصراف و ضربدر.
+- **انتخاب همزمان رسانه:** چک‌باکس‌های مستقل MP3 و MP4 در مودال ارسال هدیه و حذف درگ و تکان‌های ناخواسته سایدبار.
+- **هویت داینامیک سروش‌پلاس:** استخراج داینامیک شناسه و شماره کاربر و ارسال مستقیم از طریق پروتکل رسمی کلاینت کاربری (`splusthon`).
+
+---
+
+## 🌟 قابلیت‌های نگارش‌های پیشین
+
+### نگارش v0.4.3
 
 ### ۱. عیب‌یابی ریشه‌ای و رفع کرش جاوااسکریپت پنل وب (Web Panel JS Syntax Fix)
 - **رفع خطای Uncaught SyntaxError:** بازنویسی کامل بخش‌های تزریق کد با استفاده استاندارد از متدهای DOM (`document.createElement`) به جای اینجکشن رشته‌های تک‌کوتیشن تودرتو و فرار صحیح کاراکترهای سطر جدید در f-string‌های پایتون.

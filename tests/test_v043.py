@@ -32,16 +32,16 @@ class TestVersion043Features(unittest.TestCase):
     """مجموعه آزمون‌های خودکار جهت اعتبارسنجی امکانات و هات‌فیکس‌های نگارش v0.4.3."""
 
     def test_01_version_v043_sync(self):
-        """اعتبارسنجی نسخه v0.4.3 در تمام بخش‌های اصلی سیستم."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.4.3")
+        """اعتبارسنجی نسخه v0.4.3 و نسخه‌های بعدی در تمام بخش‌های اصلی سیستم."""
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.4.3", "v0.4.4"))
         health = get_system_health()
-        self.assertIn("v0.4.3", health["engine_version"])
+        self.assertTrue(any(v in health["engine_version"] for v in ("v0.4.3", "v0.4.4")))
 
         dash_html = render_dashboard_html()
-        self.assertIn("v0.4.3", dash_html)
+        self.assertTrue(any(v in dash_html for v in ("v0.4.3", "v0.4.4")))
 
         store_html = render_storefront_html()
-        self.assertIn("v0.4.3", store_html)
+        self.assertTrue(any(v in store_html for v in ("v0.4.3", "v0.4.4")))
 
     def test_02_web_panel_js_scripts_syntax(self):
         """اعتبارسنجی عدم وجود کرش، رشته‌های شکسته یا سینتکس نامعتبر در اسکریپت‌های وب‌پنل."""

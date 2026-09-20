@@ -169,6 +169,12 @@ async def get_all_settings_async() -> dict:
         "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"),
         "APPLY_DEFAULT_ARTIST_TAG": (await get_system_setting("apply_default_artist_tag", str(getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True)))).lower() in ("true", "1", "yes"),
         "CASHBACK_PERCENT": float(await get_system_setting("cashback_percent", str(getattr(config, "CASHBACK_PERCENT", 0.0))) or 0.0),
+        "VIP_MONTHLY_PRICE": str(await get_system_setting("vip_monthly_price", "111000")),
+        "VIP_DURATION_DAYS": str(await get_system_setting("vip_duration_days", "30")),
+        "VIP_CARD_NUMBER": str(await get_system_setting("vip_card_number", "")),
+        "VIP_BALE_PAYMENT_TOKEN": mask_secret(await get_system_setting("vip_bale_payment_token", "")),
+        "SIGN_READER_TAG": str(await get_system_setting("sign_reader_tag", "abasmanesh365")),
+        "SIGN_EXTRACT_CHAPTERS": (await get_system_setting("sign_extract_chapters", "1")) == "1",
     }
 
 def get_all_settings() -> dict:
@@ -780,6 +786,38 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path == "/api/vip/settings":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                async def _get_vip_cfg():
+                    p = await get_system_setting("vip_monthly_price", "111000")
+                    d = await get_system_setting("vip_duration_days", "30")
+                    c_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
+                    b_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
+                    r_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
+                    c_ch = await get_system_setting("sign_extract_chapters", "1")
+                    return {
+                        "ok": True,
+                        "vip_monthly_price": p,
+                        "vip_duration_days": d,
+                        "vip_card_number": c_num,
+                        "vip_bale_payment_token": b_tok,
+                        "sign_reader_tag": r_tag,
+                        "sign_extract_chapters": c_ch == "1"
+                    }
+                res_data = loop.run_until_complete(_get_vip_cfg())
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res_data, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path == "/api/payment/zarinpal/callback":
             query_params = urllib.parse.parse_qs(parsed.query)
             order_id = (query_params.get("order_id", [""])[0]).strip()
@@ -1073,6 +1111,36 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path == "/api/vip/settings":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                async def _save_vip_cfg():
+                    if "vip_monthly_price" in payload:
+                        await set_system_setting("vip_monthly_price", str(payload["vip_monthly_price"]))
+                    if "vip_duration_days" in payload:
+                        await set_system_setting("vip_duration_days", str(payload["vip_duration_days"]))
+                    if "vip_card_number" in payload:
+                        await set_system_setting("vip_card_number", str(payload["vip_card_number"]))
+                    if "vip_bale_payment_token" in payload:
+                        await set_system_setting("vip_bale_payment_token", str(payload["vip_bale_payment_token"]))
+                    if "sign_reader_tag" in payload:
+                        await set_system_setting("sign_reader_tag", str(payload["sign_reader_tag"]))
+                    if "sign_extract_chapters" in payload:
+                        await set_system_setting("sign_extract_chapters", "1" if payload["sign_extract_chapters"] else "0")
+                    return True
+                loop.run_until_complete(_save_vip_cfg())
+                loop.close()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "message": "تنظیمات اشتراک پریمیوم و نشانه با موفقیت ذخیره شد."}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
         elif path == "/api/frequencies/import":
             try:

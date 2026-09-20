@@ -73,7 +73,23 @@ class UserModel:
         self.successful_invites: int = int(data.get("successful_invites", 0) or 0)
         self.terms_accepted: bool = bool(data.get("terms_accepted", False) or data.get("commitment_signed", False))
         self.wallet_balance: int = int(data.get("wallet_balance", 0) or 0)
+        self.vip_until: str = str(data.get("vip_until") or "").strip()
         self.created_at: str = str(data.get("created_at") or get_tehran_now_str())
+
+    def is_vip(self) -> bool:
+        """
+        بررسی فعال بودن اشتراک ویژه (VIP) کاربر.
+        """
+        v_str = getattr(self, "vip_until", "")
+        if not v_str:
+            return False
+        try:
+            if v_str.isdigit():
+                return float(v_str) > datetime.now(timezone.utc).timestamp()
+            dt = datetime.fromisoformat(v_str.replace("Z", "+00:00"))
+            return dt > datetime.now(TEHRAN_TZ)
+        except Exception:
+            return False
 
     def to_dict(self) -> Dict[str, Any]:
         u_id = self.user_id or self.telegram_id or self.bale_id or self.phone or ""
@@ -98,6 +114,8 @@ class UserModel:
             "terms_accepted": self.terms_accepted,
             "commitment_signed": self.terms_accepted,
             "wallet_balance": getattr(self, "wallet_balance", 0),
+            "vip_until": getattr(self, "vip_until", ""),
+            "is_vip": self.is_vip(),
             "created_at": self.created_at
         }
 
@@ -259,7 +277,61 @@ class UserService:
                 return u
             if u.bale_id and u.bale_id == clean_c:
                 return u
+    @classmethod
+    def get_user_by_any_id(cls, identifier: Union[str, int]) -> Optional[UserModel]:
+        """
+        یافتن کاربر بر اساس هر یک از شناسه‌ها (شماره تلفن، شناسه تلگرام، شناسه بله، یا شناسه عمومی).
+        """
+        ident = str(identifier).strip()
+        if not ident:
+            return None
+        users = cls.load_users()
+        norm_p = normalize_phone(ident)
+        if norm_p and norm_p in users:
+            return users[norm_p]
+        for u in users.values():
+            if ident in (u.phone, u.telegram_id, u.bale_id, u.user_id):
+                return u
         return None
+
+    @classmethod
+    def set_user_vip(cls, identifier: Union[str, int], days: int = 30) -> bool:
+        """
+        فعال‌سازی یا تمدید اشتراک ویژه پریمیوم (VIP) برای کاربر به مدت روزهای مشخص‌شده.
+
+        ورودی‌ها:
+            identifier: شناسه کاربری، تلفن، تلگرام یا بله
+            days: مدت اعتبار به روز (پیش‌فرض ۳۰ روز)
+        خروجی:
+            bool: موفقیت‌آمیز بودن ثبت اشتراک
+        """
+        user = cls.get_user_by_any_id(identifier)
+        if not user:
+            return False
+        now_ts = datetime.now(timezone.utc).timestamp()
+        current_vip_until = 0.0
+        if getattr(user, "vip_until", None):
+            try:
+                v_str = str(user.vip_until).strip()
+                if v_str.isdigit():
+                    current_vip_until = float(v_str)
+                else:
+                    current_vip_until = datetime.fromisoformat(v_str.replace("Z", "+00:00")).timestamp()
+            except Exception:
+                current_vip_until = 0.0
+        start_ts = max(now_ts, current_vip_until)
+        new_vip_ts = start_ts + (days * 86400)
+        user.vip_until = str(int(new_vip_ts))
+        cls.save_users()
+        return True
+
+    @classmethod
+    def is_user_vip(cls, identifier: Union[str, int]) -> bool:
+        """
+        بررسی آنی اینکه آیا کاربر مورد نظر دارای اشتراک فعال پریمیوم (VIP) است یا خیر.
+        """
+        user = cls.get_user_by_any_id(identifier)
+        return user.is_vip() if user else False
 
     @classmethod
     def link_platform_user(

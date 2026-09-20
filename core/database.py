@@ -489,10 +489,15 @@ async def init_db():
             phone TEXT NOT NULL DEFAULT '',
             terms_accepted INTEGER NOT NULL DEFAULT 0,
             wallet_balance INTEGER NOT NULL DEFAULT 0,
+            vip_until TEXT NOT NULL DEFAULT '',
             platform TEXT NOT NULL DEFAULT 'telegram',
             created_at TEXT NOT NULL
         )
         """)
+        try:
+            cur.execute("ALTER TABLE customers ADD COLUMN vip_until TEXT NOT NULL DEFAULT ''")
+        except Exception:
+            pass
 
         cur.execute("""
         CREATE TABLE IF NOT EXISTS support_tickets (

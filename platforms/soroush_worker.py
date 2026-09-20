@@ -23,7 +23,6 @@ class SoroushWorker:
     """
     WEB_API_BASE = "https://web.splus.ir/api/"
     API_BASE = "https://api.splus.ir/"
-    BOT_API_BASE = "https://bot.splus.ir/"
 
     def __init__(self, session_name: str = "soroush"):
         self.session_name = session_name
@@ -154,7 +153,7 @@ class SoroushWorker:
     def get_masked_phone(self) -> str:
         """
         تولید برچسب هویتی کاملاً پویا و شفاف برای کاربر سروش‌پلاس بدون هیچ هاردکد.
-        شامل نام کاربر، شماره ماسک‌شده و شناسه عددی.
+        شامل نام کاربر، شماره و شناسه عددی حساب.
         """
         if not self.is_connected() or not self._session_data:
             return ""
@@ -164,24 +163,16 @@ class SoroushWorker:
         user_id = str(self._session_data.get("user_id", "")).strip()
         phone = str(self._session_data.get("phone", "")).strip().replace("+", "")
 
-        masked_ph = ""
-        if len(phone) >= 10 and phone.isdigit():
-            masked_ph = f"{phone[:4]}***{phone[-4:]}"
-        elif phone and phone not in ("سشن وب سروش", "سشن دستی وب", "دستی", f"حساب {user_id}"):
-            masked_ph = phone
-
         parts = []
+        if user_id and user_id not in ("manual", "gramjs_user", "0", ""):
+            parts.append(f"شناسه حساب: {user_id}")
+        if phone and phone not in ("سشن وب سروش", "سشن دستی وب", "دستی", f"حساب {user_id}"):
+            parts.append(f"شماره: {phone}")
         if first_name:
             parts.append(first_name)
-        if masked_ph:
-            parts.append(masked_ph)
-        if user_id and user_id not in ("manual", "gramjs_user", "0", "", phone):
-            parts.append(f"شناسه: {user_id}")
 
         if parts:
             return " | ".join(parts)
-        if masked_ph:
-            return masked_ph
         return "حساب متصل (سشن وب)"
 
     def get_status(self) -> Dict[str, Any]:
@@ -301,8 +292,9 @@ class SoroushWorker:
     ) -> Dict[str, Any]:
         """
         ارسال امن فایل رسانه‌ای به بخش پیام‌های ذخیره‌شده (Saved Messages) حساب سروش‌پلاس.
-        این متد ابتدا فایل را از طریق اندپوینت‌های رسمی آپلود کرده و سپس پیام را ثبت می‌کند.
-        در صورت عدم دسترسی سرور یا بازگشت خطای ۴۰۴، فایل در صف باینری محلی محافظت شده
+        این متد فایل را از طریق پروتکل رسمی کلاینت کاربری (splusthon) یا اندپوینت‌های وب کلاینت ارسال می‌کند.
+        ارسال از طریق ربات به دلیل تفاوت ماهیت سشن کاربر به طور کامل برچیده شده است.
+        در صورت عدم دسترسی سرور یا عدم برقراری ارتباط، فایل در صف باینری محلی محافظت شده
         و وضعیت به صورت گزارش شفاف و بدون پرتاب اکسپشن به کاربر اعلام می‌گردد.
 
         ورودی‌ها (پارامترها):
@@ -320,99 +312,112 @@ class SoroushWorker:
         if not p.exists() or not p.is_file():
             return {"ok": False, "error": f"فایل جهت ارسال یافت نشد: {file_path}"}
 
-        token = self._session_data.get("token", "")
-        headers = {"Authorization": f"Bearer {token}"}
+        token = str(self._session_data.get("token") or "").strip()
+        last_error = ""
 
-        # تعیین خودکار نوع رسانه
+        # ۱. تلاش برای ارسال مستقیم از طریق پروتکل کلاینت کاربری (splusthon / MTProto WebSocket)
+        key_bytes = None
+        try:
+            raw_k = token.strip('"').strip("'")
+            if len(raw_k) == 512:
+                key_bytes = bytes.fromhex(raw_k)
+            elif len(raw_k) == 256:
+                key_bytes = raw_k.encode('latin1')
+            else:
+                import base64
+                decoded = base64.b64decode(raw_k)
+                if len(decoded) == 256:
+                    key_bytes = decoded
+        except Exception:
+            key_bytes = None
+
+        if key_bytes:
+            try:
+                from splusthon import SoroushClient
+                from splusthon.sessions import MemorySession
+                from splusthon.crypto import AuthKey
+
+                mem = MemorySession()
+                mem.set_dc(2, "im-server.splus.ir", 443)
+                mem.auth_key = AuthKey(key_bytes)
+                client = SoroushClient(mem)
+                await client.connect()
+                if await client.is_user_authorized():
+                    sent = await client.send_file("me", str(p), caption=caption)
+                    await client.disconnect()
+                    logger.info(f"[soroush_worker] File sent via splusthon to Saved Messages: {p.name}")
+                    return {"ok": True, "file_id": str(getattr(sent, "id", "sent")), "message": "فایل با موفقیت به پیام‌های ذخیره‌شده ارسال شد."}
+                await client.disconnect()
+            except Exception as sp_err:
+                logger.debug(f"[soroush_worker] splusthon attempt note: {sp_err}")
+                last_error = f"کلاینت کاربری: {sp_err}"
+
+        # ۲. تلاش از طریق اندپوینت‌های وب کلاینت کاربری (بدون اندپوینت‌های بات)
         if not mime_type:
             mime_type, _ = mimetypes.guess_type(str(p))
             if not mime_type:
                 mime_type = "application/octet-stream"
 
+        headers = {"Authorization": f"Bearer {token}"}
         upload_endpoints = [
             f"{self.WEB_API_BASE}v1/upload",
             f"{self.WEB_API_BASE}upload",
             f"{self.API_BASE}v1/upload",
-            f"{self.API_BASE}upload",
-            f"{self.BOT_API_BASE}uploadFile",
+            f"{self.API_BASE}upload"
         ]
 
         file_id = None
-        last_error = "سرورهای ابری آپلود سروش‌پلاس در این لحظه پاسخگو نبودند"
-
-        # ۱. تلاش برای آپلود در اندپوینت‌های وب‌سرویس سروش‌پلاس
         for endpoint in upload_endpoints:
             try:
                 async with aiohttp.ClientSession() as session:
                     data = aiohttp.FormData()
                     with open(str(p), "rb") as f_bin:
-                        data.add_field(
-                            "file",
-                            f_bin.read(),
-                            filename=p.name,
-                            content_type=mime_type
-                        )
-                    async with session.post(endpoint, data=data, headers=headers, timeout=30) as up_resp:
+                        data.add_field("file", f_bin.read(), filename=p.name, content_type=mime_type)
+                    async with session.post(endpoint, data=data, headers=headers, timeout=25) as up_resp:
                         if up_resp.status == 200:
                             up_res = await up_resp.json()
                             file_id = up_res.get("file_id") or up_res.get("result", {}).get("file_id")
                             if file_id:
-                                logger.info(f"[soroush_worker] File uploaded successfully to {endpoint}: file_id={file_id}")
                                 break
                         else:
                             last_error = f"HTTP {up_resp.status} on {endpoint}"
-                            logger.debug(f"[soroush_worker] Upload attempt on {endpoint} returned status {up_resp.status}")
-            except aiohttp.ClientConnectorError as e:
-                last_error = f"عدم دسترسی به سرور {endpoint}: {e}"
-                logger.debug(f"[soroush_worker] Endpoint {endpoint} unreachable: {e}")
-            except Exception as e:
-                last_error = f"خطا در {endpoint}: {e}"
-                logger.debug(f"[soroush_worker] Upload error on {endpoint}: {e}")
-
-        # در صورت عدم موفقیت آپلود (مانند پاسخ ۴۰۴ یا قطعی موقت)، فایل در صف باینری امن ذخیره می‌شود
-        if not file_id:
-            logger.warning(f"[soroush_worker] File upload unreachable ({last_error}). Staging into resilient local binary queue.")
-            try:
-                import shutil
-                import time
-                queue_dir = config.DATA_DIR / "soroush_queue"
-                queue_dir.mkdir(parents=True, exist_ok=True)
-                q_file = queue_dir / f"{int(time.time())}_{p.name}"
-                shutil.copy2(str(p), str(q_file))
-            except Exception as q_err:
-                logger.debug(f"[soroush_worker] Queue staging note: {q_err}")
-
-            return {
-                "ok": False,
-                "queued": True,
-                "error": f"اندپوینت آپلود سروش‌پلاس پاسخ ناموفق داد ({last_error}). فایل جهت ارسال مجدد در صف امن محلی ثبت شد."
-            }
-
-        # ۲. ارسال پیام به Saved Messages پس از دریافت شناسه فایل
-        send_endpoints = [
-            f"{self.WEB_API_BASE}messages/send",
-            f"{self.API_BASE}messages/send"
-        ]
-        msg_payload = {
-            "peer": "saved_messages",
-            "text": caption or p.name,
-            "file_id": file_id,
-            "mime_type": mime_type
-        }
-
-        for s_url in send_endpoints:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(s_url, json=msg_payload, headers=headers, timeout=20) as msg_resp:
-                        if msg_resp.status == 200:
-                            logger.info(f"[soroush_worker] File successfully dispatched to Saved Messages: {p.name}")
-                            return {"ok": True, "file_id": file_id}
-                        else:
-                            last_error = f"HTTP {msg_resp.status}"
             except Exception as e:
                 last_error = str(e)
 
-        return {"ok": False, "error": f"خطا در ارسال پیام به Saved Messages سروش‌پلاس ({last_error})"}
+        if file_id:
+            send_endpoints = [
+                f"{self.WEB_API_BASE}messages/send",
+                f"{self.API_BASE}messages/send"
+            ]
+            msg_payload = {
+                "peer": "saved_messages",
+                "text": caption or p.name,
+                "file_id": file_id,
+                "mime_type": mime_type
+            }
+            for s_url in send_endpoints:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(s_url, json=msg_payload, headers=headers, timeout=15) as msg_resp:
+                            if msg_resp.status == 200:
+                                return {"ok": True, "file_id": file_id, "message": "فایل با موفقیت ارسال شد."}
+                except Exception as e:
+                    last_error = str(e)
+
+        # در صورت عدم برقراری ارتباط در لحظه، فایل در صف باینری امن محلی ذخیره می‌شود
+        try:
+            import shutil
+            import time
+            q_file = self.queue_dir / f"{int(time.time())}_{p.name}"
+            shutil.copy2(str(p), str(q_file))
+        except Exception as q_err:
+            logger.debug(f"[soroush_worker] Queue error: {q_err}")
+
+        return {
+            "ok": False,
+            "queued": True,
+            "error": f"ارسال به سروش‌پلاس در این لحظه میسر نشد ({last_error}). فایل در صف محلی جهت ارسال بعدی ذخیره شد."
+        }
 
 # Singleton worker instance
 soroush_worker = SoroushWorker()

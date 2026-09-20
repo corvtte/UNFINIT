@@ -882,7 +882,7 @@ def render_dashboard_html() -> str:
             <!-- Sidebar Navigation Items (8 Views) with Drag & Drop -->
             <nav class="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar" id="sidebarNavList">
                 <!-- 1. Dashboard -->
-                <button draggable="true" type="button" onclick="switchTab('dashboard'); toggleSidebar(false);" data-tab="dashboard" id="s-btn-tab-dashboard" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing active">
+                <button type="button" onclick="switchTab('dashboard'); toggleSidebar(false);" data-tab="dashboard" id="s-btn-tab-dashboard" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60 active">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
                     </svg>
@@ -890,7 +890,7 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 2. Downloads -->
-                <button draggable="true" type="button" onclick="switchTab('downloads'); toggleSidebar(false);" data-tab="downloads" id="s-btn-tab-downloads" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('downloads'); toggleSidebar(false);" data-tab="downloads" id="s-btn-tab-downloads" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
@@ -899,7 +899,7 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 3. Studio -->
-                <button draggable="true" type="button" onclick="switchTab('studio'); toggleSidebar(false);" data-tab="studio" id="s-btn-tab-studio" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('studio'); toggleSidebar(false);" data-tab="studio" id="s-btn-tab-studio" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
@@ -908,7 +908,7 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 4. Courses -->
-                <button draggable="true" type="button" onclick="switchTab('courses'); toggleSidebar(false);" data-tab="courses" id="s-btn-tab-courses" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('courses'); toggleSidebar(false);" data-tab="courses" id="s-btn-tab-courses" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
@@ -917,7 +917,7 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 5. Orders -->
-                <button draggable="true" type="button" onclick="switchTab('orders'); toggleSidebar(false);" data-tab="orders" id="s-btn-tab-orders" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('orders'); toggleSidebar(false);" data-tab="orders" id="s-btn-tab-orders" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
@@ -925,7 +925,7 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 6. Users -->
-                <button draggable="true" type="button" onclick="switchTab('users'); toggleSidebar(false);" data-tab="users" id="s-btn-tab-users" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('users'); toggleSidebar(false);" data-tab="users" id="s-btn-tab-users" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                     </svg>
@@ -933,24 +933,24 @@ def render_dashboard_html() -> str:
                 </button>
 
                 <!-- 7. Tokens & AI -->
-                <button draggable="true" type="button" onclick="switchTab('tokens'); toggleSidebar(false);" data-tab="tokens" id="s-btn-tab-tokens" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('tokens'); toggleSidebar(false);" data-tab="tokens" id="s-btn-tab-tokens" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                     </svg>
                     <span class="flex-1 text-right">سکرت‌ها و هوش مصنوعی</span>
                 </button>
 
-                <!-- 8. Frequencies -->
-                <button draggable="true" type="button" onclick="switchTab('frequencies'); toggleSidebar(false);" data-tab="frequencies" id="s-btn-tab-frequencies" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
-                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                <!-- 8. VIP Club & Frequencies -->
+                <button type="button" onclick="switchTab('frequencies'); toggleSidebar(false);" data-tab="frequencies" id="s-btn-tab-frequencies" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
-                    <span class="flex-1 text-right">فرکانس فراوانی</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-indigo-400 font-mono">{frequencies_count}</span>
+                    <span class="flex-1 text-right">اشتراک پریمیوم و محتوا</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-indigo-400 font-mono">VIP</span>
                 </button>
 
                 <!-- 9. Settings & Logs -->
-                <button draggable="true" type="button" onclick="switchTab('settings'); toggleSidebar(false);" data-tab="settings" id="s-btn-tab-settings" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-grab active:cursor-grabbing">
+                <button type="button" onclick="switchTab('settings'); toggleSidebar(false);" data-tab="settings" id="s-btn-tab-settings" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.241.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
@@ -991,13 +991,13 @@ def render_dashboard_html() -> str:
 
         <!-- Hidden Compatibility Elements for Legacy Test Assertions -->
         <div id="desktopNavTabs" class="hidden overflow-x-auto select-none touch-pan-x" style="display: none !important;">
-            <button draggable="true" data-tab="studio" id="btn-tab-studio" class="tab-btn active shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
-            <button draggable="true" data-tab="courses" id="btn-tab-courses" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
-            <button draggable="true" data-tab="downloads" id="btn-tab-downloads" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
-            <button draggable="true" data-tab="orders" id="btn-tab-orders" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
-            <button draggable="true" data-tab="tokens" id="btn-tab-tokens" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
-            <button draggable="true" data-tab="frequencies" id="btn-tab-frequencies" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
-            <button draggable="true" data-tab="settings" id="btn-tab-settings" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-grab active:cursor-grabbing"></button>
+            <button type="button" data-tab="studio" id="btn-tab-studio" class="tab-btn active shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border border-slate-700 cursor-pointer"></button>
+            <button type="button" data-tab="courses" id="btn-tab-courses" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"></button>
+            <button type="button" data-tab="downloads" id="btn-tab-downloads" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"></button>
+            <button type="button" data-tab="orders" id="btn-tab-orders" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"></button>
+            <button type="button" data-tab="tokens" id="btn-tab-tokens" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"></button>
+            <button type="button" data-tab="frequencies" id="btn-tab-frequencies" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"></button>
+            <button type="button" data-tab="settings" id="btn-tab-settings" class="tab-btn shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"></button>
         </div>
         <div id="mobileDrawer" class="hidden" style="display: none !important;"></div>
         <div id="mobileNavMenu" class="hidden" style="display: none !important;">
@@ -2513,8 +2513,78 @@ def render_dashboard_html() -> str:
             </div>
         </div>
 
-        <!-- ================= 9. FREQUENCIES TAB (ورق‌زن فرکانس فراوانی) ================= -->
+        <!-- ================= 9. FREQUENCIES & VIP TAB (اشتراک پریمیوم و ورق‌زن فرکانس فراوانی) ================= -->
         <div id="tab-frequencies" class="hidden space-y-6">
+            <!-- ================= VIP CLUB & SIGN SETTINGS CARD ================= -->
+            <div id="vipClubSettingsCard" class="glass p-6 rounded-2xl space-y-5 border shadow-lg" style="border-color: var(--card-border); background: var(--glass-bg);">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 inline-flex items-center justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                </svg>
+                            </span>
+                            <span>تنظیمات پلن اشتراک پریمیوم (VIP Club) و نشانه روزانه</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">مدیریت قیمت اشتراک، درگاه‌ها و شخصی‌سازی متادیتای لید مگنت نشانه امروز من</p>
+                    </div>
+                    <div id="vipSaveToast" class="hidden text-xs font-bold text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-950/40">
+                        تنظیمات با موفقیت ذخیره شد.
+                    </div>
+                </div>
+
+                <form id="vipSettingsForm" onsubmit="saveVipSettings(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">هزینه اشتراک ماهانه (تومان)</label>
+                            <input type="text" id="cfgVipMonthlyPrice" inputmode="numeric" placeholder="مثال: ۱۱۱,۰۰۰" oninput="formatPriceInput(this)" required class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">مدت اعتبار پلن (روز)</label>
+                            <input type="number" id="cfgVipDurationDays" min="1" max="365" placeholder="۳۰" required class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">شماره کارت اختصاصی VIP</label>
+                            <input type="text" id="cfgVipCardNumber" placeholder="شماره کارت ۱۶ رقمی" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">توکن درگاه پرداخت بله VIP</label>
+                            <input type="password" id="cfgVipBaleToken" placeholder="توکن درگاه بانکی بله" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                        </div>
+                    </div>
+
+                    <!-- شخصی‌سازی لید مگنت نشانه امروز من -->
+                    <div class="p-3.5 rounded-xl border space-y-3" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <div class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>
+                            <span>شخصی‌سازی محتوای لید مگنت «نشانه امروز من»</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[11px] text-slate-300 mb-1">خواننده و منبع متادیتا (ID3 & Caption)</label>
+                                <input type="text" id="cfgSignReaderTag" placeholder="abasmanesh365" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);">
+                                <span class="text-[10px] text-slate-400 mt-1 block">این نام در متادیتای فایل صوتی و کپشن ارسالی جایگزین برندینگ خواهد شد.</span>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-200 mt-3">
+                                    <input type="checkbox" id="cfgSignExtractChapters" checked class="w-4 h-4 rounded text-cyan-600 focus:ring-0">
+                                    <span>استخراج و درج سرفصل‌های آگاهی فایل در کپشن نشانه</span>
+                                </label>
+                                <span class="text-[10px] text-slate-400 mr-6 mt-1">سرفصل‌ها و پیام‌های کلیدی فایل با لینک مستقیم به صورت استاندارد در بله و تلگرام نمایش داده می‌شود.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-1">
+                        <button type="submit" id="btnSaveVipSettings" class="theme-accent-btn px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm cursor-pointer">
+                            <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            <span>ذخیره تنظیمات اشتراک و نشانه</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             <div id="frequencyContent" class="glass p-6 rounded-2xl space-y-6 border" style="border-color: var(--card-border); background: var(--glass-bg);">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
                     <div>
@@ -2618,7 +2688,7 @@ def render_dashboard_html() -> str:
                         <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         <span>ویرایش دوره</span> <span id="modalProdIdBadge" class="text-xs font-mono text-cyan-400"></span>
                     </h3>
-                    <button onclick="closeEditModal()" class="p-1 rounded-lg border text-slate-400 hover:text-white transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                    <button type="button" id="btnEditModalCloseX" onclick="closeEditModal()" class="p-1 rounded-lg border text-slate-400 hover:text-white transition cursor-pointer" style="background: var(--input-bg); border-color: var(--card-border);">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -2720,7 +2790,7 @@ def render_dashboard_html() -> str:
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 pt-3 border-t sticky bottom-0 p-3 -mx-6 -mb-6 rounded-b-2xl z-10" style="background: var(--card-bg); border-color: var(--card-border);">
-                        <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl text-xs transition border theme-card-btn" style="color: var(--text-main);">انصراف</button>
+                        <button type="button" id="btnEditModalCancel" onclick="closeEditModal()" class="px-4 py-2 rounded-xl text-xs transition border theme-card-btn cursor-pointer" style="color: var(--text-main);">انصراف</button>
                         <button type="submit" class="px-5 py-2 rounded-xl theme-accent-btn text-xs font-bold transition shadow-md">ذخیره تغییرات</button>
                     </div>
                 </form>
@@ -2985,7 +3055,8 @@ def render_dashboard_html() -> str:
             <div class="glass-card max-w-md w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
                 <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                        <span>⚡️</span> انتقال هدیه دانلودی به پیام‌رسان‌ها
+                        <svg class="w-4 h-4 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                        <span>انتقال هدیه دانلودی به پیام‌رسان‌ها</span>
                     </h3>
                     <button type="button" onclick="closeFeedDispatchModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
                 </div>
@@ -2995,16 +3066,18 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
 
-                <!-- Dual Format Selector: MP3 vs MP4 -->
+                <!-- Dual Independent Format Checkboxes: MP3 & MP4 -->
                 <div class="space-y-1.5">
-                    <label class="text-[11px] text-slate-400 block font-medium">انتخاب فرمت رسانه:</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btnFormatAudio" onclick="setDispatchFormat('audio')" class="py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 theme-accent-btn">
-                            <span>🎙</span> نسخه صوتی MP3
-                        </button>
-                        <button type="button" id="btnFormatVideo" onclick="setDispatchFormat('video')" class="py-2 px-3 rounded-xl border border-slate-700 text-slate-300 bg-slate-800/80 hover:bg-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
-                            <span>🎬</span> نسخه تصویری MP4
-                        </button>
+                    <label class="text-[11px] text-slate-400 block font-medium">فرمت‌های رسانه جهت ارسال (امکان انتخاب همزمان هر دو):</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition hover:border-cyan-500/50" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="checkbox" id="chkFormatAudio" checked class="rounded text-cyan-600 focus:ring-0">
+                            <span style="color: var(--text-main);">نسخه صوتی (MP3)</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition hover:border-indigo-500/50" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="checkbox" id="chkFormatVideo" checked class="rounded text-indigo-600 focus:ring-0">
+                            <span style="color: var(--text-main);">نسخه تصویری (MP4)</span>
+                        </label>
                     </div>
                 </div>
 
@@ -3014,38 +3087,41 @@ def render_dashboard_html() -> str:
                     <div class="grid grid-cols-2 gap-2 text-xs">
                         <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
                             <input type="checkbox" id="chkDispatchTg" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                            <span class="text-slate-200">✈️ تلگرام</span>
+                            <span class="text-slate-200">تلگرام</span>
                         </label>
                         <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition">
                             <input type="checkbox" id="chkDispatchBale" checked class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
-                            <span class="text-slate-200">🟢 بله</span>
+                            <span class="text-slate-200">بله</span>
                         </label>
                         <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition">
                             <input type="checkbox" id="chkDispatchRubika" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-0">
-                            <span class="text-slate-200">👤 روبیکا کاربری</span>
+                            <span class="text-slate-200">روبیکا کاربری</span>
                         </label>
                         <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
                             <input type="checkbox" id="chkDispatchSoroush" class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                            <span class="text-slate-200">💬 سروش‌پلاس</span>
+                            <span class="text-slate-200">سروش‌پلاس</span>
                         </label>
                     </div>
 
                     <button type="button" onclick="executeFeedMultiDispatch()" id="btnExecuteMultiDispatch" class="w-full mt-2 py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                        <span>🚀</span> ارسال به پلتفرم‌های انتخاب‌شده
+                        <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                        <span>ارسال به پلتفرم‌های انتخاب‌شده</span>
                     </button>
                 </div>
 
                 <!-- Direct Add to Course Episodes Section -->
                 <div class="space-y-2 pt-3 border-t border-slate-700/60">
                     <label class="text-[11px] text-cyan-400 block font-bold flex items-center gap-1.5">
-                        <span>➕</span> افزودن مستقیم به سرفصل‌های دوره:
+                        <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        <span>افزودن مستقیم به سرفصل‌های دوره:</span>
                     </label>
                     <div class="flex flex-col gap-2">
                         <select id="feedCourseSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
                             <!-- Populated dynamically from window.COURSES_CACHE -->
                         </select>
                         <button type="button" onclick="addFeedToCourseEpisodes()" id="btnAddFeedToCourse" class="w-full py-2 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
-                            <span>📦</span> افزودن به عنوان قسمت جدید این دوره
+                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            <span>افزودن به عنوان قسمت جدید این دوره</span>
                         </button>
                     </div>
                 </div>
@@ -3402,8 +3478,8 @@ def render_dashboard_html() -> str:
                         desc: 'پیکربندی هوش چندمدله (VyceAI, Nara, Gemini) و توکن‌های پلتفرم‌ها'
                     }},
                     'frequencies': {{
-                        title: 'ورق‌زن فرکانس فراوانی',
-                        desc: 'مدیریت کارت‌های جملات تاکیدی، دسته‌بندی‌ها و نسخه پشتیبان JSON'
+                        title: 'باشگاه پریمیوم VIP و مدیریت محتوا',
+                        desc: 'تنظیمات اشتراک ماهانه VIP، شخصی‌سازی نشانه روزانه و کارت‌های فرکانس فراوانی'
                     }},
                     'settings': {{
                         title: 'تنظیمات سیستمی، دیتابیس و لاگ‌ها',
@@ -3471,6 +3547,7 @@ def render_dashboard_html() -> str:
                             if (typeof window.loadUsersData === 'function') window.loadUsersData();
                         }}
                         if (rawTab === 'frequencies') {{
+                            if (typeof window.loadVipSettings === 'function') window.loadVipSettings();
                             if (typeof window.loadFrequenciesTable === 'function') window.loadFrequenciesTable();
                         }}
                         if (rawTab === 'settings' || rawTab === 'tokens') {{
@@ -5290,10 +5367,24 @@ def render_dashboard_html() -> str:
                 alert('❌ لطفاً حداقل یک پلتفرم مقصد را انتخاب فرمایید.');
                 return;
             }}
-            const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
+
+            const wantAudio = !!document.getElementById('chkFormatAudio')?.checked;
+            const wantVideo = !!document.getElementById('chkFormatVideo')?.checked;
+            const urlsToDispatch = [];
+            if (wantAudio && pendingFeedAudioUrl) {{
+                urlsToDispatch.push({{ url: pendingFeedAudioUrl, label: 'صوتی MP3' }});
+            }}
+            if (wantVideo && pendingFeedVideoUrl) {{
+                urlsToDispatch.push({{ url: pendingFeedVideoUrl, label: 'تصویری MP4' }});
+            }}
+            if (urlsToDispatch.length === 0) {{
+                const fallbackUrl = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
+                if (fallbackUrl) urlsToDispatch.push({{ url: fallbackUrl, label: 'رسانه' }});
+            }}
+
             const title = pendingFeedDispatchTitle;
             closeFeedDispatchModal();
-            if (!url) return;
+            if (urlsToDispatch.length === 0) return;
 
             const resBox = document.getElementById('dispatchResult');
             if (resBox) {{
@@ -5302,28 +5393,28 @@ def render_dashboard_html() -> str:
             }}
             try {{
                 const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
-                const res = await fetch('/api/dispatch_url', {{
-                    method: 'POST',
-                    headers: {{
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + pwd,
-                        'X-Admin-Password': pwd
-                    }},
-                    body: JSON.stringify({{ url: url, targets: targets, target: targets.join(',') }})
-                }});
-                const data = await res.json();
-                if (data.ok) {{
-                    alert('✅ فایل هدیه با موفقیت به ' + (data.target || targets.join(' و ')) + ' منتقل شد!');
+                let allSuccess = true;
+                for (const item of urlsToDispatch) {{
+                    const res = await fetch('/api/dispatch_url', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + pwd,
+                            'X-Admin-Password': pwd
+                        }},
+                        body: JSON.stringify({{ url: item.url, targets: targets, target: targets.join(',') }})
+                    }});
+                    const data = await res.json();
+                    if (!data.ok) allSuccess = false;
+                }}
+                if (allSuccess) {{
+                    alert('✅ ارسال با موفقیت به ' + targets.join(' و ') + ' انجام شد!');
                     if (resBox) {{
                         resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
-                        resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت ارسال شد!');
+                        resBox.innerText = '✅ نسخه(های) انتخابی فایل هدیه با موفقیت ارسال شد!';
                     }}
                 }} else {{
-                    alert('❌ خطا در ارسال: ' + (data.error || 'عملیات ناموفق بود'));
-                    if (resBox) {{
-                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
-                        resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
-                    }}
+                    alert('⚠️ ارسال فایل‌ها به برخی مقاصد انجام شد.');
                 }}
             }} catch (err) {{
                 alert('❌ خطای ارتباط با سرور: ' + err.message);
@@ -5989,6 +6080,11 @@ def render_dashboard_html() -> str:
             window._currentPackageLessons = Array.isArray(pkgList) ? pkgList : [];
             renderPackageLessons();
 
+            if (window._currentPackageLessons && window._currentPackageLessons.length > 0) {{
+                const pkgBox = document.getElementById('editPackageBox');
+                if (pkgBox) pkgBox.classList.remove('hidden');
+            }}
+
             const statusEl = document.getElementById('bannerUploadStatus_editPhoto');
             if (statusEl) statusEl.innerText = '';
             updateCharCounter('editName', 'counter_editName', 32);
@@ -5997,8 +6093,11 @@ def render_dashboard_html() -> str:
         }}
 
         function closeEditModal() {{
-            document.getElementById('editModal').classList.add('hidden');
+            const m = document.getElementById('editModal');
+            if (m) m.classList.add('hidden');
         }}
+        window.closeEditModal = closeEditModal;
+        window.closeEditCourseModal = closeEditModal;
 
         function openEditModalById(pid) {{
             const course = (window.coursesData && window.coursesData[pid]) ? window.coursesData[pid] : null;
@@ -7348,6 +7447,95 @@ def render_dashboard_html() -> str:
                 container.innerHTML = '<div class="text-slate-500">صفحه نمایش لاگ‌ها پاکسازی شد.</div>';
             }}
         }}
+
+        /**
+         * بارگذاری تنظیمات پلن اشتراک پریمیوم (VIP Club) و نشانه روزانه
+         */
+        async function loadVipSettings() {{
+            try {{
+                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                const res = await fetch('/api/vip/settings', {{
+                    headers: {{
+                        'Authorization': 'Bearer ' + pwd,
+                        'X-Admin-Password': pwd
+                    }}
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    const p = document.getElementById('cfgVipMonthlyPrice');
+                    if (p) {{
+                        const raw = String(data.vip_monthly_price || '111000').replace(/[,،\\s]/g, '');
+                        p.value = Number(raw) ? Number(raw).toLocaleString('en-US') : '111,000';
+                    }}
+                    const d = document.getElementById('cfgVipDurationDays');
+                    if (d) d.value = data.vip_duration_days || '30';
+                    const c = document.getElementById('cfgVipCardNumber');
+                    if (c) c.value = data.vip_card_number || '';
+                    const b = document.getElementById('cfgVipBaleToken');
+                    if (b) b.value = data.vip_bale_payment_token || '';
+                    const r = document.getElementById('cfgSignReaderTag');
+                    if (r) r.value = data.sign_reader_tag || 'abasmanesh365';
+                    const ch = document.getElementById('cfgSignExtractChapters');
+                    if (ch) ch.checked = !!data.sign_extract_chapters;
+                }}
+            }} catch (err) {{
+                console.debug('loadVipSettings error', err);
+            }}
+        }}
+        window.loadVipSettings = loadVipSettings;
+
+        /**
+         * ذخیره غیرهمگام (AJAX) تنظیمات پلن اشتراک پریمیوم و نشانه روزانه بدون رفرش صفحه
+         */
+        async function saveVipSettings(e) {{
+            if (e && e.preventDefault) e.preventDefault();
+            const btn = document.getElementById('btnSaveVipSettings');
+            const toast = document.getElementById('vipSaveToast');
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerText = 'در حال ذخیره...';
+            }}
+            try {{
+                const rawPrice = (document.getElementById('cfgVipMonthlyPrice')?.value || '111000').replace(/[,،\\s]/g, '');
+                const payload = {{
+                    vip_monthly_price: parseInt(rawPrice) || 111000,
+                    vip_duration_days: parseInt(document.getElementById('cfgVipDurationDays')?.value || '30') || 30,
+                    vip_card_number: (document.getElementById('cfgVipCardNumber')?.value || '').trim(),
+                    vip_bale_payment_token: (document.getElementById('cfgVipBaleToken')?.value || '').trim(),
+                    sign_reader_tag: (document.getElementById('cfgSignReaderTag')?.value || 'abasmanesh365').trim(),
+                    sign_extract_chapters: !!document.getElementById('cfgSignExtractChapters')?.checked
+                }};
+
+                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                const res = await fetch('/api/vip/settings', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + pwd,
+                        'X-Admin-Password': pwd
+                    }},
+                    body: JSON.stringify(payload)
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    if (toast) {{
+                        toast.classList.remove('hidden');
+                        toast.innerText = '✅ تنظیمات اشتراک پریمیوم و نشانه با موفقیت ذخیره شد.';
+                        setTimeout(() => {{ toast.classList.add('hidden'); }}, 4000);
+                    }}
+                }} else {{
+                    alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || 'ناموفق'));
+                }}
+            }} catch (err) {{
+                alert('❌ خطای ارتباط با سرور: ' + err.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg><span>ذخیره تنظیمات اشتراک و نشانه</span>';
+                }}
+            }}
+        }}
+        window.saveVipSettings = saveVipSettings;
 
         /**
          * بارگذاری لیست کامل کارت‌های فرکانس فراوانی و رندر سطرها به همراه دکمه‌های ویرایش و حذف.

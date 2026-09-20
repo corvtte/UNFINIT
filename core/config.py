@@ -21,8 +21,8 @@ def _clean_text(text: str, default: str = "") -> str:
             pass
         return default
     return text.strip()
-# نگارش‌های پشتیبانی‌شده: v0.1.0 تا v0.4.3
-# Supported versions: v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6, v0.2.7, v0.2.8, v0.2.9, v0.3.0, v0.3.1, v0.3.2, v0.3.3, v0.3.4, v0.3.5, v0.3.6, v0.3.7, v0.3.8, v0.3.9, v0.4.0, v0.4.1, v0.4.2, v0.4.3
+# نگارش‌های پشتیبانی‌شده: v0.1.0 تا v0.4.4
+# Supported versions: v0.1.0, v0.2.0, v0.2.1, v0.2.2, v0.2.3, v0.2.4, v0.2.5, v0.2.6, v0.2.7, v0.2.8, v0.2.9, v0.3.0, v0.3.1, v0.3.2, v0.3.3, v0.3.4, v0.3.5, v0.3.6, v0.3.7, v0.3.8, v0.3.9, v0.4.0, v0.4.1, v0.4.2, v0.4.3, v0.4.4
 class VersionStr(str):
     """
     کلاس مدیریت و مقایسه هوشمند رشته نگارش موتور استور انجین UNFINIT.
@@ -61,7 +61,7 @@ class Config:
     این کلاس وظیفه خواندن متغیرهای محیطی، مقادیر پیش‌فرض امن، مسیرهای دایرکتوری داده،
     آپلودها، سشن‌ها، و تنظیمات ارتباط با پلتفرم‌های پیام‌رسان و هوش مصنوعی را بر عهده دارد.
     """
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.4.3").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.4.4").strip())
     THEME: str = (os.environ.get("THEME") or "default-dark").strip()
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
@@ -216,7 +216,7 @@ class Config:
         self.DATA_ENCRYPTION_KEY = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
         self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "true").strip().lower() in ("true", "1", "yes")
         self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.4.3").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.4.4").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -292,7 +292,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.4.3").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.4.4").strip())
 
 config = Config()
 config.TEMP_DIR.mkdir(parents=True, exist_ok=True)
