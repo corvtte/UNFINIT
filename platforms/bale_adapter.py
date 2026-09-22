@@ -2198,15 +2198,23 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         bale_pay_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
                                         
                                         txt = (
-                                            "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                                            "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت ۳۰ روز دسترسی کامل خواهید داشت.\n\n"
-                                            f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
+                                            "💎 <b>اشتراک پریمیوم</b>\n\n"
+                                            "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
+                                            "۱) درک عمیق‌تر قوانین خدا\n"
+                                            "۲) پروژه تغییر را در آغوش بگیر\n"
+                                            "۳) پروژه مهاجرت به مدار بالاتر\n"
+                                            "۴) پروژه خانه‌تکانی ذهن\n"
+                                            "۵) روزشمار تحول زندگی من\n\n"
+                                            "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
+                                            "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                                            f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
                                         )
                                         vip_btns = []
                                         if bale_pay_tok:
                                             vip_btns.append([{"text": f"⚡️ پرداخت آنلاین و فعال‌سازی آنی ({price_formatted} تومان)", "callback_data": "bale:vip_pay_online"}])
                                         if card_num:
-                                            txt += f"\n💳 <b>شماره کارت واریز:</b>\n<code>{card_num}</code>\n"
+                                            txt += f"\n💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n"
                                             vip_btns.append([{"text": "🧾 ارسال رسید واریز کارت به کارت", "callback_data": "bale:vip_pay_card"}])
                                         vip_btns.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns} if vip_btns else None)
@@ -2226,8 +2234,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         days = await get_system_setting("vip_duration_days", "30")
                                         res_inv = await bale.send_invoice(
                                             chat_id=chat_id,
-                                            title="اشتراک ویژه ۳۰ روزه VIP",
-                                            description=f"فعال‌سازی آنی اشتراک باشگاه پریمیوم VIP ({days} روز)",
+                                            title="اشتراک پریمیوم ۳۰ روزه",
+                                            description=f"فعال‌سازی آنی اشتراک پریمیوم ({days} روز)",
                                             payload=inv_payload,
                                             provider_token=bale_pay_tok,
                                             amount_tomans=price_val
@@ -2241,7 +2249,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         session_manager.set_user_action(f"bale_{chat_id}", "await_vip_receipt", "vip_receipt", extra={})
                                         await bale.send_message(
                                             chat_id,
-                                            "🧾 <b>ثبت فیش واریز اشتراک VIP:</b>\n\n"
+                                            "🧾 <b>ثبت فیش واریز اشتراک پریمیوم:</b>\n\n"
                                             "لطفاً تصویر رسید واریز یا شماره پیگیری خود را ارسال فرمایید تا پس از بررسی فعال شود:\n"
                                             "(جهت انصراف عبارت <code>/cancel</code> را بفرستید)"
                                         )
@@ -2252,7 +2260,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             "inline_keyboard": [
                                                 [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
                                                 [{"text": "🎧 کتاب‌های صوتی", "callback_data": "bale:prods_audiobooks"}],
-                                                [{"text": "💎 اشتراک ویژه (VIP)", "callback_data": "vip_club_info"}]
+                                                [{"text": "💎 اشتراک پریمیوم", "callback_data": "vip_club_info"}]
                                             ]
                                         }
                                         await bale.send_message(chat_id, "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\nلطفاً بخش مورد نظر خود را انتخاب نمایید:", reply_markup=p_kb)
@@ -2849,13 +2857,13 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if payload_raw.startswith("vip_sub_"):
                                             days_val = int(await get_system_setting("vip_duration_days", "30"))
                                             u_vip = UserService.grant_vip(str(chat_id), days=days_val)
-                                            logger.info(f"Bale successful_payment: VIP activated for {chat_id} until {getattr(u_vip, 'vip_until', '')}")
+                                            logger.info(f"Bale successful_payment: Premium activated for {chat_id} until {getattr(u_vip, 'vip_until', '')}")
                                             vip_until_show = getattr(u_vip, 'vip_until', '')[:10] if u_vip else ""
                                             await bale.send_message(
                                                 chat_id,
                                                 f"🎉 <b>پرداخت شما با موفقیت تایید شد!</b>\n\n"
-                                                f"💎 اشتراک <b>باشگاه پریمیوم VIP</b> برای شما به مدت <b>{days_val} روز</b> (تا {vip_until_show}) فعال گردید.\n\n"
-                                                f"از این پس می‌توانید به تمامی دوره‌ها، نشانه‌های روزانه و فرکانس‌های آگاهی به عنوان کاربر ویژه دسترسی داشته باشید. ✨",
+                                                f"💎 <b>اشتراک پریمیوم</b> برای شما به مدت <b>{days_val} روز</b> (تا {vip_until_show}) فعال گردید.\n\n"
+                                                f"از این پس می‌توانید به تمامی پروژه‌های ۵‌گانه تحول، دوره‌ها، نشانه‌های روزانه و فرکانس‌های آگاهی به عنوان کاربر ویژه دسترسی داشته باشید. ✨",
                                                 reply_markup=get_bale_customer_keyboard()
                                             )
                                             continue
@@ -2928,7 +2936,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                             vip_kb = {
                                                 "inline_keyboard": [
-                                                    [{"text": "💎 عضویت در باشگاه پریمیوم VIP", "callback_data": "vip_club_info"}]
+                                                    [{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}]
                                                 ]
                                             }
                                             perf_title = reader_tag or "نشانه امروز"
@@ -2957,7 +2965,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["💎 عضویت در باشگاه پریمیوم VIP", "عضویت در باشگاه پریمیوم VIP", "باشگاه پریمیوم", "اشتراک VIP", "/vip"]):
+                                    if any(text.startswith(cmd) for cmd in ["💎 عضویت در اشتراک پریمیوم", "💎 عضویت در باشگاه پریمیوم VIP", "عضویت در اشتراک پریمیوم", "اشتراک پریمیوم", "باشگاه پریمیوم", "اشتراک VIP", "/vip", "/premium"]):
                                         price = await get_system_setting("vip_monthly_price", "111000")
                                         try:
                                             price_val = int(price)
@@ -2969,9 +2977,17 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
                                         bale_pay_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
                                         txt = (
-                                            "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                                            "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت ۳۰ روز دسترسی کامل خواهید داشت.\n\n"
-                                            f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
+                                            "💎 <b>اشتراک پریمیوم</b>\n\n"
+                                            "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
+                                            "۱) درک عمیق‌تر قوانین خدا\n"
+                                            "۲) پروژه تغییر را در آغوش بگیر\n"
+                                            "۳) پروژه مهاجرت به مدار بالاتر\n"
+                                            "۴) پروژه خانه‌تکانی ذهن\n"
+                                            "۵) روزشمار تحول زندگی من\n\n"
+                                            "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
+                                            "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                                            f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
                                         )
                                         vip_btns = []
                                         if bale_pay_tok:
@@ -3502,7 +3518,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             "inline_keyboard": [
                                                 [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
                                                 [{"text": "🎧 کتاب‌های صوتی", "callback_data": "bale:prods_audiobooks"}],
-                                                [{"text": "💎 اشتراک ویژه (VIP)", "callback_data": "vip_club_info"}]
+                                                [{"text": "💎 اشتراک پریمیوم", "callback_data": "vip_club_info"}]
                                             ]
                                         }
                                         await bale.send_message(
@@ -3542,7 +3558,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                             vip_kb = {
                                                 "inline_keyboard": [
-                                                    [{"text": "💎 عضویت در باشگاه پریمیوم VIP", "callback_data": "vip_club_info"}]
+                                                    [{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}]
                                                 ]
                                             }
                                             perf_title = reader_tag or "نشانه امروز"

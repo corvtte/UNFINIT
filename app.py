@@ -363,12 +363,20 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(html.encode("utf-8"))
+                try:
+                    self.wfile.write(html.encode("utf-8"))
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
+            except (BrokenPipeError, ConnectionResetError):
+                pass
             except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "text/plain; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(f"Error rendering dashboard: {e}".encode("utf-8"))
+                try:
+                    self.send_response(500)
+                    self.send_header("Content-Type", "text/plain; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(f"Error rendering dashboard: {e}".encode("utf-8"))
+                except (BrokenPipeError, ConnectionResetError):
+                    pass
         elif path == "/api/status":
             health = get_system_health()
             self.send_response(200)

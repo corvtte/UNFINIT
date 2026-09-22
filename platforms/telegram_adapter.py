@@ -945,10 +945,10 @@ class TelegramAdapter:
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🎓 دوره‌های آموزشی", callback_data="tg:prods_courses")],
                 [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")],
-                [InlineKeyboardButton("💎 اشتراک ویژه (VIP)", callback_data="tg:vip_plan")]
+                [InlineKeyboardButton("💎 اشتراک پریمیوم", callback_data="tg:vip_plan")]
             ])
             await message.reply_text(
-                "🛍 <b>مرکز محصولات آموزشی و اشتراک ویژه:</b>\n\n"
+                "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\n"
                 "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده و سفارش انتخاب فرمایید:",
                 parse_mode=enums.ParseMode.HTML,
                 reply_markup=kb
@@ -960,10 +960,10 @@ class TelegramAdapter:
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🎓 دوره‌های آموزشی", callback_data="tg:prods_courses")],
                 [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")],
-                [InlineKeyboardButton("💎 اشتراک ویژه (VIP)", callback_data="tg:vip_plan")]
+                [InlineKeyboardButton("💎 اشتراک پریمیوم", callback_data="tg:vip_plan")]
             ])
             await callback_query.message.edit_text(
-                "🛍 <b>مرکز محصولات آموزشی و اشتراک ویژه:</b>\n\n"
+                "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\n"
                 "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده و سفارش انتخاب فرمایید:",
                 parse_mode=enums.ParseMode.HTML,
                 reply_markup=kb
@@ -1050,7 +1050,7 @@ class TelegramAdapter:
                 audio_url = sign.get("audio_url")
 
                 vip_kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💎 عضویت در باشگاه پریمیوم VIP", callback_data="vip_club_info")]
+                    [InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="vip_club_info")]
                 ])
 
                 local_audio_path = None
@@ -1099,7 +1099,7 @@ class TelegramAdapter:
         @self.app.on_callback_query(filters.regex(r"^(vip_club_info|tg:vip_plan)$"))
         async def handle_vip_club_info_cb(client: Client, callback_query: CallbackQuery):
             """
-            نمایش توضیحات، شرایط و تعرفه عضویت در باشگاه پریمیوم VIP برای کاربر با دکمه شیشه‌ای.
+            نمایش توضیحات، شرایط و تعرفه عضویت در اشتراک پریمیوم برای کاربر با دکمه شیشه‌ای.
             """
             await callback_query.answer()
             from core.database import get_system_setting
@@ -1111,9 +1111,17 @@ class TelegramAdapter:
             days = await get_system_setting("vip_duration_days", "30")
             card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
             txt = (
-                "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت ۳۰ روز دسترسی خواهید داشت.\n\n"
-                f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
+                "💎 <b>اشتراک پریمیوم</b>\n\n"
+                "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
+                "۱) درک عمیق‌تر قوانین خدا\n"
+                "۲) پروژه تغییر را در آغوش بگیر\n"
+                "۳) پروژه مهاجرت به مدار بالاتر\n"
+                "۴) پروژه خانه‌تکانی ذهن\n"
+                "۵) روزشمار تحول زندگی من\n\n"
+                "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
+                "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
             )
             if card_num:
                 txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
@@ -1122,10 +1130,10 @@ class TelegramAdapter:
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]])
             await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|باشگاه پریمیوم|اشتراک VIP|/vip)$"))
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*عضویت در اشتراک پریمیوم|عضویت در اشتراک پریمیوم|اشتراک پریمیوم|باشگاه پریمیوم|💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|اشتراک VIP|/vip|/premium)$"))
         async def handle_vip_command_tg(client: Client, message: Message):
             """
-            دستور مستقیم تلگرام جهت دریافت اطلاعات پلن اشتراک ماهانه VIP.
+            دستور مستقیم تلگرام جهت دریافت اطلاعات پلن اشتراک ماهانه پریمیوم.
             """
             from core.database import get_system_setting
             price = await get_system_setting("vip_monthly_price", "111000")
@@ -1136,9 +1144,17 @@ class TelegramAdapter:
             days = await get_system_setting("vip_duration_days", "30")
             card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
             txt = (
-                "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت نامحدود یا دوره اشتراک دسترسی خواهید داشت.\n\n"
-                f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
+                "💎 <b>اشتراک پریمیوم</b>\n\n"
+                "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
+                "۱) درک عمیق‌تر قوانین خدا\n"
+                "۲) پروژه تغییر را در آغوش بگیر\n"
+                "۳) پروژه مهاجرت به مدار بالاتر\n"
+                "۴) پروژه خانه‌تکانی ذهن\n"
+                "۵) روزشمار تحول زندگی من\n\n"
+                "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
+                "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
             )
             if card_num:
                 txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."

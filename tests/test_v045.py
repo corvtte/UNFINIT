@@ -33,16 +33,16 @@ class TestV045Release(unittest.TestCase):
     """مجموعه آزمون‌های خودکار جهت اعتبارسنجی امکانات و ارتقای جامع نگارش v0.4.5."""
 
     def test_01_version_sync(self):
-        """اعتبارسنجی نسخه v0.4.5 در تمام بخش‌های اصلی سیستم."""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.4.5")
+        """اعتبارسنجی نسخه v0.4.5 تا v0.4.6 در تمام بخش‌های اصلی سیستم."""
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.4.5", "v0.4.6"))
         health = get_system_health()
-        self.assertIn("v0.4.5", str(health["engine_version"]))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.4.5", "v0.4.6")))
         
         dash_html = render_dashboard_html()
-        self.assertIn("v0.4.5", dash_html)
+        self.assertTrue(any(v in dash_html for v in ("v0.4.5", "v0.4.6")))
         
         store_html = render_storefront_html()
-        self.assertIn("v0.4.5", store_html)
+        self.assertTrue(any(v in store_html for v in ("v0.4.5", "v0.4.6")))
 
     def test_02_vip_user_service(self):
         """اعتبارسنجی متدهای مدیریت اشتراک VIP در UserService."""

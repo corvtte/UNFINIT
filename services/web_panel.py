@@ -945,12 +945,12 @@ def render_dashboard_html() -> str:
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
 
-                <!-- 4. Courses & Products -->
+                <!-- 4. Products -->
                 <button type="button" onclick="switchTab('courses'); toggleSidebar(false);" data-tab="courses" id="s-btn-tab-courses" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
-                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'courses')">محصولات آموزشی و VIP</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'courses')">محصولات</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
 
@@ -967,7 +967,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                     </svg>
-                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'users')">مدیریت کاربران و VIP</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'users')">مدیریت کاربران</span>
                 </button>
 
                 <!-- 7. Tokens & AI -->
@@ -976,15 +976,6 @@ def render_dashboard_html() -> str:
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                     </svg>
                     <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'tokens')">سکرت‌ها و هوش مصنوعی</span>
-                </button>
-
-                <!-- 8. VIP Club & Frequencies -->
-                <button type="button" onclick="switchTab('frequencies'); toggleSidebar(false);" data-tab="frequencies" id="s-btn-tab-frequencies" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
-                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75] text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                    <span class="flex-1 text-right">اشتراک پریمیوم و محتوا</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-indigo-400 font-mono">VIP</span>
                 </button>
 
                 <!-- 9. Settings & Logs -->
@@ -1081,8 +1072,8 @@ def render_dashboard_html() -> str:
 
         <!-- ================= TAB 0: DASHBOARD & LIVE STATUS ================= -->
         <div id="tab-dashboard" class="space-y-6">
-            <!-- 4 Metric Cards -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <!-- 3 Metric Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <!-- Metric 1: Total Drops / Media Files -->
                 <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
                     <div class="flex items-center justify-between mb-2">
@@ -1123,27 +1114,6 @@ def render_dashboard_html() -> str:
                     </div>
                     <div class="text-xl sm:text-2xl font-bold text-cyan-400 metric-val-health" style="font-family: 'Vazirmatn', sans-serif !important; letter-spacing: normal !important;">{health['system_health']}</div>
                     <p class="text-[11px] text-slate-500 mt-1">تأخیر: {health['latency_ms']}ms</p>
-                </div>
-
-                <!-- Metric 4: Bale Safe Limit -->
-                <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-slate-400">سقف ایمن کمپرس بله</span>
-                        <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-amber-400 flex items-center justify-between">
-                        <span id="dashBaleSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span>
-                        <button type="button" onclick="editBaleSafeLimit()" class="theme-card-btn text-xs p-1.5 rounded-xl transition flex items-center justify-center" style="border: 1px solid var(--card-border);" title="ویرایش سریع سقف ایمن بله">
-                            <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
-                            </svg>
-                        </button>
-                    </div>
-                    <p class="text-[11px] text-slate-500 mt-1">فشرده‌سازی غیرمسدودکننده</p>
                 </div>
             </div>
 
@@ -1589,7 +1559,7 @@ def render_dashboard_html() -> str:
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
-                    <span>اشتراک ویژه (VIP)</span>
+                    <span>اشتراک پریمیوم</span>
                 </button>
             </div>
 
@@ -1836,7 +1806,7 @@ def render_dashboard_html() -> str:
                 </div>
             </div> <!-- End Sub-tab 2: Audiobooks Content -->
 
-            <!-- Sub-tab 3: VIP Subscription Content (تنظیمات و مشترکین باشگاه پریمیوم) -->
+            <!-- Sub-tab 3: Premium Subscription Content (تنظیمات، پروژه‌های گام‌به‌گام و مشترکین پریمیوم) -->
             <div id="subtab-prods-vip-content" class="hidden space-y-6">
                 <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4" style="background: var(--card-bg); border: 1px solid var(--card-border);">
                     <div>
@@ -1844,10 +1814,10 @@ def render_dashboard_html() -> str:
                             <svg class="w-5 h-5 text-amber-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                             </svg>
-                            <span>باشگاه اشتراک ویژه پریمیوم (VIP)</span>
+                            <span>باشگاه اشتراک پریمیوم</span>
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">
-                            تنظیمات پلن ماهانه VIP، اتصال مستقیم به درگاه پرداخت اینویس بله و مدیریت اعضای ویژه
+                            تنظیمات پلن ماهانه اشتراک پریمیوم، اتصال مستقیم به درگاه پرداخت اینویس بله، پروژه‌های ۵‌گانه تحول و مدیریت اعضا
                         </p>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1858,11 +1828,11 @@ def render_dashboard_html() -> str:
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- VIP Configuration Card -->
+                    <!-- Premium Configuration Card -->
                     <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
                         <h3 class="text-sm font-bold text-white flex items-center gap-2">
                             <svg class="w-4 h-4 text-cyan-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.27.1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.15.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.27-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/></svg>
-                            <span>پیکربندی پلن VIP:</span>
+                            <span>پیکربندی پلن پریمیوم:</span>
                         </h3>
                         <div class="space-y-3 text-xs">
                             <div>
@@ -1880,39 +1850,83 @@ def render_dashboard_html() -> str:
                             <div class="pt-2">
                                 <button type="button" onclick="saveVipHubSettings()" id="btnSaveVipHub" class="w-full py-2.5 px-4 rounded-xl font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-lg" style="background: var(--accent-color);">
                                     <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-                                    <span>ذخیره فوری تنظیمات VIP</span>
+                                    <span>ذخیره فوری تنظیمات پریمیوم</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- VIP Privileges & Benefits Card -->
+                    <!-- 5 Step-by-Step Transformation Projects & Benefits -->
                     <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
-                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                            <svg class="w-4 h-4 text-amber-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>مزایای انحصاری مشترکین VIP:</span>
+                        <h3 class="text-sm font-bold text-white flex items-center justify-between">
+                            <span class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                                <span>۵ پروژه تحول گام‌به‌گام (ویژه مشترکین):</span>
+                            </span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">۵ پروژه فعال</span>
                         </h3>
-                        <ul class="space-y-2.5 text-xs text-slate-300">
-                            <li class="flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                                <span>دسترسی نامحدود ۲۴ ساعته به فایل صوتی مکاشفه و نشانه‌های روزانه</span>
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                                <span>دریافت فرکانس‌های آگاهی صبحگاهی و شبانگاهی با بالاترین کیفیت FLAC/MP3</span>
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                                <span>فعال‌سازی آنی پس از پرداخت آنلاین از طریق درگاه رسمی اینویس بله</span>
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-                                <span>بج ویژه مشترک VIP در جدول مدیریت کاربران و پنل گزارشات</span>
-                            </li>
-                        </ul>
+                        <div class="space-y-2 text-xs">
+                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[10px] font-mono">1</span>
+                                    <span class="font-medium text-slate-200">درک عمیق‌تر قوانین خدا</span>
+                                </div>
+                                <span class="text-[10px] text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800">قوانین ثابت کیهانی</span>
+                            </div>
+                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-[10px] font-mono">2</span>
+                                    <span class="font-medium text-slate-200">پروژه تغییر را در آغوش بگیر</span>
+                                </div>
+                                <span class="text-[10px] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">خروج از منطقه امن</span>
+                            </div>
+                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-[10px] font-mono">3</span>
+                                    <span class="font-medium text-slate-200">پروژه مهاجرت به مدار بالاتر</span>
+                                </div>
+                                <span class="text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800">تغییر فرکانس مالی</span>
+                            </div>
+                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center font-bold text-[10px] font-mono">4</span>
+                                    <span class="font-medium text-slate-200">پروژه خانه‌تکانی ذهن</span>
+                                </div>
+                                <span class="text-[10px] text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800">پاکسازی باورهای محدودکننده</span>
+                            </div>
+                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-5 h-5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-[10px] font-mono">5</span>
+                                    <span class="font-medium text-slate-200">روزشمار تحول زندگی من</span>
+                                </div>
+                                <span class="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">تعهد و استمرار روزانه</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div> <!-- End Sub-tab 3: VIP Subscription Content -->
+
+                <!-- Benefits & Frequency Toggle Card -->
+                <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-amber-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>مزایای انحصاری و تفکیک خدمات اشتراک پریمیوم:</span>
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
+                        <div class="p-3.5 rounded-xl border space-y-1.5" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <span class="font-bold text-cyan-300 block">🔮 نشانه امروز من (لید مگنت رایگان)</span>
+                            <p class="text-[11px] text-slate-400">در دسترس رایگان برای تمام کاربران در بله و تلگرام با مکاشفه روزانه، متادیتا و فایل صوتی جهت جذب حداکثری مخاطب.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border space-y-1.5" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <span class="font-bold text-amber-300 block">💎 فرکانس فراوانی (خدمات ویژه)</span>
+                            <p class="text-[11px] text-slate-400">بانک باورهای صبحگاهی و شبانگاهی ورق‌زن، قابل ارائه به مشترکین فعال با سوییچ دسترسی هوشمند.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border space-y-1.5" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <span class="font-bold text-emerald-300 block">🚀 پرداخت آنلاین آنی</span>
+                            <p class="text-[11px] text-slate-400">صدور فاکتور درگاه رسمی اینویس بله با فعال‌سازی خودکار و بدون نیاز به تایید دستی رسید بانکی.</p>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End Sub-tab 3: Premium Subscription Content -->
         </div>
 
         <!-- ================= TAB 3: ORDERS & TRANSACTIONS ================= -->
@@ -4268,7 +4282,7 @@ def render_dashboard_html() -> str:
                     const cardInput = document.getElementById('viphub_card');
                     const btn = document.getElementById('btnSaveVipHub');
                     
-                    const price = priceInput ? priceInput.value.replace(/[,،\s]/g, '') : '111000';
+                    const price = priceInput ? priceInput.value.replace(/[,،\\s]/g, '') : '111000';
                     const days = daysInput ? daysInput.value.trim() : '30';
                     const card = cardInput ? cardInput.value.trim() : '';
 
@@ -4287,14 +4301,14 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            alert('تنظیمات پلن VIP با موفقیت ذخیره شد.');
+                            alert('تنظیمات پلن پریمیوم با موفقیت ذخیره شد.');
                         }} else {{
                             alert('خطا در ذخیره تنظیمات: ' + (data.error || 'نامشخص'));
                         }}
                     }} catch (e) {{
                         alert('خطای ارتباط: ' + e.message);
                     }} finally {{
-                        if (btn) btn.innerHTML = '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>ذخیره فوری تنظیمات VIP</span>';
+                        if (btn) btn.innerHTML = '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>ذخیره فوری تنظیمات پریمیوم</span>';
                     }}
                 }}
                 window.saveVipHubSettings = saveVipHubSettings;
@@ -4324,7 +4338,7 @@ def render_dashboard_html() -> str:
                             const expDate = (u.vip_until || '').slice(0, 10);
                             vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-sans inline-flex items-center gap-1" title="انقضا: ' + escapeHtml(u.vip_until || '') + '">' +
                                 '<svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>' +
-                                ' VIP (' + escapeHtml(expDate) + ')' +
+                                ' پریمیوم (' + escapeHtml(expDate) + ')' +
                             '</span>';
                         }}
                         const phone = u.phone ? ('<span dir="ltr">' + escapeHtml(u.phone) + '</span>') : '<span class="text-slate-600 font-sans">-</span>';
@@ -4337,13 +4351,13 @@ def render_dashboard_html() -> str:
                         const userIdClean = escapeHtml(String(u.user_id || '-'));
                         
                         const vipBtn = isUserVip
-                            ? '<button type="button" onclick="toggleUserVip(\'' + userIdClean + '\', \'revoke\')" title="لغو اشتراک VIP" class="p-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
-                                '<span>لغو VIP</span>' +
+                            ? '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" title="لغو اشتراک پریمیوم" class="p-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+                                '<span class="pointer-events-none">لغو پریمیوم</span>' +
                                '</button>'
-                            : '<button type="button" onclick="toggleUserVip(\'' + userIdClean + '\', \'grant\')" title="اعطای اشتراک ۳۰ روزه VIP" class="p-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>' +
-                                '<span>+۳۰ روز VIP</span>' +
+                            : '<button type="button" data-user-action="grant_vip" data-user-id="' + userIdClean + '" title="اعطای اشتراک ۳۰ روزه پریمیوم" class="p-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>' +
+                                '<span class="pointer-events-none">+۳۰ روز پریمیوم</span>' +
                                '</button>';
 
                         return '<tr class="hover:bg-white/[0.03] transition">' +
@@ -4357,24 +4371,39 @@ def render_dashboard_html() -> str:
                             '<td class="p-3 text-xs">' + commitment + '</td>' +
                             '<td class="p-3 text-center">' +
                                 '<div class="inline-flex items-center gap-1.5">' +
-                                    '<button type="button" onclick="viewUserProfile(\'' + userIdClean + '\')" title="مشاهده پروفایل و دوره‌ها" class="p-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+                                    '<button type="button" data-user-action="view_profile" data-user-id="' + userIdClean + '" title="مشاهده پروفایل و دوره‌ها" class="p-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                        '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
                                     '</button>' +
                                     vipBtn +
-                                    '<button type="button" onclick="deleteUserRow(\'' + userIdClean + '\')" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                                    '<button type="button" data-user-action="delete_user" data-user-id="' + userIdClean + '" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                        '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
                                     '</button>' +
                                 '</div>' +
                             '</td>' +
                         '</tr>';
                     }}).join('');
+
+                    if (!tbody._delegated) {{
+                        tbody._delegated = true;
+                        tbody.addEventListener('click', function(e) {{
+                            const btn = e.target.closest('button[data-user-action]');
+                            if (!btn) return;
+                            const act = btn.getAttribute('data-user-action');
+                            const uid = btn.getAttribute('data-user-id');
+                            if (!uid || uid === '-') return;
+                            if (act === 'revoke_vip') toggleUserVip(uid, 'revoke');
+                            else if (act === 'grant_vip') toggleUserVip(uid, 'grant');
+                            else if (act === 'view_profile') viewUserProfile(uid);
+                            else if (act === 'delete_user') deleteUserRow(uid);
+                        }});
+                    }}
                 }}
                 window.renderUsersTable = renderUsersTable;
 
                 async function toggleUserVip(userId, action) {{
                     if (!userId || userId === '-') return;
                     const actName = action === 'revoke' ? 'لغو' : 'فعال‌سازی / تمدید ۳۰ روزه';
-                    if (!confirm('آیا از ' + actName + ' اشتراک ویژه VIP برای کاربر ' + userId + ' اطمینان دارید؟')) return;
+                    if (!confirm('آیا از ' + actName + ' اشتراک پریمیوم برای کاربر ' + userId + ' اطمینان دارید؟')) return;
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users/toggle_vip', {{
