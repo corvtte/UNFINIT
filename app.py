@@ -986,6 +986,117 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
+        elif path == "/api/users/toggle_vip":
+            """
+            فعال‌سازی، تمدید یا لغو اشتراک ویژه (VIP) کاربر به صورت ایجکس نرم و بدون رفرش صفحه.
+            """
+            try:
+                user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
+                action = str(payload.get("action") or "grant").strip().lower()
+                days = int(payload.get("days") or 30)
+                if not user_id:
+                    raise ValueError("شناسه کاربر الزامی است.")
+                from services.user_service import UserService
+                if action == "revoke":
+                    u = UserService.revoke_vip(user_id)
+                    msg = f"اشتراک VIP کاربر {user_id} با موفقیت لغو شد."
+                else:
+                    u = UserService.grant_vip(user_id, days=days)
+                    msg = f"اشتراک VIP کاربر {user_id} با موفقیت به مدت {days} روز فعال/تمدید شد."
+                
+                if not u:
+                    raise ValueError(f"کاربر با شناسه {user_id} یافت نشد.")
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "message": msg,
+                    "is_vip": u.is_vip(),
+                    "vip_until": getattr(u, "vip_until", ""),
+                    "user": u.to_dict()
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/users/profile":
+            """
+            دریافت اطلاعات جامع پروفایل کاربر، سفارشات و تاریخچه برای نمایش در مودال مدیریت.
+            """
+            try:
+                user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
+                if not user_id:
+                    raise ValueError("شناسه کاربر الزامی است.")
+                from services.user_service import UserService
+                u = UserService.get_user_by_any_id(user_id)
+                if not u:
+                    raise ValueError(f"کاربر با شناسه {user_id} یافت نشد.")
+                
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                orders = loop.run_until_complete(StoreService.get_customer_orders(user_id))
+                loop.close()
+
+                orders_data = [o.to_dict() if hasattr(o, "to_dict") else dict(o) for o in orders]
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "user": u.to_dict(),
+                    "orders": orders_data
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/settings/rename":
+            """
+            ذخیره نام سفارشی‌سازی شده عناوین تب‌ها و دکمه‌ها با دابل‌کلیک در data/settings.json.
+            """
+            try:
+                tab_id = str(payload.get("tab_id") or "").strip()
+                new_title = str(payload.get("title") or "").strip()
+                if not tab_id or not new_title:
+                    raise ValueError("شناسه تب و عنوان جدید الزامی هستند.")
+                
+                settings_file = config.DATA_DIR / "settings.json"
+                settings_data = {}
+                if settings_file.exists():
+                    try:
+                        with open(settings_file, "r", encoding="utf-8") as sf:
+                            settings_data = json.load(sf)
+                    except Exception:
+                        settings_data = {}
+                
+                if "tab_titles" not in settings_data:
+                    settings_data["tab_titles"] = {}
+                settings_data["tab_titles"][tab_id] = new_title
+
+                with open(settings_file, "w", encoding="utf-8") as sf:
+                    json.dump(settings_data, sf, ensure_ascii=False, indent=2)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "tab_id": tab_id,
+                    "title": new_title,
+                    "message": f"عنوان تب {tab_id} با موفقیت به روزرسانی شد."
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
         elif path == "/api/soroush/login/request":
             try:
                 phone = payload.get("phone", "").strip()

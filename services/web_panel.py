@@ -326,9 +326,17 @@ def render_dashboard_html() -> str:
         if not saved_theme or saved_theme not in all_themes:
             saved_theme = "default-dark"
     except Exception as e:
-        logger.warning(f"Web panel data fetch error: {e}")
         all_themes = get_all_themes()
         saved_theme = "default-dark"
+
+    settings = {}
+    try:
+        settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
+        if settings_file.exists():
+            with open(settings_file, "r", encoding="utf-8") as sf:
+                settings = json.load(sf)
+    except Exception as se:
+        logger.warning(f"Failed to load settings in render_dashboard_html: {se}")
 
     dynamic_themes_css = build_themes_css(all_themes)
     themes_data_json = json.dumps(all_themes, ensure_ascii=False)
@@ -399,6 +407,36 @@ def render_dashboard_html() -> str:
                             حذف دوره
                         </button>
                     </div>
+                </div>
+            </div>
+            """
+
+    audiobook_cards = ""
+    audio_prods = [p for p in products if getattr(p, "delivery_type", "") == "audio" or "صوتی" in p.name or "کتاب" in p.name]
+    if not audio_prods:
+        audiobook_cards = '<div class="col-span-full py-12 text-center text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">هیچ کتاب یا پکیج صوتی مستقلی ثبت نشده است. دوره‌های صوتی ثبت‌شده به صورت خودکار در این بخش نمایش می‌یابند.</div>'
+    else:
+        for prod in audio_prods:
+            p_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
+            audiobook_cards += f"""
+            <div class="glass p-5 rounded-2xl flex flex-col justify-between border border-slate-800 hover:border-cyan-500/40 transition group" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div>
+                    <div class="flex justify-between items-start gap-2 mb-2">
+                        <div>
+                            <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">{prod.product_id}</span>
+                            <h4 class="text-sm font-bold text-white mt-1.5 leading-snug group-hover:text-cyan-300 transition">{prod.name}</h4>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">کتاب صوتی</span>
+                    </div>
+                    <div class="my-2 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">قیمت:</span>
+                        {p_badge}
+                    </div>
+                    <p class="text-xs text-slate-300 line-clamp-2 leading-relaxed mb-3">{prod.description or 'فاقد توضیحات'}</p>
+                </div>
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                    <button type="button" onclick="openEditCourseModal('{prod.product_id}')" class="theme-card-btn px-2.5 py-1 rounded-lg text-xs transition">مدیریت سرفصل‌ها</button>
+                    <button type="button" onclick="toggleCourseActive('{prod.product_id}')" class="theme-card-btn px-2.5 py-1 rounded-lg text-xs transition">{'غیرفعال' if prod.active else 'فعال'}</button>
                 </div>
             </div>
             """
@@ -886,7 +924,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
                     </svg>
-                    <span class="flex-1 text-right">داشبورد و وضعیت زنده</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'dashboard')">داشبورد و وضعیت زنده</span>
                 </button>
 
                 <!-- 2. Downloads -->
@@ -894,7 +932,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
-                    <span class="flex-1 text-right">فایل‌های دانلودی سایت</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">فایل‌های دانلودی سایت</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">39p</span>
                 </button>
 
@@ -903,16 +941,16 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
-                    <span class="flex-1 text-right">استودیوی رسانه و وکتور</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'studio')">استودیوی رسانه و وکتور</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">{active_drops_count}</span>
                 </button>
 
-                <!-- 4. Courses -->
+                <!-- 4. Courses & Products -->
                 <button type="button" onclick="switchTab('courses'); toggleSidebar(false);" data-tab="courses" id="s-btn-tab-courses" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
-                    <span class="flex-1 text-right">دوره‌ها و سرفصل‌ها</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'courses')">محصولات آموزشی و VIP</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-emerald-400 font-mono">{len(products)}</span>
                 </button>
 
@@ -921,7 +959,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
-                    <span class="flex-1 text-right">سفارشات و تراکنش‌ها</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'orders')">سفارشات و تراکنش‌ها</span>
                 </button>
 
                 <!-- 6. Users -->
@@ -929,7 +967,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                     </svg>
-                    <span class="flex-1 text-right">مدیریت کاربران</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'users')">مدیریت کاربران و VIP</span>
                 </button>
 
                 <!-- 7. Tokens & AI -->
@@ -937,7 +975,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                     </svg>
-                    <span class="flex-1 text-right">سکرت‌ها و هوش مصنوعی</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'tokens')">سکرت‌ها و هوش مصنوعی</span>
                 </button>
 
                 <!-- 8. VIP Club & Frequencies -->
@@ -1531,8 +1569,32 @@ def render_dashboard_html() -> str:
             </div>
         </div>
 
-        <!-- ================= TAB 2: COURSES & STORE ================= -->
+        <!-- ================= TAB 2: PRODUCTS HUB (COURSES, AUDIOBOOKS, VIP) ================= -->
         <div id="tab-courses" class="hidden space-y-6">
+            <!-- Products Category Switcher (Material 3 Sub-tabs) -->
+            <div class="glass p-2 rounded-2xl border flex items-center gap-2 overflow-x-auto" style="background: var(--card-bg); border-color: var(--card-border);">
+                <button type="button" onclick="switchProductSubTab('courses')" id="btn-subtab-prods-courses" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer" style="background: var(--accent-color); color: #fff;">
+                    <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                    </svg>
+                    <span>دوره‌های آموزشی</span>
+                </button>
+                <button type="button" onclick="switchProductSubTab('audiobooks')" id="btn-subtab-prods-audiobooks" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-pointer" style="background: transparent;">
+                    <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.757 3.63 8.25 4.51 8.25H6.75z" />
+                    </svg>
+                    <span>کتاب‌های صوتی</span>
+                </button>
+                <button type="button" onclick="switchProductSubTab('vip')" id="btn-subtab-prods-vip" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-pointer" style="background: transparent;">
+                    <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                    </svg>
+                    <span>اشتراک ویژه (VIP)</span>
+                </button>
+            </div>
+
+            <!-- Sub-tab 1: Courses Content -->
+            <div id="subtab-prods-courses-content" class="space-y-6">
             <!-- Store Stats and Action Header -->
             <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -1733,13 +1795,124 @@ def render_dashboard_html() -> str:
                     </div>
                     <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span>🌐</span>
                             <span class="text-xs text-slate-300">فروشگاه وب</span>
                         </div>
                         <div class="text-left font-mono text-xs text-amber-400" id="platSalesWeb">۰ تومان (۰)</div>
                     </div>
                 </div>
             </div>
+            </div> <!-- End Sub-tab 1: Courses Content -->
+
+            <!-- Sub-tab 2: Audiobooks Content (کتاب‌های صوتی و پکیج‌های آگاهی) -->
+            <div id="subtab-prods-audiobooks-content" class="hidden space-y-6">
+                <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.757 3.63 8.25 4.51 8.25H6.75z" />
+                            </svg>
+                            <span>مدیریت کتاب‌های صوتی و پادکست‌های تخصصی</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            آپلود و انتشار فصل‌بندی‌شده کتاب‌های صوتی با قابلیت پخش درون‌برنامه‌ای و تحویل خودکار به خریداران در بله و تلگرام
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="toggleAddCourseForm()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 text-xs cursor-pointer">
+                            <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                            <span>افزودن کتاب صوتی جدید</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>فهرست کتاب‌ها و آثار صوتی فعال:</span>
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {audiobook_cards}
+                    </div>
+                </div>
+            </div> <!-- End Sub-tab 2: Audiobooks Content -->
+
+            <!-- Sub-tab 3: VIP Subscription Content (تنظیمات و مشترکین باشگاه پریمیوم) -->
+            <div id="subtab-prods-vip-content" class="hidden space-y-6">
+                <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4" style="background: var(--card-bg); border: 1px solid var(--card-border);">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-amber-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                            </svg>
+                            <span>باشگاه اشتراک ویژه پریمیوم (VIP)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            تنظیمات پلن ماهانه VIP، اتصال مستقیم به درگاه پرداخت اینویس بله و مدیریت اعضای ویژه
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold font-mono">
+                            تعرفه جاری: {int(settings.get('VIP_MONTHLY_PRICE', 111000)):,} تومان
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- VIP Configuration Card -->
+                    <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <svg class="w-4 h-4 text-cyan-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.27.1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.15.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.27-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/></svg>
+                            <span>پیکربندی پلن VIP:</span>
+                        </h3>
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <label class="block text-slate-400 mb-1">قیمت اشتراک ۳۰ روزه (تومان):</label>
+                                <input type="text" id="viphub_price" value="{settings.get('VIP_MONTHLY_PRICE', '111000')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1">مدت اعتبار (روز):</label>
+                                <input type="number" id="viphub_days" value="{settings.get('VIP_DURATION_DAYS', '30')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1">شماره کارت اختصاصی جهت واریز دستی:</label>
+                                <input type="text" id="viphub_card" value="{settings.get('VIP_CARD_NUMBER', '')}" placeholder="۶۰۳۷..." class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            </div>
+                            <div class="pt-2">
+                                <button type="button" onclick="saveVipHubSettings()" id="btnSaveVipHub" class="w-full py-2.5 px-4 rounded-xl font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-lg" style="background: var(--accent-color);">
+                                    <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                    <span>ذخیره فوری تنظیمات VIP</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIP Privileges & Benefits Card -->
+                    <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <svg class="w-4 h-4 text-amber-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>مزایای انحصاری مشترکین VIP:</span>
+                        </h3>
+                        <ul class="space-y-2.5 text-xs text-slate-300">
+                            <li class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                                <span>دسترسی نامحدود ۲۴ ساعته به فایل صوتی مکاشفه و نشانه‌های روزانه</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                                <span>دریافت فرکانس‌های آگاهی صبحگاهی و شبانگاهی با بالاترین کیفیت FLAC/MP3</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                                <span>فعال‌سازی آنی پس از پرداخت آنلاین از طریق درگاه رسمی اینویس بله</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+                                <span>بج ویژه مشترک VIP در جدول مدیریت کاربران و پنل گزارشات</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div> <!-- End Sub-tab 3: VIP Subscription Content -->
         </div>
 
         <!-- ================= TAB 3: ORDERS & TRANSACTIONS ================= -->
@@ -1996,6 +2169,7 @@ def render_dashboard_html() -> str:
                                     <th class="p-3">شناسه کاربری</th>
                                     <th class="p-3">نام / نام کاربری</th>
                                     <th class="p-3">شماره تماس</th>
+                                    <th class="p-3">وضعیت اشتراک</th>
                                     <th class="p-3">معرف رفرال</th>
                                     <th class="p-3">موجودی کیف پول</th>
                                     <th class="p-3">وضعیت تعهدنامه</th>
@@ -2004,7 +2178,7 @@ def render_dashboard_html() -> str:
                             </thead>
                             <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-mono">
                                 <tr>
-                                    <td colspan="8" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
+                                    <td colspan="9" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -3245,6 +3419,22 @@ def render_dashboard_html() -> str:
                     </div>
                 </form>
             </div>
+        <!-- Modal: View User Profile (مودال جزئیات و پروفایل کاربر) -->
+        <div id="userProfileModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
+                <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--card-border);">
+                    <h3 class="text-sm font-bold flex items-center gap-2 text-white">
+                        <svg class="w-4 h-4 text-cyan-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                        <span>پروفایل و اشتراک کاربر</span>
+                    </h3>
+                    <button type="button" onclick="closeUserProfileModal()" class="text-slate-400 hover:text-white text-base transition">✕</button>
+                </div>
+                <div id="userProfileModalContent">
+                    <div class="p-8 text-center text-slate-400">در حال دریافت اطلاعات جامع کاربر...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -4041,10 +4231,15 @@ def render_dashboard_html() -> str:
                                 platform: p,
                                 user_id: uid,
                                 username: uname,
+                                full_name: c.full_name || uname,
                                 phone: (c.phone && c.phone !== 'None' && c.phone !== 'undefined') ? c.phone : '',
                                 referred_by: (c.referred_by && c.referred_by !== 'None' && c.referred_by !== 'undefined') ? c.referred_by : '',
                                 wallet_balance: Number(c.wallet_balance) || 0,
-                                commitment_signed: !!c.commitment_signed
+                                commitment_signed: !!c.commitment_signed,
+                                is_vip: Boolean(c.is_vip || (c.vip_until && new Date(c.vip_until) > new Date())),
+                                vip_until: c.vip_until || '',
+                                purchased_courses: c.purchased_courses || [],
+                                successful_invites: c.successful_invites || 0
                             }};
                         }});
 
@@ -4062,16 +4257,53 @@ def render_dashboard_html() -> str:
                         renderUsersTable(allLoadedUsers);
                     }} catch (err) {{
                         console.error('loadUsersData error:', err);
-                        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-rose-400 font-sans">خطا در بارگذاری فهرست کاربران</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-rose-400 font-sans">خطا در بارگذاری فهرست کاربران</td></tr>';
                     }}
                 }}
                 window.loadUsersData = loadUsersData;
+
+                async function saveVipHubSettings() {{
+                    const priceInput = document.getElementById('viphub_price');
+                    const daysInput = document.getElementById('viphub_days');
+                    const cardInput = document.getElementById('viphub_card');
+                    const btn = document.getElementById('btnSaveVipHub');
+                    
+                    const price = priceInput ? priceInput.value.replace(/[,،\s]/g, '') : '111000';
+                    const days = daysInput ? daysInput.value.trim() : '30';
+                    const card = cardInput ? cardInput.value.trim() : '';
+
+                    if (btn) btn.innerHTML = '<span>⏳</span> در حال ذخیره...';
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/settings/save', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            body: JSON.stringify({{
+                                vip_monthly_price: parseInt(price) || 111000,
+                                vip_duration_days: parseInt(days) || 30,
+                                vip_card_number: card,
+                                admin_password: pwd
+                            }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            alert('تنظیمات پلن VIP با موفقیت ذخیره شد.');
+                        }} else {{
+                            alert('خطا در ذخیره تنظیمات: ' + (data.error || 'نامشخص'));
+                        }}
+                    }} catch (e) {{
+                        alert('خطای ارتباط: ' + e.message);
+                    }} finally {{
+                        if (btn) btn.innerHTML = '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>ذخیره فوری تنظیمات VIP</span>';
+                    }}
+                }}
+                window.saveVipHubSettings = saveVipHubSettings;
 
                 function renderUsersTable(users) {{
                     const tbody = document.getElementById('usersTableBody');
                     if (!tbody) return;
                     if (!users || users.length === 0) {{
-                        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-500 font-sans">هیچ کاربری ثبت نشده است.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-slate-500 font-sans">هیچ کاربری ثبت نشده است.</td></tr>';
                         return;
                     }}
                     tbody.innerHTML = users.map(u => {{
@@ -4086,6 +4318,15 @@ def render_dashboard_html() -> str:
                         }} else {{
                             platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> بله</span>';
                         }}
+                        const isUserVip = Boolean(u.is_vip || (u.vip_until && new Date(u.vip_until) > new Date()));
+                        let vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700 font-sans">عادی</span>';
+                        if (isUserVip) {{
+                            const expDate = (u.vip_until || '').slice(0, 10);
+                            vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-sans inline-flex items-center gap-1" title="انقضا: ' + escapeHtml(u.vip_until || '') + '">' +
+                                '<svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>' +
+                                ' VIP (' + escapeHtml(expDate) + ')' +
+                            '</span>';
+                        }}
                         const phone = u.phone ? ('<span dir="ltr">' + escapeHtml(u.phone) + '</span>') : '<span class="text-slate-600 font-sans">-</span>';
                         const name = escapeHtml(u.username || ('کاربر ' + (u.user_id || '')));
                         const ref = u.referred_by ? ('<span class="text-indigo-400" dir="ltr">' + escapeHtml(String(u.referred_by)) + '</span>') : '<span class="text-slate-600 font-sans">مستقیم</span>';
@@ -4094,24 +4335,221 @@ def render_dashboard_html() -> str:
                             ? '<span class="text-emerald-400 font-sans">امضا شده ✓</span>'
                             : '<span class="text-slate-500 font-sans">در انتظار</span>';
                         const userIdClean = escapeHtml(String(u.user_id || '-'));
-                        return `<tr class="hover:bg-white/[0.03] transition">
-                            <td class="p-3">${{platformBadge}}</td>
-                            <td class="p-3 text-cyan-300 font-mono" dir="ltr">${{userIdClean}}</td>
-                            <td class="p-3 text-slate-200 font-sans font-medium">${{name}}</td>
-                            <td class="p-3 text-slate-300">${{phone}}</td>
-                            <td class="p-3">${{ref}}</td>
-                            <td class="p-3 text-amber-400 font-bold">${{wallet}}</td>
-                            <td class="p-3 text-xs">${{commitment}}</td>
-                            <td class="p-3 text-center">
-                                <button type="button" onclick="deleteUserRow('${{userIdClean}}')" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    <span>حذف</span>
-                                </button>
-                            </td>
-                        </tr>`;
+                        
+                        const vipBtn = isUserVip
+                            ? '<button type="button" onclick="toggleUserVip(\'' + userIdClean + '\', \'revoke\')" title="لغو اشتراک VIP" class="p-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+                                '<span>لغو VIP</span>' +
+                               '</button>'
+                            : '<button type="button" onclick="toggleUserVip(\'' + userIdClean + '\', \'grant\')" title="اعطای اشتراک ۳۰ روزه VIP" class="p-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>' +
+                                '<span>+۳۰ روز VIP</span>' +
+                               '</button>';
+
+                        return '<tr class="hover:bg-white/[0.03] transition">' +
+                            '<td class="p-3">' + platformBadge + '</td>' +
+                            '<td class="p-3 text-cyan-300 font-mono" dir="ltr">' + userIdClean + '</td>' +
+                            '<td class="p-3 text-slate-200 font-sans font-medium">' + name + '</td>' +
+                            '<td class="p-3 text-slate-300">' + phone + '</td>' +
+                            '<td class="p-3">' + vipBadge + '</td>' +
+                            '<td class="p-3">' + ref + '</td>' +
+                            '<td class="p-3 text-amber-400 font-bold">' + wallet + '</td>' +
+                            '<td class="p-3 text-xs">' + commitment + '</td>' +
+                            '<td class="p-3 text-center">' +
+                                '<div class="inline-flex items-center gap-1.5">' +
+                                    '<button type="button" onclick="viewUserProfile(\'' + userIdClean + '\')" title="مشاهده پروفایل و دوره‌ها" class="p-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+                                    '</button>' +
+                                    vipBtn +
+                                    '<button type="button" onclick="deleteUserRow(\'' + userIdClean + '\')" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                        '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</td>' +
+                        '</tr>';
                     }}).join('');
                 }}
                 window.renderUsersTable = renderUsersTable;
+
+                async function toggleUserVip(userId, action) {{
+                    if (!userId || userId === '-') return;
+                    const actName = action === 'revoke' ? 'لغو' : 'فعال‌سازی / تمدید ۳۰ روزه';
+                    if (!confirm('آیا از ' + actName + ' اشتراک ویژه VIP برای کاربر ' + userId + ' اطمینان دارید؟')) return;
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/users/toggle_vip', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            body: JSON.stringify({{ user_id: userId, action: action, days: 30, admin_password: pwd }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok) {{
+                            const uIdx = allLoadedUsers.findIndex(u => String(u.user_id) === String(userId) || String(u.phone) === String(userId));
+                            if (uIdx !== -1) {{
+                                allLoadedUsers[uIdx].is_vip = data.is_vip;
+                                allLoadedUsers[uIdx].vip_until = data.vip_until;
+                            }}
+                            renderUsersTable(allLoadedUsers);
+                        }} else {{
+                            alert('خطا: ' + (data.error || 'عملیات ناموفق بود'));
+                        }}
+                    }} catch (e) {{
+                        alert('خطای ارتباط: ' + e.message);
+                    }}
+                }}
+                window.toggleUserVip = toggleUserVip;
+
+                async function viewUserProfile(userId) {{
+                    if (!userId || userId === '-') return;
+                    const modal = document.getElementById('userProfileModal');
+                    const content = document.getElementById('userProfileModalContent');
+                    if (!modal || !content) return;
+                    content.innerHTML = '<div class="p-8 text-center text-slate-400">در حال دریافت اطلاعات جامع کاربر...</div>';
+                    modal.classList.remove('hidden');
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/users/profile', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            body: JSON.stringify({{ user_id: userId, admin_password: pwd }})
+                        }});
+                        const data = await res.json();
+                        if (data.ok && data.user) {{
+                            const u = data.user;
+                            const isVip = Boolean(u.is_vip || (u.vip_until && new Date(u.vip_until) > new Date()));
+                            const expDate = (u.vip_until || '').slice(0, 10);
+                            const vipText = isVip ? ('<span class="text-amber-400 font-bold">💎 اشتراک VIP تا ' + escapeHtml(expDate) + '</span>') : '<span class="text-slate-500">عادی (فاقد اشتراک)</span>';
+                            const coursesCount = (u.purchased_courses || []).length;
+                            const coursesList = (u.purchased_courses && u.purchased_courses.length) ? u.purchased_courses.map(escapeHtml).join('، ') : 'هنوز دوره‌ای خریداری نشده است.';
+                            const avatarLetter = escapeHtml((u.full_name || u.username || 'U')[0].toUpperCase());
+                            const userName = escapeHtml(u.full_name || u.username || 'کاربر');
+                            const userPlatform = escapeHtml(u.platform || 'bale');
+                            const userUid = escapeHtml(u.user_id || '-');
+                            const userPhone = escapeHtml(u.phone || 'فاقد شماره');
+                            const userWallet = Number(u.wallet_balance || 0).toLocaleString('fa-IR') + ' تومان';
+                            const userInvites = (u.successful_invites || 0) + ' نفر';
+
+                            content.innerHTML = 
+                                '<div class="space-y-4 text-xs font-sans">' +
+                                    '<div class="flex items-center justify-between pb-3 border-b border-slate-700/60">' +
+                                        '<div class="flex items-center gap-3">' +
+                                            '<div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-sm">' +
+                                                avatarLetter +
+                                            '</div>' +
+                                            '<div>' +
+                                                '<h4 class="font-bold text-sm text-white">' + userName + '</h4>' +
+                                                '<span class="text-slate-400 font-mono text-[11px]">' + userPlatform + ' | ' + userUid + '</span>' +
+                                            '</div>' +
+                                        '</div>' +
+                                        '<div class="text-left">' + vipText + '</div>' +
+                                    '</div>' +
+                                    '<div class="grid grid-cols-2 gap-3 text-right">' +
+                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                            '<span class="text-slate-500 block text-[11px]">شماره تماس:</span>' +
+                                            '<span class="font-mono text-slate-200" dir="ltr">' + userPhone + '</span>' +
+                                        '</div>' +
+                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                            '<span class="text-slate-500 block text-[11px]">موجودی کیف پول:</span>' +
+                                            '<span class="font-mono text-amber-400 font-bold">' + userWallet + '</span>' +
+                                        '</div>' +
+                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                            '<span class="text-slate-500 block text-[11px]">دوره‌های ثبت‌شده:</span>' +
+                                            '<span class="font-bold text-emerald-400">' + coursesCount + ' دوره</span>' +
+                                        '</div>' +
+                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                            '<span class="text-slate-500 block text-[11px]">دعوت‌های موفق رفرال:</span>' +
+                                            '<span class="font-bold text-cyan-400">' + userInvites + '</span>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                        '<span class="text-slate-500 block text-[11px] mb-1">دوره‌های خریداری‌شده:</span>' +
+                                        '<span class="text-slate-300 font-sans">' + coursesList + '</span>' +
+                                    '</div>' +
+                                    '<div class="flex justify-end gap-2 pt-2">' +
+                                        '<button type="button" onclick="closeUserProfileModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition cursor-pointer">بستن</button>' +
+                                    '</div>' +
+                                '</div>';
+                        }} else {{
+                            content.innerHTML = '<div class="p-6 text-center text-rose-400">اطلاعات کاربر یافت نشد.</div>';
+                        }}
+                    }} catch (err) {{
+                        content.innerHTML = '<div class="p-6 text-center text-rose-400">خطا: ' + escapeHtml(err.message) + '</div>';
+                    }}
+                }}
+                window.viewUserProfile = viewUserProfile;
+
+                function closeUserProfileModal() {{
+                    const modal = document.getElementById('userProfileModal');
+                    if (modal) modal.classList.add('hidden');
+                }}
+                window.closeUserProfileModal = closeUserProfileModal;
+
+                function switchProductSubTab(subTabId) {{
+                    ['courses', 'audiobooks', 'vip'].forEach(id => {{
+                        const contentEl = document.getElementById('subtab-prods-' + id + '-content');
+                        const btnEl = document.getElementById('btn-subtab-prods-' + id);
+                        if (contentEl) {{
+                            if (id === subTabId) contentEl.classList.remove('hidden');
+                            else contentEl.classList.add('hidden');
+                        }}
+                        if (btnEl) {{
+                            if (id === subTabId) {{
+                                btnEl.style.background = 'var(--accent-color)';
+                                btnEl.style.color = '#fff';
+                                btnEl.classList.add('font-bold');
+                                btnEl.classList.remove('text-slate-400');
+                            }} else {{
+                                btnEl.style.background = 'transparent';
+                                btnEl.style.color = '';
+                                btnEl.classList.remove('font-bold');
+                                btnEl.classList.add('text-slate-400');
+                            }}
+                        }}
+                    }});
+                }}
+                window.switchProductSubTab = switchProductSubTab;
+
+                function inlineRenameTab(element, tabId) {{
+                    const currentText = element.textContent.trim();
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = currentText;
+                    input.className = 'w-full bg-slate-900 text-white text-xs px-2 py-1 rounded border border-cyan-500 focus:outline-none';
+                    
+                    const saveRename = async () => {{
+                        const newTitle = input.value.trim();
+                        if (newTitle && newTitle !== currentText) {{
+                            element.textContent = newTitle;
+                            try {{
+                                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                                await fetch('/api/settings/rename', {{
+                                    method: 'POST',
+                                    headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                                    body: JSON.stringify({{ tab_id: tabId, title: newTitle, admin_password: pwd }})
+                                }});
+                            }} catch (e) {{
+                                console.warn('Failed to save tab rename:', e);
+                            }}
+                        }} else {{
+                            element.textContent = currentText;
+                        }}
+                    }};
+
+                    input.onblur = saveRename;
+                    input.onkeydown = (e) => {{
+                        if (e.key === 'Enter') {{
+                            input.blur();
+                        }} else if (e.key === 'Escape') {{
+                            element.textContent = currentText;
+                        }}
+                    }};
+
+                    element.textContent = '';
+                    element.appendChild(input);
+                    input.focus();
+                    input.select();
+                }}
+                window.inlineRenameTab = inlineRenameTab;
 
                 async function deleteUserRow(userId) {{
                     if (!userId || userId === '-' || userId === 'undefined') return;
@@ -4334,9 +4772,46 @@ def render_dashboard_html() -> str:
                     function setupDragForContainer(container, isVertical) {{
                         if (!container) return;
                         let draggedItem = null;
+                        let mouseHoldTimer = null;
+                        let isHoldDragReady = false;
+
+                        // Desktop Mouse: Activate drag ONLY after 400ms hold/long-press
+                        container.addEventListener('mousedown', function(e) {{
+                            const btn = e.target.closest('[data-tab]');
+                            if (!btn) return;
+                            isHoldDragReady = false;
+                            clearTimeout(mouseHoldTimer);
+                            mouseHoldTimer = setTimeout(function() {{
+                                isHoldDragReady = true;
+                                btn.setAttribute('draggable', 'true');
+                                btn.style.cursor = 'grab';
+                            }}, 400);
+                        }});
+
+                        container.addEventListener('mouseup', function(e) {{
+                            clearTimeout(mouseHoldTimer);
+                            container.querySelectorAll('[data-tab]').forEach(b => {{
+                                b.setAttribute('draggable', 'false');
+                                b.style.cursor = 'pointer';
+                            }});
+                            isHoldDragReady = false;
+                        }});
+
+                        container.addEventListener('mouseleave', function(e) {{
+                            clearTimeout(mouseHoldTimer);
+                            container.querySelectorAll('[data-tab]').forEach(b => {{
+                                b.setAttribute('draggable', 'false');
+                                b.style.cursor = 'pointer';
+                            }});
+                            isHoldDragReady = false;
+                        }});
 
                         // Mouse Drag & Drop
                         container.addEventListener('dragstart', function(e) {{
+                            if (!isHoldDragReady) {{
+                                e.preventDefault();
+                                return false;
+                            }}
                             const btn = e.target.closest('[data-tab]');
                             if (!btn) return;
                             draggedItem = btn;
@@ -4347,9 +4822,18 @@ def render_dashboard_html() -> str:
 
                         container.addEventListener('dragend', function(e) {{
                             const btn = e.target.closest('[data-tab]');
-                            if (btn) btn.classList.remove('opacity-40');
-                            container.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('opacity-40'));
+                            if (btn) {{
+                                btn.classList.remove('opacity-40');
+                                btn.setAttribute('draggable', 'false');
+                                btn.style.cursor = 'pointer';
+                            }}
+                            container.querySelectorAll('[data-tab]').forEach(b => {{
+                                b.classList.remove('opacity-40');
+                                b.setAttribute('draggable', 'false');
+                                b.style.cursor = 'pointer';
+                            }});
                             draggedItem = null;
+                            isHoldDragReady = false;
                             persistTabsOrder();
                         }});
 

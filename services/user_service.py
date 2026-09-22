@@ -84,12 +84,21 @@ class UserModel:
         if not v_str:
             return False
         try:
-            if v_str.isdigit():
+            if str(v_str).strip().isdigit():
                 return float(v_str) > datetime.now(timezone.utc).timestamp()
-            dt = datetime.fromisoformat(v_str.replace("Z", "+00:00"))
+            v_clean = str(v_str).strip().replace("Z", "+00:00")
+            dt = datetime.fromisoformat(v_clean)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=TEHRAN_TZ)
             return dt > datetime.now(TEHRAN_TZ)
         except Exception:
             return False
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.to_dict().get(key, default)
+
+    def __getitem__(self, key: str) -> Any:
+        return self.to_dict()[key]
 
     def to_dict(self) -> Dict[str, Any]:
         u_id = self.user_id or self.telegram_id or self.bale_id or self.phone or ""
@@ -153,6 +162,8 @@ class UserService:
                             norm_p = normalize_phone(phone)
                             if norm_p:
                                 users[norm_p] = UserModel(udict)
+                            else:
+                                users[str(phone)] = UserModel(udict)
             except Exception as e:
                 logger.error(f"[user_service] Error decrypting {enc_file}: {e}")
 
@@ -165,8 +176,9 @@ class UserService:
                 if isinstance(legacy_data, dict):
                     for phone, udict in legacy_data.items():
                         norm_p = normalize_phone(phone)
-                        if norm_p and norm_p not in users:
-                            users[norm_p] = UserModel(udict)
+                        k = norm_p if norm_p else str(phone)
+                        if k not in users:
+                            users[k] = UserModel(udict)
                 # Securely remove plain users.json to ensure Zero-Git exposure
                 try:
                     legacy_file.unlink()
@@ -497,6 +509,100 @@ class UserService:
             return gid in user_or_phone.unlocked_gifts
         u = cls.get_user_by_phone(str(user_or_phone))
         return bool(u and gid in u.unlocked_gifts)
+
+    @classmethod
+    def get_user_by_any_id(cls, identifier: str) -> Optional[UserModel]:
+        """
+        یافتن کاربر بر اساس هرگونه شناسه یکتا (شماره موبایل، شناسه تلگرام، شناسه بله یا user_id).
+        
+        ورودی:
+            identifier: رشته شناسه جستجو
+        خروجی:
+            شیء UserModel در صورت یافتن، یا None در صورت عدم وجود
+        """
+        clean_id = str(identifier).strip()
+        if not clean_id:
+            return None
+        users = cls.load_users()
+        norm_p = normalize_phone(clean_id)
+        if norm_p and norm_p in users:
+            return users[norm_p]
+        for u in users.values():
+            if clean_id in (u.phone, u.telegram_id, u.bale_id, getattr(u, 'user_id', None)):
+                return u
+        return None
+
+    @classmethod
+    def grant_vip(cls, identifier: str, days: int = 30) -> Optional[UserModel]:
+        """
+        اعطا یا تمدید اشتراک ویژه (VIP) کاربر به تعداد روزهای مشخص.
+        اگر کاربر از قبل دارای اشتراک معتبر باشد، روزهای جدید به پایان اشتراک قبلی اضافه می‌شود.
+        
+        ورودی:
+            identifier: شناسه یکتای کاربر (موبایل یا آیدی پلتفرم)
+            days: تعداد روزهای اضافه شونده به اشتراک (پیش‌فرض ۳۰ روز)
+        خروجی:
+            شیء UserModel به‌روزرسانی شده یا None در صورت نیافتن کاربر
+        """
+        user = cls.get_user_by_any_id(identifier)
+        if not user:
+            # اگر هنوز کاربری ثبت نشده باشد بر مبنای شناسه کاربری جدید ثبت می‌گردد
+            clean_id = str(identifier).strip()
+            plat = "bale" if clean_id.isdigit() else "telegram"
+            norm_p = normalize_phone(clean_id)
+            user_data = {
+                "user_id": clean_id,
+                "platform": plat,
+                "bale_id": clean_id if plat == "bale" else None,
+                "telegram_id": clean_id if plat == "telegram" else None,
+                "phone": norm_p,
+                "full_name": f"کاربر {clean_id}",
+                "referral_code": cls.generate_referral_code()
+            }
+            user = UserModel(user_data)
+            key = norm_p if norm_p else clean_id
+            users = cls.load_users()
+            users[key] = user
+            cls._users[key] = user
+            if cls._users_cache is not None:
+                cls._users_cache[key] = user
+        
+        now = datetime.now(TEHRAN_TZ)
+        base_date = now
+        if user.vip_until:
+            try:
+                v_clean = str(user.vip_until).strip().replace("Z", "+00:00")
+                current_until = datetime.fromisoformat(v_clean)
+                if current_until.tzinfo is None:
+                    current_until = current_until.replace(tzinfo=TEHRAN_TZ)
+                if current_until > now:
+                    base_date = current_until
+            except Exception:
+                base_date = now
+        
+        new_until = base_date + timedelta(days=int(days))
+        user.vip_until = new_until.strftime("%Y-%m-%d %H:%M:%S")
+        cls.save_users()
+        logger.info(f"[user_service] VIP granted to {identifier} until {user.vip_until} (+{days} days)")
+        return user
+
+    @classmethod
+    def revoke_vip(cls, identifier: str) -> Optional[UserModel]:
+        """
+        لغو فوری اشتراک ویژه (VIP) کاربر.
+        
+        ورودی:
+            identifier: شناسه یکتای کاربر
+        خروجی:
+            شیء UserModel به‌روزرسانی شده یا None
+        """
+        user = cls.get_user_by_any_id(identifier)
+        if not user:
+            return None
+        user.vip_until = ""
+        cls.save_users()
+        logger.info(f"[user_service] VIP revoked for {identifier}")
+        return user
 
     @classmethod
     def set_terms_accepted(cls, phone_or_uid: str, accepted: bool = True, platform: Optional[str] = None) -> bool:

@@ -120,7 +120,7 @@ class GiftButtonStr(str):
 def get_customer_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
-            ["📚 لیست دوره‌های آموزشی"],
+            ["🛍 محصولات"],
             ["🔮 نشانه امروز من", "💎 فرکانس فراوانی"],
             ["👤 حساب کاربری", GiftButtonStr("🎁 فایل‌های هدیه")]
         ],
@@ -935,20 +935,63 @@ class TelegramAdapter:
                 )
                 await callback_query.message.edit_text(plain_panel, reply_markup=kb)
 
-        # Customer: Courses List
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(📚\s*لیست دوره‌های آموزشی|لیست دوره)"))
-        async def customer_courses(client: Client, message: Message):
+        # Customer: Products Hub & Courses
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🛍\s*محصولات|محصولات|📚\s*لیست دوره‌های آموزشی|لیست دوره)"))
+        async def customer_products_hub(client: Client, message: Message):
             if not await check_force_join_telegram(client, message.from_user.id) and not self.is_admin(message.from_user.id):
                 ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
                 await message.reply_text("⚠️ <b>برای استفاده از امکانات ربات ابتدا باید در کانال رسمی ما عضو شوید:</b>", parse_mode=enums.ParseMode.HTML, reply_markup=build_telegram_force_join_keyboard(ch))
                 return
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🎓 دوره‌های آموزشی", callback_data="tg:prods_courses")],
+                [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")],
+                [InlineKeyboardButton("💎 اشتراک ویژه (VIP)", callback_data="tg:vip_plan")]
+            ])
+            await message.reply_text(
+                "🛍 <b>مرکز محصولات آموزشی و اشتراک ویژه:</b>\n\n"
+                "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده و سفارش انتخاب فرمایید:",
+                parse_mode=enums.ParseMode.HTML,
+                reply_markup=kb
+            )
+
+        @self.app.on_callback_query(filters.regex(r"^(tg:prods_hub|tg:prods_back)$"))
+        async def handle_tg_prods_hub_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🎓 دوره‌های آموزشی", callback_data="tg:prods_courses")],
+                [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")],
+                [InlineKeyboardButton("💎 اشتراک ویژه (VIP)", callback_data="tg:vip_plan")]
+            ])
+            await callback_query.message.edit_text(
+                "🛍 <b>مرکز محصولات آموزشی و اشتراک ویژه:</b>\n\n"
+                "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده و سفارش انتخاب فرمایید:",
+                parse_mode=enums.ParseMode.HTML,
+                reply_markup=kb
+            )
+
+        @self.app.on_callback_query(filters.regex(r"^tg:prods_courses$"))
+        async def handle_tg_prods_courses_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
             prods = await StoreService.get_products(is_free_only=False)
             if not prods:
-                await message.reply_text("📚 در حال حاضر دوره‌ای برای فروش ثبت نشده است.")
+                await callback_query.message.reply_text("📚 در حال حاضر دوره‌ای برای فروش ثبت نشده است.")
                 return
             lines = ["📚 <b>لیست دوره‌های آموزشی تخصصی:</b>", "جهت مشاهده جزئیات و ثبت سفارش دوره موردنظر را انتخاب نمایید:\n"]
             buttons = [[InlineKeyboardButton(f"🎓 {p.name} ({p.price:,} تومان)", callback_data=f"cview:{p.product_id}")] for p in prods]
-            await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")])
+            await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        @self.app.on_callback_query(filters.regex(r"^tg:prods_audiobooks$"))
+        async def handle_tg_prods_audiobooks_cb(client: Client, callback_query: CallbackQuery):
+            await callback_query.answer()
+            all_p = await StoreService.get_products(is_free_only=False)
+            audio_prods = [p for p in all_p if getattr(p, "delivery_type", "") == "audio" or "صوتی" in p.name or "کتاب" in p.name]
+            if not audio_prods:
+                audio_prods = all_p
+            lines = ["🎧 <b>کتاب‌ها و پکیج‌های صوتی ارزشمند:</b>", "برای مشاهده جزئیات و تهیه، اثر موردنظر را انتخاب نمایید:\n"]
+            buttons = [[InlineKeyboardButton(f"🎧 {p.name} ({p.price:,} تومان)", callback_data=f"cview:{p.product_id}")] for p in audio_prods]
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")])
+            await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(🎁\s*دانلودها \(هدیه\)|دانلودها|هدیه)"))
         async def customer_gifts(client: Client, message: Message):
@@ -1053,7 +1096,7 @@ class TelegramAdapter:
                 except Exception:
                     pass
 
-        @self.app.on_callback_query(filters.regex(r"^vip_club_info$"))
+        @self.app.on_callback_query(filters.regex(r"^(vip_club_info|tg:vip_plan)$"))
         async def handle_vip_club_info_cb(client: Client, callback_query: CallbackQuery):
             """
             نمایش توضیحات، شرایط و تعرفه عضویت در باشگاه پریمیوم VIP برای کاربر با دکمه شیشه‌ای.
@@ -1069,14 +1112,15 @@ class TelegramAdapter:
             card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
             txt = (
                 "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت نامحدود یا دوره اشتراک دسترسی خواهید داشت.\n\n"
+                "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت ۳۰ روز دسترسی خواهید داشت.\n\n"
                 f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
             )
             if card_num:
                 txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
             else:
                 txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
-            await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML)
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]])
+            await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|باشگاه پریمیوم|اشتراک VIP|/vip)$"))
         async def handle_vip_command_tg(client: Client, message: Message):

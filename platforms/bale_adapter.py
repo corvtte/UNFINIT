@@ -54,7 +54,7 @@ class GiftButtonStr(str):
 def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
-            [{"text": "📚 لیست دوره‌های آموزشی"}],
+            [{"text": "🛍 محصولات"}],
             [{"text": "🔮 نشانه امروز من"}, {"text": "💎 فرکانس فراوانی"}],
             [{"text": "👤 حساب کاربری"}, {"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
         ],
@@ -765,6 +765,35 @@ class BaleAdapter:
                 return {"ok": False, "error": str(e)}
 
         clean_send_name = clean_display_filename(urllib.parse.unquote(str(path_obj.name)))
+        
+        # Proactive size check: Bale sendAudio fails with 413 for files near or above 50MB.
+        # If file size exceeds safe limit, fallback directly to sendDocument.
+        file_size_bytes = 0
+        try:
+            file_size_bytes = path_obj.stat().st_size
+        except Exception:
+            pass
+
+        max_safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.5))
+        if file_size_bytes > (max_safe_mb * 1024 * 1024):
+            logger.info(f"Bale send_audio: file size ({file_size_bytes / (1024*1024):.2f}MB) exceeds {max_safe_mb}MB. Directly routing to sendDocument.")
+            try:
+                url_doc = f"{self.base_url}/sendDocument"
+                form_doc = aiohttp.FormData(quote_fields=False)
+                form_doc.add_field("chat_id", str(chat_id))
+                if clean_caption: form_doc.add_field("caption", clean_caption)
+                if markup_str: form_doc.add_field("reply_markup", markup_str)
+                with open(path_obj, "rb") as f:
+                    form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
+                    timeout = aiohttp.ClientTimeout(total=1800, connect=30)
+                    async with aiohttp.ClientSession(timeout=timeout) as session:
+                        async with session.post(url_doc, data=form_doc) as resp:
+                            res_doc = await resp.json()
+                            return res_doc
+            except Exception as e:
+                logger.error(f"Bale sendDocument large-file error: {e}")
+                return {"ok": False, "error": str(e)}
+
         form = aiohttp.FormData(quote_fields=False)
         form.add_field("chat_id", str(chat_id))
         if clean_title: form.add_field("title", clean_title)
@@ -2156,25 +2185,94 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "\n".join(lines), reply_markup={"inline_keyboard": buttons})
                                         continue
 
-                                    if cb_data == "vip_club_info":
-                                        from core.database import get_system_setting
+                                    if cb_data in ("vip_club_info", "bale:vip_plan"):
                                         price = await get_system_setting("vip_monthly_price", "111000")
                                         try:
-                                            price_formatted = f"{int(price):,}"
+                                            price_val = int(price)
+                                            price_formatted = f"{price_val:,}"
                                         except Exception:
-                                            price_formatted = price
+                                            price_val = 111000
+                                            price_formatted = "111,000"
                                         days = await get_system_setting("vip_duration_days", "30")
                                         card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
+                                        bale_pay_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
+                                        
                                         txt = (
                                             "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                                            "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت نامحدود یا دوره اشتراک دسترسی خواهید داشت.\n\n"
-                                            f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
+                                            "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت ۳۰ روز دسترسی کامل خواهید داشت.\n\n"
+                                            f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
                                         )
+                                        vip_btns = []
+                                        if bale_pay_tok:
+                                            vip_btns.append([{"text": f"⚡️ پرداخت آنلاین و فعال‌سازی آنی ({price_formatted} تومان)", "callback_data": "bale:vip_pay_online"}])
                                         if card_num:
-                                            txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
-                                        else:
-                                            txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
-                                        await bale.send_message(chat_id, txt)
+                                            txt += f"\n💳 <b>شماره کارت واریز:</b>\n<code>{card_num}</code>\n"
+                                            vip_btns.append([{"text": "🧾 ارسال رسید واریز کارت به کارت", "callback_data": "bale:vip_pay_card"}])
+                                        vip_btns.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
+                                        await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns} if vip_btns else None)
+                                        continue
+
+                                    if cb_data == "bale:vip_pay_online":
+                                        price = await get_system_setting("vip_monthly_price", "111000")
+                                        try:
+                                            price_val = int(price)
+                                        except Exception:
+                                            price_val = 111000
+                                        bale_pay_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
+                                        if not bale_pay_tok:
+                                            await bale.send_message(chat_id, "⚠️ درگاه پرداخت آنلاین موقتاً در دسترس نیست. لطفاً از طریق کارت به کارت اقدام فرمایید.")
+                                            continue
+                                        inv_payload = f"vip_sub_{chat_id}_{int(time.time())}"
+                                        days = await get_system_setting("vip_duration_days", "30")
+                                        res_inv = await bale.send_invoice(
+                                            chat_id=chat_id,
+                                            title="اشتراک ویژه ۳۰ روزه VIP",
+                                            description=f"فعال‌سازی آنی اشتراک باشگاه پریمیوم VIP ({days} روز)",
+                                            payload=inv_payload,
+                                            provider_token=bale_pay_tok,
+                                            amount_tomans=price_val
+                                        )
+                                        if not res_inv.get("ok"):
+                                            logger.warning(f"Bale send_invoice for VIP returned error: {res_inv}")
+                                            await bale.send_message(chat_id, "❌ متأسفانه صدور فاکتور پرداخت آنلاین با خطا مواجه شد. لطفاً از روش کارت به کارت استفاده فرمایید.")
+                                        continue
+
+                                    if cb_data == "bale:vip_pay_card":
+                                        session_manager.set_user_action(f"bale_{chat_id}", "await_vip_receipt", "vip_receipt", extra={})
+                                        await bale.send_message(
+                                            chat_id,
+                                            "🧾 <b>ثبت فیش واریز اشتراک VIP:</b>\n\n"
+                                            "لطفاً تصویر رسید واریز یا شماره پیگیری خود را ارسال فرمایید تا پس از بررسی فعال شود:\n"
+                                            "(جهت انصراف عبارت <code>/cancel</code> را بفرستید)"
+                                        )
+                                        continue
+
+                                    if cb_data in ("bale:prods_hub", "bale:prods_back"):
+                                        p_kb = {
+                                            "inline_keyboard": [
+                                                [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
+                                                [{"text": "🎧 کتاب‌های صوتی", "callback_data": "bale:prods_audiobooks"}],
+                                                [{"text": "💎 اشتراک ویژه (VIP)", "callback_data": "vip_club_info"}]
+                                            ]
+                                        }
+                                        await bale.send_message(chat_id, "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\nلطفاً بخش مورد نظر خود را انتخاب نمایید:", reply_markup=p_kb)
+                                        continue
+
+                                    if cb_data == "bale:prods_courses":
+                                        prods = await StoreService.get_products(is_free_only=False)
+                                        buttons = [[{"text": f"🎓 {p.name} ({p.price:,} تومان)", "callback_data": f"bcview:{p.product_id}"}] for p in prods]
+                                        buttons.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
+                                        await bale.send_message(chat_id, "📚 لیست دوره‌های آموزشی تخصصی:", reply_markup={"inline_keyboard": buttons})
+                                        continue
+
+                                    if cb_data == "bale:prods_audiobooks":
+                                        all_p = await StoreService.get_products(is_free_only=False)
+                                        audio_prods = [p for p in all_p if getattr(p, "delivery_type", "") == "audio" or "صوتی" in p.name or "کتاب" in p.name]
+                                        if not audio_prods:
+                                            audio_prods = all_p
+                                        buttons = [[{"text": f"🎧 {p.name} ({p.price:,} تومان)", "callback_data": f"bcview:{p.product_id}"}] for p in audio_prods]
+                                        buttons.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
+                                        await bale.send_message(chat_id, "🎧 <b>کتاب‌ها و پکیج‌های صوتی ارزشمند:</b>\n\nجهت مشاهده و تهیه، عنوان مورد نظر را انتخاب فرمایید:", reply_markup={"inline_keyboard": buttons})
                                         continue
 
                                     if cb_data == "badm_c_add":
@@ -2454,6 +2552,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         ref_link = ReferralService.get_referral_link(c_id, "bale", bot_username)
                                         invites = usr.successful_invites
                                         unlocked = UserService.is_gift_unlocked_by_platform("bale", c_id, TOHID_AMALI_PACK_ID)
+                                        st_txt = "✅ <b>باز شده و آماده دریافت</b>" if unlocked else "🔒 <b>قفل (نیاز به ۱ دعوت موفق)</b>"
 
                                         inv_custom = getattr(config, "INVITE_FRIENDS_TEXT", "").strip()
                                         inv_body = inv_custom if inv_custom else "با ارسال لینک دعوت اختصاصی خود به دوستان، به محض پیوستن ۱ نفر، <b>بسته صوتی کامل ۱۱ قسمتی توحید عملی</b> برای شما فعال خواهد شد!"
@@ -2746,7 +2845,22 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     # Successful Online Payment Handler
                                     sp = msg.get("successful_payment")
                                     if sp:
-                                        order_id = sp.get("invoice_payload")
+                                        payload_raw = str(sp.get("invoice_payload") or "")
+                                        if payload_raw.startswith("vip_sub_"):
+                                            days_val = int(await get_system_setting("vip_duration_days", "30"))
+                                            u_vip = UserService.grant_vip(str(chat_id), days=days_val)
+                                            logger.info(f"Bale successful_payment: VIP activated for {chat_id} until {getattr(u_vip, 'vip_until', '')}")
+                                            vip_until_show = getattr(u_vip, 'vip_until', '')[:10] if u_vip else ""
+                                            await bale.send_message(
+                                                chat_id,
+                                                f"🎉 <b>پرداخت شما با موفقیت تایید شد!</b>\n\n"
+                                                f"💎 اشتراک <b>باشگاه پریمیوم VIP</b> برای شما به مدت <b>{days_val} روز</b> (تا {vip_until_show}) فعال گردید.\n\n"
+                                                f"از این پس می‌توانید به تمامی دوره‌ها، نشانه‌های روزانه و فرکانس‌های آگاهی به عنوان کاربر ویژه دسترسی داشته باشید. ✨",
+                                                reply_markup=get_bale_customer_keyboard()
+                                            )
+                                            continue
+
+                                        order_id = payload_raw
                                         logger.info(f"Bale successful_payment received for order {order_id}!")
                                         res_app = await StoreService.approve_order(order_id)
                                         prod_name = (res_app.get("product_name") if res_app else None) or "دوره آموزشی"
@@ -2802,7 +2916,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
                                         try:
                                             from core.sign_service import SignService
-                                            from core.database import get_system_setting
                                             reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
                                             extract_chapters = (await get_system_setting("sign_extract_chapters", "1")) == "1"
 
@@ -2845,24 +2958,29 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if any(text.startswith(cmd) for cmd in ["💎 عضویت در باشگاه پریمیوم VIP", "عضویت در باشگاه پریمیوم VIP", "باشگاه پریمیوم", "اشتراک VIP", "/vip"]):
-                                        from core.database import get_system_setting
                                         price = await get_system_setting("vip_monthly_price", "111000")
                                         try:
-                                            price_formatted = f"{int(price):,}"
+                                            price_val = int(price)
+                                            price_formatted = f"{price_val:,}"
                                         except Exception:
-                                            price_formatted = price
+                                            price_val = 111000
+                                            price_formatted = "111,000"
                                         days = await get_system_setting("vip_duration_days", "30")
                                         card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
+                                        bale_pay_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
                                         txt = (
                                             "💎 <b>باشگاه پریمیوم VIP</b>\n\n"
-                                            "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت نامحدود یا دوره اشتراک دسترسی خواهید داشت.\n\n"
-                                            f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
+                                            "با عضویت در باشگاه VIP، به تمامی فایل‌های ویژه، نشانه‌های عمیق روزانه، مراقبه‌ها و فرکانس‌های آگاهی به مدت ۳۰ روز دسترسی کامل خواهید داشت.\n\n"
+                                            f"💰 <b>هزینه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
                                         )
+                                        vip_btns = []
+                                        if bale_pay_tok:
+                                            vip_btns.append([{"text": f"⚡️ پرداخت آنلاین و فعال‌سازی آنی ({price_formatted} تومان)", "callback_data": "bale:vip_pay_online"}])
                                         if card_num:
-                                            txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
-                                        else:
-                                            txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
-                                        await bale.send_message(chat_id, txt)
+                                            txt += f"\n💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n"
+                                            vip_btns.append([{"text": "🧾 ارسال رسید واریز کارت به کارت", "callback_data": "bale:vip_pay_card"}])
+                                        vip_btns.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
+                                        await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns} if vip_btns else None)
                                         continue
 
                                     if (text in ["💾 بک‌آپ دیتابیس", "بک‌آپ دیتابیس", "/backup_db"]) and bale.is_admin(chat_id):
@@ -3379,16 +3497,26 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, p_txt)
                                         continue
 
-                                    if text == "📚 لیست دوره‌های آموزشی":
-                                        prods = await StoreService.get_products(is_free_only=False)
-                                        buttons = [[{"text": f"🎓 {p.name} ({p.price:,} تومان)", "callback_data": f"bcview:{p.product_id}"}] for p in prods]
-                                        await bale.send_message(chat_id, "📚 لیست دوره‌های آموزشی تخصصی:", reply_markup={"inline_keyboard": buttons})
+                                    if text in ("🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی"):
+                                        p_kb = {
+                                            "inline_keyboard": [
+                                                [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
+                                                [{"text": "🎧 کتاب‌های صوتی", "callback_data": "bale:prods_audiobooks"}],
+                                                [{"text": "💎 اشتراک ویژه (VIP)", "callback_data": "vip_club_info"}]
+                                            ]
+                                        }
+                                        await bale.send_message(
+                                            chat_id,
+                                            "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\n"
+                                            "لطفاً دسته‌بندی مورد نظر خود را برای مشاهده یا ثبت سفارش انتخاب فرمایید:",
+                                            reply_markup=p_kb
+                                        )
                                         continue
 
                                     if text in ("👤 دوره‌های من", "دوره‌های من", "/my_courses"):
                                         purchased = await StoreService.get_customer_purchased_courses(chat_id)
                                         if not purchased:
-                                            await bale.send_message(chat_id, "📚 هنوز دوره‌ای در حساب شما ثبت نشده است.\nمی‌توانید دوره‌ها را از منوی «📚 لیست دوره‌های آموزشی» تهیه فرمایید.")
+                                            await bale.send_message(chat_id, "📚 هنوز دوره‌ای در حساب شما ثبت نشده است.\nمی‌توانید دوره‌ها را از منوی «🛍 محصولات» تهیه فرمایید.")
                                             continue
                                         await bale.send_message(chat_id, f"📚 <b>دوره‌های فعال و خریداری‌شده شما ({len(purchased)} دوره):</b>\n\nدر ادامه کارت‌های دسترسی به هر دوره تقدیم حضورتان می‌گردد:")
                                         for i, c in enumerate(purchased, 1):
@@ -3402,7 +3530,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
                                         try:
                                             from core.sign_service import SignService
-                                            from core.database import get_system_setting
                                             reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
                                             extract_chapters = (await get_system_setting("sign_extract_chapters", "1")) == "1"
 

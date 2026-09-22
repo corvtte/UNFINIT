@@ -33,15 +33,15 @@ class TestVersion043Features(unittest.TestCase):
 
     def test_01_version_v043_sync(self):
         """اعتبارسنجی نسخه v0.4.3 و نسخه‌های بعدی در تمام بخش‌های اصلی سیستم."""
-        self.assertIn(str(config.ENGINE_VERSION), ("v0.4.3", "v0.4.4"))
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.4.3", "v0.4.4", "v0.4.5"))
         health = get_system_health()
-        self.assertTrue(any(v in health["engine_version"] for v in ("v0.4.3", "v0.4.4")))
+        self.assertTrue(any(v in health["engine_version"] for v in ("v0.4.3", "v0.4.4", "v0.4.5")))
 
         dash_html = render_dashboard_html()
-        self.assertTrue(any(v in dash_html for v in ("v0.4.3", "v0.4.4")))
+        self.assertTrue(any(v in dash_html for v in ("v0.4.3", "v0.4.4", "v0.4.5")))
 
         store_html = render_storefront_html()
-        self.assertTrue(any(v in store_html for v in ("v0.4.3", "v0.4.4")))
+        self.assertTrue(any(v in store_html for v in ("v0.4.3", "v0.4.4", "v0.4.5")))
 
     def test_02_web_panel_js_scripts_syntax(self):
         """اعتبارسنجی عدم وجود کرش، رشته‌های شکسته یا سینتکس نامعتبر در اسکریپت‌های وب‌پنل."""
