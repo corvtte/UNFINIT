@@ -1,7 +1,8 @@
+import math
 import subprocess
 import shutil
 from pathlib import Path
-from typing import Optional, Tuple, Callable
+from typing import Optional, Tuple, Callable, List, Dict, Any
 from core.config import config
 from core.logger import get_logger
 from media.inspector import inspect_technical_metadata
@@ -246,6 +247,138 @@ class SmartVideoCompressor:
             f"final={final_size/(1024*1024):.2f}MB"
         )
         return out_path, initial_size, final_size, target_v_bitrate, True
+
+    @staticmethod
+    def precalculate_video_quality(
+        file_path: str | Path,
+        target_max_mb: float = 48.5
+    ) -> Dict[str, Any]:
+        """
+        محاسبه پیش از پردازش (Pre-Calculation):
+        سنجش کیفیت تقریبی خروجی ویدیو بر اساس مدت‌زمان و سقف بله، قبل از ورود به پردازش سنگین FFmpeg.
+        ورودی: مسیر فایل ویدیویی و سقف مگابایتی هدف.
+        خروجی: دیکشنری شامل مدت‌زمان، بیت‌ریت هدف، رزولوشن تخمینی، پرچم افت شدید کیفیت و پارت‌های پیشنهادی.
+        """
+        src = Path(file_path)
+        if not src.exists():
+            return {
+                "duration_sec": 0, "target_v_bitrate": 800,
+                "estimated_resolution": "720p", "severe_quality_drop": False,
+                "recommended_parts": 2, "initial_size_mb": 0.0
+            }
+
+        tech = inspect_technical_metadata(src)
+        dur = float(tech.get("duration_sec", 0) or 0)
+        file_sz = src.stat().st_size
+        init_mb = round(file_sz / (1024 * 1024), 2)
+
+        target_max_bytes = int(target_max_mb * 1024 * 1024)
+        audio_kbps = 64 if dur > 1800 else 96
+        target_v_bitrate = SmartVideoCompressor.calculate_target_video_bitrate(
+            dur, target_max_bytes, audio_bitrate_kbps=audio_kbps
+        )
+
+        if target_v_bitrate < 250:
+            est_res = "240p"
+            severe_drop = True
+        elif target_v_bitrate < 450:
+            est_res = "360p"
+            severe_drop = True
+        elif target_v_bitrate < 750:
+            est_res = "480p"
+            severe_drop = False
+        else:
+            est_res = "720p"
+            severe_drop = False
+
+        if dur >= 900 and target_v_bitrate < 600:
+            severe_drop = True
+            if est_res == "480p":
+                est_res = "360p"
+
+        rec_parts = max(2, math.ceil(file_sz / target_max_bytes)) if file_sz > target_max_bytes else 2
+
+        return {
+            "duration_sec": dur,
+            "target_v_bitrate": target_v_bitrate,
+            "estimated_resolution": est_res,
+            "severe_quality_drop": severe_drop,
+            "recommended_parts": rec_parts,
+            "initial_size_mb": init_mb
+        }
+
+
+class SmartVideoSplitter:
+    """
+    کلاس مدیریت تقسیم هوشمند ویدیوهای حجیم یا طولانی به پارت‌های باکیفیت
+    بر اساس سقف مجاز بله با حفظ وضوح اصلی با استفاده از Stream Copy سریع یا انکود سبک.
+    """
+    @staticmethod
+    def split_video(
+        file_path: str | Path,
+        num_parts: int = 2,
+        target_max_mb: float = 48.5,
+        progress_callback: Optional[Callable[[str], None]] = None
+    ) -> List[Path]:
+        """
+        ویدیو را بر اساس تعداد پارت‌های درخواستی یا سقف مجاز تکه‌تکه می‌کند.
+        ورودی: مسیر فایل ویدیو، تعداد پارت‌ها، سقف مگابایتی و کالبک پیشرفت اختیاری.
+        خروجی: لیستی از مسیر فایل‌های پارت تقسیم‌شده (Path).
+        """
+        src = Path(file_path)
+        if not src.exists():
+            raise FileNotFoundError(f"Input video not found: {file_path}")
+
+        tech = inspect_technical_metadata(src)
+        dur = float(tech.get("duration_sec", 0) or 0)
+        if dur <= 0:
+            dur = 600.0
+
+        num_parts = max(2, int(num_parts))
+        part_duration = dur / num_parts
+        output_files: List[Path] = []
+
+        if progress_callback:
+            progress_callback(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {num_parts} پارت باکیفیت...</b>")
+
+        for i in range(num_parts):
+            start_sec = i * part_duration
+            out_p = config.TEMP_DIR / f"{src.stem}_part{i+1}of{num_parts}{src.suffix}"
+            out_p.parent.mkdir(parents=True, exist_ok=True)
+
+            cmd_copy = [
+                "ffmpeg", "-y",
+                "-ss", f"{start_sec:.2f}",
+                "-t", f"{part_duration:.2f}",
+                "-i", str(src),
+                "-c", "copy",
+                "-avoid_negative_ts", "make_zero",
+                str(out_p)
+            ]
+            logger.info(f"Splitting part {i+1}/{num_parts}: {cmd_copy}")
+            res = subprocess.run(cmd_copy, capture_output=True, text=True, timeout=300)
+
+            if res.returncode != 0 or not out_p.exists() or out_p.stat().st_size < 1000:
+                logger.warning(f"Stream copy split failed for part {i+1}, falling back to fast encode...")
+                cmd_enc = [
+                    "ffmpeg", "-y",
+                    "-ss", f"{start_sec:.2f}",
+                    "-t", f"{part_duration:.2f}",
+                    "-i", str(src),
+                    "-c:v", "libx264",
+                    "-preset", "ultrafast",
+                    "-c:a", "aac",
+                    "-b:a", "96k",
+                    str(out_p)
+                ]
+                subprocess.run(cmd_enc, capture_output=True, text=True, timeout=600)
+
+            if out_p.exists() and out_p.stat().st_size > 0:
+                output_files.append(out_p)
+            else:
+                logger.error(f"Failed to generate part {i+1} of {src.name}")
+
+        return output_files
 
 
 def convert_audio_to_mp3_if_needed(file_path: str | Path) -> Tuple[Path, bool]:

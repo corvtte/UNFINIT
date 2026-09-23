@@ -1035,7 +1035,7 @@ def render_dashboard_html() -> str:
         </div>
 
         <!-- ================= MAIN CONTENT AREA ================= -->
-        <div id="contentWrapper" class="md:mr-64 mr-0 min-h-screen flex flex-col transition-all duration-300">
+        <div id="contentWrapper" class="md:mr-64 mr-0 min-h-screen flex flex-col transition-all duration-300 pb-24 md:pb-8">
             <!-- Top Sticky Header -->
             <header class="glass sticky top-0 z-30 px-4 sm:px-6 py-3.5 border-b border-slate-800/80 flex justify-between items-center gap-3">
                 <div class="flex items-center gap-3">
@@ -1270,8 +1270,118 @@ def render_dashboard_html() -> str:
         <!-- ================= TAB 1: STUDIO & MEDIA HUB ================= -->
         <div id="tab-studio" class="hidden space-y-6">
 
+            <!-- Web Mp3tag Studio & Media Table (Accordion) -->
+            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4">
+                <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
+                    <div class="flex items-center gap-2">
+                        <svg width="20" height="20" class="w-5 h-5 text-emerald-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                        </svg>
+                        <span>استودیوی پیشرفته متادیتا و رسانه (Web Mp3tag Studio)</span>
+                    </div>
+                    <span class="text-xs text-cyan-400 font-mono bg-cyan-950/80 px-3 py-1 rounded-lg border border-cyan-800">
+                        تعداد کل فایل‌ها: {active_drops_count}
+                    </span>
+                </summary>
+                <div class="p-6 pt-2 space-y-4">
+                    <p class="text-xs text-slate-400">
+                        ویرایش حرفه‌ای متادیتا، برش صدا با رسم موج صوتی، کاور آرت، شماره‌گذاری خودکار جلسات و ارسال مستقیم به پیام‌رسان‌ها
+                    </p>
+
+                    <!-- Studio Fast Metadata Settings -->
+                    <div class="glass p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs mb-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                            </svg>
+                            <span class="font-bold text-slate-200">تنظیمات سریع پردازش متادیتا:</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition">
+                                <input type="checkbox" id="cfg_studio_auto_artist" onchange="toggleStudioMetaSetting('APPLY_DEFAULT_ARTIST_TAG', this.checked)" class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
+                                <span>تزریق خودکار نام خواننده</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition">
+                                <input type="checkbox" id="cfg_studio_auto_title" onchange="toggleStudioMetaSetting('AUTO_RENAME_FILE_TO_TITLE', this.checked)" class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
+                                <span>تغییر نام فایل به عنوان آهنگ</span>
+                            </label>
+                            <span id="studioMetaSyncNotice" class="text-[11px] text-emerald-400 hidden font-mono">ذخیره شد ✓</span>
+                        </div>
+                    </div>
+
+                    <!-- Drag & Drop Upload Zone -->
+                    <div id="studioDropzone" onclick="document.getElementById('studioFileInput').click()" class="border-2 border-dashed p-6 rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group">
+                        <input type="file" id="studioFileInput" multiple accept="audio/*,video/*" class="hidden" onchange="handleStudioFilesSelect(this.files)">
+                        <div class="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center text-2xl text-cyan-300 group-hover:scale-110 transition">
+                            <svg width="24" height="24" class="w-6 h-6 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-200">فایل‌های صوتی یا ویدیویی خود را به اینجا بکشید یا برای انتخاب کلیک کنید</p>
+                            <p class="text-[11px] text-slate-400 mt-1">پشتیبانی از فرمت‌های صوتی و ویدیویی (MP3, M4A, AAC, WAV, MP4) با ثبت خودکار در سشن‌های استودیو</p>
+                        </div>
+                        <div id="studioUploadProgress" class="hidden text-xs text-cyan-400 font-mono"></div>
+                    </div>
+
+                    <!-- Batch Action Bar -->
+                    <div class="flex flex-wrap justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 gap-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
+                                <input type="checkbox" id="selectAllDrops" onchange="toggleSelectAllDrops(this)" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
+                                <span>انتخاب همه</span>
+                            </label>
+                            <span id="selectedCountBadge" class="text-xs text-cyan-300 font-mono bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800/80">۰ فایل انتخاب شده</span>
+                            <button onclick="batchDeleteStudioDrops()" class="px-3.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800 transition flex items-center gap-1.5" title="حذف گروهی فایل‌های انتخاب‌شده از حافظه و دیسک">
+                                <span>حذف فایل‌های انتخاب‌شده</span>
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-700">
+                                <span class="text-xs text-slate-400">مرتب‌سازی:</span>
+                                <select id="studioSortSelect" onchange="changeStudioSort(this.value)" class="bg-slate-900 border border-slate-700 text-xs text-cyan-300 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 transition cursor-pointer">
+                                    <option value="newest">جدیدترین</option>
+                                    <option value="oldest">قدیمی‌ترین</option>
+                                    <option value="size_desc">بزرگترین حجم</option>
+                                    <option value="size_asc">کمترین حجم</option>
+                                    <option value="name_asc">نام فایل (الفبا)</option>
+                                </select>
+                            </div>
+                            <button onclick="openBatchTagModal()" class="theme-accent-btn px-3.5 py-1.5 rounded-xl text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
+                                <span>ویرایش گروهی تگ‌ها (Batch Edit)</span>
+                            </button>
+                            <button onclick="cleanupStudioDrops()" id="btnCleanupStudio" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5" title="پاکسازی رکوردهای تکراری و سشن‌های خالی">
+                                <span>پاکسازی سشن‌های خالی</span>
+                            </button>
+                            <button onclick="refreshStudioList()" class="theme-card-btn px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1">
+                                <span>به‌روزرسانی لیست</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Studio Media Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-700 text-xs text-slate-400">
+                                    <th class="py-3 px-3 text-center w-10">انتخاب</th>
+                                    <th class="py-3 px-3">عنوان و متادیتا / نام فایل</th>
+                                    <th class="py-3 px-3">مشخصات و مبدا</th>
+                                    <th class="py-3 px-3 text-left">عملیات استودیو و دیسپچ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studioTableBody">
+                                {drop_rows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
+
+            
+
             <!-- Cross-Platform URL Dispatcher & Tools (Accordion) -->
-            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4" open>
+            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4">
                 <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
                     <div class="flex items-center gap-2">
                         <svg width="20" height="20" class="w-5 h-5 text-cyan-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1308,8 +1418,61 @@ def render_dashboard_html() -> str:
                 </div>
             </details>
 
+            
+
+            <!-- Studio & Course Copilot (Integrated into Studio Tab) -->
+            <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl theme-accent-btn flex items-center justify-center font-bold text-2xl shadow-lg text-white">
+                        🎛
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            دستیار هوشمند دوره‌ها و استودیوی رسانه (Studio & Course Copilot)
+                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">🟢 فعال و آنلاین</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">اتصال به Nara Router با سهمیه رایگان - متخصص اتوماسیون متادیتا، تدوین کپشن دوره‌ها و مهندسی رسانه</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <label for="hermesModelSelect" class="text-xs text-slate-300 whitespace-nowrap">🤖 مدل هوش مصنوعی:</label>
+                        <select id="hermesModelSelect" class="border rounded-lg px-2.5 py-1 text-xs font-mono focus:outline-none" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">
+                            <option value="stepfun-3.7-flash" selected>stepfun-3.7-flash (پیش‌فرض هوشمند و قوی متون فارسی)</option>
+                            <option value="mimo-v2.5-free">mimo-v2.5-free (فوق‌سریع و رایگان)</option>
+                            <option value="qwen2.5-72b">qwen2.5-72b (دقت نگارش بالا)</option>
+                        </select>
+                    </div>
+                    <span class="px-2.5 py-1.5 rounded-xl border font-mono text-[11px]" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">🌐 router.bynara.id</span>
+                </div>
+            </div>
+
+            <!-- Chat Window -->
+            <div class="glass rounded-2xl border flex flex-col h-[520px] overflow-hidden shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
+                <div id="hermesChatBox" class="flex-1 p-5 overflow-y-auto space-y-4 chat-scrollbar">
+                    <div class="flex gap-2.5 items-center p-3 rounded-xl border text-xs text-slate-300" style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <div class="w-6 h-6 rounded-lg theme-accent-btn flex items-center justify-center font-bold text-xs shrink-0 text-white">
+                            🤖
+                        </div>
+                        <span>دستیار هوش مصنوعی آماده پاسخگویی و ارائه کپشن دوره‌ها و پردازش رسانه است.</span>
+                    </div>
+                </div>
+                <div class="p-4 border-t" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <form id="hermesChatForm" onsubmit="handleSendHermes(event)" class="flex items-center gap-3">
+                        <button type="button" onclick="clearHermesChat()" title="پاکسازی چت" class="theme-card-btn px-3 py-2.5 rounded-xl text-xs transition">
+                            🗑
+                        </button>
+                        <input type="text" id="hermesInput" placeholder="درخواست اتوماسیون متادیتا، کپشن فروش دوره یا مشاوره رسانه را بنویسید..." class="flex-1 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition border" style="background: var(--input-bg); border-color: var(--card-border);">
+                        <button type="submit" id="btnSendHermes" class="px-5 py-2.5 rounded-xl theme-accent-btn text-xs font-bold text-white shadow-lg transition flex items-center gap-1.5 shrink-0">
+                            <span>ارسال</span> ➜
+                        </button>
+                    </form>
+                </div>
+            </div>
+        
+
             <!-- SVG Vector Studio Suite Widget (Accordion) -->
-            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4" open>
+            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4">
                 <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
                     <div class="flex items-center gap-2">
                         <svg width="20" height="20" class="w-5 h-5 text-indigo-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1401,142 +1564,7 @@ def render_dashboard_html() -> str:
                 </div>
             </details>
 
-            <!-- Web Mp3tag Studio & Media Table (Accordion) -->
-            <details class="settings-accordion glass rounded-2xl overflow-hidden mb-4" open>
-                <summary class="p-5 cursor-pointer font-bold text-sm text-slate-100 flex items-center justify-between select-none">
-                    <div class="flex items-center gap-2">
-                        <svg width="20" height="20" class="w-5 h-5 text-emerald-400 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-                        </svg>
-                        <span>استودیوی پیشرفته متادیتا و رسانه (Web Mp3tag Studio)</span>
-                    </div>
-                    <span class="text-xs text-cyan-400 font-mono bg-cyan-950/80 px-3 py-1 rounded-lg border border-cyan-800">
-                        تعداد کل فایل‌ها: {active_drops_count}
-                    </span>
-                </summary>
-                <div class="p-6 pt-2 space-y-4">
-                    <p class="text-xs text-slate-400">
-                        ویرایش حرفه‌ای متادیتا، برش صدا با رسم موج صوتی، کاور آرت، شماره‌گذاری خودکار جلسات و ارسال مستقیم به پیام‌رسان‌ها
-                    </p>
-
-                    <!-- Drag & Drop Upload Zone -->
-                    <div id="studioDropzone" onclick="document.getElementById('studioFileInput').click()" class="border-2 border-dashed p-6 rounded-2xl text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group">
-                        <input type="file" id="studioFileInput" multiple accept="audio/*,video/*" class="hidden" onchange="handleStudioFilesSelect(this.files)">
-                        <div class="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center text-2xl text-cyan-300 group-hover:scale-110 transition">
-                            <svg width="24" height="24" class="w-6 h-6 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-200">فایل‌های صوتی یا ویدیویی خود را به اینجا بکشید یا برای انتخاب کلیک کنید</p>
-                            <p class="text-[11px] text-slate-400 mt-1">پشتیبانی از فرمت‌های صوتی و ویدیویی (MP3, M4A, AAC, WAV, MP4) با ثبت خودکار در سشن‌های استودیو</p>
-                        </div>
-                        <div id="studioUploadProgress" class="hidden text-xs text-cyan-400 font-mono"></div>
-                    </div>
-
-                    <!-- Batch Action Bar -->
-                    <div class="flex flex-wrap justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 gap-3">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
-                                <input type="checkbox" id="selectAllDrops" onchange="toggleSelectAllDrops(this)" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
-                                <span>انتخاب همه</span>
-                            </label>
-                            <span id="selectedCountBadge" class="text-xs text-cyan-300 font-mono bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800/80">۰ فایل انتخاب شده</span>
-                            <button onclick="batchDeleteStudioDrops()" class="px-3.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800 transition flex items-center gap-1.5" title="حذف گروهی فایل‌های انتخاب‌شده از حافظه و دیسک">
-                                <span>حذف فایل‌های انتخاب‌شده</span>
-                            </button>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <div class="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-700">
-                                <span class="text-xs text-slate-400">مرتب‌سازی:</span>
-                                <select id="studioSortSelect" onchange="changeStudioSort(this.value)" class="bg-slate-900 border border-slate-700 text-xs text-cyan-300 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 transition cursor-pointer">
-                                    <option value="newest">جدیدترین</option>
-                                    <option value="oldest">قدیمی‌ترین</option>
-                                    <option value="size_desc">بزرگترین حجم</option>
-                                    <option value="size_asc">کمترین حجم</option>
-                                    <option value="name_asc">نام فایل (الفبا)</option>
-                                </select>
-                            </div>
-                            <button onclick="openBatchTagModal()" class="theme-accent-btn px-3.5 py-1.5 rounded-xl text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
-                                <span>ویرایش گروهی تگ‌ها (Batch Edit)</span>
-                            </button>
-                            <button onclick="cleanupStudioDrops()" id="btnCleanupStudio" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5" title="پاکسازی رکوردهای تکراری و سشن‌های خالی">
-                                <span>پاکسازی سشن‌های خالی</span>
-                            </button>
-                            <button onclick="refreshStudioList()" class="theme-card-btn px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1">
-                                <span>به‌روزرسانی لیست</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Studio Media Table -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right border-collapse">
-                            <thead>
-                                <tr class="border-b border-slate-700 text-xs text-slate-400">
-                                    <th class="py-3 px-3 text-center w-10">انتخاب</th>
-                                    <th class="py-3 px-3">عنوان و متادیتا / نام فایل</th>
-                                    <th class="py-3 px-3">مشخصات و مبدا</th>
-                                    <th class="py-3 px-3 text-left">عملیات استودیو و دیسپچ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="studioTableBody">
-                                {drop_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </details>
-
-            <!-- Studio & Course Copilot (Integrated into Studio Tab) -->
-            <div class="glass p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl theme-accent-btn flex items-center justify-center font-bold text-2xl shadow-lg text-white">
-                        🎛
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-white flex items-center gap-2">
-                            دستیار هوشمند دوره‌ها و استودیوی رسانه (Studio & Course Copilot)
-                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">🟢 فعال و آنلاین</span>
-                        </h2>
-                        <p class="text-xs text-slate-400 mt-1">اتصال به Nara Router با سهمیه رایگان - متخصص اتوماسیون متادیتا، تدوین کپشن دوره‌ها و مهندسی رسانه</p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border" style="background: var(--input-bg); border-color: var(--card-border);">
-                        <label for="hermesModelSelect" class="text-xs text-slate-300 whitespace-nowrap">🤖 مدل هوش مصنوعی:</label>
-                        <select id="hermesModelSelect" class="border rounded-lg px-2.5 py-1 text-xs font-mono focus:outline-none" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">
-                            <option value="stepfun-3.7-flash" selected>stepfun-3.7-flash (پیش‌فرض هوشمند و قوی متون فارسی)</option>
-                            <option value="mimo-v2.5-free">mimo-v2.5-free (فوق‌سریع و رایگان)</option>
-                            <option value="qwen2.5-72b">qwen2.5-72b (دقت نگارش بالا)</option>
-                        </select>
-                    </div>
-                    <span class="px-2.5 py-1.5 rounded-xl border font-mono text-[11px]" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">🌐 router.bynara.id</span>
-                </div>
-            </div>
-
-            <!-- Chat Window -->
-            <div class="glass rounded-2xl border flex flex-col h-[520px] overflow-hidden shadow-xl" style="background: var(--card-bg); border-color: var(--card-border);">
-                <div id="hermesChatBox" class="flex-1 p-5 overflow-y-auto space-y-4 chat-scrollbar">
-                    <div class="flex gap-2.5 items-center p-3 rounded-xl border text-xs text-slate-300" style="background: var(--glass-bg); border-color: var(--card-border);">
-                        <div class="w-6 h-6 rounded-lg theme-accent-btn flex items-center justify-center font-bold text-xs shrink-0 text-white">
-                            🤖
-                        </div>
-                        <span>دستیار هوش مصنوعی آماده پاسخگویی و ارائه کپشن دوره‌ها و پردازش رسانه است.</span>
-                    </div>
-                </div>
-                <div class="p-4 border-t" style="background: var(--card-bg); border-color: var(--card-border);">
-                    <form id="hermesChatForm" onsubmit="handleSendHermes(event)" class="flex items-center gap-3">
-                        <button type="button" onclick="clearHermesChat()" title="پاکسازی چت" class="theme-card-btn px-3 py-2.5 rounded-xl text-xs transition">
-                            🗑
-                        </button>
-                        <input type="text" id="hermesInput" placeholder="درخواست اتوماسیون متادیتا، کپشن فروش دوره یا مشاوره رسانه را بنویسید..." class="flex-1 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition border" style="background: var(--input-bg); border-color: var(--card-border);">
-                        <button type="submit" id="btnSendHermes" class="px-5 py-2.5 rounded-xl theme-accent-btn text-xs font-bold text-white shadow-lg transition flex items-center gap-1.5 shrink-0">
-                            <span>ارسال</span> ➜
-                        </button>
-                    </form>
-                </div>
-            </div>
+            
         </div>
 
         <!-- ================= TAB 2: PRODUCTS HUB (COURSES, AUDIOBOOKS, VIP) ================= -->
@@ -2291,7 +2319,7 @@ def render_dashboard_html() -> str:
                         </div>
 
                         <!-- Accordion 1: Bot Tokens & Bale Payment Gateway -->
-                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>🤖</span> توکن‌های ربات‌ها و درگاه‌های پرداخت
@@ -2324,7 +2352,7 @@ def render_dashboard_html() -> str:
                         </details>
 
                         <!-- Accordion 1: Admin IDs & Permissions -->
-                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>👑</span> مدیریت دسترسی‌ها و شناسه مدیران
@@ -2355,7 +2383,7 @@ def render_dashboard_html() -> str:
                         </details>
 
                         <!-- Accordion 2: Multi-Provider AI Hub -->
-                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" open style="background: var(--glass-bg); border-color: var(--card-border);">
+                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
                             <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
                                 <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>🧠</span> تنظیمات موتورهای هوش مصنوعی (Multi-Provider AI Hub)
@@ -2636,9 +2664,16 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <div class="flex items-center gap-3 pt-2 md:col-span-2">
                                     <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="cfg_APPLY_DEFAULT_ARTIST_TAG" class="sr-only peer" checked>
+                                        <input type="checkbox" id="cfg_APPLY_DEFAULT_ARTIST_TAG" class="sr-only peer">
                                         <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
-                                        <span class="mr-3 text-xs font-medium text-slate-300">اعمال متادیتا و تگ خواننده پیش‌فرض روی فایل‌های خروجی صوتی (APPLY_DEFAULT_ARTIST_TAG)</span>
+                                        <span class="mr-3 text-xs font-medium text-slate-300">تزریق خودکار نام خواننده پیش‌فرض روی فایل‌های خروجی (APPLY_DEFAULT_ARTIST_TAG)</span>
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-3 pt-2 md:col-span-2">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="cfg_AUTO_RENAME_FILE_TO_TITLE" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                                        <span class="mr-3 text-xs font-medium text-slate-300">تغییر خودکار نام فایل فیزیکی به عنوان آهنگ (AUTO_RENAME_FILE_TO_TITLE)</span>
                                     </label>
                                 </div>
                             </div>
@@ -3459,6 +3494,50 @@ def render_dashboard_html() -> str:
         </div>
     </div>
 
+    <!-- Mobile Bottom Navigation Bar (Material 3 Ergonomic Bar) -->
+    <nav id="mobileBottomNav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 px-3 py-2 border-t flex items-center justify-around select-none shadow-2xl backdrop-blur-lg" style="background: var(--card-bg, #0f172a); border-color: var(--card-border, #1e293b);">
+        <!-- 1. Dashboard -->
+        <button type="button" onclick="switchTab('dashboard')" data-tab="dashboard" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-slate-400 hover:text-cyan-300 transition active cursor-pointer">
+            <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+            <span class="text-[10px] font-medium">داشبورد</span>
+        </button>
+
+        <!-- 2. Studio -->
+        <button type="button" onclick="switchTab('studio')" data-tab="studio" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-slate-400 hover:text-cyan-300 transition cursor-pointer">
+            <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+            </svg>
+            <span class="text-[10px] font-medium">استودیو</span>
+        </button>
+
+        <!-- 3. CENTER: Products (Elevated Prominent Button) -->
+        <button type="button" onclick="switchTab('courses')" data-tab="courses" class="relative -top-4 flex flex-col items-center justify-center theme-accent-btn w-14 h-14 rounded-2xl shadow-xl shadow-cyan-500/30 text-white transition transform active:scale-95 border-2 border-white/20 cursor-pointer">
+            <svg class="w-6 h-6 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+            <span class="text-[9px] font-bold mt-0.5">محصولات</span>
+        </button>
+
+        <!-- 4. Orders -->
+        <button type="button" onclick="switchTab('orders')" data-tab="orders" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-slate-400 hover:text-cyan-300 transition cursor-pointer">
+            <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+            <span class="text-[10px] font-medium">سفارشات</span>
+        </button>
+
+        <!-- 5. Settings -->
+        <button type="button" onclick="switchTab('settings')" data-tab="settings" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-slate-400 hover:text-cyan-300 transition cursor-pointer">
+            <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.241.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-[10px] font-medium">تنظیمات</span>
+        </button>
+    </nav>
+
+
     <script>
         window.COURSES_CACHE = {courses_data_json};
         window.coursesData = window.COURSES_CACHE;
@@ -3732,6 +3811,25 @@ def render_dashboard_html() -> str:
                         if (mobileBtn) {{
                             mobileBtn.classList.add('active');
                             mobileBtn.classList.remove('bg-slate-800/80', 'text-slate-300');
+                        }}
+
+                        // Update Mobile Bottom Nav Active State
+                        const bottomNav = document.getElementById('mobileBottomNav');
+                        if (bottomNav) {{
+                            bottomNav.querySelectorAll('[data-tab]').forEach(btn => {{
+                                btn.classList.remove('active', 'text-cyan-400');
+                                if (!btn.classList.contains('theme-accent-btn')) {{
+                                    btn.classList.add('text-slate-400');
+                                }}
+                            }});
+                            const activeBottomBtn = bottomNav.querySelector(`[data-tab="${{rawTab}}"]`);
+                            if (activeBottomBtn) {{
+                                activeBottomBtn.classList.add('active');
+                                if (!activeBottomBtn.classList.contains('theme-accent-btn')) {{
+                                    activeBottomBtn.classList.add('text-cyan-400');
+                                    activeBottomBtn.classList.remove('text-slate-400');
+                                }}
+                            }}
                         }}
 
                         const targetTab = document.getElementById(fullTabId);
@@ -4801,46 +4899,15 @@ def render_dashboard_html() -> str:
                     function setupDragForContainer(container, isVertical) {{
                         if (!container) return;
                         let draggedItem = null;
-                        let mouseHoldTimer = null;
-                        let isHoldDragReady = false;
 
-                        // Desktop Mouse: Activate drag ONLY after 400ms hold/long-press
-                        container.addEventListener('mousedown', function(e) {{
-                            const btn = e.target.closest('[data-tab]');
-                            if (!btn) return;
-                            isHoldDragReady = false;
-                            clearTimeout(mouseHoldTimer);
-                            mouseHoldTimer = setTimeout(function() {{
-                                isHoldDragReady = true;
-                                btn.setAttribute('draggable', 'true');
-                                btn.style.cursor = 'grab';
-                            }}, 400);
+                        // Set draggable="true" on all tab items while preserving cursor: pointer
+                        container.querySelectorAll('[data-tab]').forEach(b => {{
+                            b.setAttribute('draggable', 'true');
+                            b.style.cursor = 'pointer';
                         }});
 
-                        container.addEventListener('mouseup', function(e) {{
-                            clearTimeout(mouseHoldTimer);
-                            container.querySelectorAll('[data-tab]').forEach(b => {{
-                                b.setAttribute('draggable', 'false');
-                                b.style.cursor = 'pointer';
-                            }});
-                            isHoldDragReady = false;
-                        }});
-
-                        container.addEventListener('mouseleave', function(e) {{
-                            clearTimeout(mouseHoldTimer);
-                            container.querySelectorAll('[data-tab]').forEach(b => {{
-                                b.setAttribute('draggable', 'false');
-                                b.style.cursor = 'pointer';
-                            }});
-                            isHoldDragReady = false;
-                        }});
-
-                        // Mouse Drag & Drop
+                        // Mouse Drag & Drop (Native HTML5: Clicks fire instantly, dragging initiates reorder)
                         container.addEventListener('dragstart', function(e) {{
-                            if (!isHoldDragReady) {{
-                                e.preventDefault();
-                                return false;
-                            }}
                             const btn = e.target.closest('[data-tab]');
                             if (!btn) return;
                             draggedItem = btn;
@@ -4853,16 +4920,13 @@ def render_dashboard_html() -> str:
                             const btn = e.target.closest('[data-tab]');
                             if (btn) {{
                                 btn.classList.remove('opacity-40');
-                                btn.setAttribute('draggable', 'false');
-                                btn.style.cursor = 'pointer';
                             }}
                             container.querySelectorAll('[data-tab]').forEach(b => {{
                                 b.classList.remove('opacity-40');
-                                b.setAttribute('draggable', 'false');
+                                b.setAttribute('draggable', 'true');
                                 b.style.cursor = 'pointer';
                             }});
                             draggedItem = null;
-                            isHoldDragReady = false;
                             persistTabsOrder();
                         }});
 
@@ -7606,6 +7670,54 @@ def render_dashboard_html() -> str:
                 if (artistTagEl && s.APPLY_DEFAULT_ARTIST_TAG !== undefined) {{
                     artistTagEl.checked = !!s.APPLY_DEFAULT_ARTIST_TAG;
                 }}
+                const autoTitleEl = document.getElementById('cfg_AUTO_RENAME_FILE_TO_TITLE');
+                if (autoTitleEl && s.AUTO_RENAME_FILE_TO_TITLE !== undefined) {{
+                    autoTitleEl.checked = !!s.AUTO_RENAME_FILE_TO_TITLE;
+                }}
+                const studioArtistEl = document.getElementById('cfg_studio_auto_artist');
+                if (studioArtistEl && s.APPLY_DEFAULT_ARTIST_TAG !== undefined) {{
+                    studioArtistEl.checked = !!s.APPLY_DEFAULT_ARTIST_TAG;
+                }}
+                const studioTitleEl = document.getElementById('cfg_studio_auto_title');
+                if (studioTitleEl && s.AUTO_RENAME_FILE_TO_TITLE !== undefined) {{
+                    studioTitleEl.checked = !!s.AUTO_RENAME_FILE_TO_TITLE;
+                }}
+
+        async function toggleStudioMetaSetting(key, val) {{
+            try {{
+                const payload = {{}};
+                payload[key] = val;
+                if (key === 'APPLY_DEFAULT_ARTIST_TAG') {{
+                    const el1 = document.getElementById('cfg_APPLY_DEFAULT_ARTIST_TAG');
+                    if (el1) el1.checked = val;
+                    const el2 = document.getElementById('cfg_studio_auto_artist');
+                    if (el2) el2.checked = val;
+                }} else if (key === 'AUTO_RENAME_FILE_TO_TITLE') {{
+                    const el1 = document.getElementById('cfg_AUTO_RENAME_FILE_TO_TITLE');
+                    if (el1) el1.checked = val;
+                    const el2 = document.getElementById('cfg_studio_auto_title');
+                    if (el2) el2.checked = val;
+                }}
+                let pwd = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
+                await fetch('/api/settings/save', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        password: pwd,
+                        settings: payload
+                    }})
+                }});
+                const notice = document.getElementById('studioMetaSyncNotice');
+                if (notice) {{
+                    notice.classList.remove('hidden');
+                    setTimeout(() => notice.classList.add('hidden'), 2500);
+                }}
+            }} catch (err) {{
+                console.warn('toggleStudioMetaSetting error:', err);
+            }}
+        }}
+        window.toggleStudioMetaSetting = toggleStudioMetaSetting;
+
                 if (s.AI_PROVIDER) {{
                     handleAiProviderChange(s.AI_PROVIDER, s.AI_MODEL);
                 }} else {{
@@ -7755,6 +7867,10 @@ def render_dashboard_html() -> str:
             const artistTagEl = document.getElementById('cfg_APPLY_DEFAULT_ARTIST_TAG');
             if (artistTagEl) {{
                 settings['APPLY_DEFAULT_ARTIST_TAG'] = artistTagEl.checked;
+            }}
+            const autoTitleEl = document.getElementById('cfg_AUTO_RENAME_FILE_TO_TITLE');
+            if (autoTitleEl) {{
+                settings['AUTO_RENAME_FILE_TO_TITLE'] = autoTitleEl.checked;
             }}
             const activeProv = (document.getElementById('cfg_AI_PROVIDER')?.value || 'vyceai').toLowerCase();
             if (activeProv === 'custom') {{

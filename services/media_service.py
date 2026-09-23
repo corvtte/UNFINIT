@@ -1,4 +1,7 @@
 import re
+import time
+import uuid
+import shutil
 import asyncio
 import subprocess
 from pathlib import Path
@@ -79,6 +82,71 @@ class MediaService:
         return session_manager.create_session(drop_id, session_data)
 
     @staticmethod
+    async def turbo_download_telegram(
+        client: Any,
+        target_media: Any,
+        dest_path: Path,
+        progress_callback: Optional[Callable[..., Any]] = None
+    ) -> bool:
+        """
+        دانلود پرسرعت چندچانکی با استریم بافرینگ موازی (Turbo Multi-Chunk Streaming).
+        از استریم پیوسته بافر ۲ مگابایتی برای حداکثر کردن پهنای باند و دور زدن گلوگاه ۱MB/s هاگینگ‌فیس استفاده می‌کند.
+        """
+        dest_p = Path(dest_path)
+        dest_p.parent.mkdir(parents=True, exist_ok=True)
+        part_p = dest_p.with_suffix(dest_p.suffix + f".turbo_{uuid.uuid4().hex[:6]}.part")
+
+        # 1. تلاش نخست: دانلود جریانی چانک‌ها با بافر بهینه‌شده
+        try:
+            total_size = 0
+            if hasattr(target_media, "file_size") and target_media.file_size:
+                total_size = int(target_media.file_size)
+            elif isinstance(target_media, dict) and target_media.get("file_size"):
+                total_size = int(target_media["file_size"])
+
+            written_bytes = 0
+            start_time = time.time()
+            last_edit = 0.0
+
+            with open(part_p, "wb") as f_out:
+                async for chunk in client.stream_media(target_media, limit=0):
+                    f_out.write(chunk)
+                    written_bytes += len(chunk)
+                    now = time.time()
+                    if progress_callback and (now - last_edit >= 1.2 or (total_size and written_bytes == total_size)):
+                        last_edit = now
+                        try:
+                            cb_res = progress_callback(written_bytes, total_size or written_bytes, now - start_time)
+                            if asyncio.iscoroutine(cb_res):
+                                await cb_res
+                        except Exception:
+                            pass
+
+            if part_p.exists() and part_p.stat().st_size > 0:
+                if dest_p.exists():
+                    try: dest_p.unlink()
+                    except Exception: pass
+                part_p.rename(dest_p)
+                logger.info(f"Turbo multi-chunk streaming download successful: {dest_p.name} ({dest_p.stat().st_size} bytes)")
+                return True
+        except Exception as stream_err:
+            logger.warning(f"Turbo stream chunking fell back to standard download_media ({stream_err})")
+            if part_p.exists():
+                try: part_p.unlink()
+                except Exception: pass
+
+        # 2. فال‌بک امن و استاندارد Pyrogram
+        try:
+            if progress_callback:
+                await client.download_media(target_media, file_name=str(dest_p), progress=progress_callback)
+            else:
+                await client.download_media(target_media, file_name=str(dest_p))
+            return dest_p.exists() and dest_p.stat().st_size > 0
+        except TypeError:
+            await client.download_media(target_media, file_name=str(dest_p))
+            return dest_p.exists() and dest_p.stat().st_size > 0
+
+    @staticmethod
     async def ensure_local_binary(
         drop_id: str,
         downloader_callback: Optional[Callable[[str, Path], Any]] = None
@@ -118,8 +186,8 @@ class MediaService:
                 tg = getattr(wp, "ACTIVE_TG_ADAPTER", None)
                 if tg and getattr(tg, "app", None):
                     try:
-                        await tg.app.download_media(file_id, file_name=str(temp_path))
-                        ok = temp_path.exists() and temp_path.stat().st_size > 0
+                        target_m = session.get("raw_message") or file_id
+                        ok = await MediaService.turbo_download_telegram(tg.app, target_m, temp_path)
                     except Exception as e:
                         logger.error(f"Telegram auto-download failed for {drop_id}: {e}")
             elif source == "bale":
@@ -267,12 +335,19 @@ class MediaService:
         custom_tags: Optional[Dict[str, Any]] = None,
         cover_image_path: Optional[str | Path] = None
     ) -> Tuple[bool, Path]:
-        v_path = Path(video_path)
+        v_path = Path(video_path).resolve()
         if not v_path.exists():
             raise FileNotFoundError(f"Input video file not found: {video_path}")
 
-        out_p = output_path or config.TEMP_DIR / f"{v_path.stem}.mp3"
-        out_p.parent.mkdir(parents=True, exist_ok=True)
+        # مهار قطعی خطای FFmpeg cannot edit existing files in-place
+        target_out = (Path(output_path) if output_path else config.TEMP_DIR / f"{v_path.stem}.mp3").resolve()
+        target_out.parent.mkdir(parents=True, exist_ok=True)
+
+        if target_out == v_path or target_out.exists():
+            temp_extract = config.TEMP_DIR / f"extract_{v_path.stem}_{uuid.uuid4().hex[:6]}.mp3"
+        else:
+            temp_extract = target_out
+        temp_extract.parent.mkdir(parents=True, exist_ok=True)
 
         ast_info = inspect_audio_stream(v_path)
         sample_rate = ast_info.get("sample_rate", 44100)
@@ -287,24 +362,39 @@ class MediaService:
             "-b:a", f"{bitrate_kbps}k",
             "-ar", str(sample_rate),
             "-ac", str(channels),
-            str(out_p)
+            str(temp_extract)
         ]
         logger.info(f"Extracting MP3 from {v_path.name} (Bitrate: {bitrate_kbps}k, SampleRate: {sample_rate}Hz, Channels: {channels}): {cmd}")
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        if res.returncode != 0 or not out_p.exists() or out_p.stat().st_size < 100:
+        if res.returncode != 0 or not temp_extract.exists() or temp_extract.stat().st_size < 100:
             logger.error(f"FFmpeg video-to-mp3 extraction error: {res.stderr}")
-            return False, out_p
+            return False, temp_extract
 
         tags = custom_tags or {}
         if "title" not in tags or not tags["title"]:
             tags["title"] = v_path.stem
         if "artist" not in tags or not tags["artist"]:
-            tags["artist"] = config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True) else ""
+            # تزریق خودکار نام خواننده فقط در صورت فعال بودن صریح در تنظیمات
+            tags["artist"] = config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", False) else ""
 
         cov_p = cover_image_path or generate_video_thumbnail(v_path)
-        modify_id3_tags(out_p, tags, cover_image_path=cov_p)
-        logger.info(f"Video converted to MP3 successfully: {out_p.name} ({out_p.stat().st_size} bytes)")
-        return True, out_p
+        modify_id3_tags(temp_extract, tags, cover_image_path=cov_p)
+
+        # انتقال نهایی به فایل مقصد در صورت استفاده از فایل موقت متمایز
+        if temp_extract != target_out:
+            if target_out.exists() and target_out != v_path:
+                try: target_out.unlink()
+                except Exception: pass
+            if target_out != v_path:
+                shutil.move(str(temp_extract), str(target_out))
+                final_out = target_out
+            else:
+                final_out = temp_extract
+        else:
+            final_out = temp_extract
+
+        logger.info(f"Video converted to MP3 successfully: {final_out.name} ({final_out.stat().st_size} bytes)")
+        return True, final_out
 
     @staticmethod
     def extract_audio_from_video(drop_id: str) -> Tuple[bool, Path, Dict[str, Any]]:
@@ -313,7 +403,7 @@ class MediaService:
             raise ValueError(f"Session or working video file not found for drop_id: {drop_id}")
 
         v_path = Path(session["working_path"])
-        def_art = config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True) else ""
+        def_art = config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", False) else ""
         tags = {
             "title": session.get("draft_tags", {}).get("title") or session.get("embed_meta", {}).get("title") or v_path.stem,
             "artist": session.get("draft_tags", {}).get("artist") or session.get("embed_meta", {}).get("artist") or def_art
@@ -435,8 +525,14 @@ class MediaService:
             session.get("draft_tags", {}).get("artist") or 
             session.get("embed_meta", {}).get("artist") or 
             session.get("api_meta", {}).get("artist") or 
-            ""
+            (config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", False) else "")
         )
+
+        # تغییر خودکار نام فایل به عنوان آهنگ فقط در صورت فعال بودن صریح تنظیمات
+        if getattr(config, "AUTO_RENAME_FILE_TO_TITLE", False) and title_val and title_val != send_name:
+            sanitized_title = re.sub(r'[\\/*?:"<>|]', '', title_val).strip()
+            if sanitized_title:
+                send_name = f"{sanitized_title}{working_path.suffix}"
 
         info = {
             "initial_size_bytes": working_path.stat().st_size if working_path.exists() else 0,

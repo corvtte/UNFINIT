@@ -38,6 +38,7 @@ from services.referral_service import ReferralService, TOHID_AMALI_PACK_ID, TOHI
 from core.frequency_service import FrequencyService
 from media.inspector import inspect_technical_metadata
 from media.tagger import generate_video_thumbnail
+from media.compressor import SmartVideoCompressor, SmartVideoSplitter, SmartAudioCompressor
 
 logger = get_logger("telegram_adapter")
 
@@ -355,6 +356,8 @@ class TelegramAdapter:
         self.rubika_adapter = RubikaAdapter()
         self.instagram_adapter = InstagramAdapter()
         self.admin_chat_id = config.TELEGRAM_OWNER_ID
+        self._media_batch_queue: Dict[int, Any] = {}
+        self._batch_registry: Dict[str, List[Any]] = {}
 
     def get_admin_id(self) -> int | str:
         return config.TELEGRAM_OWNER_ID or getattr(config, "OWNER_ID", None) or self.admin_chat_id or 0
@@ -526,6 +529,7 @@ class TelegramAdapter:
                     InlineKeyboardButton("🧠 دستیار هوش مصنوعی", callback_data=f"smeta:ai_transcribe:{drop_id}")
                 ],
                 [
+                    InlineKeyboardButton("✂️ تقسیم فایل (Split)", callback_data=f"smeta:split_video:{drop_id}"),
                     InlineKeyboardButton("💾 اعمال تغییرات", callback_data=f"smeta:apply_changes:{drop_id}")
                 ],
                 [
@@ -2474,10 +2478,67 @@ class TelegramAdapter:
                 media_type=media_type, api_meta=api_meta, caption=message.caption or "", raw_message=message
             )
 
-            card_text = TelegramFormatter.format_light_card(data)
-            kb = self.build_media_keyboard(drop_id, data)
-            sent_card = await message.reply_text(card_text, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
-            data["card_msg_id"] = sent_card.id
+            # سیستم ارسال دسته‌جمعی رسانه‌ها (Batch Forwarding Manager) با دی‌بانس زمانی
+            if user_id not in self._media_batch_queue:
+                self._media_batch_queue[user_id] = {"timer": None, "items": []}
+
+            batch_info = self._media_batch_queue[user_id]
+            if batch_info.get("timer"):
+                try:
+                    batch_info["timer"].cancel()
+                except Exception:
+                    pass
+
+            batch_info["items"].append({
+                "drop_id": drop_id,
+                "data": data,
+                "message": message
+            })
+
+            async def _dispatch_media_batch(uid: int):
+                try:
+                    await asyncio.sleep(1.2)
+                    b = self._media_batch_queue.pop(uid, None)
+                    if not b or not b.get("items"):
+                        return
+                    items = b["items"]
+                    if len(items) == 1:
+                        # دریافت تکی: نمایش کارت لایت استاندارد با کیبورد کامل
+                        single = items[0]
+                        s_data = single["data"]
+                        s_drop_id = single["drop_id"]
+                        s_msg = single["message"]
+                        card_text = TelegramFormatter.format_light_card(s_data)
+                        kb = self.build_media_keyboard(s_drop_id, s_data)
+                        sent_card = await s_msg.reply_text(card_text, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+                        s_data["card_msg_id"] = sent_card.id
+                    elif len(items) > 1:
+                        # دریافت گروهی/دسته‌جمعی: نمایش پیام متمرکز با دکمه‌های شیشه‌ای
+                        b_id = uuid.uuid4().hex[:8]
+                        self._batch_registry[b_id] = items
+                        total_sz = sum(it["data"].get("file_size", 0) for it in items)
+                        total_mb = f"{total_sz / (1024 * 1024):.2f}"
+                        batch_kb = InlineKeyboardMarkup([
+                            [
+                                InlineKeyboardButton("🚀 ارسال دسته‌جمعی به بله", callback_data=f"smeta_batch:bale:{b_id}"),
+                                InlineKeyboardButton("🚀 ارسال به روبیکا", callback_data=f"smeta_batch:rubika:{b_id}")
+                            ],
+                            [
+                                InlineKeyboardButton("❌ لغو ارسال دسته‌جمعی", callback_data=f"smeta_batch:cancel:{b_id}")
+                            ]
+                        ])
+                        last_msg = items[-1]["message"]
+                        await last_msg.reply_text(
+                            f"📦 <b>تعداد {len(items)} فایل آماده انتقال شناسایی شد.</b>\n"
+                            f"📊 مجموع حجم فایل‌ها: <code>{total_mb} MB</code>\n\n"
+                            "لطفاً مقصد مورد نظر جهت انتقال یکپارچه را انتخاب فرمایید:",
+                            parse_mode=enums.ParseMode.HTML,
+                            reply_markup=batch_kb
+                        )
+                except Exception as b_err:
+                    logger.error(f"[BatchForwarding] Error dispatching batch: {b_err}")
+
+            batch_info["timer"] = asyncio.create_task(_dispatch_media_batch(user_id))
 
         # SVG Vector Callbacks: Hex Input & Recolor
         @self.app.on_callback_query(filters.regex(r"^tg_svg_hex:"))
@@ -2717,19 +2778,20 @@ class TelegramAdapter:
 
             await callback_query.answer()
 
-            async def ensure_binary():
+            async def ensure_binary(existing_status_m: Optional[Message] = None) -> Optional[Message]:
                 if not drop.get("is_downloaded_locally"):
                     start_t = [time.time()]
                     last_edit = [0.0]
                     last_pct = [0]
-                    status_m = None
-                    try:
-                        status_m = await callback_query.message.reply_text(
-                            "⏳ <b>در حال انتقال فایل...</b>\n\n<code>[░░░░░░░░░░] 0%</code>\n\n📦 <b>حجم:</b> <code>0.00 MB</code>\n⚡️ <b>سرعت انتقال:</b> <code>0.00 MB/s</code>",
-                            parse_mode=enums.ParseMode.HTML
-                        )
-                    except Exception:
-                        pass
+                    status_m = existing_status_m
+                    if not status_m:
+                        try:
+                            status_m = await callback_query.message.reply_text(
+                                "⏳ <b>در حال دریافت فایل از تلگرام...</b>\n\n<code>[░░░░░░░░░░] 0%</code>\n\n📦 <b>حجم:</b> <code>0.00 MB</code>\n⚡️ <b>سرعت انتقال:</b> <code>0.00 MB/s</code>",
+                                parse_mode=enums.ParseMode.HTML
+                            )
+                        except Exception:
+                            pass
 
                     async def progress_hook(current, total, *args):
                         now = time.time()
@@ -2739,7 +2801,7 @@ class TelegramAdapter:
                                 last_edit[0] = now
                                 last_pct[0] = pct
                                 elapsed = max(0.01, now - start_t[0])
-                                txt = format_transfer_progress(current, total, elapsed, stage_title="در حال انتقال فایل...")
+                                txt = format_transfer_progress(current, total, elapsed, stage_title="در حال دریافت پرسرعت فایل از تلگرام...")
                                 try:
                                     await status_m.edit_text(txt, parse_mode=enums.ParseMode.HTML)
                                 except Exception:
@@ -2747,17 +2809,16 @@ class TelegramAdapter:
 
                     async def dl_func(fid, p):
                         target_media = drop.get("raw_message") or drop.get("file_id") or fid
-                        try:
-                            return await client.download_media(target_media, file_name=str(p), progress=progress_hook)
-                        except TypeError:
-                            return await client.download_media(target_media, file_name=str(p))
+                        return await MediaService.turbo_download_telegram(client, target_media, p, progress_callback=progress_hook)
 
                     await MediaService.ensure_local_binary(drop_id, dl_func)
-                    if status_m:
+                    if status_m and not existing_status_m:
                         try:
-                            await status_m.edit_text("<b>✅ فایل با موفقیت منتقل شد.</b>", parse_mode=enums.ParseMode.HTML)
+                            await status_m.edit_text("<b>✅ دریافت فایل با موفقیت تکمیل شد.</b>", parse_mode=enums.ParseMode.HTML)
                         except Exception:
                             pass
+                    return status_m
+                return existing_status_m
 
             if action == "cancel":
                 session_manager.remove_session(drop_id)
@@ -3200,21 +3261,118 @@ class TelegramAdapter:
                 except Exception as e:
                     await status_msg.edit_text(f"❌ <b>خطا در ارتباط با سرورهای روبیکا:</b>\n<code>{escape(str(e))}</code>", parse_mode=enums.ParseMode.HTML)
 
-            elif action == "send_bale":
+            elif action == "split_video":
+                target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+                status_msg = await callback_query.message.reply_text("📥 <b>در حال دانلود و آماده‌سازی ویدیو جهت برش و تقسیم...</b>", parse_mode=enums.ParseMode.HTML)
+                await ensure_binary(status_msg)
+                w_path = Path(drop.get("working_path") or "")
+                if not w_path.exists():
+                    await status_msg.edit_text("❌ فایل ویدیو روی سرور یافت نشد.")
+                    return
+                safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 48.5))
+                qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
+                rec_parts = qual_info.get("recommended_parts", 2)
+                dur_m = int(qual_info.get("duration_sec", 0) // 60)
+                split_kb = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
+                        InlineKeyboardButton("✂️ تقسیم هوشمند به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
+                    ],
+                    [
+                        InlineKeyboardButton(f"✂️ تقسیم خودکار به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")
+                    ],
+                    [
+                        InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
+                    ]
+                ])
+                await status_msg.edit_text(
+                    f"✂️ <b>دستیار تقسیم هوشمند ویدیو (Split Assistant):</b>\n"
+                    f"📄 فایل: <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>\n"
+                    f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{qual_info.get('initial_size_mb', 0)} MB</code>\n\n"
+                    "تعداد پارت‌های مورد نظر جهت تقسیم بدون افت کیفیت (Stream Copy) و ارسال به بله را انتخاب فرمایید:",
+                    parse_mode=enums.ParseMode.HTML,
+                    reply_markup=split_kb
+                )
+
+            elif action == "split_bale":
+                target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+                if not target_chat:
+                    await callback_query.message.reply_text("❌ شناسه چت بله تنظیم نشده است.")
+                    return
+                status_msg = callback_query.message
+                await ensure_binary(status_msg)
+                w_path = Path(drop.get("working_path") or "")
+                if not w_path.exists():
+                    await status_msg.edit_text("❌ فایل ویدیو یافت نشد.")
+                    return
+                parts_count = int(parts[3]) if len(parts) > 3 and str(parts[3]).isdigit() else 2
+                await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت باکیفیت...</b>", parse_mode=enums.ParseMode.HTML)
+                try:
+                    parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count)
+                    if not parts_list:
+                        await status_msg.edit_text("❌ خطا در تقسیم فایل ویدیو با FFmpeg.")
+                        return
+                    all_ok = True
+                    for p_idx, part_file in enumerate(parts_list, 1):
+                        await status_msg.edit_text(f"📤 <b>در حال ارسال پارت {p_idx} از {len(parts_list)} به بله...</b>", parse_mode=enums.ParseMode.HTML)
+                        p_tech = inspect_technical_metadata(part_file)
+                        res = await self.bale_adapter.send_video(
+                            target_chat, part_file,
+                            caption=f"✅ پارت {p_idx} از {len(parts_list)} (منتقل شده از تلگرام)\n📄 <b>{escape(part_file.name)}</b>",
+                            duration=p_tech.get("duration_sec"),
+                            width=p_tech.get("width"),
+                            height=p_tech.get("height")
+                        )
+                        if not res.get("ok"):
+                            all_ok = False
+                            await status_msg.edit_text(f"❌ خطا در ارسال پارت {p_idx}: {res.get('error') or str(res)}", parse_mode=enums.ParseMode.HTML)
+                            break
+                    if all_ok:
+                        await status_msg.edit_text(f"✅ <b>ویدیو با موفقیت به {len(parts_list)} پارت باکیفیت تقسیم و به بله منتقل شد!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>", parse_mode=enums.ParseMode.HTML)
+                except Exception as s_err:
+                    await status_msg.edit_text(f"❌ خطا در تقسیم و ارسال پارت‌ها: {s_err}", parse_mode=enums.ParseMode.HTML)
+
+            elif action in ("send_bale", "force_bale"):
                 target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
                 if not target_chat:
                     await callback_query.message.reply_text("❌ شناسه چت بله تنظیم نشده است.")
                     return
 
-                status_msg = await callback_query.message.reply_text("📥 <b>در حال دانلود فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
-                await ensure_binary()
+                status_msg = callback_query.message if action == "force_bale" else await callback_query.message.reply_text("📥 <b>در حال دانلود فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
+                await ensure_binary(status_msg)
 
                 w_path = Path(drop.get("working_path") or "")
-                if w_path.exists() and (w_path.stat().st_size / (1024 * 1024)) >= 49.99:
+
+                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (Pre-Calculation)
+                if action != "force_bale" and drop.get("media_type") == "video" and w_path.exists():
+                    safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 48.5))
+                    qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
+                    if qual_info.get("severe_quality_drop"):
+                        est_res = qual_info.get("estimated_resolution", "360p")
+                        rec_parts = qual_info.get("recommended_parts", 2)
+                        dur_mins = int(qual_info.get("duration_sec", 0) // 60)
+                        warn_text = (
+                            f"⚠️ <b>طول این ویدیو بالاست ({dur_mins} دقیقه).</b>\n"
+                            f"فشرده‌سازی تا سقف بله کیفیت را به شدت کاهش می‌دهد (<code>{est_res}</code>).\n\n"
+                            "جهت حفظ کیفیت تصویر و تجربه مطلوب، یکی از گزینه‌های زیر را انتخاب فرمایید:"
+                        )
+                        warn_kb = InlineKeyboardMarkup([
+                            [
+                                InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}"),
+                                InlineKeyboardButton("🗜 ادامه فشرده‌سازی با افت کیفیت", callback_data=f"smeta:force_bale:{drop_id}")
+                            ],
+                            [
+                                InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
+                            ]
+                        ])
+                        await status_msg.edit_text(warn_text, parse_mode=enums.ParseMode.HTML, reply_markup=warn_kb)
+                        return
+
+                if w_path.exists() and (w_path.stat().st_size / (1024 * 1024)) >= 48.5:
                     orig_sz_mb = f"{w_path.stat().st_size / (1024 * 1024):.1f}"
                     await status_msg.edit_text(
                         "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                        f"📊 حجم فعلی: <code>{orig_sz_mb} MB</code> ➔ هدف: <code>زیر 49.9 MB</code>\n"
+                        f"📊 حجم فعلی: <code>{orig_sz_mb} MB</code> ➔ هدف: <code>زیر 48.5 MB</code>\n"
                         "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید...",
                         parse_mode=enums.ParseMode.HTML
                     )
@@ -3292,6 +3450,76 @@ class TelegramAdapter:
                         f"❌ <b>خطا در انتقال فایل به سروش‌پلاس:</b>\n<code>{escape(str(e))}</code>",
                         parse_mode=enums.ParseMode.HTML
                     )
+
+        # Batch Forwarding Manager Callbacks: Group Forwarding to Bale & Rubika
+        @self.app.on_callback_query(filters.regex(r"^smeta_batch:"))
+        async def handle_batch_forward_cb(client: Client, callback_query: CallbackQuery):
+            parts = callback_query.data.split(":")
+            dest = parts[1]
+            batch_id = parts[2]
+            items = self._batch_registry.get(batch_id)
+            if not items:
+                await callback_query.answer("فایل‌های این گروه منقضی شده‌اند.", show_alert=True)
+                return
+            await callback_query.answer()
+            if dest == "cancel":
+                self._batch_registry.pop(batch_id, None)
+                await callback_query.message.edit_text("❌ ارسال دسته‌جمعی لغو شد.")
+                return
+
+            status_msg = callback_query.message
+            total_count = len(items)
+            success_count = 0
+            dest_name = "بله" if dest == "bale" else "روبیکا"
+
+            for idx, it in enumerate(items, 1):
+                s_drop_id = it["drop_id"]
+                s_data = it["data"]
+                fn = s_data.get("filename") or "media"
+                await status_msg.edit_text(
+                    f"⏳ <b>[فایل {idx} از {total_count}] در حال پردازش و انتقال به {dest_name}:</b>\n📄 <code>{escape(fn)}</code>",
+                    parse_mode=enums.ParseMode.HTML
+                )
+                try:
+                    dl_ok = await MediaService.ensure_local_binary(s_drop_id)
+                    if not dl_ok:
+                        continue
+                    final_p, s_name, t_info = MediaService.prepare_for_transfer(s_drop_id, dest)
+                    if dest == "bale":
+                        t_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+                        if not t_chat:
+                            break
+                        if s_data.get("media_type") == "video":
+                            t_spec = inspect_technical_metadata(final_p)
+                            res = await self.bale_adapter.send_video(
+                                t_chat, final_p,
+                                caption=f"✅ پارت {idx} از {total_count} (منتقل شده از تلگرام)\n📄 <b>{escape(s_name)}</b>",
+                                duration=t_spec.get("duration_sec"),
+                                width=t_spec.get("width"),
+                                height=t_spec.get("height")
+                            )
+                        else:
+                            res = await self.bale_adapter.send_audio(
+                                t_chat, final_p,
+                                title=t_info.get("title"),
+                                performer=t_info.get("artist"),
+                                caption=f"✅ پارت {idx} از {total_count} (منتقل شده از تلگرام)\n📄 <b>{escape(s_name)}</b>"
+                            )
+                        if res.get("ok"):
+                            success_count += 1
+                    elif dest == "rubika":
+                        target_chat = self.rubika_adapter.get_admin_guid() if self.rubika_adapter else None
+                        res = await self.rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"✅ منتقل شده از تلگرام\n📄 {s_name}")
+                        if res.get("ok") or res.get("status") == "OK":
+                            success_count += 1
+                except Exception as ex:
+                    logger.error(f"[BatchForward] Item {idx} error: {ex}")
+
+            self._batch_registry.pop(batch_id, None)
+            if success_count == total_count:
+                await status_msg.edit_text(f"✅ <b>تمام {total_count} فایل با موفقیت به {dest_name} منتقل شدند!</b>", parse_mode=enums.ParseMode.HTML)
+            else:
+                await status_msg.edit_text(f"⚠️ <b>عملیات به پایان رسید:</b> {success_count} از {total_count} فایل با موفقیت به {dest_name} منتقل شد.", parse_mode=enums.ParseMode.HTML)
 
         # Text input handler for Metadata, Trimming, URLs, Support, and Force Join
         @self.app.on_message(filters.private & (filters.text | filters.caption))

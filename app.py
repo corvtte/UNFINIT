@@ -167,7 +167,8 @@ async def get_all_settings_async() -> dict:
         "HF_TOKEN": mask_secret(hf_tok),
         "HF_SPACE_ID": str(hf_sp or "Foadian/UNFINIT").strip(),
         "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"),
-        "APPLY_DEFAULT_ARTIST_TAG": (await get_system_setting("apply_default_artist_tag", str(getattr(config, "APPLY_DEFAULT_ARTIST_TAG", True)))).lower() in ("true", "1", "yes"),
+        "APPLY_DEFAULT_ARTIST_TAG": (await get_system_setting("apply_default_artist_tag", str(getattr(config, "APPLY_DEFAULT_ARTIST_TAG", False)))).lower() in ("true", "1", "yes"),
+        "AUTO_RENAME_FILE_TO_TITLE": (await get_system_setting("auto_rename_file_to_title", str(getattr(config, "AUTO_RENAME_FILE_TO_TITLE", False)))).lower() in ("true", "1", "yes"),
         "CASHBACK_PERCENT": float(await get_system_setting("cashback_percent", str(getattr(config, "CASHBACK_PERCENT", 0.0))) or 0.0),
         "VIP_MONTHLY_PRICE": str(await get_system_setting("vip_monthly_price", "111000")),
         "VIP_DURATION_DAYS": str(await get_system_setting("vip_duration_days", "30")),
@@ -1951,6 +1952,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",
                         "NAV_TABS_ORDER": "NAV_TABS_ORDER",
                         "APPLY_DEFAULT_ARTIST_TAG": "apply_default_artist_tag",
+                        "AUTO_RENAME_FILE_TO_TITLE": "auto_rename_file_to_title",
                         "CASHBACK_PERCENT": "cashback_percent",
                     }
                     SENSITIVE_KEYS = {
@@ -2059,6 +2061,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 config.COURSE_DELIVERY_NOTE = val_str
                             elif k == "APPLY_DEFAULT_ARTIST_TAG":
                                 config.APPLY_DEFAULT_ARTIST_TAG = str(val_str).lower() in ("true", "1", "yes")
+                            elif k == "AUTO_RENAME_FILE_TO_TITLE":
+                                config.AUTO_RENAME_FILE_TO_TITLE = str(val_str).lower() in ("true", "1", "yes")
                             elif k == "CASHBACK_PERCENT":
                                 config.CASHBACK_PERCENT = float(val_str or 0.0)
 
