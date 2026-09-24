@@ -346,21 +346,24 @@ def render_dashboard_html() -> str:
     except Exception as se:
         logger.warning(f"Failed to load settings in render_dashboard_html: {se}")
 
-    from services.feed_scraper import ABASMANESH_PREMIUM_CATEGORIES
+    from services.feed_scraper import get_all_categories
+    all_cats = get_all_categories()
     premium_categories_html = ""
-    for cat in ABASMANESH_PREMIUM_CATEGORIES:
+    for cat in all_cats:
         cid = cat.get("id", 1)
         ctitle = cat.get("title", "")
         curl = cat.get("url", "")
+        cslug = cat.get("slug", "")
+        cpath = cat.get("path", "")
+        cemoji = cat.get("emoji", "💎")
         premium_categories_html += f"""
-        <div class="p-2.5 rounded-xl border flex items-center justify-between transition hover:border-cyan-500/40" style="background: var(--input-bg); border-color: var(--card-border);">
-            <div class="flex items-center gap-2 min-w-0">
-                <span class="w-5 h-5 shrink-0 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[10px] font-mono">{cid}</span>
-                <span class="font-medium text-slate-200 text-xs truncate" title="{ctitle}">{ctitle}</span>
+        <div class="category-edit-row p-2 rounded-xl border flex items-center justify-between gap-2 transition hover:border-cyan-500/40" data-id="{cid}" data-slug="{cslug}" data-url="{curl}" data-path="{cpath}" style="background: var(--input-bg); border-color: var(--card-border);">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+                <input type="text" class="cat-emoji-input w-9 h-8 text-center text-sm rounded-lg border focus:outline-none focus:border-cyan-500 font-sans" value="{cemoji}" title="ایموجی دسته" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);">
+                <input type="text" class="cat-title-input flex-1 h-8 px-2 text-xs rounded-lg border focus:outline-none focus:border-cyan-500 font-sans" value="{ctitle}" title="عنوان دسته" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);">
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-                <span class="text-[10px] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">اشتراک پریمیوم</span>
-                <a href="{curl}" target="_blank" class="text-slate-400 hover:text-cyan-400 transition" title="مشاهده در سایت">
+            <div class="flex items-center gap-1.5 shrink-0">
+                <a href="{curl}" target="_blank" class="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 transition" title="مشاهده در سایت">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 </a>
             </div>
@@ -1915,12 +1918,15 @@ def render_dashboard_html() -> str:
 
                     <!-- 16 Official Abasmanesh Categories & Benefits -->
                     <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
-                        <h3 class="text-sm font-bold text-white flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-white flex items-center justify-between flex-wrap gap-2">
                             <span class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-emerald-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
                                 <span>۱۶ دسته‌بندی رسمی عباس‌منش (ویژه مشترکین پریمیوم):</span>
                             </span>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">۱۶ دسته فعال</span>
+                            <button type="button" onclick="saveAllCategories()" id="btnSaveCategories" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>ذخیره تغییرات دسته‌ها</span>
+                            </button>
                         </h3>
                         <div class="max-h-[380px] overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs">
                             {premium_categories_html}
@@ -2096,6 +2102,10 @@ def render_dashboard_html() -> str:
                         <button type="button" onclick="testTodaySign()" id="btnTestTodaySign" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
                             <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>
                             <span>دریافت نشانه تصادفی (تست ادمین)</span>
+                        </button>
+                        <button type="button" onclick="refreshFeedDiskCache()" id="btnRefreshFeedCache" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);" title="به‌روزرسانی کش دانلودها روی دیسک بدون مسدود شدن پنل">
+                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /></svg>
+                            <span>به‌روزرسانی کش دیسک</span>
                         </button>
                         <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
                             <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
@@ -3863,13 +3873,22 @@ def render_dashboard_html() -> str:
                             if (typeof window.loadStoreAnalytics === 'function') window.loadStoreAnalytics();
                         }}
                         if (rawTab === 'downloads') {{
-                            if (typeof window.fetchFeedDownloads === 'function') window.fetchFeedDownloads();
+                            if (typeof window.lazyLoadDownloadsFeed === 'function') window.lazyLoadDownloadsFeed();
                         }}
                     }} catch (err) {{
                         console.error('[UNFINIT Navigation Module Error] switchTab error:', err);
                     }}
                 }}
                 window.switchTab = switchTab;
+
+                window.downloadsFeedLoaded = false;
+                window.lazyLoadDownloadsFeed = function() {{
+                    if (!window.downloadsFeedLoaded) {{
+                        window.downloadsFeedLoaded = true;
+                        if (typeof window.fetchFeedDownloads === 'function') window.fetchFeedDownloads(false);
+                        if (typeof window.loadFeedCategories === 'function') window.loadFeedCategories();
+                    }}
+                }};
 
                 let drawerAllLines = [];
 
@@ -4433,7 +4452,7 @@ def render_dashboard_html() -> str:
                             const isUserVip = Boolean(u.is_vip || (u.vip_until && new Date(u.vip_until) > new Date()));
                             let vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700 font-sans">عادی</span>';
                             if (isUserVip) {{
-                                const expDate = (u.vip_until || '').slice(0, 10);
+                                const expDate = u.vip_until_jalali ? u.vip_until_jalali : ((u.vip_until || '').slice(0, 10));
                                 vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-sans inline-flex items-center gap-1" title="انقضا: ' + escapeHtml(u.vip_until || '') + '">' +
                                     '<svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>' +
                                     ' پریمیوم (' + escapeHtml(expDate) + ')' +
@@ -4449,14 +4468,25 @@ def render_dashboard_html() -> str:
                             const userIdClean = escapeHtml(String(u.user_id || '-'));
                             
                             const vipBtn = isUserVip
-                                ? '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" title="لغو اشتراک پریمیوم" class="p-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                    '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
-                                    '<span class="pointer-events-none">لغو پریمیوم</span>' +
-                                   '</button>'
-                                : '<button type="button" data-user-action="grant_vip" data-user-id="' + userIdClean + '" title="اعطای اشتراک ۳۰ روزه پریمیوم" class="p-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                    '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>' +
-                                    '<span class="pointer-events-none">+۳۰ روز پریمیوم</span>' +
-                                   '</button>';
+                                ? '<div class="inline-flex items-center gap-1">' +
+                                    '<button type="button" data-user-action="grant_10" data-user-id="' + userIdClean + '" title="تمدید ۱۰ روزه" class="px-2 py-1 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
+                                        '<span>+۱۰</span>' +
+                                    '</button>' +
+                                    '<button type="button" data-user-action="grant_30" data-user-id="' + userIdClean + '" title="تمدید ۳۰ روزه" class="px-2 py-1 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
+                                        '<span>+۳۰</span>' +
+                                    '</button>' +
+                                    '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" title="لغو اشتراک پریمیوم" class="px-2 py-1 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer">' +
+                                        '<span>لغو</span>' +
+                                    '</button>' +
+                                  '</div>'
+                                : '<div class="inline-flex items-center gap-1">' +
+                                    '<button type="button" data-user-action="grant_10" data-user-id="' + userIdClean + '" title="اعطای ۱۰ روزه" class="px-2 py-1 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
+                                        '<span>+۱۰ روز</span>' +
+                                    '</button>' +
+                                    '<button type="button" data-user-action="grant_30" data-user-id="' + userIdClean + '" title="اعطای ۳۰ روزه" class="px-2 py-1 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
+                                        '<span>+۳۰ روز</span>' +
+                                    '</button>' +
+                                  '</div>';
 
                             return '<tr class="hover:bg-white/[0.03] transition">' +
                                 '<td class="p-3">' + platformBadge + '</td>' +
@@ -4494,7 +4524,8 @@ def render_dashboard_html() -> str:
                             const uid = btn.getAttribute('data-user-id');
                             if (!uid || uid === '-') return;
                             if (act === 'revoke_vip') toggleUserVip(uid, 'revoke');
-                            else if (act === 'grant_vip') toggleUserVip(uid, 'grant');
+                            else if (act === 'grant_10') toggleUserVip(uid, 'grant_10');
+                            else if (act === 'grant_30' || act === 'grant_vip') toggleUserVip(uid, 'grant_30');
                             else if (act === 'view_profile') viewUserProfile(uid);
                             else if (act === 'delete_user') deleteUserRow(uid);
                         }});
@@ -4504,14 +4535,19 @@ def render_dashboard_html() -> str:
 
                 async function toggleUserVip(userId, action) {{
                     if (!userId || userId === '-') return;
-                    const actName = action === 'revoke' ? 'لغو' : 'فعال‌سازی / تمدید ۳۰ روزه';
+                    let actName = 'تمدید ۳۰ روزه';
+                    let reqDays = 30;
+                    if (action === 'revoke') actName = 'لغو';
+                    else if (action === 'grant_10') {{ actName = 'اعطا / تمدید ۱۰ روزه'; reqDays = 10; }}
+                    else if (action === 'grant_30') {{ actName = 'اعطا / تمدید ۳۰ روزه'; reqDays = 30; }}
+
                     if (!confirm('آیا از ' + actName + ' اشتراک پریمیوم برای کاربر ' + userId + ' اطمینان دارید؟')) return;
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users/toggle_vip', {{
                             method: 'POST',
                             headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
-                            body: JSON.stringify({{ user_id: userId, action: action, days: 30, admin_password: pwd }})
+                            body: JSON.stringify({{ user_id: userId, action: action, days: reqDays, admin_password: pwd }})
                         }});
                         const data = await res.json();
                         if (data.ok) {{
@@ -4519,6 +4555,7 @@ def render_dashboard_html() -> str:
                             if (uIdx !== -1) {{
                                 allLoadedUsers[uIdx].is_vip = data.is_vip;
                                 allLoadedUsers[uIdx].vip_until = data.vip_until;
+                                if (data.vip_until_jalali) allLoadedUsers[uIdx].vip_until_jalali = data.vip_until_jalali;
                             }}
                             renderUsersTable(allLoadedUsers);
                         }} else {{
@@ -5784,6 +5821,76 @@ def render_dashboard_html() -> str:
         }}
         window.testTodaySign = testTodaySign;
 
+        async function refreshFeedDiskCache() {{
+            const btn = document.getElementById('btnRefreshFeedCache');
+            if (btn) {{
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            }}
+            try {{
+                const res = await fetch('/api/feed/refresh', {{ method: 'POST' }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + data.message + '\\nلیست در چند لحظه آینده به‌روزرسانی می‌شود.');
+                    setTimeout(() => {{
+                        if (typeof fetchFeedDownloads === 'function') fetchFeedDownloads(true);
+                    }}, 2500);
+                }} else {{
+                    alert('خطا در به‌روزرسانی کش: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (e) {{
+                alert('خطای ارتباط با سرور: ' + e.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                }}
+            }}
+        }}
+        window.refreshFeedDiskCache = refreshFeedDiskCache;
+
+        async function saveAllCategories() {{
+            const btn = document.getElementById('btnSaveCategories');
+            if (btn) {{
+                btn.disabled = true;
+                btn.classList.add('opacity-50');
+            }}
+            try {{
+                const rows = document.querySelectorAll('.category-edit-row');
+                const updated = [];
+                rows.forEach(r => {{
+                    const id = parseInt(r.getAttribute('data-id'));
+                    const slug = r.getAttribute('data-slug') || '';
+                    const url = r.getAttribute('data-url') || '';
+                    const path = r.getAttribute('data-path') || '';
+                    const emoji = (r.querySelector('.cat-emoji-input')?.value || '').trim() || '💎';
+                    const title = (r.querySelector('.cat-title-input')?.value || '').trim();
+                    updated.push({{ id, slug, url, path, emoji, title }});
+                }});
+
+                const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                const res = await fetch('/api/categories/update', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                    body: JSON.stringify({{ categories: updated, admin_password: pwd }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + data.message);
+                }} else {{
+                    alert('خطا در ذخیره دسته‌بندی‌ها: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (e) {{
+                alert('خطای ارتباط با سرور: ' + e.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                }}
+            }}
+        }}
+        window.saveAllCategories = saveAllCategories;
+
         let currentFeedPage = 1;
         let currentFeedCategory = '';
         const totalFeedPages = 39;
@@ -6224,8 +6331,10 @@ def render_dashboard_html() -> str:
                 if (sortSelect) {{
                     sortSelect.value = savedSort;
                 }}
-                fetchFeedDownloads(false);
-                loadFeedCategories();
+                const curTab = localStorage.getItem('unfinit_active_tab') || 'dashboard';
+                if (curTab === 'downloads' && typeof window.lazyLoadDownloadsFeed === 'function') {{
+                    window.lazyLoadDownloadsFeed();
+                }}
                 if (typeof window.initProductSubtabsDragAndDrop === 'function') {{
                     window.initProductSubtabsDragAndDrop();
                 }}

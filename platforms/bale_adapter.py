@@ -131,6 +131,67 @@ def format_bale_transfer_progress(
     )
 
 
+class ProgressFileReader:
+    """
+    خواننده باینری فایل همراه با گزارش دوره‌ای بایت‌های خوانده‌شده جهت پایش نوار پیشرفت زنده در تلگرام یا بله.
+    پشتیبانی همزمان از مسیر فایل (Path / str) یا شیء بایت در حافظه (bytes / BytesIO).
+    """
+    def __init__(self, file_path: Any, callback: Optional[Callable[[int, int], None]] = None):
+        import io
+        self.callback = callback
+        self.bytes_read = 0
+        if isinstance(file_path, (bytes, bytearray)):
+            self.total_bytes = len(file_path)
+            self._f = io.BytesIO(file_path)
+            self.file_path = None
+        elif hasattr(file_path, "read"):
+            self._f = file_path
+            self.file_path = getattr(file_path, "name", None)
+            if hasattr(file_path, "seek") and hasattr(file_path, "tell"):
+                cur = file_path.tell()
+                file_path.seek(0, io.SEEK_END)
+                self.total_bytes = file_path.tell()
+                file_path.seek(cur)
+            else:
+                self.total_bytes = 0
+        else:
+            p = Path(file_path)
+            self.file_path = p
+            self.total_bytes = p.stat().st_size
+            self._f = open(p, "rb")
+
+    def read(self, size: int = -1) -> bytes:
+        chunk = self._f.read(size)
+        if chunk:
+            self.bytes_read += len(chunk)
+            if self.callback:
+                try:
+                    self.callback(self.bytes_read, self.total_bytes)
+                except Exception:
+                    pass
+        return chunk
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        res = self._f.seek(offset, whence)
+        self.bytes_read = res
+        return res
+
+    def tell(self) -> int:
+        return self._f.tell()
+
+    def close(self) -> None:
+        self._f.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __len__(self) -> int:
+        return self.total_bytes
+
+
 def build_bale_admin_course_kb(p_id: str, is_active: bool):
     t_lbl = "🔴 غیرفعال‌سازی دوره" if is_active else "🟢 فعال‌سازی دوره"
     return {
@@ -426,7 +487,9 @@ class BaleAdapter:
         caption: Optional[str] = None,
         duration: Optional[int] = None,
         width: Optional[int] = None,
-        height: Optional[int] = None
+        height: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
@@ -445,7 +508,8 @@ class BaleAdapter:
         if height: form.add_field("height", str(int(height)))
 
         try:
-            with open(path_obj, "rb") as f:
+            reader = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            with reader as f:
                 form.add_field("video", f, filename=clean_send_name, content_type="video/mp4")
                 timeout = aiohttp.ClientTimeout(total=1800, connect=30)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -464,7 +528,8 @@ class BaleAdapter:
             form_doc = aiohttp.FormData(quote_fields=False)
             form_doc.add_field("chat_id", str(chat_id))
             if clean_caption: form_doc.add_field("caption", clean_caption)
-            with open(path_obj, "rb") as f:
+            reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            with reader_doc as f:
                 form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
                 timeout = aiohttp.ClientTimeout(total=1800, connect=30)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -780,6 +845,7 @@ class BaleAdapter:
         except Exception:
             pass
 
+        progress_callback = kwargs.get("progress_callback")
         max_safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.5))
         if file_size_bytes > (max_safe_mb * 1024 * 1024):
             logger.info(f"Bale send_audio: file size ({file_size_bytes / (1024*1024):.2f}MB) exceeds {max_safe_mb}MB. Directly routing to sendDocument.")
@@ -789,7 +855,8 @@ class BaleAdapter:
                 form_doc.add_field("chat_id", str(chat_id))
                 if clean_caption: form_doc.add_field("caption", clean_caption)
                 if markup_str: form_doc.add_field("reply_markup", markup_str)
-                with open(path_obj, "rb") as f:
+                reader_large = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+                with reader_large as f:
                     form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
                     timeout = aiohttp.ClientTimeout(total=1800, connect=30)
                     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -811,7 +878,8 @@ class BaleAdapter:
         content_type = "audio/mp4" if path_obj.suffix.lower() == ".m4a" else "audio/mpeg"
         
         try:
-            with open(path_obj, "rb") as f:
+            reader_audio = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            with reader_audio as f:
                 form.add_field("audio", f, filename=clean_send_name, content_type=content_type)
                 timeout = aiohttp.ClientTimeout(total=1800, connect=30)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -831,7 +899,8 @@ class BaleAdapter:
             form_doc.add_field("chat_id", str(chat_id))
             if clean_caption: form_doc.add_field("caption", clean_caption)
             if markup_str: form_doc.add_field("reply_markup", markup_str)
-            with open(path_obj, "rb") as f:
+            reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            with reader_doc as f:
                 form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
                 timeout = aiohttp.ClientTimeout(total=1800, connect=30)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -1907,7 +1976,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     thumb_p = generate_video_thumbnail(final_p)
                                                     res = await telegram_adapter_instance.send_video(
                                                         target_tg_id, final_p,
-                                                        caption=f"✅ منتقل شده از بله\n📄 {clean_display_filename(fn)}",
+                                                        caption=f"📄 {clean_display_filename(fn)}",
                                                         width=tech.get("width"),
                                                         height=tech.get("height"),
                                                         duration=tech.get("duration_sec"),
@@ -1915,7 +1984,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     )
                                                 else:
                                                     res = await telegram_adapter_instance.send_audio(
-                                                        target_tg_id, final_p, title=info["title"], performer=info["artist"], caption=f"✅ منتقل شده از بله\n📄 {clean_display_filename(fn)}"
+                                                        target_tg_id, final_p, title=info["title"], performer=info["artist"], caption=f"📄 {clean_display_filename(fn)}"
                                                     )
                                                 if res.get("ok"):
                                                     await bale.send_message(chat_id, f"✅ فایل با موفقیت به تلگرام منتقل شد!\n📄 {clean_display_filename(fn)}")
@@ -1931,7 +2000,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 target_rub_id = rubika_adapter_instance.get_admin_guid()
                                                 res = await rubika_adapter_instance.send_audio(
                                                     target_rub_id, final_p, title=info["title"], performer=info["artist"],
-                                                    caption=f"✅ منتقل شده از بله\n📄 {clean_display_filename(fn)}"
+                                                    caption=f"📄 {clean_display_filename(fn)}"
                                                 )
                                                 if res.get("ok") or res.get("status") == "OK":
                                                     await bale.send_message(chat_id, f"✅ فایل با موفقیت به روبیکا منتقل شد!\n📄 {clean_display_filename(fn)}")
@@ -1949,7 +2018,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 await ensure_bale_binary()
                                                 try:
                                                     final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "soroush")
-                                                    caption_t = f"✅ منتقل شده از بله\n📄 {clean_display_filename(fn)}"
+                                                    caption_t = f"📄 {clean_display_filename(fn)}"
                                                     res = await soroush_worker.send_file_to_saved_messages(final_p, caption=caption_t)
                                                     if res.get("ok"):
                                                         queue_note = " (در صف ارسال محلی امن ذخیره گردید)" if res.get("queued") else ""
@@ -2195,7 +2264,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         is_vip = UserService.is_user_vip(chat_id)
                                         if is_vip:
                                             u = UserService.get_user_by_any_id(chat_id)
-                                            vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                                            vip_until_show = u.get_vip_until_jalali() if u else ""
                                             txt = (
                                                 "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
                                                 f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"
@@ -3085,12 +3154,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             days_val = int(await get_system_setting("vip_duration_days", "30"))
                                             u_vip = UserService.grant_vip(str(chat_id), days=days_val)
                                             logger.info(f"Bale successful_payment: Premium activated for {chat_id} until {getattr(u_vip, 'vip_until', '')}")
-                                            vip_until_show = getattr(u_vip, 'vip_until', '')[:10] if u_vip else ""
+                                            vip_until_show = u_vip.get_vip_until_jalali() if u_vip else ""
                                             await bale.send_message(
                                                 chat_id,
                                                 f"🎉 <b>تبریک! اشتراک پریمیوم {days_val} روزه شما با موفقیت فعال شد.</b>\n\n"
                                                 f"هم‌اکنون به ۱۶ دسته‌بندی و فرکانس فراوانی دسترسی دارید. ✨\n\n"
-                                                f"اعتبار تا: <b>{vip_until_show}</b>",
+                                                f"💎 اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show}</b> معتبر است.",
                                                 reply_markup=get_bale_customer_keyboard()
                                             )
                                             continue
@@ -3182,21 +3251,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 except Exception as ex_snd:
                                                     logger.warning(f"[bale_sign] send_audio local failed: {ex_snd}")
 
-                                            if not sent_ok and audio_url:
-                                                try:
-                                                    await bale.send_audio(
-                                                        chat_id=chat_id,
-                                                        file_path=audio_url,
-                                                        title=sign.get("title", "نشانه امروز من"),
-                                                        performer=perf_title,
-                                                        caption=caption,
-                                                        reply_markup=sign_kb
-                                                    )
-                                                    sent_ok = True
-                                                except Exception as ex_snd_url:
-                                                    logger.warning(f"[bale_sign] send_audio url failed: {ex_snd_url}")
-
                                             if not sent_ok:
+                                                # مستندسازی فارسی: در صورت عدم امکان ارسال باینری صوت، پیام کامل متنی همراه با دکمه‌های شیشه‌ای ارسال می‌شود
                                                 await bale.send_message(chat_id, caption, reply_markup=sign_kb)
                                         except Exception as ex_sign:
                                             logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")
@@ -3207,7 +3263,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         is_vip = UserService.is_user_vip(chat_id)
                                         if is_vip:
                                             u = UserService.get_user_by_any_id(chat_id)
-                                            vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                                            vip_until_show = u.get_vip_until_jalali() if u else ""
                                             txt = (
                                                 "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
                                                 f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"

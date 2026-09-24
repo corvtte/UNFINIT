@@ -311,43 +311,55 @@ class SignService:
             Optional[Path]: مسیر شیء Path فایل صوتی دانلودشده روی دیسک، یا None در صورت بروز خطا
         """
         cls._ensure_storage()
-        audio_url = (sign_data.get("audio_url") or "").strip()
-        if not audio_url:
+        raw_url = (sign_data.get("audio_url") or "").strip()
+        if not raw_url:
             return None
 
+        # اولویت‌بندی دامنه cdnir برای جلوگیری از خطای ۴۰۴
+        candidates = []
+        if "cdneu.abasmanesh.com" in raw_url:
+            candidates.append(raw_url.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com"))
+            candidates.append(raw_url)
+        elif "cdnir.abasmanesh.com" in raw_url:
+            candidates.append(raw_url)
+            candidates.append(raw_url.replace("cdnir.abasmanesh.com", "cdneu.abasmanesh.com"))
+        else:
+            candidates.append(raw_url)
+
         try:
-            url_hash = hashlib.md5(audio_url.encode("utf-8")).hexdigest()[:12]
-            parsed = urllib.parse.urlparse(audio_url)
-            ext = Path(parsed.path).suffix.lower()
-            if ext not in [".mp3", ".m4a", ".ogg", ".wav", ".aac"]:
-                ext = ".mp3"
-            dest_file = cls.CACHE_DIR / f"sign_audio_{url_hash}{ext}"
+            for audio_url in candidates:
+                url_hash = hashlib.md5(audio_url.encode("utf-8")).hexdigest()[:12]
+                parsed = urllib.parse.urlparse(audio_url)
+                ext = Path(parsed.path).suffix.lower()
+                if ext not in [".mp3", ".m4a", ".ogg", ".wav", ".aac"]:
+                    ext = ".mp3"
+                dest_file = cls.CACHE_DIR / f"sign_audio_{url_hash}{ext}"
 
-            if dest_file.exists() and dest_file.stat().st_size > 1024:
-                return dest_file
+                if dest_file.exists() and dest_file.stat().st_size > 1024:
+                    return dest_file
 
-            from services.url_service import UrlService
-            logger.info(f"[sign_service] Downloading sign audio locally: {audio_url} -> {dest_file.name}")
-            ok = await UrlService.download_file_stream(audio_url, dest_file)
-            if ok and dest_file.exists() and dest_file.stat().st_size > 0:
-                logger.info(f"[sign_service] Sign audio cached successfully: {dest_file} ({dest_file.stat().st_size} bytes)")
-                if dest_file.suffix.lower() == ".mp3":
-                    try:
-                        from mutagen.easyid3 import EasyID3
-                        from mutagen.mp3 import MP3
-                        audio = MP3(str(dest_file), ID3=EasyID3)
-                        if reader_tag:
-                            audio["artist"] = str(reader_tag)
-                            audio["albumartist"] = str(reader_tag)
-                        if sign_data.get("title"):
-                            audio["title"] = str(sign_data["title"])
-                        audio.save()
-                    except Exception:
-                        pass
-                return dest_file
-            else:
-                logger.warning(f"[sign_service] Failed to download sign audio: {audio_url}")
-                return None
+                from services.url_service import UrlService
+                logger.info(f"[sign_service] Downloading sign audio locally: {audio_url} -> {dest_file.name}")
+                ok = await UrlService.download_file_stream(audio_url, dest_file)
+                if ok and dest_file.exists() and dest_file.stat().st_size > 1024:
+                    logger.info(f"[sign_service] Sign audio cached successfully: {dest_file} ({dest_file.stat().st_size} bytes)")
+                    if dest_file.suffix.lower() == ".mp3":
+                        try:
+                            from mutagen.easyid3 import EasyID3
+                            from mutagen.mp3 import MP3
+                            audio = MP3(str(dest_file), ID3=EasyID3)
+                            if reader_tag:
+                                audio["artist"] = str(reader_tag)
+                                audio["albumartist"] = str(reader_tag)
+                            if sign_data.get("title"):
+                                audio["title"] = str(sign_data["title"])
+                            audio.save()
+                        except Exception:
+                            pass
+                    return dest_file
+                else:
+                    logger.warning(f"[sign_service] Failed download attempt with {audio_url}")
+            return None
         except Exception as e:
             logger.error(f"[sign_service] Error ensuring audio downloaded: {e}")
             return None

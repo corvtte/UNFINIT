@@ -775,13 +775,16 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path == "/api/feed/categories":
             try:
-                from services.feed_scraper import fetch_live_categories
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                from services.feed_scraper import get_all_categories, fetch_live_categories
                 query_params = urllib.parse.parse_qs(parsed.query)
                 force = query_params.get("force", ["0"])[0].lower() in ("1", "true", "yes")
-                cats = loop.run_until_complete(fetch_live_categories(force_refresh=force))
-                loop.close()
+                if force:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    cats = loop.run_until_complete(fetch_live_categories(force_refresh=True))
+                    loop.close()
+                else:
+                    cats = get_all_categories()
                 res = {"ok": True, "categories": cats, "count": len(cats)}
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1040,6 +1043,13 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
                 action = str(payload.get("action") or "grant").strip().lower()
                 days = int(payload.get("days") or 30)
+                if action == "grant_10":
+                    days = 10
+                    action = "grant"
+                elif action == "grant_30":
+                    days = 30
+                    action = "grant"
+
                 if not user_id:
                     raise ValueError("شناسه کاربر الزامی است.")
                 from services.user_service import UserService
@@ -1054,8 +1064,10 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     try:
                         from services.web_panel import ACTIVE_TG_ADAPTER, ACTIVE_BALE_ADAPTER
                         from platforms.bale_adapter import get_bale_customer_keyboard
+                        vip_show_str = u.get_vip_until_jalali() if u else ""
                         notify_txt = (
                             f"🎉 <b>تبریک! اشتراک پریمیوم {days} روزه شما با موفقیت فعال شد.</b>\n\n"
+                            f"📅 اعتبار اشتراک تا: <b>{vip_show_str}</b>\n"
                             "هم‌اکنون به ۱۶ دسته‌بندی و فرکانس فراوانی دسترسی دارید. ✨"
                         )
                         bale_dest = getattr(u, "bale_id", None) or (user_id if u and u.platform == "bale" else None)
@@ -1109,10 +1121,67 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     "message": msg,
                     "is_vip": u.is_vip(),
                     "vip_until": getattr(u, "vip_until", ""),
+                    "vip_until_jalali": u.get_vip_until_jalali(),
                     "user": u.to_dict()
                 }, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/categories/update":
+            """
+            ذخیره و ویرایش درجا ۱۶ دسته‌بندی پریمیوم، ایموجی‌ها و عناوین.
+            """
+            try:
+                from services.feed_scraper import save_custom_categories
+                cats = payload.get("categories") or payload.get("items")
+                if not isinstance(cats, list) or len(cats) == 0:
+                    raise ValueError("لیست دسته‌بندی‌ها نامعتبر است.")
+                ok = save_custom_categories(cats)
+                if not ok:
+                    raise ValueError("خطا در ذخیره دسته‌بندی‌ها روی دیسک.")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "message": "دسته‌بندی‌های پریمیوم با موفقیت ذخیره و به‌روزرسانی شدند.",
+                    "count": len(cats)
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/feed/refresh":
+            """
+            به‌روزرسانی غیرمسدودکننده و در پس‌زمینه کش دانلودها بدون قفل کردن فرانت‌اند.
+            """
+            try:
+                from services.feed_scraper import get_latest_free_downloads
+                def _bg_feed_refresh():
+                    try:
+                        _loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(_loop)
+                        _loop.run_until_complete(get_latest_free_downloads(limit=25, force_refresh=True, page=1))
+                        _loop.close()
+                        logger.info("[feed_refresh] Background cache refresh finished successfully.")
+                    except Exception as ex:
+                        logger.warning(f"[feed_refresh] Background refresh error: {ex}")
+
+                threading.Thread(target=_bg_feed_refresh, daemon=True).start()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "ok": True,
+                    "message": "به‌روزرسانی کش دانلودها در پس‌زمینه آغاز شد."
+                }, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))

@@ -124,9 +124,21 @@ class UserModel:
             "commitment_signed": self.terms_accepted,
             "wallet_balance": getattr(self, "wallet_balance", 0),
             "vip_until": getattr(self, "vip_until", ""),
+            "vip_until_jalali": self.get_vip_until_jalali(),
             "is_vip": self.is_vip(),
             "created_at": self.created_at
         }
+
+    def get_vip_until_jalali(self) -> str:
+        """تبدیل تاریخ انقضای اشتراک کاربر به رشته کامل و زیبای شمسی همراه با روز و ساعت."""
+        v_str = getattr(self, "vip_until", "")
+        if not v_str:
+            return ""
+        try:
+            from core.jalali import format_jalali_full
+            return format_jalali_full(v_str)
+        except Exception:
+            return str(v_str)[:10]
 
 class UserService:
     _users: Dict[str, UserModel] = {}

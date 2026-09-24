@@ -84,7 +84,10 @@ def format_transfer_progress(
     current: int,
     total: int,
     elapsed_sec: float,
-    stage_title: str = "در حال انتقال فایل به بله..."
+    stage_title: str = "در حال انتقال فایل به بله...",
+    file_index: Optional[int] = None,
+    total_files: Optional[int] = None,
+    filename: Optional[str] = None
 ) -> str:
     pct = int((current / total) * 100) if total > 0 else 0
     pct = min(100, max(0, pct))
@@ -94,7 +97,20 @@ def format_transfer_progress(
     transferred_mb = f"{current / (1024 * 1024):.2f}"
     total_mb = f"{total / (1024 * 1024):.2f}"
     speed_mbps = f"{(current / max(0.01, elapsed_sec)) / (1024 * 1024):.2f}"
-    icon = "📤" if ("بله" in stage_title or "انتقال" in stage_title or "ارسال" in stage_title) else "⏳"
+    icon = "⏳" if ("فایل‌ها" in stage_title or "آماده‌سازی" in stage_title) else ("📤" if ("بله" in stage_title or "انتقال" in stage_title or "ارسال" in stage_title) else "⏳")
+
+    sub_info = ""
+    if file_index is not None and total_files is not None:
+        clean_fn = escape(filename) if filename else ""
+        sub_info = f"\n📄 <b>فایل {file_index} از {total_files}:</b> <code>{clean_fn}</code>\n"
+
+    if sub_info:
+        return (
+            f"{icon} <b>{stage_title}</b>\n\n"
+            f"<code>[{bar}] {pct}%</code>\n"
+            f"{sub_info}"
+            f"📦 <b>حجم:</b> <code>{transferred_mb} MB</code> | ⚡️ <b>سرعت انتقال:</b> <code>{speed_mbps} MB/s</code>"
+        )
 
     return (
         f"{icon} <b>{stage_title}</b>\n\n"
@@ -549,7 +565,7 @@ class TelegramAdapter:
                 p_tech = inspect_technical_metadata(part_file)
                 res = await self.bale_adapter.send_video(
                     target_chat, part_file,
-                    caption=f"✅ پارت {p_idx} از {len(parts_list)} (منتقل شده از تلگرام)\n📄 <b>{escape(part_file.name)}</b>",
+                    caption=f"📄 پارت {p_idx} از {len(parts_list)}: <b>{escape(part_file.name)}</b>",
                     duration=p_tech.get("duration_sec"),
                     width=p_tech.get("width"),
                     height=p_tech.get("height")
@@ -1146,27 +1162,13 @@ class TelegramAdapter:
                     except Exception as e_send_loc:
                         logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
 
-                if not sent_audio_ok and audio_url:
-                    try:
-                        await message.reply_audio(
-                            audio=audio_url,
-                            caption=caption,
-                            title=sign.get("title", "نشانه امروز من"),
-                            performer=perf_title,
-                            reply_markup=vip_kb,
-                            parse_mode=enums.ParseMode.HTML
-                        )
-                        sent_audio_ok = True
-                    except Exception as e_send_url:
-                        logger.warning(f"[tg_sign] reply_audio url failed: {e_send_url}")
-
                 if sent_audio_ok:
                     try:
                         await wait_msg.delete()
                     except Exception:
                         pass
                 else:
-                    # مستندسازی فارسی: فالبک هوشمند در صورت شکست ارسال صوت
+                    # مستندسازی فارسی: در صورت عدم دانلود موفق صوت، پیام کامل همراه با دکمه‌های مستقیم ارسال می‌گردد تا از خطای ۴۰۰ تلگرام جلوگیری شود
                     fallback_kb = vip_kb
                     try:
                         await wait_msg.edit_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
@@ -1240,7 +1242,7 @@ class TelegramAdapter:
             is_vip = UserService.is_user_vip(user_id)
             if is_vip:
                 u = UserService.get_user_by_any_id(user_id)
-                vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                vip_until_show = u.get_vip_until_jalali() if u else ""
                 txt = (
                     "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
                     f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"
@@ -3590,7 +3592,7 @@ class TelegramAdapter:
                         "task_id": drop_id,
                         "destination": "rubika",
                         "path": str(final_path),
-                        "caption": f"✅ منتقل شده از تلگرام\n📄 {send_name}",
+                        "caption": f"📄 {send_name}",
                         "chat_id": callback_query.message.chat.id,
                         "status_message_id": status_msg.id,
                         "file_name": send_name,
@@ -3618,7 +3620,7 @@ class TelegramAdapter:
                     res = await self.rubika_adapter.send_audio_bot_api(
                         target_chat,
                         final_path,
-                        caption=f"✅ منتقل شده از تلگرام\n📄 {send_name}"
+                        caption=f"📄 {send_name}"
                     )
                     logger.info(f"[rub_bot] Rubika send_audio_bot_api response: {res}")
                     if res.get("ok") or res.get("status") == "OK":
@@ -3758,7 +3760,7 @@ class TelegramAdapter:
                         tech = inspect_technical_metadata(final_path)
                         res = await self.bale_adapter.send_video(
                             target_chat, final_path,
-                            caption=f"✅ منتقل شده از تلگرام\n📄 <b>{escape(send_name)}</b>",
+                            caption=f"📄 <b>{escape(send_name)}</b>",
                             duration=tech.get("duration_sec"),
                             width=tech.get("width"),
                             height=tech.get("height")
@@ -3768,7 +3770,7 @@ class TelegramAdapter:
                             target_chat, final_path,
                             title=transfer_info["title"],
                             performer=transfer_info["artist"],
-                            caption=f"✅ منتقل شده از تلگرام\n📄 <b>{escape(send_name)}</b>"
+                            caption=f"📄 <b>{escape(send_name)}</b>"
                         )
                     if res.get("ok"):
                         await status_msg.edit_text(f"✅ <b>فایل با موفقیت و حفظ کامل متادیتا به بله منتقل شد!</b>\n📄 <code>{escape(send_name)}</code>", parse_mode=enums.ParseMode.HTML)
@@ -3797,7 +3799,7 @@ class TelegramAdapter:
                 try:
                     final_path, send_name, transfer_info = MediaService.prepare_for_transfer(drop_id, "soroush")
                     await status_msg.edit_text("📤 <b>در حال ارسال فایل به پیام‌های ذخیره‌شده سروش‌پلاس...</b>", parse_mode=enums.ParseMode.HTML)
-                    caption_text = f"✅ منتقل شده از تلگرام\n📄 <b>{escape(send_name)}</b>"
+                    caption_text = f"📄 <b>{escape(send_name)}</b>"
                     res = await soroush_worker.send_file_to_saved_messages(final_path, caption=caption_text)
                     if res.get("ok"):
                         queue_note = " (در صف ارسال محلی امن ذخیره گردید)" if res.get("queued") else ""
@@ -3838,14 +3840,48 @@ class TelegramAdapter:
             success_count = 0
             dest_name = "بله" if dest == "bale" else "روبیکا"
 
+            async def _safe_edit_batch(text: str):
+                try:
+                    await status_msg.edit_text(text, parse_mode=enums.ParseMode.HTML)
+                except Exception:
+                    pass
+
             for idx, it in enumerate(items, 1):
                 s_drop_id = it["drop_id"]
                 s_data = it["data"]
                 fn = s_data.get("filename") or "media"
-                await status_msg.edit_text(
-                    f"⏳ <b>[فایل {idx} از {total_count}] در حال پردازش و انتقال به {dest_name}:</b>\n📄 <code>{escape(fn)}</code>",
-                    parse_mode=enums.ParseMode.HTML
+                raw_sz = int(s_data.get("file_size") or 1)
+
+                file_start_t = [time.time()]
+                file_last_edit = [time.time()]
+                file_last_pct = [0]
+
+                def file_progress_cb(current, total):
+                    now_t = time.time()
+                    pct = int((current / total) * 100) if total > 0 else 0
+                    if (now_t - file_last_edit[0] >= 1.5 and abs(pct - file_last_pct[0]) >= 5) or current >= total:
+                        file_last_edit[0] = now_t
+                        file_last_pct[0] = pct
+                        el = max(0.01, now_t - file_start_t[0])
+                        txt_prog = format_transfer_progress(
+                            current, total, el,
+                            stage_title="⏳ در حال انتقال فایل‌ها به بله...",
+                            file_index=idx,
+                            total_files=total_count,
+                            filename=fn
+                        )
+                        asyncio.create_task(_safe_edit_batch(txt_prog))
+
+                await _safe_edit_batch(
+                    format_transfer_progress(
+                        0, raw_sz, 0.1,
+                        stage_title="⏳ در حال آماده‌سازی و انتقال به بله...",
+                        file_index=idx,
+                        total_files=total_count,
+                        filename=fn
+                    )
                 )
+
                 try:
                     dl_ok = await MediaService.ensure_local_binary(s_drop_id)
                     if not dl_ok:
@@ -3855,27 +3891,30 @@ class TelegramAdapter:
                         t_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
                         if not t_chat:
                             break
+                        caption_clean = f"📄 پارت {idx} از {total_count}: <b>{escape(s_name)}</b>" if total_count > 1 else f"📄 <b>{escape(s_name)}</b>"
                         if s_data.get("media_type") == "video":
                             t_spec = inspect_technical_metadata(final_p)
                             res = await self.bale_adapter.send_video(
                                 t_chat, final_p,
-                                caption=f"✅ پارت {idx} از {total_count} (منتقل شده از تلگرام)\n📄 <b>{escape(s_name)}</b>",
+                                caption=caption_clean,
                                 duration=t_spec.get("duration_sec"),
                                 width=t_spec.get("width"),
-                                height=t_spec.get("height")
+                                height=t_spec.get("height"),
+                                progress_callback=file_progress_cb
                             )
                         else:
                             res = await self.bale_adapter.send_audio(
                                 t_chat, final_p,
                                 title=t_info.get("title"),
                                 performer=t_info.get("artist"),
-                                caption=f"✅ پارت {idx} از {total_count} (منتقل شده از تلگرام)\n📄 <b>{escape(s_name)}</b>"
+                                caption=caption_clean,
+                                progress_callback=file_progress_cb
                             )
                         if res.get("ok"):
                             success_count += 1
                     elif dest == "rubika":
                         target_chat = self.rubika_adapter.get_admin_guid() if self.rubika_adapter else None
-                        res = await self.rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"✅ منتقل شده از تلگرام\n📄 {s_name}")
+                        res = await self.rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"📄 {s_name}")
                         if res.get("ok") or res.get("status") == "OK":
                             success_count += 1
                 except Exception as ex:

@@ -1,5 +1,5 @@
 from datetime import datetime, date, timezone, timedelta
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional, Any
 
 TEHRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
@@ -7,6 +7,26 @@ PERSIAN_MONTHS = [
     "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
     "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
 ]
+
+PERSIAN_WEEKDAYS = {
+    5: "شنبه",
+    6: "یکشنبه",
+    0: "دوشنبه",
+    1: "سه‌شنبه",
+    2: "چهارشنبه",
+    3: "پنج‌شنبه",
+    4: "جمعه"
+}
+
+PERSIAN_DIGITS = {
+    "0": "۰", "1": "۱", "2": "۲", "3": "۳", "4": "۴",
+    "5": "۵", "6": "۶", "7": "۷", "8": "۸", "9": "۹"
+}
+
+def to_persian_digits(val: Any) -> str:
+    """تبدیل ارقام انگلیسی به فارسی."""
+    s = str(val)
+    return "".join(PERSIAN_DIGITS.get(ch, ch) for ch in s)
 
 def gregorian_to_jalali(gy: int, gm: int, gd: int) -> Tuple[int, int, int]:
     """
@@ -69,3 +89,52 @@ def format_to_jalali(dt_val: Union[str, datetime, date, None], include_time: boo
     if include_time:
         return f"{jd} {month_name} {jy} - {hour:02d}:{minute:02d}"
     return f"{jd} {month_name} {jy}"
+
+def format_jalali_full(dt_val: Union[str, datetime, date, None], use_persian_digits: bool = True) -> str:
+    """
+    تبدیل پیشرفته و استاندارد تاریخ انقضای اشتراک به فرمت خوانا و روان فارسی به همراه روز هفته و ساعت:
+    مثال: 'شنبه ۲ آبان ۱۴۰۵ ساعت ۰۸:۵۳'
+    """
+    if not dt_val:
+        return "نامشخص"
+
+    dt_obj: Optional[datetime] = None
+    if isinstance(dt_val, str):
+        s = str(dt_val).strip().replace("T", " ")
+        try:
+            # Handle timestamps
+            if s.replace(".", "").isdigit():
+                dt_obj = datetime.fromtimestamp(float(s), tz=TEHRAN_TZ)
+            else:
+                parts = s.split(" ")
+                ymd = [int(x) for x in parts[0].split("-")]
+                hour, minute = 0, 0
+                if len(parts) > 1 and ":" in parts[1]:
+                    hms = parts[1].split(":")
+                    hour = int(hms[0])
+                    minute = int(hms[1])
+                dt_obj = datetime(ymd[0], ymd[1], ymd[2], hour, minute, tzinfo=TEHRAN_TZ)
+        except Exception:
+            return str(dt_val)
+    elif isinstance(dt_val, datetime):
+        dt_obj = dt_val if dt_val.tzinfo else dt_val.replace(tzinfo=TEHRAN_TZ)
+    elif isinstance(dt_val, date):
+        dt_obj = datetime(dt_val.year, dt_val.month, dt_val.day, 0, 0, tzinfo=TEHRAN_TZ)
+
+    if not dt_obj:
+        return str(dt_val)
+
+    weekday_str = PERSIAN_WEEKDAYS.get(dt_obj.weekday(), "")
+    jy, jm, jd = gregorian_to_jalali(dt_obj.year, dt_obj.month, dt_obj.day)
+    month_name = PERSIAN_MONTHS[jm - 1] if 1 <= jm <= 12 else str(jm)
+    time_str = f"{dt_obj.hour:02d}:{dt_obj.minute:02d}"
+
+    if use_persian_digits:
+        jd_str = to_persian_digits(jd)
+        jy_str = to_persian_digits(jy)
+        time_str = to_persian_digits(time_str)
+    else:
+        jd_str = str(jd)
+        jy_str = str(jy)
+
+    return f"{weekday_str} {jd_str} {month_name} {jy_str} ساعت {time_str}".strip()

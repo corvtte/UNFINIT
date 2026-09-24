@@ -6,10 +6,13 @@ and robust caching/error fallbacks.
 """
 
 import asyncio
+import json
 import logging
+import os
 import re
 import time
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 import aiohttp
 
 try:
@@ -18,6 +21,11 @@ except ImportError:
     BeautifulSoup = None
 
 logger = logging.getLogger("feed_scraper")
+
+# مسیرهای فایل‌های کش دیسک و دسته‌بندی‌های شخصی‌سازی‌شده
+DATA_DIR = Path("data")
+FEED_CACHE_FILE = DATA_DIR / "feed_cache.json"
+CUSTOM_CATS_FILE = DATA_DIR / "custom_categories.json"
 
 BROWSER_HEADERS = {
     "User-Agent": (
@@ -33,10 +41,11 @@ BROWSER_HEADERS = {
 BASE_FEED_URL = "https://abasmanesh.com/fa/free-download-list/"
 ARTICLES_BASE_URL = "https://abasmanesh.com/fa/articles/"
 
-# ۱۶ دسته‌بندی رسمی دانلودهای هدیه و مقالات سایت عباس‌منش (مختص مشترکین پریمیوم)
+# ۱۶ دسته‌بندی رسمی دانلودهای هدیه و مقالات سایت عباس‌منش همراه با ایموجی‌های اختصاصی
 ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     {
         "id": 1,
+        "emoji": "🌴",
         "slug": "the-series-of-focus-on-positive-points",
         "title": "سریال تمرکز بر نکات مثبت",
         "url": "https://abasmanesh.com/fa/category/free-download/the-series-of-focus-on-positive-points/",
@@ -44,6 +53,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 2,
+        "emoji": "🗽",
         "slug": "paradise-life-series",
         "title": "سریال زندگی در بهشت",
         "url": "https://abasmanesh.com/fa/category/free-download/paradise-life-series/",
@@ -51,6 +61,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 3,
+        "emoji": "🛣️",
         "slug": "travel-around-the-usa-series",
         "title": "سریال سفر به دور آمریکا",
         "url": "https://abasmanesh.com/fa/category/free-download/travel-around-the-usa-series/",
@@ -58,6 +69,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 4,
+        "emoji": "🎙",
         "slug": "interview-with-master-abasmanesh",
         "title": "مصاحبه با استاد عباس‌منش و Liveها",
         "url": "https://abasmanesh.com/fa/category/free-download/interview-with-master-abasmanesh/",
@@ -65,6 +77,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 5,
+        "emoji": "⚖️",
         "slug": "unchanging-laws-of-god",
         "title": "قوانین بدون تغییر خداوند",
         "url": "https://abasmanesh.com/fa/category/free-download/unchanging-laws-of-god/",
@@ -72,6 +85,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 6,
+        "emoji": "🕋",
         "slug": "practicing-monotheism",
         "title": "اجرای توحید در عمل",
         "url": "https://abasmanesh.com/fa/category/free-download/practicing-monotheism/",
@@ -79,6 +93,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 7,
+        "emoji": "🎯",
         "slug": "distinguishing-essence-from-branches",
         "title": "توانایی تشخیص اصل از فرع",
         "url": "https://abasmanesh.com/fa/category/free-download/distinguishing-essence-from-branches/",
@@ -86,6 +101,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 8,
+        "emoji": "⚡️",
         "slug": "faith-that-leads-to-action",
         "title": "ایمانی که عمل می‌آورد",
         "url": "https://abasmanesh.com/fa/category/free-download/faith-that-leads-to-action/",
@@ -93,6 +109,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 9,
+        "emoji": "🧠",
         "slug": "ability-to-control-the-mind",
         "title": "توانایی کنترل ذهن",
         "url": "https://abasmanesh.com/fa/category/free-download/ability-to-control-the-mind/",
@@ -100,6 +117,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 10,
+        "emoji": "💰",
         "slug": "wealth-creating-beliefs",
         "title": "باورهای ثروت‌ساز",
         "url": "https://abasmanesh.com/fa/category/free-download/wealth-creating-beliefs/",
@@ -107,6 +125,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 11,
+        "emoji": "💻",
         "slug": "be-the-programmer-of-your-life",
         "title": "برنامه‌نویس زندگی‌ات باش",
         "url": "https://abasmanesh.com/fa/category/free-download/be-the-programmer-of-your-life/",
@@ -114,6 +133,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 12,
+        "emoji": "🕊",
         "slug": "being-at-peace-with-ourselves",
         "title": "در صلح بودن با خودمان",
         "url": "https://abasmanesh.com/fa/category/free-download/being-at-peace-with-ourselves/",
@@ -121,6 +141,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 13,
+        "emoji": "💎",
         "slug": "investing-in-yourself",
         "title": "سرمایه‌گذاری روی خودت",
         "url": "https://abasmanesh.com/fa/category/free-download/investing-in-yourself/",
@@ -128,6 +149,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 14,
+        "emoji": "🕯",
         "slug": "peace-in-light-of-awareness",
         "title": "آرامش در پرتو آگاهی",
         "url": "https://abasmanesh.com/fa/category/free-download/peace-in-light-of-awareness/",
@@ -135,6 +157,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 15,
+        "emoji": "🪜",
         "slug": "evolutionary-steps-for-guidance",
         "title": "قدم‌های تکاملی برای هدایت‌شدن",
         "url": "https://abasmanesh.com/fa/category/free-download/evolutionary-steps-for-guidance/",
@@ -142,6 +165,7 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     },
     {
         "id": 16,
+        "emoji": "✨",
         "slug": "all-articles",
         "title": "کلیدها و تمام دانلودها",
         "url": "https://abasmanesh.com/fa/articles/",
@@ -149,20 +173,70 @@ ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
     }
 ]
 
-# In-memory cache to prevent spamming target site
+# کش حافظه‌ای
 _CACHE: Dict[str, Any] = {
     "items": [],
     "last_fetched": 0.0
 }
 _ARTICLE_CACHE: Dict[str, Dict[str, Any]] = {}
-CACHE_TTL_SEC = 300.0  # 5 minutes cache
+CACHE_TTL_SEC = 300.0  # ۵ دقیقه کش رم
+DISK_CACHE_TTL_SEC = 3600.0 * 6  # ۶ ساعت کش دیسک
 
-# کش ۲۴ ساعته دسته‌بندی‌های زنده منوی سایت
+# کش ۲۴ ساعته منوی سایت
 _LIVE_CATEGORIES_CACHE: Dict[str, Any] = {
     "categories": [],
     "last_fetched": 0.0
 }
-LIVE_CATEGORIES_TTL_SEC = 86400.0  # 24 hours
+LIVE_CATEGORIES_TTL_SEC = 86400.0  # ۲۴ ساعت
+
+def load_feed_disk_cache() -> List[Dict[str, Any]]:
+    """بارگذاری فوق‌سریع دانلودهای کش‌شده از دیسک زیر ۱۰ میلی‌ثانیه."""
+    try:
+        if FEED_CACHE_FILE.exists():
+            data = json.loads(FEED_CACHE_FILE.read_text(encoding="utf-8"))
+            items = data.get("items", [])
+            cached_at = data.get("cached_at", 0)
+            if items and (time.time() - cached_at < DISK_CACHE_TTL_SEC):
+                return items
+    except Exception as e:
+        logger.debug(f"[feed_scraper] Error loading disk cache: {e}")
+    return []
+
+def save_feed_disk_cache(items: List[Dict[str, Any]]) -> None:
+    """ذخیره امن دانلودها روی دیسک جهت پاسخگویی لحظه‌ای وب‌پنل."""
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "items": items,
+            "cached_at": time.time(),
+            "count": len(items)
+        }
+        FEED_CACHE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"[feed_scraper] Error saving disk cache: {e}")
+
+def get_custom_categories() -> List[Dict[str, Any]]:
+    """بازیابی دسته‌بندی‌های شخصی‌سازی‌شده توسط ادمین در وب‌پنل."""
+    try:
+        if CUSTOM_CATS_FILE.exists():
+            data = json.loads(CUSTOM_CATS_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, list) and len(data) > 0:
+                return data
+    except Exception as e:
+        logger.debug(f"[feed_scraper] Error loading custom categories: {e}")
+    return list(ABASMANESH_PREMIUM_CATEGORIES)
+
+def save_custom_categories(categories: List[Dict[str, Any]]) -> bool:
+    """ذخیره تنظیمات و ایموجی‌های دسته‌بندی‌ها."""
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        CUSTOM_CATS_FILE.write_text(json.dumps(categories, ensure_ascii=False, indent=2), encoding="utf-8")
+        global ABASMANESH_PREMIUM_CATEGORIES
+        ABASMANESH_PREMIUM_CATEGORIES = categories
+        return True
+    except Exception as e:
+        logger.error(f"[feed_scraper] Error saving custom categories: {e}")
+        return False
 
 async def fetch_live_categories(force_refresh: bool = False) -> List[Dict[str, Any]]:
     """
@@ -240,12 +314,15 @@ async def fetch_live_categories(force_refresh: bool = False) -> List[Dict[str, A
     return ABASMANESH_PREMIUM_CATEGORIES
 
 def get_all_categories() -> List[Dict[str, Any]]:
-    """دریافت فهرست کامل ۱۶ دسته‌بندی رسمی عباس‌منش."""
+    """دریافت فهرست کامل ۱۶ دسته‌بندی رسمی عباس‌منش با اولویت تنظیمات ذخیره‌شده ادمین."""
+    custom = get_custom_categories()
+    if custom and len(custom) >= 5:
+        return custom
     if _LIVE_CATEGORIES_CACHE.get("categories"):
         return _LIVE_CATEGORIES_CACHE["categories"]
     return ABASMANESH_PREMIUM_CATEGORIES
 
-def get_category_by_id(cat_id_or_slug: str | int) -> Optional[Dict[str, Any]]:
+def get_category_by_id(cat_id_or_slug: Union[str, int]) -> Optional[Dict[str, Any]]:
     """یافتن دسته‌بندی بر اساس شناسه یا اسلاگ."""
     s_val = str(cat_id_or_slug).strip()
     active_cats = get_all_categories()
@@ -256,49 +333,49 @@ def get_category_by_id(cat_id_or_slug: str | int) -> Optional[Dict[str, Any]]:
 
 FALLBACK_ITEMS = [
     {
-        "title": "خداوند را چگونه در ذهن خود ساخته‌ای؟",
-        "tag": "فایل دانلودی جدید",
-        "page_url": "https://abasmanesh.com/fa/how-have-you-defined-god-in-your-mind/",
-        "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
-        "audio_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/che-khodaee-ra-sakhtehee/abasmaneh-khoda-dar-zehn.mp3",
-        "video_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/che-khodaee-ra-sakhtehee/abasmaneh-khoda-dar-zehn.mp4",
-        "direct_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/che-khodaee-ra-sakhtehee/abasmaneh-khoda-dar-zehn.mp3"
-    },
-    {
-        "title": "هر فکری که در ذهنت می‌آید، حقیقت نیست",
-        "tag": "فایل دانلودی",
-        "page_url": "https://abasmanesh.com/fa/every-thought-that-comes-to-your-mind-is-not-the-truth/",
-        "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
-        "audio_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/fekr-haghighat-nist/abasmanesh-fekr-haghighat-nist.mp3",
-        "video_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/fekr-haghighat-nist/abasmanesh-fekr-haghighat-nist.mp4",
-        "direct_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/fekr-haghighat-nist/abasmanesh-fekr-haghighat-nist.mp3"
-    },
-    {
-        "title": "توحید عملی | قسمت ۱۱",
+        "title": "توحید عملی | قسمت ۹",
         "tag": "سریال توحید عملی",
-        "page_url": "https://abasmanesh.com/fa/practical-monotheism-11/",
+        "page_url": "https://abasmanesh.com/fa/practical-monotheism-9/",
         "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
-        "audio_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-11/abasmanesh-tohid-amali-11.mp3",
-        "video_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-11/abasmanesh-tohid-amali-11.mp4",
-        "direct_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-11/abasmanesh-tohid-amali-11.mp3"
+        "audio_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/09/abasmanesh-practical-monotheism-9.mp3",
+        "video_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/09/abasmanesh-practical-monotheism-9.mp4",
+        "direct_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/09/abasmanesh-practical-monotheism-9.mp3"
     },
     {
         "title": "توحید عملی | قسمت ۱۰",
         "tag": "سریال توحید عملی",
         "page_url": "https://abasmanesh.com/fa/practical-monotheism-10/",
         "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
-        "audio_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-10/abasmanesh-tohid-amali-10.mp3",
-        "video_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-10/abasmanesh-tohid-amali-10.mp4",
-        "direct_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-10/abasmanesh-tohid-amali-10.mp3"
+        "audio_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/10/abasmanesh-practical-monotheism-10.mp3",
+        "video_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/10/abasmanesh-practical-monotheism-10.mp4",
+        "direct_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/10/abasmanesh-practical-monotheism-10.mp3"
     },
     {
-        "title": "توحید عملی | قسمت ۹",
+        "title": "توحید عملی | قسمت ۱۱",
         "tag": "سریال توحید عملی",
-        "page_url": "https://abasmanesh.com/fa/practical-monotheism-9/",
+        "page_url": "https://abasmanesh.com/fa/practical-monotheism-11/",
         "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
-        "audio_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-9/abasmanesh-tohid-amali-9.mp3",
-        "video_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-9/abasmanesh-tohid-amali-9.mp4",
-        "direct_download_url": "https://cdneu.abasmanesh.com/download.php?url=video/1405/tohid-amali-9/abasmanesh-tohid-amali-9.mp3"
+        "audio_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/11/abasmanesh-practical-monotheism-11.mp3",
+        "video_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/11/abasmanesh-practical-monotheism-11.mp4",
+        "direct_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/tohid-amali/11/abasmanesh-practical-monotheism-11.mp3"
+    },
+    {
+        "title": "خداوند را چگونه در ذهن خود ساخته‌ای؟",
+        "tag": "فایل دانلودی جدید",
+        "page_url": "https://abasmanesh.com/fa/how-have-you-defined-god-in-your-mind/",
+        "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
+        "audio_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/1405/che-khodaee-ra-sakhtehee/abasmaneh-khoda-dar-zehn.mp3",
+        "video_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/1405/che-khodaee-ra-sakhtehee/abasmaneh-khoda-dar-zehn.mp4",
+        "direct_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/1405/che-khodaee-ra-sakhtehee/abasmaneh-khoda-dar-zehn.mp3"
+    },
+    {
+        "title": "هر فکری که در ذهنت می‌آید، حقیقت نیست",
+        "tag": "فایل دانلودی",
+        "page_url": "https://abasmanesh.com/fa/every-thought-that-comes-to-your-mind-is-not-the-truth/",
+        "cover_url": "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
+        "audio_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/1405/fekr-haghighat-nist/abasmanesh-fekr-haghighat-nist.mp3",
+        "video_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/1405/fekr-haghighat-nist/abasmanesh-fekr-haghighat-nist.mp4",
+        "direct_download_url": "https://cdnir.abasmanesh.com/download.php?url=video/1405/fekr-haghighat-nist/abasmanesh-fekr-haghighat-nist.mp3"
     }
 ]
 
@@ -472,11 +549,14 @@ async def _fetch_single_article(
                         if v_src and ".mp4" in v_src and not video_dl:
                             video_dl = re.sub(r"^rhttp", "http", v_src)
 
-                    # ۲. جستجو در تگ‌های a برای دانلود مستقیم
+                    # ۲. جستجو در تگ‌های a برای دانلود مستقیم با اولویت قطعی cdnir
                     for a in soup.find_all("a", href=True):
                         h = a["href"].strip()
                         if "download.php?url=" in h or (".mp3" in h and "http" in h) or (".mp4" in h and "http" in h):
                             clean_h = re.sub(r"^rhttp", "http", h)
+                            # تبدیل دامنه قدیمی یا کند cdneu به CDN پایدار و پرسرعت cdnir
+                            if "cdneu.abasmanesh.com" in clean_h:
+                                clean_h = clean_h.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com")
                             if ".mp3" in clean_h and not audio_dl:
                                 audio_dl = clean_h
                             elif ".mp4" in clean_h and not video_dl:
@@ -487,6 +567,8 @@ async def _fetch_single_article(
                         cover_url = img_m.group(1).strip()
                     for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
                         h = re.sub(r"^rhttp", "http", m.group(1).strip())
+                        if "cdneu.abasmanesh.com" in h:
+                            h = h.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com")
                         if ".mp3" in h and not audio_dl:
                             audio_dl = h
                         elif ".mp4" in h and not video_dl:
@@ -566,7 +648,7 @@ async def _fetch_single_article(
 
 
 # ==============================================================================
-# تابع واکشی جدیدترین هدایای دانلودی و مقالات با صفحه‌بندی
+# تابع واکشی جدیدترین هدایای دانلودی و مقالات با صفحه‌بندی و کش فوق‌سریع دیسک
 # ==============================================================================
 async def get_latest_free_downloads(
     limit: int = 25,
@@ -575,22 +657,25 @@ async def get_latest_free_downloads(
     base_url: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    استخراج داینامیک آرشیو مقالات و دانلودهای سایت عباس‌منش با صفحه‌بندی.
-    ورودی‌ها:
-        limit (int): سقف تعداد مقالات
-        force_refresh (bool): عدم استفاده از کش
-        page (int): شماره صفحه
-        base_url (str): آدرس پایه مخزن (پیش‌فرض https://abasmanesh.com/fa/articles/)
-    خروجی:
-        List[Dict[str, Any]]: لیست جلسات و فایل‌ها همراه با لینک مستقیم
+    استخراج داینامیک آرشیو مقالات و دانلودهای سایت عباس‌منش با صفحه‌بندی و کش دیسکی فوق‌سریع.
     """
     now = time.time()
     effective_base = (base_url or ARTICLES_BASE_URL).rstrip("/") + "/"
     cache_key = f"feed_{hash(effective_base)}_p{page}"
+
+    # ۱. بررسی کش حافظه رم
     if not force_refresh and cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
         return _CACHE[cache_key]["items"][:limit]
     if page == 1 and not force_refresh and _CACHE.get("items") and (now - _CACHE.get("last_fetched", 0) < CACHE_TTL_SEC):
         return _CACHE["items"][:limit]
+
+    # ۲. بررسی کش فوق‌سریع دیسک برای صفحه اول جهت پاسخگویی زیر ۱۰ms به پنل
+    if page == 1 and not force_refresh:
+        disk_items = load_feed_disk_cache()
+        if disk_items:
+            _CACHE["items"] = disk_items
+            _CACHE["last_fetched"] = now
+            return disk_items[:limit]
 
     target_url = f"{effective_base}page/{page}/" if page > 1 else effective_base
     timeout = aiohttp.ClientTimeout(total=20)
@@ -632,10 +717,17 @@ async def get_latest_free_downloads(
                 if page == 1:
                     _CACHE["items"] = final_items
                     _CACHE["last_fetched"] = now
+                    save_feed_disk_cache(final_items)
                 return final_items[:limit]
 
     except Exception as e:
         logger.warning(f"[feed_scraper] Failed to scrape live feed: {e}")
+
+    # در صورت بروز خطای شبکه، بازیابی از کش دیسک یا فالبک
+    if page == 1:
+        disk_items = load_feed_disk_cache()
+        if disk_items:
+            return disk_items[:limit]
 
     return FALLBACK_ITEMS[:limit] if page == 1 else []
 
@@ -741,6 +833,22 @@ class FeedScraper:
     @staticmethod
     async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1, base_url: Optional[str] = None) -> List[Dict[str, Any]]:
         return await get_latest_free_downloads(limit=limit, force_refresh=force_refresh, page=page, base_url=base_url)
+
+    @staticmethod
+    def get_custom_categories() -> List[Dict[str, Any]]:
+        return get_custom_categories()
+
+    @staticmethod
+    def save_custom_categories(categories: List[Dict[str, Any]]) -> bool:
+        return save_custom_categories(categories)
+
+    @staticmethod
+    def load_feed_disk_cache() -> List[Dict[str, Any]]:
+        return load_feed_disk_cache()
+
+    @staticmethod
+    def save_feed_disk_cache(items: List[Dict[str, Any]]) -> None:
+        save_feed_disk_cache(items)
 
 
 feed_scraper = FeedScraper()
