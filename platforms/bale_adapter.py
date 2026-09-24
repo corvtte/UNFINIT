@@ -2433,7 +2433,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         target_path = config.TEMP_DIR / f"vip_bale_{uuid.uuid4().hex[:8]}{ext}"
                                         target_path.parent.mkdir(parents=True, exist_ok=True)
                                         try:
-                                            import aiohttp
                                             async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
                                                 async with sess.get(url, timeout=aiohttp.ClientTimeout(total=180)) as resp:
                                                     if resp.status == 200:

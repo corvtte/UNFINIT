@@ -225,11 +225,124 @@ def _clean_title(raw: str) -> str:
     return t.strip()
 
 
-async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title: str) -> Dict[str, Any]:
-    """Fetches single article page and parses direct media links & cover."""
+# ==============================================================================
+# تابع کمکی استخراج کارت‌های مقالات و جلسات از ساختار مدرن HTML سایت عباس‌منش
+# ورودی: html (رشته HTML خام صفحه) و limit (حداکثر تعداد جلسات)
+# خروجی: لیستی از تاپل‌های (url, title, cover_url, tag)
+# ==============================================================================
+def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
+    """
+    استخراج ساختاریافته لینک مقالات، عناوین، تصاویر شاخص و تگ‌ها از ساختار جدید سایت عباس‌منش.
+    از سلکتورهای div.article-grid و div.card استفاده کرده و لینک‌های نوار ناوبری و منوها را نادیده می‌گیرد.
+    """
+    articles_found = []
+    seen_urls = set()
+    skip_keywords = ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه", "نظرات", "عقل‌کل", "قوانین", "پاسخ به سؤالات", "از کجا شروع"]
+
+    if BeautifulSoup:
+        soup = BeautifulSoup(html, "html.parser")
+        # 1. تلاش برای استخراج مستقیم از ساختار کارت‌های مقالات
+        cards = soup.select("div.article-grid div.card, div.card.card--media, .card")
+        for card in cards:
+            a_link = card.find("a", class_="card__media-link") or card.find("a", href=lambda h: h and "/fa/" in h and not any(x in h for x in ["category", "cart", "account", "login", "aghlekol", "terms"]))
+            if not a_link or not a_link.get("href"):
+                continue
+            href = a_link["href"].strip()
+            if href.startswith("/"):
+                href = "https://abasmanesh.com" + href
+            clean_href = href.split("?")[0].rstrip("/") + "/"
+            if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
+                continue
+
+            # استخراج تصویر شاخص
+            img = card.find("img")
+            card_cover = ""
+            if img:
+                src = img.get("src") or img.get("data-src") or ""
+                if src:
+                    card_cover = ("https://abasmanesh.com" + src) if src.startswith("/") else src
+
+            # استخراج عنوان مقاله
+            title = ""
+            body = card.find("div", class_="card__body")
+            if body:
+                t_a = body.find("a", href=lambda h: h and clean_href in h) or body.find("a")
+                if t_a:
+                    title = t_a.get_text(strip=True)
+            if not title and img and img.get("alt"):
+                title = img["alt"].strip()
+            if not title:
+                title = a_link.get_text(strip=True)
+            title = _clean_title(title)
+            if len(title) < 3 or any(k in title for k in skip_keywords):
+                continue
+
+            # استخراج برچسب یا دسته‌بندی
+            chip = card.find("a", class_="chip")
+            tag = chip.get_text(strip=True) if chip else "هدیه دانلودی"
+
+            seen_urls.add(clean_href)
+            articles_found.append((clean_href, title, card_cover, tag))
+            if len(articles_found) >= limit:
+                return articles_found
+
+        # 2. در صورت نیافتن کارت، فال‌بک تمیز روی تگ‌های a بدون کلاس‌های هدر/ناوبری
+        if not articles_found:
+            main_container = soup.find("main") or soup.find("div", id="content") or soup
+            for a in main_container.find_all("a", href=True):
+                classes = " ".join(a.get("class", []))
+                if any(nav in classes for nav in ["public-nav", "public-drawer", "public-bottom-bar", "menu"]):
+                    continue
+                href = a["href"].strip()
+                text = a.get_text(strip=True)
+                if not text or len(text) < 4 or any(x in text for x in skip_keywords):
+                    continue
+                if "/fa/" in href and not any(x in href for x in ["category", "cart", "account", "login", "table-of-contents", "terms", "aghlekol"]):
+                    clean_href = href.split("?")[0].rstrip("/") + "/"
+                    if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
+                        continue
+                    seen_urls.add(clean_href)
+                    title = _clean_title(text)
+                    articles_found.append((clean_href, title, "", "هدیه دانلودی"))
+                    if len(articles_found) >= limit:
+                        break
+    else:
+        # استخراج با عبارات باقاعده (Regex)
+        matches = re.findall(r'<a\s+[^>]*href=["\'](https://abasmanesh\.com/fa/[^"\']+)["\'][^>]*>(.*?)</a>', html, re.DOTALL)
+        for href, raw_text in matches:
+            clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
+            if not clean_text or len(clean_text) < 4 or any(x in clean_text for x in skip_keywords):
+                continue
+            clean_href = href.split("?")[0].rstrip("/") + "/"
+            if clean_href in seen_urls or any(x in clean_href for x in ["category", "cart", "account", "login", "terms"]):
+                continue
+            seen_urls.add(clean_href)
+            title = _clean_title(clean_text)
+            articles_found.append((clean_href, title, "", "هدیه دانلودی"))
+            if len(articles_found) >= limit:
+                break
+
+    return articles_found
+
+
+# ==============================================================================
+# تابع واکشی و پردازش صفحه یک مقاله منفرد جهت استخراج لینک‌های مستقیم صوتی و ویدیو
+# ورودی‌ها: session (نشست aiohttp), url (لینک مقاله), title, card_cover, card_tag
+# خروجی: دیکشنری استاندارد مشخصات و رسانه‌های مقاله
+# ==============================================================================
+async def _fetch_single_article(
+    session: aiohttp.ClientSession,
+    url: str,
+    title: str,
+    card_cover: str = "",
+    card_tag: str = ""
+) -> Dict[str, Any]:
+    """
+    صفحه مفصل مقاله را دریافت کرده و لینک‌های قطعی MP3 و MP4 و کاور باکیفیت را استخراج می‌کند.
+    """
     audio_dl = ""
     video_dl = ""
-    cover_url = ""
+    cover_url = card_cover or ""
 
     clean_url = url.split("?")[0]
     try:
@@ -242,13 +355,13 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
                     if og_img and og_img.get("content"):
                         cover_url = og_img["content"].strip()
 
-                    # 1. Search all video / source tags
+                    # ۱. جستجو در تگ‌های ویدیو و سورس
                     for v in soup.find_all(["video", "source"]):
                         v_src = (v.get("src") or v.get("data-src") or "").strip()
                         if v_src and ".mp4" in v_src and not video_dl:
                             video_dl = re.sub(r"^rhttp", "http", v_src)
 
-                    # 2. Search all anchor links
+                    # ۲. جستجو در تگ‌های a برای دانلود مستقیم
                     for a in soup.find_all("a", href=True):
                         h = a["href"].strip()
                         if "download.php?url=" in h or (".mp3" in h and "http" in h) or (".mp4" in h and "http" in h):
@@ -258,9 +371,8 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
                             elif ".mp4" in clean_h and not video_dl:
                                 video_dl = clean_h
                 else:
-                    # Regex fallback
                     img_m = re.search(r'property="og:image"\s+content="([^"]+)"', html)
-                    if img_m:
+                    if img_m and not cover_url:
                         cover_url = img_m.group(1).strip()
                     for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
                         h = re.sub(r"^rhttp", "http", m.group(1).strip())
@@ -269,7 +381,7 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
                         elif ".mp4" in h and not video_dl:
                             video_dl = h
 
-                # 3. If audio found but video not found, check if corresponding MP4 exists on CDN
+                # ۳. قرینه‌سازی لینک صوتی و ویدیویی در صورت وجود یکی از آنها
                 if audio_dl and not video_dl and ".mp3" in audio_dl:
                     video_candidate = audio_dl.replace(".mp3", ".mp4")
                     video_dl = video_candidate
@@ -292,7 +404,7 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
         except Exception:
             pass
 
-    tag = "هدیه دانلودی"
+    tag = card_tag or "هدیه دانلودی"
     if "توحید" in title:
         tag = "سریال توحید عملی"
     elif "سفر به دور آمریکا" in title:
@@ -300,10 +412,14 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
     elif "تمرکز بر نکات مثبت" in title:
         tag = "تمرکز بر نکات مثبت"
 
+    primary_url = audio_dl or video_dl or clean_url
+
     return {
         "title": title,
         "tag": tag,
+        "category": tag,
         "page_url": clean_url,
+        "url": primary_url,
         "cover_url": cover_url or "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
         "audio_download_url": audio_dl,
         "audio_url": audio_dl,
@@ -311,10 +427,14 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
         "video_url": video_dl,
         "direct_download_url": audio_dl or video_dl,
         "chapters": chapters,
-        "links": [u for u in (audio_dl, video_dl) if u]
+        "links": [u for u in (audio_dl, video_dl) if u],
+        "published_at": ""
     }
 
 
+# ==============================================================================
+# تابع واکشی جدیدترین هدایای دانلودی و مقالات با صفحه‌بندی
+# ==============================================================================
 async def get_latest_free_downloads(
     limit: int = 25,
     force_refresh: bool = False,
@@ -350,54 +470,16 @@ async def get_latest_free_downloads(
 
                 html = await resp.text()
 
-            articles_to_fetch = []
-            if BeautifulSoup:
-                soup = BeautifulSoup(html, "html.parser")
-                main_container = soup.find("main") or soup.find("div", id="content") or soup
-                links = main_container.find_all("a", href=True)
-                seen_urls = set()
-                for a in links:
-                    href = a["href"].strip()
-                    text = a.get_text(strip=True)
-                    if not text or len(text) < 4:
-                        continue
-                    if any(x in text for x in ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه"]):
-                        continue
-                    if "/fa/" in href and not any(x in href for x in ["category", "cart", "account", "login", "table-of-contents"]):
-                        clean_href = href.split("?")[0].rstrip("/") + "/"
-                        if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
-                            continue
-                        seen_urls.add(clean_href)
-                        title = _clean_title(text)
-                        articles_to_fetch.append((clean_href, title))
-                        if len(articles_to_fetch) >= limit:
-                            break
-            else:
-                # Regex extraction
-                seen_urls = set()
-                matches = re.findall(r'<a\s+[^>]*href=["\'](https://abasmanesh\.com/fa/[^"\']+)["\'][^>]*>(.*?)</a>', html, re.DOTALL)
-                for href, raw_text in matches:
-                    clean_text = re.sub(r"<[^>]+>", "", raw_text).strip()
-                    if not clean_text or len(clean_text) < 4:
-                        continue
-                    if any(x in clean_text for x in ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه"]):
-                        continue
-                    clean_href = href.split("?")[0].rstrip("/") + "/"
-                    if clean_href in seen_urls or "category" in clean_href:
-                        continue
-                    seen_urls.add(clean_href)
-                    title = _clean_title(clean_text)
-                    articles_to_fetch.append((clean_href, title))
-                    if len(articles_to_fetch) >= limit:
-                        break
+            # استخراج ساختاریافته مقالات از صفحه جاری
+            articles_to_fetch = _extract_articles_from_html(html, limit=limit)
 
             if not articles_to_fetch:
                 return FALLBACK_ITEMS[:limit] if page == 1 else []
 
-            # Concurrently fetch article pages
+            # واکشی همزمان صفحات مقالات جهت استخراج مدیا
             tasks = [
-                _fetch_single_article(session, url, title)
-                for url, title in articles_to_fetch[:limit]
+                _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
+                for url, title, cover, tag in articles_to_fetch[:limit]
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -463,46 +545,13 @@ async def get_category_episodes(
             async with session.get(target_url) as resp:
                 if resp.status == 200:
                     html = await resp.text()
-                    seen_urls = set()
-                    if BeautifulSoup:
-                        soup = BeautifulSoup(html, "html.parser")
-                        main_c = soup.find("main") or soup.find("div", id="content") or soup
-                        for a in main_c.find_all("a", href=True):
-                            h = a["href"].split("?")[0].rstrip("/") + "/"
-                            t = a.get_text(strip=True)
-                            if not t or len(t) < 4:
-                                continue
-                            if any(x in t for x in ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه", "نظرات"]):
-                                continue
-                            if "/fa/" in h and not any(x in h for x in ["category", "cart", "account", "login", "table-of-contents"]):
-                                if h in seen_urls or h == "https://abasmanesh.com/fa/":
-                                    continue
-                                seen_urls.add(h)
-                                title = _clean_title(t)
-                                articles_to_fetch.append((h, title))
-                                if len(articles_to_fetch) >= limit:
-                                    break
-                    else:
-                        matches = re.findall(r'<a\s+[^>]*href=["\'](https://abasmanesh\.com/fa/[^"\']+)["\'][^>]*>(.*?)</a>', html, re.DOTALL)
-                        for href, raw_t in matches:
-                            clean_t = re.sub(r"<[^>]+>", "", raw_t).strip()
-                            if not clean_t or len(clean_t) < 4:
-                                continue
-                            if any(x in clean_t for x in ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه"]):
-                                continue
-                            h = href.split("?")[0].rstrip("/") + "/"
-                            if h in seen_urls or "category" in h:
-                                continue
-                            seen_urls.add(h)
-                            articles_to_fetch.append((h, _clean_title(clean_t)))
-                            if len(articles_to_fetch) >= limit:
-                                break
+                    articles_to_fetch = _extract_articles_from_html(html, limit=limit)
 
             episodes = []
             if articles_to_fetch:
                 tasks = [
-                    _fetch_single_article(session, url, title)
-                    for url, title in articles_to_fetch[:limit]
+                    _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag or cat.get("title", ""))
+                    for url, title, cover, tag in articles_to_fetch[:limit]
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 for idx, r in enumerate(results):

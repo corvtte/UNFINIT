@@ -338,6 +338,27 @@ def render_dashboard_html() -> str:
     except Exception as se:
         logger.warning(f"Failed to load settings in render_dashboard_html: {se}")
 
+    from services.feed_scraper import ABASMANESH_PREMIUM_CATEGORIES
+    premium_categories_html = ""
+    for cat in ABASMANESH_PREMIUM_CATEGORIES:
+        cid = cat.get("id", 1)
+        ctitle = cat.get("title", "")
+        curl = cat.get("url", "")
+        premium_categories_html += f"""
+        <div class="p-2.5 rounded-xl border flex items-center justify-between transition hover:border-cyan-500/40" style="background: var(--input-bg); border-color: var(--card-border);">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="w-5 h-5 shrink-0 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[10px] font-mono">{cid}</span>
+                <span class="font-medium text-slate-200 text-xs truncate" title="{ctitle}">{ctitle}</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <span class="text-[10px] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">اشتراک پریمیوم</span>
+                <a href="{curl}" target="_blank" class="text-slate-400 hover:text-cyan-400 transition" title="مشاهده در سایت">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+            </div>
+        </div>
+        """
+
     dynamic_themes_css = build_themes_css(all_themes)
     themes_data_json = json.dumps(all_themes, ensure_ascii=False)
     theme_options_html = "\n".join([
@@ -1569,21 +1590,24 @@ def render_dashboard_html() -> str:
 
         <!-- ================= TAB 2: PRODUCTS HUB (COURSES, AUDIOBOOKS, VIP) ================= -->
         <div id="tab-courses" class="hidden space-y-6">
-            <!-- Products Category Switcher (Material 3 Sub-tabs) -->
-            <div class="glass p-2 rounded-2xl border flex items-center gap-2 overflow-x-auto" style="background: var(--card-bg); border-color: var(--card-border);">
-                <button type="button" onclick="switchProductSubTab('courses')" id="btn-subtab-prods-courses" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer" style="background: var(--accent-color); color: #fff;">
+            <!-- Products Category Switcher (Material 3 Sub-tabs with Drag & Drop) -->
+            <div id="productSubtabsContainer" class="glass p-2 rounded-2xl border flex items-center gap-2 overflow-x-auto" style="background: var(--card-bg); border-color: var(--card-border);">
+                <button type="button" draggable="true" data-subtab="courses" onclick="switchProductSubTab('courses')" id="btn-subtab-prods-courses" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing select-none" style="background: var(--accent-color); color: #fff;">
+                    <svg class="w-3.5 h-3.5 opacity-40 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
                     <span>دوره‌های آموزشی</span>
                 </button>
-                <button type="button" onclick="switchProductSubTab('audiobooks')" id="btn-subtab-prods-audiobooks" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-pointer" style="background: transparent;">
+                <button type="button" draggable="true" data-subtab="audiobooks" onclick="switchProductSubTab('audiobooks')" id="btn-subtab-prods-audiobooks" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing select-none" style="background: transparent;">
+                    <svg class="w-3.5 h-3.5 opacity-40 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.757 3.63 8.25 4.51 8.25H6.75z" />
                     </svg>
                     <span>کتاب‌های صوتی</span>
                 </button>
-                <button type="button" onclick="switchProductSubTab('vip')" id="btn-subtab-prods-vip" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-pointer" style="background: transparent;">
+                <button type="button" draggable="true" data-subtab="vip" onclick="switchProductSubTab('vip')" id="btn-subtab-prods-vip" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing select-none" style="background: transparent;">
+                    <svg class="w-3.5 h-3.5 opacity-40 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
@@ -1884,51 +1908,17 @@ def render_dashboard_html() -> str:
                         </div>
                     </div>
 
-                    <!-- 5 Step-by-Step Transformation Projects & Benefits -->
+                    <!-- 16 Official Abasmanesh Categories & Benefits -->
                     <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
                         <h3 class="text-sm font-bold text-white flex items-center justify-between">
                             <span class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-emerald-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
-                                <span>۵ پروژه تحول گام‌به‌گام (ویژه مشترکین):</span>
+                                <span>۱۶ دسته‌بندی رسمی عباس‌منش (ویژه مشترکین پریمیوم):</span>
                             </span>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">۵ پروژه فعال</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">۱۶ دسته فعال</span>
                         </h3>
-                        <div class="space-y-2 text-xs">
-                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-5 h-5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-[10px] font-mono">1</span>
-                                    <span class="font-medium text-slate-200">درک عمیق‌تر قوانین خدا</span>
-                                </div>
-                                <span class="text-[10px] text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800">قوانین ثابت کیهانی</span>
-                            </div>
-                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-5 h-5 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-[10px] font-mono">2</span>
-                                    <span class="font-medium text-slate-200">پروژه تغییر را در آغوش بگیر</span>
-                                </div>
-                                <span class="text-[10px] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">خروج از منطقه امن</span>
-                            </div>
-                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-5 h-5 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-[10px] font-mono">3</span>
-                                    <span class="font-medium text-slate-200">پروژه مهاجرت به مدار بالاتر</span>
-                                </div>
-                                <span class="text-[10px] text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800">تغییر فرکانس مالی</span>
-                            </div>
-                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-5 h-5 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center font-bold text-[10px] font-mono">4</span>
-                                    <span class="font-medium text-slate-200">پروژه خانه‌تکانی ذهن</span>
-                                </div>
-                                <span class="text-[10px] text-rose-400 bg-rose-950/60 px-2 py-0.5 rounded border border-rose-800">پاکسازی باورهای محدودکننده</span>
-                            </div>
-                            <div class="p-2.5 rounded-xl border flex items-center justify-between" style="background: var(--input-bg); border-color: var(--card-border);">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-5 h-5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-[10px] font-mono">5</span>
-                                    <span class="font-medium text-slate-200">روزشمار تحول زندگی من</span>
-                                </div>
-                                <span class="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">تعهد و استمرار روزانه</span>
-                            </div>
+                        <div class="max-h-[380px] overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs">
+                            {premium_categories_html}
                         </div>
                     </div>
                 </div>
@@ -4631,6 +4621,71 @@ def render_dashboard_html() -> str:
                 }}
                 window.switchProductSubTab = switchProductSubTab;
 
+                /**
+                 * مدیریت کشیدن و رها کردن (Drag & Drop) ۳ ساب‌تب محصولات و ماندگاری چیدمان در localStorage
+                 * ورودی: ندارد
+                 * خروجی: ندارد (به‌روزرسانی DOM و رویدادها)
+                 */
+                function initProductSubtabsDragAndDrop() {{
+                    const container = document.getElementById('productSubtabsContainer');
+                    if (!container) return;
+
+                    try {{
+                        const savedOrder = JSON.parse(localStorage.getItem('unfinit_products_subtabs_order') || '[]');
+                        if (Array.isArray(savedOrder) && savedOrder.length > 0) {{
+                            const btnMap = {{}};
+                            const buttons = Array.from(container.querySelectorAll('.prod-subtab-btn'));
+                            buttons.forEach(btn => {{
+                                const subtab = btn.getAttribute('data-subtab');
+                                if (subtab) btnMap[subtab] = btn;
+                            }});
+                            savedOrder.forEach(subtab => {{
+                                if (btnMap[subtab]) {{
+                                    container.appendChild(btnMap[subtab]);
+                                }}
+                            }});
+                        }}
+                    }} catch (e) {{
+                        console.warn('Error loading product subtabs order:', e);
+                    }}
+
+                    let draggedBtn = null;
+
+                    container.addEventListener('dragstart', (e) => {{
+                        const target = e.target.closest('.prod-subtab-btn');
+                        if (!target) return;
+                        draggedBtn = target;
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', target.getAttribute('data-subtab') || '');
+                        target.classList.add('opacity-40', 'scale-95');
+                    }});
+
+                    container.addEventListener('dragend', (e) => {{
+                        const target = e.target.closest('.prod-subtab-btn');
+                        if (target) target.classList.remove('opacity-40', 'scale-95');
+                        draggedBtn = null;
+                        saveProductSubtabsOrder();
+                    }});
+
+                    container.addEventListener('dragover', (e) => {{
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        const target = e.target.closest('.prod-subtab-btn');
+                        if (target && target !== draggedBtn) {{
+                            const rect = target.getBoundingClientRect();
+                            const next = (e.clientX - rect.left) / (rect.right - rect.left) > 0.5;
+                            container.insertBefore(draggedBtn, next ? target.nextSibling : target);
+                        }}
+                    }});
+
+                    function saveProductSubtabsOrder() {{
+                        const buttons = Array.from(container.querySelectorAll('.prod-subtab-btn'));
+                        const order = buttons.map(b => b.getAttribute('data-subtab')).filter(Boolean);
+                        localStorage.setItem('unfinit_products_subtabs_order', JSON.stringify(order));
+                    }}
+                }}
+                window.initProductSubtabsDragAndDrop = initProductSubtabsDragAndDrop;
+
                 function inlineRenameTab(element, tabId) {{
                     const currentText = element.textContent.trim();
                     const input = document.createElement('input');
@@ -6051,6 +6106,9 @@ def render_dashboard_html() -> str:
                     sortSelect.value = savedSort;
                 }}
                 fetchFeedDownloads(false);
+                if (typeof window.initProductSubtabsDragAndDrop === 'function') {{
+                    window.initProductSubtabsDragAndDrop();
+                }}
             }} catch (e) {{}}
         }});
 

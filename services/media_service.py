@@ -99,29 +99,46 @@ class MediaService:
         # 1. تلاش نخست: دانلود جریانی چانک‌ها با بافر بهینه‌شده
         try:
             total_size = 0
-            if hasattr(target_media, "file_size") and target_media.file_size:
-                total_size = int(target_media.file_size)
-            elif isinstance(target_media, dict) and target_media.get("file_size"):
-                total_size = int(target_media["file_size"])
+            raw_msg = target_media
+            if hasattr(raw_msg, "video") and raw_msg.video and getattr(raw_msg.video, "file_size", 0):
+                total_size = int(raw_msg.video.file_size)
+            elif hasattr(raw_msg, "audio") and raw_msg.audio and getattr(raw_msg.audio, "file_size", 0):
+                total_size = int(raw_msg.audio.file_size)
+            elif hasattr(raw_msg, "document") and raw_msg.document and getattr(raw_msg.document, "file_size", 0):
+                total_size = int(raw_msg.document.file_size)
+            elif hasattr(raw_msg, "file_size") and raw_msg.file_size:
+                total_size = int(raw_msg.file_size)
+            elif isinstance(raw_msg, dict) and raw_msg.get("file_size"):
+                total_size = int(raw_msg["file_size"])
 
             written_bytes = 0
             start_time = time.time()
             last_edit = 0.0
+            last_pct = 0
 
             with open(part_p, "wb") as f_out:
                 async for chunk in client.stream_media(target_media, limit=0):
                     f_out.write(chunk)
-                    f_out.flush()
-                    current_bytes = part_p.stat().st_size
+                    written_bytes += len(chunk)
                     now = time.time()
-                    if progress_callback and (now - last_edit >= 1.2 or (total_size and current_bytes >= total_size)):
+                    pct = int((written_bytes / total_size) * 100) if total_size > 0 else 0
+                    if pct >= 100 and written_bytes < total_size:
+                        pct = 99
+                    # تراتل در بازه‌های ۱۰ درصدی یا حداقل ۱.۵ ثانیه جهت محافظت از سقف مجاز تلگرام
+                    if progress_callback and ((now - last_edit >= 1.5 and abs(pct - last_pct) >= 10) or (total_size > 0 and written_bytes >= total_size)):
                         last_edit = now
+                        last_pct = pct
                         try:
-                            cb_res = progress_callback(current_bytes, total_size or current_bytes, now - start_time)
+                            cb_res = progress_callback(written_bytes, total_size or written_bytes, now - start_time)
                             if asyncio.iscoroutine(cb_res):
                                 await cb_res
                         except Exception:
                             pass
+                f_out.flush()
+                try:
+                    os.fsync(f_out.fileno())
+                except Exception:
+                    pass
 
             if part_p.exists():
                 actual_bytes = part_p.stat().st_size
@@ -134,6 +151,14 @@ class MediaService:
                         try: dest_p.unlink()
                         except Exception: pass
                     part_p.rename(dest_p)
+                    # ارسال گزارش پیشرفت قطعی ۱۰۰٪ منحصراً پس از فلاش و ثبت فیزیکی بر روی دیسک
+                    if progress_callback:
+                        try:
+                            cb_res = progress_callback(actual_bytes, actual_bytes, time.time() - start_time)
+                            if asyncio.iscoroutine(cb_res):
+                                await cb_res
+                        except Exception:
+                            pass
                     logger.info(f"Turbo multi-chunk streaming download successful: {dest_p.name} ({actual_bytes} bytes)")
                     return True
         except Exception as stream_err:

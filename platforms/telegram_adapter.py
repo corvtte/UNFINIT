@@ -3084,7 +3084,10 @@ class TelegramAdapter:
                         now = time.time()
                         if total > 0 and status_m:
                             pct = int((current / total) * 100)
-                            if (now - last_edit[0] >= 1.5 or abs(pct - last_pct[0]) >= 5 or current == total):
+                            if pct >= 100 and current < total:
+                                pct = 99
+                            # تراتل بازه‌های ۱۰ درصدی جهت جلوگیری از فلوید و اسپم API تلگرام
+                            if (now - last_edit[0] >= 2.0 and abs(pct - last_pct[0]) >= 10) or (current >= total and total > 0):
                                 last_edit[0] = now
                                 last_pct[0] = pct
                                 elapsed = max(0.01, now - start_t[0])
