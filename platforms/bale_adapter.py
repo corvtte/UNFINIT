@@ -51,11 +51,13 @@ class GiftButtonStr(str):
         return False
 
 
+# مستندسازی فارسی: ساختار کیبورد مشتری بله بر اساس استانداردهای نگارش v0.5.2
+# ردیف اول: [ 🔮 نشانه امروز من ] در راست و [ 💎 محصولات و اشتراک پریمیوم ] در چپ
+# ردیف دوم: [ 👤 حساب کاربری ] و [ 🎁 فایل‌های هدیه ]
 def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
-            [{"text": "🛍 محصولات"}],
-            [{"text": "🔮 نشانه امروز من"}, {"text": "💎 فرکانس فراوانی"}],
+            [{"text": "🔮 نشانه امروز من"}, {"text": "💎 محصولات و اشتراک پریمیوم"}],
             [{"text": "👤 حساب کاربری"}, {"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
         ],
         "resize_keyboard": True
@@ -2348,7 +2350,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if nav_row:
                                             buttons.append(nav_row)
 
-                                        buttons.append([{"text": "🔙 بازگشت به دسته‌ها", "callback_data": "bale:vip_cats:1"}])
+                                        buttons.append([{"text": "🔙 بازگشت به دسته‌بندی‌ها", "callback_data": "bale:vip_cats:1"}])
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": buttons})
                                         continue
 
@@ -3082,9 +3084,9 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             vip_until_show = getattr(u_vip, 'vip_until', '')[:10] if u_vip else ""
                                             await bale.send_message(
                                                 chat_id,
-                                                f"🎉 <b>پرداخت شما با موفقیت تایید شد!</b>\n\n"
-                                                f"💎 <b>اشتراک پریمیوم</b> برای شما به مدت <b>{days_val} روز</b> (تا {vip_until_show}) فعال گردید.\n\n"
-                                                f"از این پس می‌توانید به تمامی پروژه‌های ۵‌گانه تحول، دوره‌ها، نشانه‌های روزانه و فرکانس‌های آگاهی به عنوان کاربر ویژه دسترسی داشته باشید. ✨",
+                                                f"🎉 <b>تبریک! اشتراک پریمیوم {days_val} روزه شما با موفقیت فعال شد.</b>\n\n"
+                                                f"هم‌اکنون به ۱۶ دسته‌بندی و فرکانس فراوانی دسترسی دارید. ✨\n\n"
+                                                f"اعتبار تا: <b>{vip_until_show}</b>",
                                                 reply_markup=get_bale_customer_keyboard()
                                             )
                                             continue
@@ -3140,7 +3142,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 await bale.send_message(chat_id, card_txt, reply_markup=c_kb)
                                         continue
 
-                                    # لید مگنت «نشانه امروز من» (پایدار ۲۴ ساعته بر مبنای شناسه کاربری)
+                                    # مستندسازی فارسی: هندلر لید مگنت «نشانه امروز من» با فالبک هوشمند
+                                    # در صورت بروز خطا در استخراج صوت، متن الهام‌بخش به همراه دکمه دانلود مستقیم بلافاصله تحویل می‌گردد.
                                     if any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
                                         wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
                                         try:
@@ -3153,7 +3156,10 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             audio_url = sign.get("audio_url")
                                             local_audio_path = None
                                             if audio_url:
-                                                local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
+                                                try:
+                                                    local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
+                                                except Exception as e_dl:
+                                                    logger.warning(f"[bale_sign] ensure_audio_downloaded failed: {e_dl}")
 
                                             vip_kb = {
                                                 "inline_keyboard": [
@@ -3161,26 +3167,41 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 ]
                                             }
                                             perf_title = reader_tag or "نشانه امروز"
+                                            sent_ok = False
                                             if local_audio_path and local_audio_path.exists():
-                                                await bale.send_audio(
-                                                    chat_id=chat_id,
-                                                    file_path=str(local_audio_path),
-                                                    title=sign.get("title", "نشانه امروز من"),
-                                                    performer=perf_title,
-                                                    caption=caption,
-                                                    reply_markup=vip_kb
-                                                )
-                                            elif audio_url:
-                                                await bale.send_audio(
-                                                    chat_id=chat_id,
-                                                    file_path=audio_url,
-                                                    title=sign.get("title", "نشانه امروز من"),
-                                                    performer=perf_title,
-                                                    caption=caption,
-                                                    reply_markup=vip_kb
-                                                )
-                                            else:
-                                                await bale.send_message(chat_id, caption, reply_markup=vip_kb)
+                                                try:
+                                                    await bale.send_audio(
+                                                        chat_id=chat_id,
+                                                        file_path=str(local_audio_path),
+                                                        title=sign.get("title", "نشانه امروز من"),
+                                                        performer=perf_title,
+                                                        caption=caption,
+                                                        reply_markup=vip_kb
+                                                    )
+                                                    sent_ok = True
+                                                except Exception as ex_snd:
+                                                    logger.warning(f"[bale_sign] send_audio local failed: {ex_snd}")
+
+                                            if not sent_ok and audio_url:
+                                                try:
+                                                    await bale.send_audio(
+                                                        chat_id=chat_id,
+                                                        file_path=audio_url,
+                                                        title=sign.get("title", "نشانه امروز من"),
+                                                        performer=perf_title,
+                                                        caption=caption,
+                                                        reply_markup=vip_kb
+                                                    )
+                                                    sent_ok = True
+                                                except Exception as ex_snd_url:
+                                                    logger.warning(f"[bale_sign] send_audio url failed: {ex_snd_url}")
+
+                                            if not sent_ok:
+                                                fallback_btns = []
+                                                if audio_url:
+                                                    fallback_btns.append([{"text": "📥 دانلود مستقیم از سایت", "url": audio_url}])
+                                                fallback_btns.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
+                                                await bale.send_message(chat_id, caption, reply_markup={"inline_keyboard": fallback_btns})
                                         except Exception as ex_sign:
                                             logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")
                                             await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
@@ -3748,7 +3769,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, p_txt)
                                         continue
 
-                                    if text in ("🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی"):
+                                    if text in ("🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی", "💎 محصولات و اشتراک پریمیوم", "محصولات و اشتراک پریمیوم"):
                                         p_kb = {
                                             "inline_keyboard": [
                                                 [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
@@ -3758,7 +3779,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         }
                                         await bale.send_message(
                                             chat_id,
-                                            "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\n"
+                                            "💎 <b>مرکز محصولات آموزشی و اشتراک پریمیوم:</b>\n\n"
                                             "لطفاً دسته‌بندی مورد نظر خود را برای مشاهده یا ثبت سفارش انتخاب فرمایید:",
                                             reply_markup=p_kb
                                         )
@@ -3767,7 +3788,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     if text in ("👤 دوره‌های من", "دوره‌های من", "/my_courses"):
                                         purchased = await StoreService.get_customer_purchased_courses(chat_id)
                                         if not purchased:
-                                            await bale.send_message(chat_id, "📚 هنوز دوره‌ای در حساب شما ثبت نشده است.\nمی‌توانید دوره‌ها را از منوی «🛍 محصولات» تهیه فرمایید.")
+                                            await bale.send_message(chat_id, "📚 هنوز دوره‌ای در حساب شما ثبت نشده است.\nمی‌توانید دوره‌ها را از منوی «💎 محصولات و اشتراک پریمیوم» تهیه فرمایید.")
                                             continue
                                         await bale.send_message(chat_id, f"📚 <b>دوره‌های فعال و خریداری‌شده شما ({len(purchased)} دوره):</b>\n\nدر ادامه کارت‌های دسترسی به هر دوره تقدیم حضورتان می‌گردد:")
                                         for i, c in enumerate(purchased, 1):
@@ -3775,51 +3796,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             card_txt, buttons = StoreService.format_customer_course_card(c_name, c.get("download_link"), i, len(purchased))
                                             c_kb = {"inline_keyboard": [[{"text": b["text"], "url": b["url"]}] for b in buttons]} if buttons else None
                                             await bale.send_message(chat_id, card_txt, reply_markup=c_kb)
-                                        continue
-
-                                    if any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
-                                        wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
-                                        try:
-                                            from core.sign_service import SignService
-                                            reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
-                                            extract_chapters = (await get_system_setting("sign_extract_chapters", "1")) == "1"
-
-                                            sign = await SignService.get_user_today_sign(chat_id)
-                                            caption = SignService.format_sign_caption(sign, reader_tag=reader_tag, include_chapters=extract_chapters)
-                                            audio_url = sign.get("audio_url")
-                                            local_audio_path = None
-                                            if audio_url:
-                                                local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
-
-                                            vip_kb = {
-                                                "inline_keyboard": [
-                                                    [{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}]
-                                                ]
-                                            }
-                                            perf_title = reader_tag or "نشانه امروز"
-                                            if local_audio_path and local_audio_path.exists():
-                                                await bale.send_audio(
-                                                    chat_id=chat_id,
-                                                    file_path=str(local_audio_path),
-                                                    title=sign.get("title", "نشانه امروز من"),
-                                                    performer=perf_title,
-                                                    caption=caption,
-                                                    reply_markup=vip_kb
-                                                )
-                                            elif audio_url:
-                                                await bale.send_audio(
-                                                    chat_id=chat_id,
-                                                    file_path=audio_url,
-                                                    title=sign.get("title", "نشانه امروز من"),
-                                                    performer=perf_title,
-                                                    caption=caption,
-                                                    reply_markup=vip_kb
-                                                )
-                                            else:
-                                                await bale.send_message(chat_id, caption, reply_markup=vip_kb)
-                                        except Exception as ex_sign:
-                                            logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")
-                                            await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
                                         continue
 
                                     if any(text.startswith(cmd) for cmd in ["💎 فرکانس فراوانی", "فرکانس فراوانی", "فرکانس", "/frequency"]):

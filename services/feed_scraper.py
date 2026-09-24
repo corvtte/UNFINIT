@@ -254,11 +254,15 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
             if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
                 continue
 
-            # استخراج تصویر شاخص
+            # استخراج تصویر شاخص کامل و باکیفیت
             img = card.find("img")
             card_cover = ""
             if img:
-                src = img.get("src") or img.get("data-src") or ""
+                src = img.get("src") or img.get("data-src") or img.get("data-lazy-src") or img.get("data-original") or ""
+                if not src and img.get("srcset"):
+                    srcset_parts = [p.strip().split(" ")[0] for p in img["srcset"].split(",") if p.strip()]
+                    if srcset_parts:
+                        src = srcset_parts[-1]
                 if src:
                     card_cover = ("https://abasmanesh.com" + src) if src.startswith("/") else src
 

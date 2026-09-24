@@ -961,7 +961,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
-                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">فایل‌های دانلودی سایت</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">فایل‌های دانلودی هدیه</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">39p</span>
                 </button>
 
@@ -2089,7 +2089,7 @@ def render_dashboard_html() -> str:
                 <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-white/5">
                     <div>
                         <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>🎁</span> رصد و دریافت هدایای دانلودی سایت (فایل‌های دانلودی)
+                            <span>🎁</span> رصد و دریافت هدایای دانلودی سایت (فایل‌های دانلودی هدیه)
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">
                             آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
@@ -4706,6 +4706,11 @@ def render_dashboard_html() -> str:
                         if (newTitle && newTitle !== currentText) {{
                             element.textContent = newTitle;
                             try {{
+                                const renames = JSON.parse(localStorage.getItem('unfinit_tab_renames') || '{{}}');
+                                renames[tabId] = newTitle;
+                                localStorage.setItem('unfinit_tab_renames', JSON.stringify(renames));
+                            }} catch (e) {{}}
+                            try {{
                                 const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                                 await fetch('/api/settings/rename', {{
                                     method: 'POST',
@@ -4735,6 +4740,20 @@ def render_dashboard_html() -> str:
                     input.select();
                 }}
                 window.inlineRenameTab = inlineRenameTab;
+
+                function restoreTabRenames() {{
+                    try {{
+                        const renames = JSON.parse(localStorage.getItem('unfinit_tab_renames') || '{{}}');
+                        for (const [tabId, title] of Object.entries(renames)) {{
+                            const btn = document.querySelector(`.sidebar-nav-btn[data-tab="${{tabId}}"] span.text-right`) ||
+                                        document.querySelector(`.sidebar-nav-btn[data-tab="${{tabId}}"] span`);
+                            if (btn && title) {{
+                                btn.textContent = title;
+                            }}
+                        }}
+                    }} catch (e) {{}}
+                }}
+                window.restoreTabRenames = restoreTabRenames;
 
                 async function deleteUserRow(userId) {{
                     if (!userId || userId === '-' || userId === 'undefined') return;
@@ -5085,6 +5104,7 @@ def render_dashboard_html() -> str:
                         initSidebarState();
                         initUptimeTicker();
                         checkAuthOnLoad();
+                        restoreTabRenames();
                     }});
                 }} else {{
                     bindNavDelegation();
@@ -5092,6 +5112,7 @@ def render_dashboard_html() -> str:
                     initSidebarState();
                     initUptimeTicker();
                     checkAuthOnLoad();
+                    restoreTabRenames();
                 }}
             }} catch (err) {{
                 console.error('[UNFINIT Navigation Module Error]:', err);
@@ -5782,8 +5803,15 @@ def render_dashboard_html() -> str:
                 if (data.ok && Array.isArray(data.items) && data.items.length > 0) {{
                     container.innerHTML = data.items.map(function(item) {{
                         const title = (item.title || 'هدیه دانلودی سایت').replace(/"/g, '&quot;');
-                        const fileNum = item.file_number ? '<span class="px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 text-[10px] font-mono">' + item.file_number + '</span>' : '';
-                        const cover = item.cover_url ? '<img src="' + item.cover_url + '" alt="' + title + '" class="w-16 h-16 rounded-xl object-cover border border-slate-700 shrink-0" onerror="this.src=\\'/static/default_cover.jpg\\'; this.onerror=null;">' : '<div class="w-16 h-16 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shrink-0">🎧</div>';
+                        const fileNum = item.file_number ? '<span class="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-lg bg-black/80 backdrop-blur-md text-cyan-300 border border-white/10 text-[10px] font-mono font-bold shadow-md">' + item.file_number + '</span>' : '';
+                        
+                        const cover = item.cover_url
+                            ? '<div class="relative w-full aspect-video overflow-hidden rounded-t-2xl bg-slate-950/70 border-b border-white/5">' +
+                                '<img src="' + item.cover_url + '" alt="' + title + '" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" onerror="this.onerror=null; this.src=\\'/static/default_cover.jpg\\';">' +
+                                fileNum +
+                              '</div>'
+                            : '<div class="w-full aspect-video overflow-hidden rounded-t-2xl bg-slate-900 border-b border-white/5 flex items-center justify-center text-3xl">🎧</div>';
+
                         const audioLink = item.audio_url || '';
                         const videoLink = item.video_url || '';
                         const primaryUrl = audioLink || videoLink || (item.links && item.links[0]) || '';
@@ -5792,32 +5820,44 @@ def render_dashboard_html() -> str:
                         const safeAudio = (audioLink || '').replace(/'/g, "\\\\'");
                         const safeVideo = (videoLink || '').replace(/'/g, "\\\\'");
                         
-                        let linksHtml = '';
+                        let audioBtn = '';
                         if (audioLink) {{
-                            linksHtml += '<a href="' + audioLink + '" target="_blank" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 flex items-center gap-1 transition text-[11px]"><span>🎵</span> فایل صوتی</a>';
+                            audioBtn = '<a href="' + audioLink + '" target="_blank" class="theme-card-btn py-1.5 px-2.5 rounded-lg text-cyan-300 flex items-center justify-center gap-1.5 transition text-xs font-medium border border-slate-700/60 hover:border-cyan-500/50">' +
+                                '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>' +
+                                '<span>صوت</span>' +
+                            '</a>';
                         }}
+                        let videoBtn = '';
                         if (videoLink) {{
-                            linksHtml += '<a href="' + videoLink + '" target="_blank" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 flex items-center gap-1 transition text-[11px]"><span>🎬</span> ویدیو</a>';
+                            videoBtn = '<a href="' + videoLink + '" target="_blank" class="theme-card-btn py-1.5 px-2.5 rounded-lg text-purple-300 flex items-center justify-center gap-1.5 transition text-xs font-medium border border-slate-700/60 hover:border-purple-500/50">' +
+                                '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" /></svg>' +
+                                '<span>ویدیو</span>' +
+                            '</a>';
                         }}
 
-                        return '<div class="glass p-4 rounded-xl border border-slate-800/80 hover:border-cyan-500/40 transition-all flex flex-col justify-between gap-3 bg-slate-900/50">' +
-                            '<div class="flex items-start gap-3">' +
-                                cover +
-                                '<div class="flex-1 min-w-0">' +
-                                    '<div class="flex items-center gap-2 mb-1 flex-wrap">' +
-                                        fileNum +
-                                        '<span class="text-[10px] text-slate-400 font-mono">' + (item.published_at || '') + '</span>' +
+                        const linksGrid = (audioBtn || videoBtn)
+                            ? '<div class="grid grid-cols-2 gap-2">' + (audioBtn || '<div></div>') + (videoBtn || '<div></div>') + '</div>'
+                            : '';
+
+                        return '<div class="glass rounded-2xl border border-slate-800/80 hover:border-cyan-500/40 transition-all flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-cyan-950/20 group" style="background: var(--card-bg); border-color: var(--card-border);">' +
+                            cover +
+                            '<div class="p-4 flex flex-col justify-between flex-1 gap-3">' +
+                                '<div class="space-y-2">' +
+                                    '<div class="flex items-center justify-between text-[11px] text-slate-400 font-mono">' +
+                                        '<span class="text-cyan-400 font-semibold">' + (item.tag || 'هدیه دانلودی') + '</span>' +
+                                        '<span>' + (item.published_at || '') + '</span>' +
                                     '</div>' +
-                                    '<h3 class="text-xs font-bold text-slate-100 line-clamp-2 leading-relaxed" title="' + title + '">' +
+                                    '<h3 class="text-xs md:text-sm font-bold text-slate-100 line-clamp-2 leading-relaxed group-hover:text-cyan-300 transition-colors" title="' + title + '">' +
                                         title +
                                     '</h3>' +
                                 '</div>' +
-                            '</div>' +
-                            '<div class="flex flex-col gap-2 pt-2 border-t border-white/5">' +
-                                '<div class="flex items-center gap-2">' + linksHtml + '</div>' +
-                                '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\')" class="w-full theme-accent-btn py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">' +
-                                    '<span>⚡️</span> انتقال به ربات جهت دانلود' +
-                                '</button>' +
+                                '<div class="flex flex-col gap-2 pt-3 border-t border-white/5">' +
+                                    linksGrid +
+                                    '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\')" class="w-full theme-accent-btn py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer">' +
+                                        '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>' +
+                                        '<span>انتقال به ربات جهت دانلود و نشر</span>' +
+                                    '</button>' +
+                                '</div>' +
                             '</div>' +
                         '</div>';
                     }}).join('');

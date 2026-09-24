@@ -1016,10 +1016,58 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 from services.user_service import UserService
                 if action == "revoke":
                     u = UserService.revoke_vip(user_id)
-                    msg = f"اشتراک VIP کاربر {user_id} با موفقیت لغو شد."
+                    msg = f"اشتراک پریمیوم کاربر {user_id} با موفقیت لغو شد."
                 else:
                     u = UserService.grant_vip(user_id, days=days)
-                    msg = f"اشتراک VIP کاربر {user_id} با موفقیت به مدت {days} روز فعال/تمدید شد."
+                    msg = f"اشتراک پریمیوم کاربر {user_id} با موفقیت به مدت {days} روز فعال/تمدید شد."
+                    
+                    # مستندسازی فارسی: ارسال آنی نوتیفیکیشن تبریک در بله و تلگرام به کاربر
+                    try:
+                        from services.web_panel import ACTIVE_TG_ADAPTER, ACTIVE_BALE_ADAPTER
+                        from platforms.bale_adapter import get_bale_customer_keyboard
+                        notify_txt = (
+                            f"🎉 <b>تبریک! اشتراک پریمیوم {days} روزه شما با موفقیت فعال شد.</b>\n\n"
+                            "هم‌اکنون به ۱۶ دسته‌بندی و فرکانس فراوانی دسترسی دارید. ✨"
+                        )
+                        bale_dest = getattr(u, "bale_id", None) or (user_id if u and u.platform == "bale" else None)
+                        tg_dest = getattr(u, "telegram_id", None) or (user_id if u and u.platform == "telegram" else None)
+                        
+                        if not bale_dest and not tg_dest:
+                            if u and u.platform == "bale":
+                                bale_dest = u.user_id
+                            elif u and u.platform == "telegram":
+                                tg_dest = u.user_id
+
+                        if bale_dest and ACTIVE_BALE_ADAPTER:
+                            try:
+                                def _send_bale_notify():
+                                    _loop = asyncio.new_event_loop()
+                                    asyncio.set_event_loop(_loop)
+                                    _loop.run_until_complete(ACTIVE_BALE_ADAPTER.send_message(
+                                        bale_dest,
+                                        notify_txt,
+                                        reply_markup=get_bale_customer_keyboard()
+                                    ))
+                                    _loop.close()
+                                threading.Thread(target=_send_bale_notify, daemon=True).start()
+                            except Exception as ex_b:
+                                logger.warning(f"[toggle_vip] Bale notify error: {ex_b}")
+
+                        if tg_dest and ACTIVE_TG_ADAPTER:
+                            try:
+                                def _send_tg_notify():
+                                    _loop = asyncio.new_event_loop()
+                                    asyncio.set_event_loop(_loop)
+                                    _loop.run_until_complete(ACTIVE_TG_ADAPTER.send_message(
+                                        int(tg_dest),
+                                        notify_txt
+                                    ))
+                                    _loop.close()
+                                threading.Thread(target=_send_tg_notify, daemon=True).start()
+                            except Exception as ex_tg:
+                                logger.warning(f"[toggle_vip] TG notify error: {ex_tg}")
+                    except Exception as ex_notif:
+                        logger.warning(f"[toggle_vip] Notification dispatch exception: {ex_notif}")
                 
                 if not u:
                     raise ValueError(f"کاربر با شناسه {user_id} یافت نشد.")

@@ -1060,40 +1060,58 @@ class TelegramAdapter:
 
                 local_audio_path = None
                 if audio_url:
-                    local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
+                    try:
+                        local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
+                    except Exception as e_dl:
+                        logger.warning(f"[tg_sign] ensure_audio_downloaded failed: {e_dl}")
 
                 perf_title = reader_tag or "نشانه امروز"
+                sent_audio_ok = False
                 if local_audio_path and local_audio_path.exists():
-                    await message.reply_audio(
-                        audio=str(local_audio_path),
-                        caption=caption,
-                        title=sign.get("title", "نشانه امروز من"),
-                        performer=perf_title,
-                        reply_markup=vip_kb,
-                        parse_mode=enums.ParseMode.HTML
-                    )
                     try:
-                        await wait_msg.delete()
-                    except Exception:
-                        pass
-                elif audio_url:
-                    await message.reply_audio(
-                        audio=audio_url,
-                        caption=caption,
-                        title=sign.get("title", "نشانه امروز من"),
-                        performer=perf_title,
-                        reply_markup=vip_kb,
-                        parse_mode=enums.ParseMode.HTML
-                    )
+                        await message.reply_audio(
+                            audio=str(local_audio_path),
+                            caption=caption,
+                            title=sign.get("title", "نشانه امروز من"),
+                            performer=perf_title,
+                            reply_markup=vip_kb,
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                        sent_audio_ok = True
+                    except Exception as e_send_loc:
+                        logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
+
+                if not sent_audio_ok and audio_url:
+                    try:
+                        await message.reply_audio(
+                            audio=audio_url,
+                            caption=caption,
+                            title=sign.get("title", "نشانه امروز من"),
+                            performer=perf_title,
+                            reply_markup=vip_kb,
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                        sent_audio_ok = True
+                    except Exception as e_send_url:
+                        logger.warning(f"[tg_sign] reply_audio url failed: {e_send_url}")
+
+                if sent_audio_ok:
                     try:
                         await wait_msg.delete()
                     except Exception:
                         pass
                 else:
+                    # مستندسازی فارسی: فالبک هوشمند در صورت شکست ارسال صوت
+                    # ارسال متن آرامش‌بخش نشانه همراه با دکمه دانلود مستقیم از سایت
+                    fallback_btns = []
+                    if audio_url:
+                        fallback_btns.append([InlineKeyboardButton("📥 دانلود مستقیم از سایت", url=audio_url)])
+                    fallback_btns.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="vip_club_info")])
+                    fallback_kb = InlineKeyboardMarkup(fallback_btns)
                     try:
-                        await wait_msg.edit_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                        await wait_msg.edit_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
                     except Exception:
-                        await message.reply_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                        await message.reply_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
             except Exception as e:
                 logger.error(f"[tg_sign] Error sending sign to {user_id}: {e}")
                 try:
@@ -3564,19 +3582,17 @@ class TelegramAdapter:
                 dur_m = int(qual_info.get("duration_sec", 0) // 60)
                 init_mb = qual_info.get("initial_size_mb", 0.0)
 
-                kb_rows = []
-                if rec_parts <= 2:
-                    kb_rows.append([
-                        InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
-                        InlineKeyboardButton("✂️ تقسیم هوشمند به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
-                    ])
-                else:
-                    kb_rows.append([
-                        InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")
-                    ])
-                    kb_rows.append([
-                        InlineKeyboardButton(f"✂️ تقسیم حداکثری به {rec_parts + 1} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts + 1}")
-                    ])
+                kb_rows = [
+                    [
+                        InlineKeyboardButton("✂️ تقسیم به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
+                        InlineKeyboardButton("✂️ تقسیم به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
+                    ],
+                    [
+                        InlineKeyboardButton("🗜 فشرده‌سازی معمولی", callback_data=f"smeta:force_bale:{drop_id}")
+                    ]
+                ]
+                if rec_parts > 3:
+                    kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم خودکار به {rec_parts} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")])
                 kb_rows.append([
                     InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
                 ])
@@ -3585,7 +3601,7 @@ class TelegramAdapter:
                     f"✂️ <b>دستیار تقسیم هوشمند ویدیو (Split Assistant):</b>\n"
                     f"📄 فایل: <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>\n"
                     f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{init_mb} MB</code>\n"
-                    f"💡 <i>پارت‌های پیشنهادی جهت رعایت سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
+                    f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                     "تعداد پارت‌های مورد نظر جهت تقسیم بدون افت کیفیت (Stream Copy) و ارسال به بله را انتخاب فرمایید:",
                     parse_mode=enums.ParseMode.HTML,
                     reply_markup=split_kb
@@ -3604,14 +3620,10 @@ class TelegramAdapter:
                     return
 
                 safe_limit_mb = 45.0
-                file_sz_mb = w_path.stat().st_size / (1024 * 1024)
-                min_parts = max(2, math.ceil(file_sz_mb / safe_limit_mb))
+                parts_count = int(parts[3]) if len(parts) > 3 and str(parts[3]).isdigit() else 2
+                parts_count = max(2, parts_count)
 
-                parts_count = int(parts[3]) if len(parts) > 3 and str(parts[3]).isdigit() else min_parts
-                if parts_count < min_parts:
-                    parts_count = min_parts
-
-                await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت باکیفیت (هر پارت زیر ۴۵MB)...</b>", parse_mode=enums.ParseMode.HTML)
+                await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت انتخابی...</b>", parse_mode=enums.ParseMode.HTML)
                 try:
                     parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count, target_max_mb=safe_limit_mb)
                     if not parts_list:
@@ -3669,13 +3681,17 @@ class TelegramAdapter:
                             f"فشرده‌سازی تا سقف بله کیفیت را به شدت کاهش می‌دهد (<code>{est_res}</code>).\n\n"
                             "جهت حفظ کیفیت تصویر و تجربه مطلوب، یکی از گزینه‌های زیر را انتخاب فرمایید:"
                         )
-                        split_row = [
-                            InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}"),
-                            InlineKeyboardButton("🗜 ادامه فشرده‌سازی", callback_data=f"smeta:force_bale:{drop_id}")
+                        kb_rows = [
+                            [
+                                InlineKeyboardButton("✂️ تقسیم به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
+                                InlineKeyboardButton("✂️ تقسیم به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
+                            ],
+                            [
+                                InlineKeyboardButton("🗜 فشرده‌سازی معمولی", callback_data=f"smeta:force_bale:{drop_id}")
+                            ]
                         ]
-                        kb_rows = [split_row]
-                        if rec_parts > 2:
-                            kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم به {rec_parts + 1} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts + 1}")])
+                        if rec_parts > 3:
+                            kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم خودکار به {rec_parts} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")])
                         kb_rows.append([InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")])
                         warn_kb = InlineKeyboardMarkup(kb_rows)
                         await status_msg.edit_text(warn_text, parse_mode=enums.ParseMode.HTML, reply_markup=warn_kb)

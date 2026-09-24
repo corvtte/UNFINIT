@@ -325,10 +325,9 @@ class SmartVideoSplitter:
         progress_callback: Optional[Callable[[str], None]] = None
     ) -> List[Path]:
         """
-        ویدیو را بر اساس تعداد پارت‌های درخواستی یا سقف مجاز بله تکه‌تکه می‌کند.
-        برای جلوگیری قطعی از خطای ۴۱۳ بله، حداقل پارت‌ها بر مبنای حاشیه امن ۴۵ مگابایت محاسبه شده:
-        min_required_parts = max(2, math.ceil(total_mb / 45.0))
-        و در صورتی که تعداد درخواستی کمتر از این حداقل باشد، به صورت خودکار ارتقا می‌یابد.
+        ویدیو را بر اساس تعداد پارت‌های انتخابی کاربر یا سقف مجاز بله تکه‌تکه می‌کند.
+        در صورتی که کاربر صریحاً ۲ یا ۳ پارت را انتخاب کند، ویدیو دقیقاً به همان تعداد پارت تقسیم شده
+        و در صورت نیاز، هر پارت به صورت خودکار تا سقف ۴۵MB فشرده می‌شود تا خطای ۴۱۳ بله پیش نیاید.
         ورودی: مسیر فایل ویدیو، تعداد پارت‌ها، سقف مگابایتی و کالبک پیشرفت اختیاری.
         خروجی: لیستی از مسیر فایل‌های پارت تقسیم‌شده (Path).
         """
@@ -339,16 +338,14 @@ class SmartVideoSplitter:
         file_sz = src.stat().st_size
         total_mb = file_sz / (1024 * 1024)
 
-        # محاسبه حداقل پارت‌های مورد نیاز برای ماندن زیر ۴۵ مگابایت
-        min_required_parts = max(2, math.ceil(total_mb / target_max_mb))
-        if num_parts is None or int(num_parts) < min_required_parts:
-            logger.info(
-                f"Auto-calculating split parts: total {total_mb:.1f}MB / limit {target_max_mb}MB "
-                f"-> enforcing {min_required_parts} parts (requested was {num_parts})"
-            )
-            num_parts = min_required_parts
-        else:
+        # اعطای حق انتخاب دستی به کاربر در صورت ارسال صریح تعداد پارت
+        if num_parts is not None and int(num_parts) >= 2:
             num_parts = int(num_parts)
+            logger.info(f"SmartVideoSplitter: User specified manual parts count = {num_parts} for {total_mb:.1f}MB video")
+        else:
+            # محاسبه خودکار در صورت عدم تعیین دستی
+            num_parts = max(2, math.ceil(total_mb / target_max_mb))
+            logger.info(f"SmartVideoSplitter: Auto-calculated parts count = {num_parts} for {total_mb:.1f}MB video")
 
         tech = inspect_technical_metadata(src)
         dur = float(tech.get("duration_sec", 0) or 0)
