@@ -1,4 +1,13 @@
 import os
+import builtins
+import typing
+from typing import Union, Optional, List, Dict, Any, Tuple, Callable
+
+# تزریق سراسری تایپینگ به Builtins جهت مهار کامل NameError در حین رندر داشبورد
+for _t_name in ("Union", "Optional", "List", "Dict", "Any", "Tuple", "Callable"):
+    if not hasattr(builtins, _t_name):
+        setattr(builtins, _t_name, getattr(typing, _t_name, None))
+
 import json
 import asyncio
 import time
@@ -6,7 +15,6 @@ import uuid
 import urllib.parse
 import html
 from pathlib import Path
-from typing import Union, Optional, List, Dict, Any, Tuple
 
 from core.config import config
 from core.logger import get_logger

@@ -4,7 +4,15 @@ import re
 import asyncio
 import threading
 import subprocess
-from typing import Any, Optional, Dict, List
+import builtins
+import typing
+from typing import Any, Optional, Dict, List, Union, Tuple, Callable
+
+# تزریق سراسری تایپینگ به Builtins جهت مهار دائمی NameError
+for _t_name in ("Union", "Optional", "List", "Dict", "Any", "Tuple", "Callable"):
+    if not hasattr(builtins, _t_name):
+        setattr(builtins, _t_name, getattr(typing, _t_name, None))
+
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 

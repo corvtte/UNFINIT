@@ -10,6 +10,9 @@ from media.tagger import copy_all_id3_tags
 
 logger = get_logger("compressor")
 
+# سقف ایمن مگابایتی برای پارت‌های ویدیویی بله (حاشیه امن ۴۵ مگابایت جهت مهار خطای ۴۱۳ Nginx)
+SAFE_BALE_PART_LIMIT_MB: float = 45.0
+
 class SmartAudioCompressor:
     @staticmethod
     def calculate_target_bitrate(
@@ -251,12 +254,12 @@ class SmartVideoCompressor:
     @staticmethod
     def precalculate_video_quality(
         file_path: str | Path,
-        target_max_mb: float = 48.5
+        target_max_mb: float = SAFE_BALE_PART_LIMIT_MB
     ) -> Dict[str, Any]:
         """
         محاسبه پیش از پردازش (Pre-Calculation):
         سنجش کیفیت تقریبی خروجی ویدیو بر اساس مدت‌زمان و سقف بله، قبل از ورود به پردازش سنگین FFmpeg.
-        ورودی: مسیر فایل ویدیویی و سقف مگابایتی هدف.
+        ورودی: مسیر فایل ویدیویی و سقف مگابایتی هدف (پیش‌فرض ۴۵MB با حاشیه امن).
         خروجی: دیکشنری شامل مدت‌زمان، بیت‌ریت هدف، رزولوشن تخمینی، پرچم افت شدید کیفیت و پارت‌های پیشنهادی.
         """
         src = Path(file_path)
@@ -296,7 +299,8 @@ class SmartVideoCompressor:
             if est_res == "480p":
                 est_res = "360p"
 
-        rec_parts = max(2, math.ceil(file_sz / target_max_bytes)) if file_sz > target_max_bytes else 2
+        # محاسبه داینامیک تعداد پارت‌ها با حاشیه امن ۴۵ مگابایت برای بله
+        rec_parts = max(2, math.ceil(init_mb / target_max_mb)) if init_mb > target_max_mb else 2
 
         return {
             "duration_sec": dur,
@@ -316,12 +320,15 @@ class SmartVideoSplitter:
     @staticmethod
     def split_video(
         file_path: str | Path,
-        num_parts: int = 2,
-        target_max_mb: float = 48.5,
+        num_parts: Optional[int] = None,
+        target_max_mb: float = SAFE_BALE_PART_LIMIT_MB,
         progress_callback: Optional[Callable[[str], None]] = None
     ) -> List[Path]:
         """
-        ویدیو را بر اساس تعداد پارت‌های درخواستی یا سقف مجاز تکه‌تکه می‌کند.
+        ویدیو را بر اساس تعداد پارت‌های درخواستی یا سقف مجاز بله تکه‌تکه می‌کند.
+        برای جلوگیری قطعی از خطای ۴۱۳ بله، حداقل پارت‌ها بر مبنای حاشیه امن ۴۵ مگابایت محاسبه شده:
+        min_required_parts = max(2, math.ceil(total_mb / 45.0))
+        و در صورتی که تعداد درخواستی کمتر از این حداقل باشد، به صورت خودکار ارتقا می‌یابد.
         ورودی: مسیر فایل ویدیو، تعداد پارت‌ها، سقف مگابایتی و کالبک پیشرفت اختیاری.
         خروجی: لیستی از مسیر فایل‌های پارت تقسیم‌شده (Path).
         """
@@ -329,17 +336,30 @@ class SmartVideoSplitter:
         if not src.exists():
             raise FileNotFoundError(f"Input video not found: {file_path}")
 
+        file_sz = src.stat().st_size
+        total_mb = file_sz / (1024 * 1024)
+
+        # محاسبه حداقل پارت‌های مورد نیاز برای ماندن زیر ۴۵ مگابایت
+        min_required_parts = max(2, math.ceil(total_mb / target_max_mb))
+        if num_parts is None or int(num_parts) < min_required_parts:
+            logger.info(
+                f"Auto-calculating split parts: total {total_mb:.1f}MB / limit {target_max_mb}MB "
+                f"-> enforcing {min_required_parts} parts (requested was {num_parts})"
+            )
+            num_parts = min_required_parts
+        else:
+            num_parts = int(num_parts)
+
         tech = inspect_technical_metadata(src)
         dur = float(tech.get("duration_sec", 0) or 0)
         if dur <= 0:
             dur = 600.0
 
-        num_parts = max(2, int(num_parts))
         part_duration = dur / num_parts
         output_files: List[Path] = []
 
         if progress_callback:
-            progress_callback(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {num_parts} پارت باکیفیت...</b>")
+            progress_callback(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {num_parts} پارت باکیفیت (هر پارت زیر {target_max_mb:.0f}MB)...</b>")
 
         for i in range(num_parts):
             start_sec = i * part_duration
@@ -374,6 +394,18 @@ class SmartVideoSplitter:
                 subprocess.run(cmd_enc, capture_output=True, text=True, timeout=600)
 
             if out_p.exists() and out_p.stat().st_size > 0:
+                part_sz_mb = out_p.stat().st_size / (1024 * 1024)
+                # در صورتی که پارت تولیدشده از ۴۸.۵ مگابایت عبور کرده باشد، فشرده‌سازی خودکار تا ۴۵MB
+                if part_sz_mb > 48.5:
+                    logger.info(f"Split part {out_p.name} ({part_sz_mb:.1f}MB) exceeds 48.5MB, auto-compressing to safe 45MB...")
+                    comp_out, _, _, _, ok = SmartVideoCompressor.compress_video(out_p, target_max_mb=SAFE_BALE_PART_LIMIT_MB)
+                    if ok and comp_out and comp_out.exists() and comp_out.stat().st_size > 0:
+                        try:
+                            out_p.unlink(missing_ok=True)
+                            comp_out.rename(out_p)
+                        except Exception as e:
+                            logger.warning(f"Could not replace original part with compressed: {e}")
+                            out_p = comp_out
                 output_files.append(out_p)
             else:
                 logger.error(f"Failed to generate part {i+1} of {src.name}")

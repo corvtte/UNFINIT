@@ -10,6 +10,7 @@ import uuid
 import asyncio
 from pathlib import Path
 from html import escape
+import math
 from typing import Optional, Dict, Any, List, Union
 from pyrogram import Client, enums, filters
 from pyrogram.types import (
@@ -3557,26 +3558,34 @@ class TelegramAdapter:
                 if not w_path.exists():
                     await status_msg.edit_text("❌ فایل ویدیو روی سرور یافت نشد.")
                     return
-                safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 48.5))
+                safe_limit_mb = 45.0
                 qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
                 rec_parts = qual_info.get("recommended_parts", 2)
                 dur_m = int(qual_info.get("duration_sec", 0) // 60)
-                split_kb = InlineKeyboardMarkup([
-                    [
+                init_mb = qual_info.get("initial_size_mb", 0.0)
+
+                kb_rows = []
+                if rec_parts <= 2:
+                    kb_rows.append([
                         InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
                         InlineKeyboardButton("✂️ تقسیم هوشمند به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
-                    ],
-                    [
-                        InlineKeyboardButton(f"✂️ تقسیم خودکار به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")
-                    ],
-                    [
-                        InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
-                    ]
+                    ])
+                else:
+                    kb_rows.append([
+                        InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")
+                    ])
+                    kb_rows.append([
+                        InlineKeyboardButton(f"✂️ تقسیم حداکثری به {rec_parts + 1} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts + 1}")
+                    ])
+                kb_rows.append([
+                    InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
                 ])
+                split_kb = InlineKeyboardMarkup(kb_rows)
                 await status_msg.edit_text(
                     f"✂️ <b>دستیار تقسیم هوشمند ویدیو (Split Assistant):</b>\n"
                     f"📄 فایل: <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>\n"
-                    f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{qual_info.get('initial_size_mb', 0)} MB</code>\n\n"
+                    f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{init_mb} MB</code>\n"
+                    f"💡 <i>پارت‌های پیشنهادی جهت رعایت سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                     "تعداد پارت‌های مورد نظر جهت تقسیم بدون افت کیفیت (Stream Copy) و ارسال به بله را انتخاب فرمایید:",
                     parse_mode=enums.ParseMode.HTML,
                     reply_markup=split_kb
@@ -3593,15 +3602,30 @@ class TelegramAdapter:
                 if not w_path.exists():
                     await status_msg.edit_text("❌ فایل ویدیو یافت نشد.")
                     return
-                parts_count = int(parts[3]) if len(parts) > 3 and str(parts[3]).isdigit() else 2
-                await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت باکیفیت...</b>", parse_mode=enums.ParseMode.HTML)
+
+                safe_limit_mb = 45.0
+                file_sz_mb = w_path.stat().st_size / (1024 * 1024)
+                min_parts = max(2, math.ceil(file_sz_mb / safe_limit_mb))
+
+                parts_count = int(parts[3]) if len(parts) > 3 and str(parts[3]).isdigit() else min_parts
+                if parts_count < min_parts:
+                    parts_count = min_parts
+
+                await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت باکیفیت (هر پارت زیر ۴۵MB)...</b>", parse_mode=enums.ParseMode.HTML)
                 try:
-                    parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count)
+                    parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count, target_max_mb=safe_limit_mb)
                     if not parts_list:
                         await status_msg.edit_text("❌ خطا در تقسیم فایل ویدیو با FFmpeg.")
                         return
                     all_ok = True
                     for p_idx, part_file in enumerate(parts_list, 1):
+                        part_sz_mb = part_file.stat().st_size / (1024 * 1024)
+                        if part_sz_mb > 48.5:
+                            await status_msg.edit_text(f"🗜 <b>بهینه‌سازی سریع پارت {p_idx} ({part_sz_mb:.1f}MB) جهت رعایت قطعی سقف بله...</b>", parse_mode=enums.ParseMode.HTML)
+                            comp_out, _, _, _, _ = SmartVideoCompressor.compress_video(part_file, target_max_mb=safe_limit_mb)
+                            if comp_out and comp_out.exists():
+                                part_file = comp_out
+
                         await status_msg.edit_text(f"📤 <b>در حال ارسال پارت {p_idx} از {len(parts_list)} به بله...</b>", parse_mode=enums.ParseMode.HTML)
                         p_tech = inspect_technical_metadata(part_file)
                         res = await self.bale_adapter.send_video(
@@ -3615,6 +3639,7 @@ class TelegramAdapter:
                             all_ok = False
                             await status_msg.edit_text(f"❌ خطا در ارسال پارت {p_idx}: {res.get('error') or str(res)}", parse_mode=enums.ParseMode.HTML)
                             break
+                        await asyncio.sleep(1.0)
                     if all_ok:
                         await status_msg.edit_text(f"✅ <b>ویدیو با موفقیت به {len(parts_list)} پارت باکیفیت تقسیم و به بله منتقل شد!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>", parse_mode=enums.ParseMode.HTML)
                 except Exception as s_err:
@@ -3633,7 +3658,7 @@ class TelegramAdapter:
 
                 # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (Pre-Calculation)
                 if action != "force_bale" and drop.get("media_type") == "video" and w_path.exists():
-                    safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 48.5))
+                    safe_limit_mb = 45.0
                     qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
                     if qual_info.get("severe_quality_drop"):
                         est_res = qual_info.get("estimated_resolution", "360p")
@@ -3645,12 +3670,12 @@ class TelegramAdapter:
                             "جهت حفظ کیفیت تصویر و تجربه مطلوب، یکی از گزینه‌های زیر را انتخاب فرمایید:"
                         )
                         split_row = [
-                            InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
+                            InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}"),
                             InlineKeyboardButton("🗜 ادامه فشرده‌سازی", callback_data=f"smeta:force_bale:{drop_id}")
                         ]
                         kb_rows = [split_row]
                         if rec_parts > 2:
-                            kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")])
+                            kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم به {rec_parts + 1} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts + 1}")])
                         kb_rows.append([InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")])
                         warn_kb = InlineKeyboardMarkup(kb_rows)
                         await status_msg.edit_text(warn_text, parse_mode=enums.ParseMode.HTML, reply_markup=warn_kb)
