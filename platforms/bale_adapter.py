@@ -41,26 +41,28 @@ class GiftButtonStr(str):
             return False
         if str.__eq__(self, other):
             return True
-        if str(other) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
+        if str(other) in ("📂 دانلودها (هدیه)", "دانلودها (هدیه)", "دانلودها", "🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
             return True
         return False
 
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی", "هدایا"):
+        if str(item) in ("📂 دانلودها (هدیه)", "دانلودها (هدیه)", "دانلودها", "🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی", "هدایا"):
             return True
         return False
 
 
-# مستندسازی فارسی: ساختار کیبورد مشتری بله بر اساس استانداردهای نگارش v0.5.2
-# ردیف اول: [ 🔮 نشانه امروز من ] در راست و [ 💎 محصولات و اشتراک پریمیوم ] در چپ
-# ردیف دوم: [ 👤 حساب کاربری ] و [ 🎁 فایل‌های هدیه ]
+# مستندسازی فارسی: ساختار کیبورد مشتری بله بر اساس استانداردهای نگارش v0.5.4
+# ردیف اول (بزرگ و تکی): [ 🛍 محصولات آموزشی ]
+# ردیف دوم (دو دکمه متوازن): [ 🔮 نشانه امروز من ] و [ 💎 اشتراک پریمیوم ]
+# ردیف سوم: [ 📂 دانلودها (هدیه) ] و [ 👤 حساب کاربری ]
 def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
-            [{"text": "🔮 نشانه امروز من"}, {"text": "💎 محصولات و اشتراک پریمیوم"}],
-            [{"text": "👤 حساب کاربری"}, {"text": GiftButtonStr("🎁 فایل‌های هدیه")}]
+            [{"text": "🛍 محصولات آموزشی"}],
+            [{"text": "🔮 نشانه امروز من"}, {"text": "💎 اشتراک پریمیوم"}],
+            [{"text": GiftButtonStr("📂 دانلودها (هدیه)")}, {"text": "👤 حساب کاربری"}]
         ],
         "resize_keyboard": True
     }
@@ -3163,11 +3165,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 except Exception as e_dl:
                                                     logger.warning(f"[bale_sign] ensure_audio_downloaded failed: {e_dl}")
 
-                                            vip_kb = {
-                                                "inline_keyboard": [
-                                                    [{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}]
-                                                ]
-                                            }
+                                            sign_kb = SignService.build_sign_buttons(sign, platform="bale")
                                             perf_title = reader_tag or "نشانه امروز"
                                             sent_ok = False
                                             if local_audio_path and local_audio_path.exists():
@@ -3178,7 +3176,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                         title=sign.get("title", "نشانه امروز من"),
                                                         performer=perf_title,
                                                         caption=caption,
-                                                        reply_markup=vip_kb
+                                                        reply_markup=sign_kb
                                                     )
                                                     sent_ok = True
                                                 except Exception as ex_snd:
@@ -3192,24 +3190,20 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                         title=sign.get("title", "نشانه امروز من"),
                                                         performer=perf_title,
                                                         caption=caption,
-                                                        reply_markup=vip_kb
+                                                        reply_markup=sign_kb
                                                     )
                                                     sent_ok = True
                                                 except Exception as ex_snd_url:
                                                     logger.warning(f"[bale_sign] send_audio url failed: {ex_snd_url}")
 
                                             if not sent_ok:
-                                                fallback_btns = []
-                                                if audio_url:
-                                                    fallback_btns.append([{"text": "📥 دانلود مستقیم از سایت", "url": audio_url}])
-                                                fallback_btns.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
-                                                await bale.send_message(chat_id, caption, reply_markup={"inline_keyboard": fallback_btns})
+                                                await bale.send_message(chat_id, caption, reply_markup=sign_kb)
                                         except Exception as ex_sign:
                                             logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")
                                             await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["💎 عضویت در اشتراک پریمیوم", "💎 عضویت در باشگاه پریمیوم VIP", "عضویت در اشتراک پریمیوم", "اشتراک پریمیوم", "باشگاه پریمیوم", "اشتراک VIP", "/vip", "/premium"]):
+                                    if any(text.startswith(cmd) for cmd in ["💎 اشتراک پریمیوم", "💎 عضویت در اشتراک پریمیوم", "💎 عضویت در باشگاه پریمیوم VIP", "عضویت در اشتراک پریمیوم", "اشتراک پریمیوم", "باشگاه پریمیوم", "اشتراک VIP", "/vip", "/premium"]):
                                         is_vip = UserService.is_user_vip(chat_id)
                                         if is_vip:
                                             u = UserService.get_user_by_any_id(chat_id)
@@ -3771,18 +3765,17 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, p_txt)
                                         continue
 
-                                    if text in ("🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی", "💎 محصولات و اشتراک پریمیوم", "محصولات و اشتراک پریمیوم"):
+                                    if text in ("🛍 محصولات آموزشی", "محصولات آموزشی", "🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی"):
                                         p_kb = {
                                             "inline_keyboard": [
                                                 [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
-                                                [{"text": "🎧 کتاب‌های صوتی", "callback_data": "bale:prods_audiobooks"}],
-                                                [{"text": "💎 اشتراک پریمیوم", "callback_data": "vip_club_info"}]
+                                                [{"text": "🎧 کتاب‌های صوتی", "callback_data": "bale:prods_audiobooks"}]
                                             ]
                                         }
                                         await bale.send_message(
                                             chat_id,
-                                            "💎 <b>مرکز محصولات آموزشی و اشتراک پریمیوم:</b>\n\n"
-                                            "لطفاً دسته‌بندی مورد نظر خود را برای مشاهده یا ثبت سفارش انتخاب فرمایید:",
+                                            "🛍 <b>مرکز محصولات آموزشی و کتاب‌های صوتی:</b>\n\n"
+                                            "لطفاً دسته‌بندی مورد نظر خود را برای مشاهده سرفصل‌ها، قیمت و ثبت سفارش انتخاب فرمایید:",
                                             reply_markup=p_kb
                                         )
                                         continue

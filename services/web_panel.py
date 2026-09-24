@@ -962,7 +962,7 @@ def render_dashboard_html() -> str:
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
                     <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">دانلودها (هدیه)</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">39p</span>
+                    <span class="group/badge px-2 py-0.5 rounded-full text-[10px] bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-mono transition-all duration-300 cursor-default" title="۳۹ صفحه شامل بیش از ۹۵۰ فایل دانلودی رایگان"><span class="inline group-hover/badge:hidden">۹۵۸ فایل</span><span class="hidden group-hover/badge:inline">۳۹ صفحه</span></span>
                 </button>
 
                 <!-- 3. Studio -->
@@ -1601,21 +1601,18 @@ def render_dashboard_html() -> str:
             <!-- Products Category Switcher (Material 3 Sub-tabs with Drag & Drop) -->
             <div id="productSubtabsContainer" class="glass p-2 rounded-2xl border flex items-center gap-2 overflow-x-auto" style="background: var(--card-bg); border-color: var(--card-border);">
                 <button type="button" draggable="true" data-subtab="courses" onclick="switchProductSubTab('courses')" id="btn-subtab-prods-courses" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing select-none" style="background: var(--accent-color); color: #fff;">
-                    <svg class="w-3.5 h-3.5 opacity-40 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
                     <span>دوره‌های آموزشی</span>
                 </button>
                 <button type="button" draggable="true" data-subtab="audiobooks" onclick="switchProductSubTab('audiobooks')" id="btn-subtab-prods-audiobooks" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing select-none" style="background: transparent;">
-                    <svg class="w-3.5 h-3.5 opacity-40 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.757 3.63 8.25 4.51 8.25H6.75z" />
                     </svg>
                     <span>کتاب‌های صوتی</span>
                 </button>
                 <button type="button" draggable="true" data-subtab="vip" onclick="switchProductSubTab('vip')" id="btn-subtab-prods-vip" class="prod-subtab-btn flex-1 py-2.5 px-4 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center justify-center gap-2 cursor-grab active:cursor-grabbing select-none" style="background: transparent;">
-                    <svg class="w-3.5 h-3.5 opacity-40 shrink-0" fill="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
                     <svg class="w-4 h-4 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
@@ -2105,6 +2102,8 @@ def render_dashboard_html() -> str:
                             <span>به‌روزرسانی صفحه</span>
                         </button>
                     </div>
+                </div>
+
                 <!-- Live Categories Selector Filter Bar (16 Categories) -->
                 <div class="flex items-center gap-2 p-2 rounded-xl border overflow-x-auto no-scrollbar" style="background: var(--glass-bg); border-color: var(--card-border);" id="feedCategoriesBar">
                     <button type="button" onclick="selectFeedCategory('')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap active theme-accent-btn" data-cat="">
@@ -4418,66 +4417,72 @@ def render_dashboard_html() -> str:
                         return;
                     }}
                     tbody.innerHTML = users.map(u => {{
-                        const p = (u.platform || 'bale').toLowerCase();
-                        let platformBadge = '';
-                        if (p.includes('tele')) {{
-                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> تلگرام</span>';
-                        }} else if (p.includes('soroush')) {{
-                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-sky-950 text-sky-400 border border-sky-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg> سروش‌پلاس</span>';
-                        }} else if (p.includes('rubika')) {{
-                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-purple-950 text-purple-400 border border-purple-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg> روبیکا</span>';
-                        }} else {{
-                            platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> بله</span>';
-                        }}
-                        const isUserVip = Boolean(u.is_vip || (u.vip_until && new Date(u.vip_until) > new Date()));
-                        let vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700 font-sans">عادی</span>';
-                        if (isUserVip) {{
-                            const expDate = (u.vip_until || '').slice(0, 10);
-                            vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-sans inline-flex items-center gap-1" title="انقضا: ' + escapeHtml(u.vip_until || '') + '">' +
-                                '<svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>' +
-                                ' پریمیوم (' + escapeHtml(expDate) + ')' +
-                            '</span>';
-                        }}
-                        const phone = u.phone ? ('<span dir="ltr">' + escapeHtml(u.phone) + '</span>') : '<span class="text-slate-600 font-sans">-</span>';
-                        const name = escapeHtml(u.username || ('کاربر ' + (u.user_id || '')));
-                        const ref = u.referred_by ? ('<span class="text-indigo-400" dir="ltr">' + escapeHtml(String(u.referred_by)) + '</span>') : '<span class="text-slate-600 font-sans">مستقیم</span>';
-                        const wallet = (Number(u.wallet_balance) || 0).toLocaleString('fa-IR') + ' ت';
-                        const commitment = u.commitment_signed 
-                            ? '<span class="text-emerald-400 font-sans">امضا شده ✓</span>'
-                            : '<span class="text-slate-500 font-sans">در انتظار</span>';
-                        const userIdClean = escapeHtml(String(u.user_id || '-'));
-                        
-                        const vipBtn = isUserVip
-                            ? '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" title="لغو اشتراک پریمیوم" class="p-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
-                                '<span class="pointer-events-none">لغو پریمیوم</span>' +
-                               '</button>'
-                            : '<button type="button" data-user-action="grant_vip" data-user-id="' + userIdClean + '" title="اعطای اشتراک ۳۰ روزه پریمیوم" class="p-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>' +
-                                '<span class="pointer-events-none">+۳۰ روز پریمیوم</span>' +
-                               '</button>';
+                        try {{
+                            if (!u) return '';
+                            const p = (u.platform || 'bale').toLowerCase();
+                            let platformBadge = '';
+                            if (p.includes('tele')) {{
+                                platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-400 border border-cyan-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> تلگرام</span>';
+                            }} else if (p.includes('soroush')) {{
+                                platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-sky-950 text-sky-400 border border-sky-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg> سروش‌پلاس</span>';
+                            }} else if (p.includes('rubika')) {{
+                                platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-purple-950 text-purple-400 border border-purple-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg> روبیکا</span>';
+                            }} else {{
+                                platformBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans inline-flex items-center gap-1"><svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> بله</span>';
+                            }}
+                            const isUserVip = Boolean(u.is_vip || (u.vip_until && new Date(u.vip_until) > new Date()));
+                            let vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700 font-sans">عادی</span>';
+                            if (isUserVip) {{
+                                const expDate = (u.vip_until || '').slice(0, 10);
+                                vipBadge = '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-300 border border-amber-500/30 font-sans inline-flex items-center gap-1" title="انقضا: ' + escapeHtml(u.vip_until || '') + '">' +
+                                    '<svg class="w-3 h-3 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>' +
+                                    ' پریمیوم (' + escapeHtml(expDate) + ')' +
+                                '</span>';
+                            }}
+                            const phone = u.phone ? ('<span dir="ltr">' + escapeHtml(u.phone) + '</span>') : '<span class="text-slate-600 font-sans">-</span>';
+                            const name = escapeHtml(u.username || ('کاربر ' + (u.user_id || '')));
+                            const ref = u.referred_by ? ('<span class="text-indigo-400" dir="ltr">' + escapeHtml(String(u.referred_by)) + '</span>') : '<span class="text-slate-600 font-sans">مستقیم</span>';
+                            const wallet = (Number(u.wallet_balance) || 0).toLocaleString('fa-IR') + ' ت';
+                            const commitment = u.commitment_signed 
+                                ? '<span class="text-emerald-400 font-sans">امضا شده ✓</span>'
+                                : '<span class="text-slate-500 font-sans">در انتظار</span>';
+                            const userIdClean = escapeHtml(String(u.user_id || '-'));
+                            
+                            const vipBtn = isUserVip
+                                ? '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" title="لغو اشتراک پریمیوم" class="p-1.5 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                    '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+                                    '<span class="pointer-events-none">لغو پریمیوم</span>' +
+                                   '</button>'
+                                : '<button type="button" data-user-action="grant_vip" data-user-id="' + userIdClean + '" title="اعطای اشتراک ۳۰ روزه پریمیوم" class="p-1.5 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                    '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>' +
+                                    '<span class="pointer-events-none">+۳۰ روز پریمیوم</span>' +
+                                   '</button>';
 
-                        return '<tr class="hover:bg-white/[0.03] transition">' +
-                            '<td class="p-3">' + platformBadge + '</td>' +
-                            '<td class="p-3 text-cyan-300 font-mono" dir="ltr">' + userIdClean + '</td>' +
-                            '<td class="p-3 text-slate-200 font-sans font-medium">' + name + '</td>' +
-                            '<td class="p-3 text-slate-300">' + phone + '</td>' +
-                            '<td class="p-3">' + vipBadge + '</td>' +
-                            '<td class="p-3">' + ref + '</td>' +
-                            '<td class="p-3 text-amber-400 font-bold">' + wallet + '</td>' +
-                            '<td class="p-3 text-xs">' + commitment + '</td>' +
-                            '<td class="p-3 text-center">' +
-                                '<div class="inline-flex items-center gap-1.5">' +
-                                    '<button type="button" data-user-action="view_profile" data-user-id="' + userIdClean + '" title="مشاهده پروفایل و دوره‌ها" class="p-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                        '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
-                                    '</button>' +
-                                    vipBtn +
-                                    '<button type="button" data-user-action="delete_user" data-user-id="' + userIdClean + '" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
-                                        '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
-                                    '</button>' +
-                                '</div>' +
-                            '</td>' +
-                        '</tr>';
+                            return '<tr class="hover:bg-white/[0.03] transition">' +
+                                '<td class="p-3">' + platformBadge + '</td>' +
+                                '<td class="p-3 text-cyan-300 font-mono" dir="ltr">' + userIdClean + '</td>' +
+                                '<td class="p-3 text-slate-200 font-sans font-medium">' + name + '</td>' +
+                                '<td class="p-3 text-slate-300">' + phone + '</td>' +
+                                '<td class="p-3">' + vipBadge + '</td>' +
+                                '<td class="p-3">' + ref + '</td>' +
+                                '<td class="p-3 text-amber-400 font-bold">' + wallet + '</td>' +
+                                '<td class="p-3 text-xs">' + commitment + '</td>' +
+                                '<td class="p-3 text-center">' +
+                                    '<div class="inline-flex items-center gap-1.5">' +
+                                        '<button type="button" data-user-action="view_profile" data-user-id="' + userIdClean + '" title="مشاهده پروفایل و دوره‌ها" class="p-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                            '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+                                        '</button>' +
+                                        vipBtn +
+                                        '<button type="button" data-user-action="delete_user" data-user-id="' + userIdClean + '" title="حذف دائم کاربر" class="p-1.5 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
+                                            '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                                        '</button>' +
+                                    '</div>' +
+                                '</td>' +
+                            '</tr>';
+                        }} catch (rowErr) {{
+                            console.warn('Error rendering user row:', rowErr, u);
+                            return '';
+                        }}
                     }}).join('');
 
                     if (!tbody._delegated) {{
@@ -6847,9 +6852,15 @@ def render_dashboard_html() -> str:
         window.closeEditCourseModal = closeEditModal;
 
         function openEditModalById(pid) {{
-            const course = (window.coursesData && window.coursesData[pid]) ? window.coursesData[pid] : null;
+            let course = null;
+            if (window.coursesData) {{
+                course = window.coursesData[pid] || Object.values(window.coursesData).find(c => c && (c.product_id == pid || String(c.product_id) === String(pid)));
+            }}
+            if (!course && window.COURSES_CACHE) {{
+                course = window.COURSES_CACHE[pid] || Object.values(window.COURSES_CACHE).find(c => c && (c.product_id == pid || String(c.product_id) === String(pid)));
+            }}
             if (!course) {{
-                alert('اطلاعات دوره یافت نشد.');
+                alert('اطلاعات دوره یافت نشد (' + pid + ').');
                 return;
             }}
             openEditModal(
@@ -6866,6 +6877,8 @@ def render_dashboard_html() -> str:
                 course.files_package
             );
         }}
+        window.openEditCourseModal = openEditModalById;
+        window.openEditModalById = openEditModalById;
 
         /**
          * ذخیره تغییرات دوره به صورت ایجکس بدون رفرش صفحه (Zero Page-Reload)

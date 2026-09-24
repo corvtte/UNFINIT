@@ -356,6 +356,23 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
                     else:
                         card_cover = src
 
+            if not card_cover:
+                # استخراج تصویر شاخص از استایل background-image المان‌های کارت
+                style_nodes = [card] + card.find_all(attrs={"style": True})
+                for node in style_nodes:
+                    st = node.get("style", "")
+                    bg_match = re.search(r"background(?:-image)?\s*:\s*url\(\s*['\"]?(.*?)['\"]?\s*\)", st, re.IGNORECASE)
+                    if bg_match:
+                        b_src = bg_match.group(1).strip()
+                        if b_src and not b_src.startswith("data:"):
+                            if b_src.startswith("//"):
+                                card_cover = "https:" + b_src
+                            elif b_src.startswith("/"):
+                                card_cover = "https://abasmanesh.com" + b_src
+                            else:
+                                card_cover = b_src
+                            break
+
             # استخراج عنوان مقاله
             title = ""
             body = card.find("div", class_="card__body")

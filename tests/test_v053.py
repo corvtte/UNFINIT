@@ -14,8 +14,8 @@ import platforms.bale_adapter as bale_module
 class TestVersion053(unittest.TestCase):
 
     def test_engine_version(self):
-        """بررسی ارتقاء صحیح شماره نگارش به v0.5.3"""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.5.3")
+        """بررسی ارتقاء صحیح شماره نگارش به v0.5.3 یا بالاتر"""
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.5.3", "v0.5.4"))
 
     def test_compressor_alias_and_signature(self):
         """بررسی وجود نام مستعار compress_video و عدم پرتاب AttributeError"""

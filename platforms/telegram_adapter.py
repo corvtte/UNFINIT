@@ -84,19 +84,20 @@ def format_transfer_progress(
     current: int,
     total: int,
     elapsed_sec: float,
-    stage_title: str = "در حال انتقال فایل..."
+    stage_title: str = "در حال انتقال فایل به بله..."
 ) -> str:
     pct = int((current / total) * 100) if total > 0 else 0
     pct = min(100, max(0, pct))
-    bar_len = 10
+    bar_len = 20
     filled = int((pct / 100) * bar_len)
     bar = "█" * filled + "░" * (bar_len - filled)
     transferred_mb = f"{current / (1024 * 1024):.2f}"
     total_mb = f"{total / (1024 * 1024):.2f}"
     speed_mbps = f"{(current / max(0.01, elapsed_sec)) / (1024 * 1024):.2f}"
+    icon = "📤" if ("بله" in stage_title or "انتقال" in stage_title or "ارسال" in stage_title) else "⏳"
 
     return (
-        f"⏳ <b>{stage_title}</b>\n\n"
+        f"{icon} <b>{stage_title}</b>\n\n"
         f"<code>[{bar}] {pct}%</code>\n\n"
         f"📦 <b>حجم:</b> <code>{transferred_mb} MB</code> از <code>{total_mb} MB</code>\n"
         f"⚡️ <b>سرعت انتقال:</b> <code>{speed_mbps} MB/s</code>"
@@ -107,14 +108,14 @@ class GiftButtonStr(str):
     def __eq__(self, other: Any) -> bool:
         if str.__eq__(self, str(other)):
             return True
-        if str(other) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
+        if str(other) in ("📂 دانلودها (هدیه)", "دانلودها (هدیه)", "دانلودها", "🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا"):
             return True
         return False
 
     def __contains__(self, item: Any) -> bool:
         if str.__contains__(self, item):
             return True
-        if str(item) in ("🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی", "هدایا"):
+        if str(item) in ("📂 دانلودها (هدیه)", "دانلودها (هدیه)", "دانلودها", "🎁 فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی", "هدایا"):
             return True
         return False
 
@@ -122,9 +123,9 @@ class GiftButtonStr(str):
 def get_customer_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
-            ["🛍 محصولات"],
-            ["🔮 نشانه امروز من", "💎 فرکانس فراوانی"],
-            ["👤 حساب کاربری", GiftButtonStr("🎁 فایل‌های هدیه")]
+            ["🛍 محصولات آموزشی"],
+            ["🔮 نشانه امروز من", "💎 اشتراک پریمیوم"],
+            [GiftButtonStr("📂 دانلودها (هدیه)"), "👤 حساب کاربری"]
         ],
         resize_keyboard=True
     )
@@ -1009,7 +1010,7 @@ class TelegramAdapter:
                 await callback_query.message.edit_text(plain_panel, reply_markup=kb)
 
         # Customer: Products Hub & Courses
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🛍\s*محصولات|محصولات|📚\s*لیست دوره‌های آموزشی|لیست دوره)"))
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🛍\s*محصولات\s*آموزشی|محصولات\s*آموزشی|🛍\s*محصولات|محصولات|📚\s*لیست دوره‌های آموزشی|لیست دوره)"))
         async def customer_products_hub(client: Client, message: Message):
             if not await check_force_join_telegram(client, message.from_user.id) and not self.is_admin(message.from_user.id):
                 ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
@@ -1017,12 +1018,11 @@ class TelegramAdapter:
                 return
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🎓 دوره‌های آموزشی", callback_data="tg:prods_courses")],
-                [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")],
-                [InlineKeyboardButton("💎 اشتراک پریمیوم", callback_data="tg:vip_plan")]
+                [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")]
             ])
             await message.reply_text(
-                "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\n"
-                "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده و سفارش انتخاب فرمایید:",
+                "🛍 <b>مرکز محصولات آموزشی و کتاب‌های صوتی:</b>\n\n"
+                "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده، دریافت سرفصل‌ها و سفارش انتخاب فرمایید:",
                 parse_mode=enums.ParseMode.HTML,
                 reply_markup=kb
             )
@@ -1032,12 +1032,11 @@ class TelegramAdapter:
             await callback_query.answer()
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🎓 دوره‌های آموزشی", callback_data="tg:prods_courses")],
-                [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")],
-                [InlineKeyboardButton("💎 اشتراک پریمیوم", callback_data="tg:vip_plan")]
+                [InlineKeyboardButton("🎧 کتاب‌های صوتی", callback_data="tg:prods_audiobooks")]
             ])
             await callback_query.message.edit_text(
-                "🛍 <b>مرکز محصولات آموزشی و اشتراک:</b>\n\n"
-                "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده و سفارش انتخاب فرمایید:",
+                "🛍 <b>مرکز محصولات آموزشی و کتاب‌های صوتی:</b>\n\n"
+                "لطفاً دسته‌بندی مورد نظر خود را جهت مشاهده، دریافت سرفصل‌ها و سفارش انتخاب فرمایید:",
                 parse_mode=enums.ParseMode.HTML,
                 reply_markup=kb
             )
@@ -1122,9 +1121,7 @@ class TelegramAdapter:
                 caption = SignService.format_sign_caption(sign, reader_tag=reader_tag, include_chapters=extract_chapters)
                 audio_url = sign.get("audio_url")
 
-                vip_kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="vip_club_info")]
-                ])
+                vip_kb = SignService.build_sign_buttons(sign, platform="telegram")
 
                 local_audio_path = None
                 if audio_url:
@@ -1170,12 +1167,7 @@ class TelegramAdapter:
                         pass
                 else:
                     # مستندسازی فارسی: فالبک هوشمند در صورت شکست ارسال صوت
-                    # ارسال متن آرامش‌بخش نشانه همراه با دکمه دانلود مستقیم از سایت
-                    fallback_btns = []
-                    if audio_url:
-                        fallback_btns.append([InlineKeyboardButton("📥 دانلود مستقیم از سایت", url=audio_url)])
-                    fallback_btns.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="vip_club_info")])
-                    fallback_kb = InlineKeyboardMarkup(fallback_btns)
+                    fallback_kb = vip_kb
                     try:
                         await wait_msg.edit_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
                     except Exception:
@@ -1238,7 +1230,7 @@ class TelegramAdapter:
             ])
             await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*عضویت در اشتراک پریمیوم|عضویت در اشتراک پریمیوم|اشتراک پریمیوم|باشگاه پریمیوم|💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|اشتراک VIP|/vip|/premium)$"))
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*اشتراک پریمیوم|💎\s*عضویت در اشتراک پریمیوم|عضویت در اشتراک پریمیوم|اشتراک پریمیوم|باشگاه پریمیوم|💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|اشتراک VIP|/vip|/premium)$"))
         async def handle_vip_command_tg(client: Client, message: Message):
             """
             دستور مستقیم تلگرام جهت دریافت اطلاعات پلن اشتراک ماهانه پریمیوم یا هاب محتوای ویژه.
@@ -3704,11 +3696,12 @@ class TelegramAdapter:
 
                 w_path = Path(drop.get("working_path") or "")
 
-                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (Pre-Calculation)
+                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (صرفاً برای فایل‌های بالای ۴۵ مگابایت)
                 if action != "force_bale" and drop.get("media_type") == "video" and w_path.exists():
                     safe_limit_mb = 45.0
-                    qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
-                    if qual_info.get("severe_quality_drop"):
+                    file_size_mb = w_path.stat().st_size / (1024 * 1024)
+                    if file_size_mb > safe_limit_mb:
+                        qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
                         est_res = qual_info.get("estimated_resolution", "360p")
                         rec_parts = qual_info.get("recommended_parts", 2)
                         dur_mins = int(qual_info.get("duration_sec", 0) // 60)
@@ -3719,11 +3712,11 @@ class TelegramAdapter:
                             extra={"msg_id": status_msg.id, "drop_id": drop_id}
                         )
                         warn_text = (
-                            f"⚠️ <b>طول این ویدیو بالاست ({dur_mins} دقیقه).</b>\n"
-                            f"فشرده‌سازی تا سقف بله کیفیت را به شدت کاهش می‌دهد (<code>{est_res}</code>).\n\n"
+                            f"⚠️ <b>حجم این ویدیو بیش از سقف مجاز بله است ({file_size_mb:.2f} MB).</b>\n"
+                            f"جهت ارسال موفق به بله، می‌توانید آن را به پارت‌های باکیفیت تقسیم کرده یا فشرده فرمایید:\n\n"
                             f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                             "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
-                            "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی معمولی»</b>\n"
+                            "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی تا سقف بله»</b>\n"
                             "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!"
                         )
                         kb_rows = [
@@ -3731,7 +3724,7 @@ class TelegramAdapter:
                                 InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2")
                             ],
                             [
-                                InlineKeyboardButton("🗜 فشرده‌سازی معمولی", callback_data=f"smeta:force_bale:{drop_id}")
+                                InlineKeyboardButton("🗜 فشرده‌سازی تا سقف بله", callback_data=f"smeta:force_bale:{drop_id}")
                             ],
                             [
                                 InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")

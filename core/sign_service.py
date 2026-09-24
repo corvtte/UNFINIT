@@ -103,9 +103,16 @@ class SignService:
         cache = cls._load_user_cache()
 
         user_entry = cache.get(uid) or {}
-        if not force_refresh and user_entry.get("date") == today and user_entry.get("sign"):
+        cached_sign = user_entry.get("sign")
+        if (
+            not force_refresh
+            and user_entry.get("date") == today
+            and cached_sign
+            and cached_sign.get("audio_url")
+            and cached_sign.get("lesson_text")
+        ):
             logger.debug(f"[sign_service] Serving cached sign for user {uid} on {today}")
-            return user_entry["sign"]
+            return cached_sign
 
         # ۱. محاسبه هش پایدار بر مبنای User ID و تاریخ روز
         seed_str = f"unfinit_sign_{uid}_{today}"
@@ -128,11 +135,23 @@ class SignService:
 
         # ۳. انتخاب آیتم از میان لیست صفحه
         item_idx = (hash_int // 39) % len(items)
-        selected = items[item_idx]
+        selected = dict(items[item_idx])
+
+        # غنی‌سازی با جزئیات درس از صفحه اختصاصی در صورت ناقص بودن صوت یا متن
+        p_url = selected.get("page_url")
+        if p_url and (not selected.get("lesson_text") or not selected.get("audio_download_url")):
+            try:
+                from services.feed_scraper import _fetch_single_article
+                full_art = await _fetch_single_article(p_url, title=selected.get("title", ""), tag=selected.get("tag", ""))
+                if full_art:
+                    selected.update(full_art)
+            except Exception as art_err:
+                logger.debug(f"[sign_service] Error enriching article {p_url}: {art_err}")
 
         sign_data = {
             "title": selected.get("title", "نشانه هدایت و آرامش امروز شما"),
             "tag": selected.get("tag", "فایل دانلودی"),
+            "lesson_text": selected.get("lesson_text", ""),
             "audio_url": selected.get("audio_download_url") or selected.get("audio_url") or selected.get("direct_download_url", ""),
             "video_url": selected.get("video_download_url") or selected.get("video_url", ""),
             "page_url": selected.get("page_url", "https://abasmanesh.com/fa/articles/"),
@@ -231,6 +250,45 @@ class SignService:
             msg += f"🌐 <a href=\"{page_url}\">مشاهده صفحه کامل و نظرات در سایت</a>"
 
         return msg
+
+    @classmethod
+    def build_sign_buttons(
+        cls,
+        sign_data: Dict[str, Any],
+        platform: str = "telegram"
+    ) -> Any:
+        """
+        ساخت دکمه‌های شیشه‌ای دسترسی سریع به نشانه شامل دریافت صوت، ویدیو و لینک مستقیم سایت.
+        """
+        audio_url = sign_data.get("audio_url") or ""
+        video_url = sign_data.get("video_url") or ""
+        page_url = sign_data.get("page_url") or "https://abasmanesh.com/fa/articles/"
+
+        if platform == "telegram":
+            from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+            rows = []
+            row1 = []
+            if audio_url:
+                row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت", url=audio_url))
+            if video_url:
+                row1.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو", url=video_url))
+            if row1:
+                rows.append(row1)
+            rows.append([InlineKeyboardButton("🌐 مشاهده کامل در سایت", url=page_url)])
+            rows.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="tg:vip_plan")])
+            return InlineKeyboardMarkup(rows)
+        else:
+            rows = []
+            row1 = []
+            if audio_url:
+                row1.append({"text": "🎧 دانلود مستقیم صوت", "url": audio_url})
+            if video_url:
+                row1.append({"text": "🎬 دانلود مستقیم ویدیو", "url": video_url})
+            if row1:
+                rows.append(row1)
+            rows.append([{"text": "🌐 مشاهده کامل در سایت", "url": page_url}])
+            rows.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
+            return {"inline_keyboard": rows}
 
     @classmethod
     async def ensure_audio_downloaded(

@@ -8,9 +8,9 @@ app_file: app.py
 pinned: false
 ---
 
-# ⚡ هاب چندپلتفرمه و موتور رسانه‌ای و فروشگاهی UNFINIT (v0.5.3)
+# ⚡ هاب چندپلتفرمه و موتور رسانه‌ای و فروشگاهی UNFINIT (v0.5.4)
 
-[![Engine Version](https://img.shields.io/badge/version-v0.5.3-blue.svg)](https://github.com/corvtte/UNFINIT)
+[![Engine Version](https://img.shields.io/badge/version-v0.5.4-blue.svg)](https://github.com/corvtte/UNFINIT)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11-brightgreen.svg)](https://python.org)
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces/Foadian/UNFINIT)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

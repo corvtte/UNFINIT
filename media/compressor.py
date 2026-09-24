@@ -280,6 +280,16 @@ class SmartVideoCompressor:
         init_mb = round(file_sz / (1024 * 1024), 2)
 
         target_max_bytes = int(target_max_mb * 1024 * 1024)
+        if init_mb <= target_max_mb:
+            return {
+                "duration_sec": dur,
+                "target_v_bitrate": 2000,
+                "estimated_resolution": "Original",
+                "severe_quality_drop": False,
+                "recommended_parts": 1,
+                "initial_size_mb": init_mb
+            }
+
         audio_kbps = 64 if dur > 1800 else 96
         target_v_bitrate = SmartVideoCompressor.calculate_target_video_bitrate(
             dur, target_max_bytes, audio_bitrate_kbps=audio_kbps
