@@ -51,6 +51,49 @@ def gregorian_to_jalali(gy: int, gm: int, gd: int) -> Tuple[int, int, int]:
         jd = 1 + ((days - 186) % 30)
     return jy, jm, jd
 
+HIJRI_MONTHS = [
+    "محرم", "صفر", "ربیع‌الاول", "ربیع‌الثانی", "جمادی‌الاول", "جمادی‌الثانی",
+    "رجب", "شعبان", "رمضان", "شوال", "ذی‌القعده", "ذی‌الحجه"
+]
+
+def gregorian_to_hijri(gy: int, gm: int, gd: int) -> Tuple[int, int, int]:
+    """
+    تبدیل دقیق تقویم میلادی به تقویم هجری قمری بر مبنای الگوریتم حسابی تقویم اسلامی.
+    """
+    if gm <= 2:
+        gy -= 1
+        gm += 12
+    a = gy // 100
+    b = 2 - a + a // 4
+    jd = int(365.25 * (gy + 4716)) + int(30.6001 * (gm + 1)) + gd + b - 1524
+    l = jd - 1948440 + 10632
+    n = (l - 1) // 10631
+    l = l - 10631 * n + 354
+    j = ((10985 - l) // 5316) * ((50 * l) // 17719) + (l // 5670) * ((43 * l) // 15238)
+    l = l - ((30 - j) // 15) * ((17719 * j) // 50) - (j // 16) * ((15238 * j) // 43) + 29
+    m = (24 * l) // 709
+    d = l - (709 * m) // 24
+    y = 30 * n + j - 30
+    return y, m, d
+
+def get_synchronized_date_string(dt: Optional[datetime] = None) -> str:
+    """
+    تولید رشته تاریخ متقارن و یکپارچه در سه تقویم خورشیدی (شمسی)، قمری و میلادی.
+    قانون دوقلوهای همسان: نمایش یکسان و استاندارد در بله و تلگرام.
+    """
+    if not dt:
+        dt = datetime.now(TEHRAN_TZ)
+    gy, gm, gd = dt.year, dt.month, dt.day
+    jy, jm, jd = gregorian_to_jalali(gy, gm, gd)
+    hy, hm, hd = gregorian_to_hijri(gy, gm, gd)
+    
+    shamsi_str = f"{to_persian_digits(jy)}/{to_persian_digits(f'{jm:02d}')}/{to_persian_digits(f'{jd:02d}')}"
+    h_m_name = HIJRI_MONTHS[max(0, min(11, hm - 1))]
+    hijri_str = f"{to_persian_digits(hd)} {h_m_name} {to_persian_digits(hy)}"
+    gregorian_str = f"{gy:04d}-{gm:02d}-{gd:02d}"
+    
+    return f"📅 <b>{shamsi_str} خورشیدی</b> | <i>{hijri_str} قمری</i> | <code>{gregorian_str}</code>"
+
 def get_shamsi_now_string() -> str:
     now = datetime.now(TEHRAN_TZ)
     jy, jm, jd = gregorian_to_jalali(now.year, now.month, now.day)

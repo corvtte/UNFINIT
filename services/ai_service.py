@@ -297,14 +297,12 @@ class AIService:
                 # Successfully generated response: attach authentic model badge
                 return f"{res['reply'].strip()}{badge}"
             else:
-                err_msg = res.get("error") or "خطای نامشخص"
+                err_msg = res.get("error") or "خطای شبکه"
                 logger.warning(f"[ai_service] chat_course_support returned error: {err_msg}")
-                # Clear error notice WITHOUT fake badge
-                return f"⚠️ در پردازش پیام توسط هوش مصنوعی ({cfg['provider'].upper()}) خطایی رخ داد: {err_msg}"
+                return "سلام و درود! 🌸 در حال حاضر سامانه هوش مصنوعی در حال به‌روزرسانی است.\nجهت مشاهده دوره‌ها، دانلود فایل‌های هدیه یا دریافت نشانه امروز، لطفاً از دکمه‌های منوی زیر استفاده فرمایید:"
         except Exception as e:
             logger.warning(f"[ai_service] chat_course_support exception: {e}")
-            # Clear exception notice WITHOUT fake badge
-            return f"⚠️ ارتباط با سرویس هوش مصنوعی برقرار نشد: {str(e)}"
+            return "سلام و درود! 🌸 در حال حاضر سامانه هوش مصنوعی در حال به‌روزرسانی است.\nجهت مشاهده دوره‌ها، دانلود فایل‌های هدیه یا دریافت نشانه امروز، لطفاً از دکمه‌های منوی زیر استفاده فرمایید:"
 
     async def summarize_course_for_bale(self, text: str) -> str:
         """

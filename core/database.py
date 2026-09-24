@@ -106,6 +106,40 @@ async def get_system_setting(key: str, default: str = "") -> str:
 
     return default
 
+def get_system_setting_sync(key: str, default: Any = "") -> Any:
+    """
+    بازیابی همگام (سنکرون) یک تنظیم سیستمی از data/settings.json یا دیتابیس محلی.
+    """
+    import json
+    from core.config import config
+    settings_file = config.DATA_DIR / "settings.json"
+    if settings_file.exists():
+        try:
+            with open(settings_file, "r", encoding="utf-8") as f:
+                s_dict = json.load(f)
+                if key in s_dict:
+                    return s_dict[key]
+        except Exception:
+            pass
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM system_settings WHERE key = ?", (key,))
+        row = cur.fetchone()
+        conn.close()
+        if row and row[0] is not None:
+            raw_v = str(row[0]).strip()
+            if raw_v.startswith(("{", "[")):
+                try:
+                    return json.loads(raw_v)
+                except Exception:
+                    pass
+            return raw_v
+    except Exception:
+        pass
+    return default
+
+
 def sync_settings_to_json_and_env() -> None:
     import json
     import os

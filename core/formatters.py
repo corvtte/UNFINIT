@@ -310,3 +310,72 @@ class RubikaFormatter(BaleFormatter):
         text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
         text = re.sub(r"<[^>]+>", "", text)
         return text.strip()
+
+
+# اکشن‌های کانونیکال استاندارد منوهای پیام‌رسان‌ها (Bale & Telegram)
+ACTION_PRODUCTS = "ACTION_PRODUCTS"
+ACTION_PREMIUM = "ACTION_PREMIUM"
+ACTION_TODAY_SIGN = "ACTION_TODAY_SIGN"
+ACTION_FREE_DOWNLOADS = "ACTION_FREE_DOWNLOADS"
+ACTION_USER_ACCOUNT = "ACTION_USER_ACCOUNT"
+ACTION_FREQUENCY = "ACTION_FREQUENCY"
+ACTION_SUPPORT = "ACTION_SUPPORT"
+
+
+def normalize_persian_menu_text(text: str) -> str:
+    """
+    نرمال‌سازی فازی و زدودن کلیه ایموجی‌ها، علائم نگارشی، اعراب،
+    نیم‌فاصله‌ها و کاراکترهای نامرئی از متن دکمه‌ها جهت تطابق قطعی.
+    """
+    if not text:
+        return ""
+    t = text.replace("ي", "ی").replace("ك", "ک").replace("ة", "ه")
+    t = t.replace("\u200c", "").replace("\u200b", "").replace("\ufeff", "")
+    t = re.sub(r"[()\[\]{}_\-–—/\\|.,:;!؟?*#@+]", " ", t)
+    cleaned = re.sub(r"[^\w\s\u0600-\u06FF]", " ", t)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
+    return cleaned
+
+
+def get_canonical_menu_action(raw_text: str) -> Optional[str]:
+    """
+    تشخیص هوشمند و ضدگلوله اکشن دکمه‌های منو بر اساس نرمال‌سازی کانونیکال.
+    حتی در صورت تغییر یا جابجایی ایموجی‌ها (مانند 📁، 📂، 🎁)، متن دقیقاً به اکشن مربوطه هدایت می‌شود.
+    """
+    if not raw_text:
+        return None
+
+    clean = normalize_persian_menu_text(raw_text)
+    if not clean:
+        return None
+
+    # ۱. دانلودها و هدایا
+    if any(k in clean for k in ["دانلود", "هدیه", "هدایا", "free download", "gift", "gifts"]):
+        return ACTION_FREE_DOWNLOADS
+
+    # ۲. نشانه امروز من
+    if any(k in clean for k in ["نشانه", "فال", "هدایت امروز", "sign"]):
+        return ACTION_TODAY_SIGN
+
+    # ۳. اشتراک پریمیوم
+    if any(k in clean for k in ["پریمیوم", "اشتراک", "vip", "باشگاه", "عضویت"]):
+        return ACTION_PREMIUM
+
+    # ۴. محصولات آموزشی
+    if any(k in clean for k in ["محصول", "دوره", "آموزش", "کتاب صوتی", "فروشگاه", "product", "course"]):
+        return ACTION_PRODUCTS
+
+    # ۵. حساب کاربری و خریدهای من
+    if any(k in clean for k in ["حساب", "کاربر", "کاربری", "پروفایل", "خریدهای من", "خریدهای کاربر", "کیف پول", "profile", "account"]):
+        return ACTION_USER_ACCOUNT
+
+    # ۶. فرکانس فراوانی
+    if any(k in clean for k in ["فرکانس", "فراوانی", "باور", "frequency"]):
+        return ACTION_FREQUENCY
+
+    # ۷. پشتیبانی و تیکت
+    if any(k in clean for k in ["پشتیبانی", "تیکت", "ارتباط با ادمین", "support", "ticket"]):
+        return ACTION_SUPPORT
+
+    return None
+

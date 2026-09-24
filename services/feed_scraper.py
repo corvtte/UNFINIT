@@ -215,6 +215,45 @@ def save_feed_disk_cache(items: List[Dict[str, Any]]) -> None:
     except Exception as e:
         logger.warning(f"[feed_scraper] Error saving disk cache: {e}")
 
+ABASMANESH_CACHE_FILE = DATA_DIR / "abasmanesh_cache.json"
+
+def load_category_disk_cache(cache_key: str) -> Optional[Dict[str, Any]]:
+    """
+    بارگذاری فوق سریع و کمتر از ۵۰ میلی‌ثانیه اطلاعات دسته‌بندی و جلسات از کش دیسک.
+    """
+    try:
+        if ABASMANESH_CACHE_FILE.exists():
+            data = json.loads(ABASMANESH_CACHE_FILE.read_text(encoding="utf-8"))
+            cached = data.get(cache_key)
+            if cached and isinstance(cached, dict):
+                # اگر کش کمتر از ۱۲ ساعت قبل باشد، بلافاصله استفاده می‌شود
+                cached_at = cached.get("cached_at", 0)
+                if (time.time() - cached_at) < (3600.0 * 12):
+                    return cached.get("data")
+    except Exception as e:
+        logger.debug(f"[feed_scraper] Error loading category disk cache: {e}")
+    return None
+
+def save_category_disk_cache(cache_key: str, data: Dict[str, Any]) -> None:
+    """
+    ذخیره امن اطلاعات جلسات دسته‌بندی در کش دیسک جهت ماندگاری دائمی.
+    """
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        existing = {}
+        if ABASMANESH_CACHE_FILE.exists():
+            try:
+                existing = json.loads(ABASMANESH_CACHE_FILE.read_text(encoding="utf-8"))
+            except Exception:
+                existing = {}
+        existing[cache_key] = {
+            "data": data,
+            "cached_at": time.time()
+        }
+        ABASMANESH_CACHE_FILE.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"[feed_scraper] Error saving category disk cache: {e}")
+
 def get_custom_categories() -> List[Dict[str, Any]]:
     """بازیابی دسته‌بندی‌های شخصی‌سازی‌شده توسط ادمین در وب‌پنل."""
     try:
@@ -756,8 +795,15 @@ async def get_category_episodes(
 
     now = time.time()
     cache_key = f"cat_{cat['id']}_p{page}"
-    if not force_refresh and cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
-        return _CACHE[cache_key]["data"]
+    if not force_refresh:
+        # ۱. بررسی کش رم
+        if cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
+            return _CACHE[cache_key]["data"]
+        # ۲. بررسی فوق سریع کش دیسک (پاسخ‌دهی زیر ۵۰ میلی‌ثانیه)
+        disk_data = load_category_disk_cache(cache_key)
+        if disk_data and disk_data.get("episodes"):
+            _CACHE[cache_key] = {"data": disk_data, "last_fetched": now}
+            return disk_data
 
     target_url = cat["url"]
     if page > 1:
@@ -794,10 +840,16 @@ async def get_category_episodes(
             }
             if episodes:
                 _CACHE[cache_key] = {"data": result_obj, "last_fetched": now}
+                save_category_disk_cache(cache_key, result_obj)
             return result_obj
 
     except Exception as e:
         logger.warning(f"[feed_scraper] Failed to scrape category {cat['slug']}: {e}")
+
+    # فالبک دیسک حتی در صورت انقضا
+    disk_data = load_category_disk_cache(cache_key)
+    if disk_data and disk_data.get("episodes"):
+        return disk_data
 
     return {
         "category": cat,

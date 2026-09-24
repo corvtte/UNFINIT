@@ -18,7 +18,15 @@ from core.formatters import (
     BaleFormatter,
     human_size,
     format_duration,
-    parse_trim_input
+    parse_trim_input,
+    get_canonical_menu_action,
+    ACTION_PRODUCTS,
+    ACTION_PREMIUM,
+    ACTION_TODAY_SIGN,
+    ACTION_FREE_DOWNLOADS,
+    ACTION_USER_ACCOUNT,
+    ACTION_FREQUENCY,
+    ACTION_SUPPORT
 )
 from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService
@@ -58,6 +66,25 @@ class GiftButtonStr(str):
 # ردیف دوم (دو دکمه متوازن): [ 🔮 نشانه امروز من ] و [ 💎 اشتراک پریمیوم ]
 # ردیف سوم: [ 📂 دانلودها (هدیه) ] و [ 👤 حساب کاربری ]
 def get_bale_customer_keyboard() -> dict:
+    try:
+        from core.database import get_system_setting_sync
+        custom = get_system_setting_sync("CUSTOM_KEYBOARD_LAYOUT", None)
+        if custom and isinstance(custom, list) and len(custom) > 0:
+            kb_rows = []
+            for row in custom:
+                if isinstance(row, list):
+                    r_btns = []
+                    for b in row:
+                        b_txt = str(b).strip()
+                        if b_txt:
+                            r_btns.append({"text": GiftButtonStr(b_txt) if any(x in b_txt for x in ["دانلود", "هدیه"]) else b_txt})
+                    if r_btns:
+                        kb_rows.append(r_btns)
+            if kb_rows:
+                return {"keyboard": kb_rows, "resize_keyboard": True}
+    except Exception as e_kb:
+        logger.debug(f"[bale_adapter] Custom keyboard layout note: {e_kb}")
+
     return {
         "keyboard": [
             [{"text": "🛍 محصولات آموزشی"}],
@@ -131,13 +158,16 @@ def format_bale_transfer_progress(
     )
 
 
-class ProgressFileReader:
+import io
+from aiohttp import payload
+
+class ProgressFileReader(io.IOBase):
     """
-    خواننده باینری فایل همراه با گزارش دوره‌ای بایت‌های خوانده‌شده جهت پایش نوار پیشرفت زنده در تلگرام یا بله.
-    پشتیبانی همزمان از مسیر فایل (Path / str) یا شیء بایت در حافظه (bytes / BytesIO).
+    خواننده باینری فایل بر پایه io.IOBase همراه با گزارش دوره‌ای بایت‌های خوانده‌شده
+    جهت پایش نوار پیشرفت زنده در تلگرام و بله با سازگاری ۱۰۰٪ با aiohttp.FormData.
     """
     def __init__(self, file_path: Any, callback: Optional[Callable[[int, int], None]] = None):
-        import io
+        super().__init__()
         self.callback = callback
         self.bytes_read = 0
         if isinstance(file_path, (bytes, bytearray)):
@@ -171,6 +201,15 @@ class ProgressFileReader:
                     pass
         return chunk
 
+    def readinto(self, b) -> int:
+        if hasattr(self._f, "readinto"):
+            res = self._f.readinto(b)
+        else:
+            data = self.read(len(b))
+            res = len(data)
+            b[:res] = data
+        return res
+
     def seek(self, offset: int, whence: int = 0) -> int:
         res = self._f.seek(offset, whence)
         self.bytes_read = res
@@ -179,8 +218,19 @@ class ProgressFileReader:
     def tell(self) -> int:
         return self._f.tell()
 
+    def seekable(self) -> bool:
+        return True
+
+    def readable(self) -> bool:
+        return True
+
+    def writable(self) -> bool:
+        return False
+
     def close(self) -> None:
-        self._f.close()
+        if hasattr(self, "_f") and self._f:
+            self._f.close()
+        super().close()
 
     def __enter__(self):
         return self
@@ -190,6 +240,12 @@ class ProgressFileReader:
 
     def __len__(self) -> int:
         return self.total_bytes
+
+try:
+    payload.register_payload(ProgressFileReader, payload.IOBasePayload)
+except Exception as _e_reg:
+    logger.debug(f"[bale_adapter] Payload register info: {_e_reg}")
+
 
 
 def build_bale_admin_course_kb(p_id: str, is_active: bool):
@@ -3037,6 +3093,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                     chat_id = str(msg.get("chat", {}).get("id") or msg.get("from", {}).get("id") or "")
                                     chat_type = msg.get("chat", {}).get("type", "private")
                                     text = (msg.get("text") or "").strip()
+                                    canon_action = get_canonical_menu_action(text)
                                     m_id = msg.get("message_id")
 
                                     # Strict Filter: Only Private Chats
@@ -3217,7 +3274,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                     # مستندسازی فارسی: هندلر لید مگنت «نشانه امروز من» با فالبک هوشمند
                                     # در صورت بروز خطا در استخراج صوت، متن الهام‌بخش به همراه دکمه دانلود مستقیم بلافاصله تحویل می‌گردد.
-                                    if any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
+                                    if canon_action == ACTION_TODAY_SIGN or any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
                                         wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
                                         try:
                                             from core.sign_service import SignService
@@ -3259,7 +3316,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.")
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["💎 اشتراک پریمیوم", "💎 عضویت در اشتراک پریمیوم", "💎 عضویت در باشگاه پریمیوم VIP", "عضویت در اشتراک پریمیوم", "اشتراک پریمیوم", "باشگاه پریمیوم", "اشتراک VIP", "/vip", "/premium"]):
+                                    if canon_action == ACTION_PREMIUM or any(text.startswith(cmd) for cmd in ["💎 اشتراک پریمیوم", "💎 عضویت در اشتراک پریمیوم", "💎 عضویت در باشگاه پریمیوم VIP", "عضویت در اشتراک پریمیوم", "اشتراک پریمیوم", "باشگاه پریمیوم", "اشتراک VIP", "/vip", "/premium"]):
                                         is_vip = UserService.is_user_vip(chat_id)
                                         if is_vip:
                                             u = UserService.get_user_by_any_id(chat_id)
@@ -3821,7 +3878,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, p_txt)
                                         continue
 
-                                    if text in ("🛍 محصولات آموزشی", "محصولات آموزشی", "🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی"):
+                                    if canon_action == ACTION_PRODUCTS or text in ("🛍 محصولات آموزشی", "محصولات آموزشی", "🛍 محصولات", "محصولات", "📚 لیست دوره‌های آموزشی"):
                                         p_kb = {
                                             "inline_keyboard": [
                                                 [{"text": "🎓 دوره‌های آموزشی", "callback_data": "bnav:courses"}],
@@ -3849,7 +3906,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, card_txt, reply_markup=c_kb)
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["💎 فرکانس فراوانی", "فرکانس فراوانی", "فرکانس", "/frequency"]):
+                                    if canon_action == ACTION_FREQUENCY or any(text.startswith(cmd) for cmd in ["💎 فرکانس فراوانی", "فرکانس فراوانی", "فرکانس", "/frequency"]):
                                         txt = (
                                             "💎 <b>فرکانس فراوانی و آرامش درون</b>\n\n"
                                             "با انتخاب هر بخش، باورهای ثروت‌ساز و آرامش‌بخش روزانه را ورق بزنید و ذهن خود را روی مدار توانگری و دریافت برکت الهی تنظیم کنید:"
@@ -3857,7 +3914,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, txt, reply_markup=build_bale_frequency_cats_keyboard())
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["👤 حساب کاربری", "حساب کاربری", "📦 خریدهای من", "خریدهای من", "/profile"]):
+                                    if canon_action == ACTION_USER_ACCOUNT or any(text.startswith(cmd) for cmd in ["👤 حساب کاربری", "حساب کاربری", "📦 خریدهای من", "خریدهای من", "/profile"]):
                                         cust = await StoreService.get_or_create_customer(chat_id, platform="bale")
                                         purchased = await StoreService.get_customer_purchased_courses(chat_id)
                                         lines = [
@@ -3891,7 +3948,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         await bale.send_message(chat_id, "\n".join(lines), reply_markup=profile_kb)
                                         continue
 
-                                    if any(text.startswith(cmd) for cmd in ["🎁 فایل‌های هدیه", "فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی و هدایا", "💬 پشتیبانی", "پشتیبانی", "🎁 دانلودها (هدیه)", "دانلودها", "هدیه", "/support", "/gifts"]):
+                                    if canon_action == ACTION_FREE_DOWNLOADS or any(text.startswith(cmd) for cmd in ["🎁 فایل‌های هدیه", "فایل‌های هدیه", "💬 پشتیبانی و هدایا", "پشتیبانی و هدایا", "💬 پشتیبانی", "پشتیبانی", "🎁 دانلودها (هدیه)", "📂 دانلودها (هدیه)", "دانلودها (هدیه) 📁", "دانلودها", "هدیه", "/support", "/gifts"]):
                                         gifts = await StoreService.get_products(is_free_only=True)
                                         u = UserService.get_user_by_platform_id("bale", chat_id)
                                         invites = u.successful_invites if u else 0
@@ -4078,7 +4135,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     # Freeform User Text Message -> Invoke AI Sales Copilot!
-                                    if text and not user_act and not media_item:
+                                    if text and not user_act and not media_item and not canon_action:
                                         try:
                                             from services.ai_service import ai_service, ai_typing_action
                                             async def _bale_text_typing():

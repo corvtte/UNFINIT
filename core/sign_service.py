@@ -204,13 +204,10 @@ class SignService:
         tag = sign_data.get("tag", "پیام آگاهی و آرامش")
         page_url = sign_data.get("page_url", "")
 
-        # ۱. تبدیل تاریخ به تقویم رسمی شمسی با اعداد فارسی
+        # ۱. تبدیل تاریخ به تقویم‌های سه‌گانه همگام (خورشیدی، قمری و میلادی) بر مبنای قانون دوقلوهای همسان
         now = datetime.now(TEHRAN_TZ)
-        from core.jalali import gregorian_to_jalali
-        jy, jm, jd = gregorian_to_jalali(now.year, now.month, now.day)
-        raw_shamsi = f"{jy:04d}/{jm:02d}/{jd:02d}"
-        farsi_digits = "۰۱۲۳۴۵۶۷۸۹"
-        shamsi_date = "".join(farsi_digits[int(c)] if c.isdigit() else c for c in raw_shamsi)
+        from core.jalali import get_synchronized_date_string
+        date_badge = get_synchronized_date_string(now)
 
         clean_reader = str(reader_tag or "abasmanesh365").strip()
         if clean_reader and not clean_reader.startswith("@") and not clean_reader.startswith("http"):
@@ -220,7 +217,7 @@ class SignService:
 
         msg = (
             "🔮 <b>نشانه امروز من</b>\n"
-            f"📅 <i>{shamsi_date}</i>\n\n"
+            f"{date_badge}\n\n"
             "✨ <b>جهان همیشه در زمان مناسب، پیام مناسب را به قلبت می‌رساند:</b>\n\n"
             f"🎧 <b>عنوان:</b> {title}\n"
             f"🏷 <b>دسته‌بندی:</b> {tag}\n"

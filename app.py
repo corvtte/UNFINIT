@@ -2105,6 +2105,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "HF_SPACE_ID": "HF_SPACE_ID",
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",
                         "NAV_TABS_ORDER": "NAV_TABS_ORDER",
+                        "CUSTOM_KEYBOARD_LAYOUT": "CUSTOM_KEYBOARD_LAYOUT",
                         "APPLY_DEFAULT_ARTIST_TAG": "apply_default_artist_tag",
                         "AUTO_RENAME_FILE_TO_TITLE": "auto_rename_file_to_title",
                         "CASHBACK_PERCENT": "cashback_percent",
@@ -2116,7 +2117,28 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     }
                     for k, val in new_settings.items():
                         if k in mapping and val is not None:
-                            if k == "NAV_TABS_ORDER":
+                            if k == "CUSTOM_KEYBOARD_LAYOUT":
+                                raw_layout = val if isinstance(val, list) else []
+                                if not raw_layout and isinstance(val, str) and val.strip().startswith("["):
+                                    try:
+                                        raw_layout = json.loads(val.strip())
+                                    except Exception:
+                                        raw_layout = []
+                                val = raw_layout
+                                val_str = json.dumps(val, ensure_ascii=False)
+                                try:
+                                    settings_path = config.DATA_DIR / "settings.json"
+                                    s_data = {}
+                                    if settings_path.exists():
+                                        try:
+                                            s_data = json.loads(settings_path.read_text(encoding="utf-8") or "{}")
+                                        except Exception:
+                                            s_data = {}
+                                    s_data["CUSTOM_KEYBOARD_LAYOUT"] = val
+                                    settings_path.write_text(json.dumps(s_data, ensure_ascii=False, indent=2), encoding="utf-8")
+                                except Exception as err:
+                                    logger.warning(f"Error persisting CUSTOM_KEYBOARD_LAYOUT to settings.json: {err}")
+                            elif k == "NAV_TABS_ORDER":
                                 # تثبیت قطعی جایگاه داشبورد در رتبه اول تب‌ها (index: 0)
                                 raw_order = val if isinstance(val, list) else []
                                 if not raw_order and isinstance(val, str) and val.strip().startswith("["):

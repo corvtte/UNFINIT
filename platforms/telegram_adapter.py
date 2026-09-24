@@ -27,7 +27,15 @@ from core.formatters import (
     TelegramFormatter,
     human_size,
     format_duration,
-    parse_trim_input
+    parse_trim_input,
+    get_canonical_menu_action,
+    ACTION_PRODUCTS,
+    ACTION_PREMIUM,
+    ACTION_TODAY_SIGN,
+    ACTION_FREE_DOWNLOADS,
+    ACTION_USER_ACCOUNT,
+    ACTION_FREQUENCY,
+    ACTION_SUPPORT
 )
 from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService, ProductItem
@@ -42,6 +50,9 @@ from media.tagger import generate_video_thumbnail
 from media.compressor import SmartVideoCompressor, SmartVideoSplitter, SmartAudioCompressor
 
 logger = get_logger("telegram_adapter")
+
+# سقف سختگیرانه ارسال مستقیم بدون اسپلیت به بله (مگابایت)
+MAX_DIRECT_BALE_MB: float = 48.5
 
 
 async def check_force_join_telegram(client: Client, user_id: int | str) -> bool:
@@ -137,6 +148,25 @@ class GiftButtonStr(str):
 
 
 def get_customer_keyboard() -> ReplyKeyboardMarkup:
+    try:
+        from core.database import get_system_setting_sync
+        custom = get_system_setting_sync("CUSTOM_KEYBOARD_LAYOUT", None)
+        if custom and isinstance(custom, list) and len(custom) > 0:
+            kb_rows = []
+            for row in custom:
+                if isinstance(row, list):
+                    r_btns = []
+                    for b in row:
+                        b_txt = str(b).strip()
+                        if b_txt:
+                            r_btns.append(GiftButtonStr(b_txt) if any(x in b_txt for x in ["دانلود", "هدیه"]) else b_txt)
+                    if r_btns:
+                        kb_rows.append(r_btns)
+            if kb_rows:
+                return ReplyKeyboardMarkup(kb_rows, resize_keyboard=True)
+    except Exception as e_kb:
+        logger.debug(f"[telegram_adapter] Custom keyboard layout note: {e_kb}")
+
     return ReplyKeyboardMarkup(
         [
             ["🛍 محصولات آموزشی"],
@@ -1081,7 +1111,7 @@ class TelegramAdapter:
             buttons.append([InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")])
             await callback_query.message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🎁\s*دانلودها \(هدیه\)|دانلودها|هدیه)"))
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(?:[🎁📁📂\s]*دانلودها(?:\s*\(هدیه\))?[📁📂🎁\s]*|دانلودها|هدیه|فایل‌های هدیه|/gifts|/support)$"))
         async def customer_gifts(client: Client, message: Message):
             if not await check_force_join_telegram(client, message.from_user.id) and not self.is_admin(message.from_user.id):
                 ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
@@ -3639,7 +3669,7 @@ class TelegramAdapter:
                 if not w_path.exists():
                     await status_msg.edit_text("❌ فایل ویدیو روی سرور یافت نشد.")
                     return
-                safe_limit_mb = 45.0
+                safe_limit_mb = 48.5
                 qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
                 rec_parts = qual_info.get("recommended_parts", 2)
                 dur_m = int(qual_info.get("duration_sec", 0) // 60)
@@ -3657,7 +3687,7 @@ class TelegramAdapter:
                         InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2")
                     ],
                     [
-                        InlineKeyboardButton("🗜 فشرده‌سازی تا سقف بله", callback_data=f"smeta:force_bale:{drop_id}")
+                        InlineKeyboardButton("🗜️ فشرده‌سازی هوشمند تا سقف بله", callback_data=f"smeta:force_bale:{drop_id}")
                     ],
                     [
                         InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
@@ -3668,7 +3698,7 @@ class TelegramAdapter:
                     f"✂️ <b>دستیار تقسیم هوشمند ویدیو (Split Assistant):</b>\n"
                     f"📄 فایل: <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>\n"
                     f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{init_mb} MB</code>\n"
-                    f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
+                    f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۸.۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                     "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
                     "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی تا سقف بله»</b>\n"
                     "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!",
@@ -3698,9 +3728,9 @@ class TelegramAdapter:
 
                 w_path = Path(drop.get("working_path") or "")
 
-                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (صرفاً برای فایل‌های بالای ۴۵ مگابایت)
+                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (صرفاً و منحصراً برای فایل‌های بالای ۴۸.۵ مگابایت)
                 if action != "force_bale" and drop.get("media_type") == "video" and w_path.exists():
-                    safe_limit_mb = 45.0
+                    safe_limit_mb = 48.5
                     file_size_mb = w_path.stat().st_size / (1024 * 1024)
                     if file_size_mb > safe_limit_mb:
                         qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
@@ -3716,9 +3746,9 @@ class TelegramAdapter:
                         warn_text = (
                             f"⚠️ <b>حجم این ویدیو بیش از سقف مجاز بله است ({file_size_mb:.2f} MB).</b>\n"
                             f"جهت ارسال موفق به بله، می‌توانید آن را به پارت‌های باکیفیت تقسیم کرده یا فشرده فرمایید:\n\n"
-                            f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
+                            f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۸.۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                             "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
-                            "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی تا سقف بله»</b>\n"
+                            "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜️ فشرده‌سازی هوشمند تا سقف بله»</b>\n"
                             "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!"
                         )
                         kb_rows = [
@@ -3726,7 +3756,7 @@ class TelegramAdapter:
                                 InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2")
                             ],
                             [
-                                InlineKeyboardButton("🗜 فشرده‌سازی تا سقف بله", callback_data=f"smeta:force_bale:{drop_id}")
+                                InlineKeyboardButton("🗜️ فشرده‌سازی هوشمند تا سقف بله", callback_data=f"smeta:force_bale:{drop_id}")
                             ],
                             [
                                 InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
@@ -4156,6 +4186,34 @@ class TelegramAdapter:
                     return
 
             if not user_act:
+                canon_act = get_canonical_menu_action(text)
+                if canon_act == ACTION_FREE_DOWNLOADS:
+                    await customer_gifts(client, message)
+                    return
+                elif canon_act == ACTION_TODAY_SIGN:
+                    await customer_sign_handler(client, message)
+                    return
+                elif canon_act == ACTION_PREMIUM:
+                    await handle_vip_command_tg(client, message)
+                    return
+                elif canon_act == ACTION_PRODUCTS:
+                    await customer_products_hub(client, message)
+                    return
+                elif canon_act == ACTION_USER_ACCOUNT:
+                    await customer_profile(client, message)
+                    return
+                elif canon_act == ACTION_FREQUENCY:
+                    txt = (
+                        "💎 <b>فرکانس فراوانی و آرامش درون</b>\n\n"
+                        "با انتخاب هر بخش، باورهای ثروت‌ساز و آرامش‌بخش روزانه را ورق بزنید و ذهن خود را روی مدار توانگری و دریافت برکت الهی تنظیم کنید:"
+                    )
+                    await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=build_telegram_frequency_cats_keyboard())
+                    return
+                elif canon_act == ACTION_SUPPORT:
+                    sup_txt = getattr(config, "SUPPORT_CENTER_TEXT", "").strip() or "💬 جهت ارتباط با پشتیبانی، پیام خود را ارسال فرمایید."
+                    await message.reply_text(f"💬 <b>مرکز پشتیبانی و ارتباط با ما:</b>\n\n{sup_txt}", parse_mode=enums.ParseMode.HTML)
+                    return
+
                 from services.ai_agent_service import ai_agent_service
                 intent_res = ai_agent_service.recognize_intent(text)
                 intent = intent_res.get("intent")

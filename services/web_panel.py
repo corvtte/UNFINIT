@@ -964,7 +964,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
-                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">دانلودها (هدیه)</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">دانلودها (ویژه مشترکین پریمیوم)</span>
                     <span class="group/badge px-2 py-0.5 rounded-full text-[10px] bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-mono transition-all duration-300 cursor-default" title="۳۹ صفحه شامل بیش از ۹۵۰ فایل دانلودی رایگان"><span class="inline group-hover/badge:hidden">۹۵۸ فایل</span><span class="hidden group-hover/badge:inline">۳۹ صفحه</span></span>
                 </button>
 
@@ -2092,7 +2092,7 @@ def render_dashboard_html() -> str:
                 <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-white/5">
                     <div>
                         <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>🎁</span> رصد و دریافت هدایای دانلودی سایت (فایل‌های دانلودی هدیه)
+                            <span>🎁</span> دانلودها (ویژه مشترکین پریمیوم)
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">
                             آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
@@ -2691,6 +2691,84 @@ def render_dashboard_html() -> str:
                                 </div>
                             </div>
                         </details>
+
+                        <!-- Accordion 7: Bot Main Keyboard Customizer (شخصی‌سازی بصری کیبورد اصلی ربات‌ها) -->
+                        <details id="keyboardCustomizerAccordion" class="settings-accordion group rounded-xl p-4 space-y-4 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
+                            <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
+                                <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6zM6.75 9.75h.008v.008H6.75V9.75zm3.75 0h.008v.008h-.008V9.75zm3.75 0h.008v.008h-.008V9.75zm3.75 0h.008v.008h-.008V9.75zM6.75 13.5h.008v.008H6.75v-.008zm3.75 0h.008v.008h-.008v-.008zm3.75 0h.008v.008h-.008v-.008zm3.75 0h.008v.008h-.008v-.008zM8.25 17.25h7.5" />
+                                    </svg>
+                                    <span>چیدمان و شخصی‌سازی بصری کیبورد اصلی ربات‌ها (Keyboard Customizer)</span>
+                                </h4>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                            </summary>
+
+                            <div class="space-y-4 pt-1">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
+                                    <p>چیدمان، موقعیت و تعداد دکمه‌های هر سطر کیبورد اصلی تلگرام و بله را مطابق سلیقه خود مرتب کنید. تغییرات بلادرنگ در پیش‌نمایش تلفن همراه قابل مشاهده است.</p>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <button type="button" onclick="resetKeyboardLayoutToDefault()" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+                                            <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                            <span>چیدمان پیش‌فرض</span>
+                                        </button>
+                                        <button type="button" onclick="addKeyboardRow()" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition text-cyan-400">
+                                            <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                            <span>افزودن سطر جدید</span>
+                                        </button>
+                                        <button type="button" onclick="saveKeyboardLayout()" id="btnSaveKeyboardLayout" class="theme-accent-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 shadow-md transition">
+                                            <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                            <span>ذخیره کیبورد</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Available actions pool -->
+                                <div class="p-3 rounded-xl border border-dashed" style="background: var(--input-bg); border-color: var(--card-border);">
+                                    <div class="text-[11px] font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <span>دکمه‌های استاندارد سیستم (جهت افزودن سریع به انتهای کیبورد کلیک کنید):</span>
+                                    </div>
+                                    <div id="keyboardActionsPool" class="flex flex-wrap gap-2">
+                                        <!-- Populated dynamically -->
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
+                                    <!-- Left: Rows Editor (7 cols) -->
+                                    <div class="lg:col-span-7 space-y-3" id="keyboardRowsContainer">
+                                        <!-- Dynamically rendered rows -->
+                                    </div>
+
+                                    <!-- Right: Interactive Mobile Mockup (5 cols) -->
+                                    <div class="lg:col-span-5 flex flex-col items-center">
+                                        <div class="w-full max-w-[320px] rounded-3xl p-3 border shadow-2xl relative" style="background: var(--panel-bg); border-color: var(--card-border);">
+                                            <!-- Phone notch & speaker -->
+                                            <div class="flex items-center justify-center gap-2 mb-3">
+                                                <div class="w-12 h-1 rounded-full bg-slate-700"></div>
+                                                <div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                                            </div>
+                                            <!-- Phone screen header -->
+                                            <div class="flex items-center justify-between px-2 pb-2 mb-2 border-b border-white/5 text-[11px] text-slate-400">
+                                                <span class="font-bold text-slate-200">پیش‌نمایش کیبورد ربات</span>
+                                                <span class="text-[10px] text-emerald-400 font-mono">Telegram & Bale</span>
+                                            </div>
+                                            <!-- Chat dummy content -->
+                                            <div class="h-28 rounded-xl p-2.5 flex flex-col justify-end space-y-2 border text-[11px] select-none mb-3" style="background: var(--card-bg); border-color: var(--card-border);">
+                                                <div class="self-start max-w-[85%] rounded-xl px-2.5 py-1.5 text-slate-200 border" style="background: var(--input-bg); border-color: var(--border-color);">
+                                                    <span>سلام! به ربات خوش آمدید. از منوی زیر انتخاب کنید:</span>
+                                                </div>
+                                            </div>
+                                            <!-- Mock phone keyboard -->
+                                            <div id="mockKeyboardPreview" class="space-y-1.5 pt-1">
+                                                <!-- Populated dynamically -->
+                                            </div>
+                                        </div>
+                                        <span id="keyboardSaveNotice" class="text-xs font-semibold text-emerald-400 mt-2 hidden">✅ چیدمان کیبورد با موفقیت ذخیره شد.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
@@ -2732,7 +2810,7 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
                 <div class="relative group">
-                    <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto">
                         <button type="button" onclick="copyAllLogs()" title="کپی لاگ‌ها" class="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             <span>کپی</span>
@@ -8015,6 +8093,22 @@ def render_dashboard_html() -> str:
                 }} else {{
                     handleAiProviderChange('vyceai', s.AI_MODEL);
                 }}
+
+                if (s.CUSTOM_KEYBOARD_LAYOUT && typeof initKeyboardCustomizer === 'function') {{
+                    try {{
+                        let kbLayout = typeof s.CUSTOM_KEYBOARD_LAYOUT === 'string' ? JSON.parse(s.CUSTOM_KEYBOARD_LAYOUT) : s.CUSTOM_KEYBOARD_LAYOUT;
+                        if (Array.isArray(kbLayout) && kbLayout.length > 0) {{
+                            initKeyboardCustomizer(kbLayout);
+                        }} else {{
+                            initKeyboardCustomizer();
+                        }}
+                    }} catch (e) {{
+                        initKeyboardCustomizer();
+                    }}
+                }} else if (typeof initKeyboardCustomizer === 'function') {{
+                    initKeyboardCustomizer();
+                }}
+
                 const p1 = document.getElementById('cfg_NEW_ADMIN_PASSWORD');
                 const p2 = document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD');
                 if (p1) p1.value = '';
@@ -8182,6 +8276,9 @@ def render_dashboard_html() -> str:
                 settings['AI_API_KEY'] = settings['NARA_API_KEY'];
             }} else if (activeProv === 'gemini' && settings['GEMINI_API_KEY']) {{
                 settings['AI_API_KEY'] = settings['GEMINI_API_KEY'];
+            }}
+            if (typeof getKeyboardCustomizerLayout === 'function') {{
+                settings['CUSTOM_KEYBOARD_LAYOUT'] = getKeyboardCustomizerLayout();
             }}
             if (p1) {{
                 settings['NEW_ADMIN_PASSWORD'] = p1;
@@ -8681,6 +8778,299 @@ def render_dashboard_html() -> str:
         }}
 
         // =========================================================================
+        // ماژول مدیریت و شخصی‌سازی بصری کیبورد ربات‌ها (Visual Keyboard Customizer)
+        // چیدمان پویا، جابجایی سطری و ستونی دکمه‌ها و پیش‌نمایش در موبایل
+        // =========================================================================
+
+        const DEFAULT_KEYBOARD_LAYOUT = [
+            ["✨ نشانه امروز من", "💎 اشتراک پریمیوم"],
+            ["📁 دانلودها (ویژه مشترکین پریمیوم)", "🛍️ دوره‌ها و محصولات"],
+            ["🌊 فرکانس فراوانی", "👤 حساب کاربری"],
+            ["💬 پشتیبانی و تیکت"]
+        ];
+
+        const CANONICAL_KEYBOARD_ACTIONS = [
+            {{ text: "✨ نشانه امروز من", desc: "دریافت آیه و نشانه تصادفی روز" }},
+            {{ text: "💎 اشتراک پریمیوم", desc: "خرید و تمدید اشتراک پریمیوم ماهانه" }},
+            {{ text: "📁 دانلودها (ویژه مشترکین پریمیوم)", desc: "آرشیو دانلودهای هدایای سایت" }},
+            {{ text: "🛍️ دوره‌ها و محصولات", desc: "فروشگاه دوره‌ها و فایل‌های دانلودی" }},
+            {{ text: "🌊 فرکانس فراوانی", desc: "ورق‌زن عبارات تاکیدی و فرکانس روز" }},
+            {{ text: "👤 حساب کاربری", desc: "مشاهده امتیازات، پلن پریمیوم و وضعیت حساب" }},
+            {{ text: "💬 پشتیبانی و تیکت", desc: "ارتباط با ادمین و تیکت پشتیبانی" }}
+        ];
+
+        let activeKeyboardLayout = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT));
+
+        /**
+         * راه‌اندازی اولیه کیبورد کستومایزر با داده‌های ذخیره‌شده یا پیش‌فرض
+         * @param {{Array}} layout آرایه دوبعدی حاوی سطرهای کیبورد
+         */
+        function initKeyboardCustomizer(layout) {{
+            try {{
+                if (Array.isArray(layout) && layout.length > 0) {{
+                    activeKeyboardLayout = JSON.parse(JSON.stringify(layout));
+                }} else {{
+                    activeKeyboardLayout = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT));
+                }}
+                renderKeyboardCustomizer();
+            }} catch (err) {{
+                console.warn('initKeyboardCustomizer error:', err);
+                activeKeyboardLayout = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT));
+                renderKeyboardCustomizer();
+            }}
+        }}
+
+        /**
+         * رندر کامل ویرایشگر کیبورد و پیش‌نمایش ماک‌آپ موبایل
+         */
+        function renderKeyboardCustomizer() {{
+            renderKeyboardPool();
+            renderKeyboardRows();
+            renderKeyboardMockPreview();
+        }}
+
+        /**
+         * رندر چیپ‌های دکمه‌های مجاز سیستم
+         */
+        function renderKeyboardPool() {{
+            const poolEl = document.getElementById('keyboardActionsPool');
+            if (!poolEl) return;
+            poolEl.innerHTML = CANONICAL_KEYBOARD_ACTIONS.map(function(action, idx) {{
+                return '<button type="button" data-action-idx="' + idx + '" onclick="handleAddActionFromPool(this)" ' +
+                    'class="theme-card-btn px-2.5 py-1 rounded-lg text-[11px] font-medium transition flex items-center gap-1.5 shadow-sm" ' +
+                    'title="' + escapeHtml(action.desc) + '">' +
+                    '<svg class="w-3 h-3 stroke-[2] text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />' +
+                    '</svg>' +
+                    '<span>' + escapeHtml(action.text) + '</span>' +
+                    '</button>';
+            }}).join('');
+        }}
+
+        function handleAddActionFromPool(btn) {{
+            const idx = parseInt(btn.getAttribute('data-action-idx') || '0', 10);
+            if (CANONICAL_KEYBOARD_ACTIONS[idx]) {{
+                addActionButtonToLayout(CANONICAL_KEYBOARD_ACTIONS[idx].text);
+            }}
+        }}
+
+        /**
+         * رندر سطرهای ویرایشگر کیبورد با کنترل‌های جابجایی
+         */
+        function renderKeyboardRows() {{
+            const container = document.getElementById('keyboardRowsContainer');
+            if (!container) return;
+
+            if (!activeKeyboardLayout || activeKeyboardLayout.length === 0) {{
+                container.innerHTML = '<div class="p-6 text-center rounded-xl border border-dashed text-slate-500 text-xs" style="border-color: var(--card-border);">' +
+                    'کیبورد در حال حاضر سطری ندارد. از دکمه «افزودن سطر جدید» استفاده کنید.' +
+                    '</div>';
+                return;
+            }}
+
+            container.innerHTML = activeKeyboardLayout.map(function(row, rIdx) {{
+                const rowButtonsHtml = row.map(function(btnText, cIdx) {{
+                    const isLast = (cIdx === row.length - 1);
+                    const isFirst = (cIdx === 0);
+                    return '<div class="p-2 rounded-lg border flex items-center justify-between gap-1.5 shadow-sm" style="background: var(--input-bg); border-color: var(--border-color);">' +
+                        '<input type="text" value="' + escapeHtml(btnText) + '" onchange="updateButtonText(' + rIdx + ', ' + cIdx + ', this.value)" ' +
+                        'class="bg-transparent text-xs text-slate-100 font-medium flex-1 outline-none focus:text-cyan-300 transition">' +
+                        '<div class="flex items-center gap-0.5 shrink-0">' +
+                        '<button type="button" onclick="shiftKeyboardButton(' + rIdx + ', ' + cIdx + ', 1)" ' + (isLast ? 'disabled ' : '') +
+                        'class="p-1 rounded text-slate-400 hover:text-slate-200 disabled:opacity-20 transition" title="انتقال به چپ">' +
+                        '<svg class="w-3 h-3 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>' +
+                        '</button>' +
+                        '<button type="button" onclick="shiftKeyboardButton(' + rIdx + ', ' + cIdx + ', -1)" ' + (isFirst ? 'disabled ' : '') +
+                        'class="p-1 rounded text-slate-400 hover:text-slate-200 disabled:opacity-20 transition" title="انتقال به راست">' +
+                        '<svg class="w-3 h-3 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>' +
+                        '</button>' +
+                        '<button type="button" onclick="deleteKeyboardButton(' + rIdx + ', ' + cIdx + ')" ' +
+                        'class="p-1 rounded text-rose-400 hover:text-rose-300 transition" title="حذف دکمه">' +
+                        '<svg class="w-3 h-3 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15" /></svg>' +
+                        '</button>' +
+                        '</div>' +
+                        '</div>';
+                }}).join('');
+
+                const isFirstRow = (rIdx === 0);
+                const isLastRow = (rIdx === activeKeyboardLayout.length - 1);
+                const colsClass = row.length === 1 ? 'grid-cols-1' : (row.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3');
+
+                return '<div class="p-3.5 rounded-xl border space-y-2.5 transition" style="background: var(--card-bg); border-color: var(--card-border);">' +
+                    '<div class="flex items-center justify-between pb-2 border-b border-white/5 text-xs">' +
+                    '<div class="flex items-center gap-2">' +
+                    '<span class="font-mono text-cyan-400 font-bold">سطر ' + (rIdx + 1) + '</span>' +
+                    '<span class="text-[10px] text-slate-400 font-mono">(' + row.length + ' دکمه)</span>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-1">' +
+                    '<button type="button" onclick="moveKeyboardRow(' + rIdx + ', -1)" ' + (isFirstRow ? 'disabled ' : '') +
+                    'class="p-1 rounded text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition" title="انتقال سطر به بالا">' +
+                    '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>' +
+                    '</button>' +
+                    '<button type="button" onclick="moveKeyboardRow(' + rIdx + ', 1)" ' + (isLastRow ? 'disabled ' : '') +
+                    'class="p-1 rounded text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition" title="انتقال سطر به پایین">' +
+                    '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>' +
+                    '</button>' +
+                    '<button type="button" onclick="removeKeyboardRow(' + rIdx + ')" ' +
+                    'class="p-1 rounded text-rose-400 hover:text-rose-300 transition" title="حذف این سطر">' +
+                    '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>' +
+                    '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="grid ' + colsClass + ' gap-2">' +
+                    rowButtonsHtml +
+                    '</div>' +
+                    '</div>';
+            }}).join('');
+        }}
+
+        /**
+         * رندر پیش‌نمایش زنده در قاب شبیه‌ساز موبایل
+         */
+        function renderKeyboardMockPreview() {{
+            const preview = document.getElementById('mockKeyboardPreview');
+            if (!preview) return;
+
+            if (!activeKeyboardLayout || activeKeyboardLayout.length === 0) {{
+                preview.innerHTML = '<div class="text-[10px] text-center text-slate-500 py-3">کیبورد خالی است</div>';
+                return;
+            }}
+
+            preview.innerHTML = activeKeyboardLayout.map(function(row) {{
+                const btns = row.map(function(btn) {{
+                    return '<div class="flex-1 py-2 px-1 rounded-xl text-center text-[10px] font-medium border truncate transition select-none shadow-sm" ' +
+                        'style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">' +
+                        escapeHtml(btn) +
+                        '</div>';
+                }}).join('');
+                return '<div class="flex items-center gap-1.5 w-full">' + btns + '</div>';
+            }}).join('');
+        }}
+
+        function addKeyboardRow() {{
+            activeKeyboardLayout.push([]);
+            renderKeyboardCustomizer();
+        }}
+
+        function removeKeyboardRow(rIdx) {{
+            activeKeyboardLayout.splice(rIdx, 1);
+            renderKeyboardCustomizer();
+        }}
+
+        function moveKeyboardRow(rIdx, dir) {{
+            const targetIdx = rIdx + dir;
+            if (targetIdx < 0 || targetIdx >= activeKeyboardLayout.length) return;
+            const temp = activeKeyboardLayout[rIdx];
+            activeKeyboardLayout[rIdx] = activeKeyboardLayout[targetIdx];
+            activeKeyboardLayout[targetIdx] = temp;
+            renderKeyboardCustomizer();
+        }}
+
+        function addActionButtonToLayout(btnText) {{
+            if (activeKeyboardLayout.length === 0) {{
+                activeKeyboardLayout.push([]);
+            }}
+            const lastRow = activeKeyboardLayout[activeKeyboardLayout.length - 1];
+            if (lastRow.length >= 2) {{
+                activeKeyboardLayout.push([btnText]);
+            }} else {{
+                lastRow.push(btnText);
+            }}
+            renderKeyboardCustomizer();
+        }}
+
+        function deleteKeyboardButton(rIdx, cIdx) {{
+            if (activeKeyboardLayout[rIdx]) {{
+                activeKeyboardLayout[rIdx].splice(cIdx, 1);
+                if (activeKeyboardLayout[rIdx].length === 0 && activeKeyboardLayout.length > 1) {{
+                    activeKeyboardLayout.splice(rIdx, 1);
+                }}
+                renderKeyboardCustomizer();
+            }}
+        }}
+
+        function shiftKeyboardButton(rIdx, cIdx, dir) {{
+            const row = activeKeyboardLayout[rIdx];
+            if (!row) return;
+            const targetIdx = cIdx + dir;
+            if (targetIdx < 0 || targetIdx >= row.length) return;
+            const temp = row[cIdx];
+            row[cIdx] = row[targetIdx];
+            row[targetIdx] = temp;
+            renderKeyboardCustomizer();
+        }}
+
+        function updateButtonText(rIdx, cIdx, val) {{
+            if (activeKeyboardLayout[rIdx] && activeKeyboardLayout[rIdx][cIdx] !== undefined) {{
+                activeKeyboardLayout[rIdx][cIdx] = (val || '').trim();
+                renderKeyboardMockPreview();
+            }}
+        }}
+
+        function resetKeyboardLayoutToDefault() {{
+            activeKeyboardLayout = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD_LAYOUT));
+            renderKeyboardCustomizer();
+        }}
+
+        function getKeyboardCustomizerLayout() {{
+            return activeKeyboardLayout
+                .map(function(row) {{ return row.filter(function(btn) {{ return btn && btn.trim(); }}); }})
+                .filter(function(row) {{ return row.length > 0; }});
+        }}
+
+        async function saveKeyboardLayout() {{
+            const btn = document.getElementById('btnSaveKeyboardLayout');
+            const notice = document.getElementById('keyboardSaveNotice');
+            if (btn) {{ btn.disabled = true; btn.innerText = 'در حال ذخیره...'; }}
+            try {{
+                const layout = getKeyboardCustomizerLayout();
+                let pwd = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
+                const res = await fetch('/api/settings/save', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        password: pwd,
+                        settings: {{
+                            CUSTOM_KEYBOARD_LAYOUT: layout
+                        }}
+                    }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    if (notice) {{
+                        notice.classList.remove('hidden');
+                        setTimeout(function() {{ notice.classList.add('hidden'); }}, 3500);
+                    }}
+                }} else {{
+                    alert('خطا در ذخیره کیبورد: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch (err) {{
+                alert('خطا در ارتباط با سرور: ' + err.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg><span>ذخیره کیبورد</span>';
+                }}
+            }}
+        }}
+
+        // =========================================================================
+
+                window.initKeyboardCustomizer = initKeyboardCustomizer;
+                window.renderKeyboardCustomizer = renderKeyboardCustomizer;
+                window.addKeyboardRow = addKeyboardRow;
+                window.removeKeyboardRow = removeKeyboardRow;
+                window.moveKeyboardRow = moveKeyboardRow;
+                window.addActionButtonToLayout = addActionButtonToLayout;
+                window.handleAddActionFromPool = handleAddActionFromPool;
+                window.deleteKeyboardButton = deleteKeyboardButton;
+                window.shiftKeyboardButton = shiftKeyboardButton;
+                window.updateButtonText = updateButtonText;
+                window.resetKeyboardLayoutToDefault = resetKeyboardLayoutToDefault;
+                window.getKeyboardCustomizerLayout = getKeyboardCustomizerLayout;
+                window.saveKeyboardLayout = saveKeyboardLayout;
+
+                try {{ initKeyboardCustomizer(); }} catch (e) {{ console.warn('initKeyboardCustomizer startup notice:', e); }}
 
                 window.clearHermesChat = clearHermesChat;
                 window.sendPresetHermesPrompt = sendPresetHermesPrompt;
