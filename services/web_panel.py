@@ -6,7 +6,7 @@ import uuid
 import urllib.parse
 import html
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Union, Optional, List, Dict, Any, Tuple
 
 from core.config import config
 from core.logger import get_logger

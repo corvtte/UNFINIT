@@ -3393,10 +3393,8 @@ class TelegramAdapter:
                         final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "telegram")
                         wpath = final_p
                     if drop.get("media_type") == "video":
-                        from media.compressor import SmartVideoCompressor
                         comp_p, _, _, _, was_c = SmartVideoCompressor.compress_if_needed(wpath)
                     else:
-                        from media.compressor import SmartAudioCompressor
                         comp_p, _, _, _, was_c = SmartAudioCompressor.compress_if_needed(wpath)
                     if comp_p and comp_p.exists():
                         drop["working_path"] = str(comp_p)

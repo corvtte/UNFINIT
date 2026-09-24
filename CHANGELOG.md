@@ -5,6 +5,25 @@
 
 ---
 
+## [v0.5.0] - 1403/07/04
+
+### 🚀 رفع بحرانی و پایداری قطعی (Critical Fixes & Stabilization)
+- **رفع خطای لود نشدن داشبورد وب‌پنل (`services/web_panel.py`):**
+  - برطرف شدن قطعی ارور ۵۰۰ `Error rendering dashboard: name 'Union' is not defined` با اضافه کردن صریح `from typing import Union, Optional, List, Dict, Any, Tuple` در خطوط آغازین فایل.
+  - بازیابی رندر کامل و بی‌نقص رابط کاربری داشبورد وب‌پنل با کد ۲۰۰ OK.
+- **رفع خطای UnboundLocalError در SmartVideoCompressor تلگرام (`platforms/telegram_adapter.py`):**
+  - حذف کلیه ایمپورت‌های سایه‌انداز محلی (`from media.compressor import SmartVideoCompressor, SmartAudioCompressor`) درون بدنه متد `media_callbacks` که اسکوپ متغیرهای ماژول را محلی می‌کرد و منجر به ارور خط ۳۶۳۹ می‌شد.
+  - تضمین دسترسی ایمن به متد `SmartVideoCompressor.precalculate_video_quality` از ایمپورت سراسری سطح فایل.
+  - پایداری کامل فرآیند پیش‌محاسبه کیفیت و انتقال خودکار و بدون مکث ویدیوها و فایل‌های صوتی به بله پس از اتمام دانلود.
+
+### 📜 استانداردهای منشور مهندسی (Engineering Guidelines)
+- **ثبت بند ۵.۹ در `AGENTS.md` (قانون ممنوعیت مطلق ایمپورت‌های محلی و سایه‌انداز):**
+  الزام قطعی به استفاده از ایمپورت‌های سراسری Top-level جهت پیشگیری از خطاهای اسکوپینگ پایتون.
+- **اعتبارسنجی اجباری پیش از کامیت (Pre-Commit Syntax Validation):**
+  الزام اجرای کامپایل با `python -m py_compile` برای تمامی ماژول‌های تغییریافته قبل از هرگونه کامیت گیت.
+
+---
+
 ## [v0.4.9] - 1403/07/04
 
 ### 🚀 رفع بحرانی و هات‌فیکس‌ها (Critical Fixes)
