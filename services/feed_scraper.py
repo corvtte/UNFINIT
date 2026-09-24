@@ -157,14 +157,99 @@ _CACHE: Dict[str, Any] = {
 _ARTICLE_CACHE: Dict[str, Dict[str, Any]] = {}
 CACHE_TTL_SEC = 300.0  # 5 minutes cache
 
+# کش ۲۴ ساعته دسته‌بندی‌های زنده منوی سایت
+_LIVE_CATEGORIES_CACHE: Dict[str, Any] = {
+    "categories": [],
+    "last_fetched": 0.0
+}
+LIVE_CATEGORIES_TTL_SEC = 86400.0  # 24 hours
+
+async def fetch_live_categories(force_refresh: bool = False) -> List[Dict[str, Any]]:
+    """
+    استخراج ۱۰۰٪ داینامیک ۱۶ دسته‌بندی منوی دانلودها (هدیه) از صفحه اصلی سایت https://abasmanesh.com/fa/
+    بدون هاردکد اسلاگ یا عناوین، همراه با کش ۲۴ ساعته.
+    """
+    now = time.time()
+    if not force_refresh and _LIVE_CATEGORIES_CACHE["categories"] and (now - _LIVE_CATEGORIES_CACHE["last_fetched"] < LIVE_CATEGORIES_TTL_SEC):
+        return _LIVE_CATEGORIES_CACHE["categories"]
+
+    timeout = aiohttp.ClientTimeout(total=15)
+    extracted = []
+    try:
+        async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
+            async with session.get("https://abasmanesh.com/fa/") as resp:
+                if resp.status == 200:
+                    html = await resp.text()
+                    if BeautifulSoup:
+                        soup = BeautifulSoup(html, "html.parser")
+                        dropdown_links = []
+                        # 1. جستجو در آیتم‌های مگامنوی دسکتاپ
+                        nav_items = soup.select(".public-nav__item")
+                        for item in nav_items:
+                            heading = item.find(["a", "span", "div"], class_=lambda c: c and "link" in c)
+                            h_text = heading.get_text(strip=True) if heading else ""
+                            if "دانلود" in h_text:
+                                dropdown_links = item.select("a.public-nav__dropdown-link")
+                                break
+                        # 2. جستجو در دراور موبایل در صورت نیاز
+                        if not dropdown_links:
+                            drawer_items = soup.select(".public-drawer__item")
+                            for item in drawer_items:
+                                heading = item.find(["a", "span", "button"])
+                                h_text = heading.get_text(strip=True) if heading else ""
+                                if "دانلود" in h_text:
+                                    dropdown_links = item.select("a.public-drawer__sub-link, a")
+                                    break
+                        # 3. فالبک: تمام لینک‌های شامل category
+                        if not dropdown_links:
+                            dropdown_links = soup.find_all("a", href=lambda h: h and "/category/" in h)
+
+                        seen_slugs = set()
+                        cat_id = 1
+                        for a in dropdown_links:
+                            href = a.get("href", "").strip()
+                            title = a.get_text(strip=True)
+                            if not href or not title or len(title) < 3:
+                                continue
+                            if any(x in href for x in ["cart", "account", "login", "aghlekol", "terms"]):
+                                continue
+                            clean_href = href.split("?")[0].rstrip("/")
+                            slug = clean_href.split("/")[-1]
+                            if not slug or slug in seen_slugs or slug in ["category", "fa", "free-download"]:
+                                continue
+                            seen_slugs.add(slug)
+                            full_url = ("https://abasmanesh.com" + href) if href.startswith("/") else href
+                            extracted.append({
+                                "id": cat_id,
+                                "slug": slug,
+                                "title": title,
+                                "url": full_url,
+                                "path": href if href.startswith("/") else ("/" + href.split("abasmanesh.com/")[-1])
+                            })
+                            cat_id += 1
+    except Exception as e:
+        logger.warning(f"[feed_scraper] Error fetching live categories: {e}")
+
+    if extracted and len(extracted) >= 5:
+        _LIVE_CATEGORIES_CACHE["categories"] = extracted
+        _LIVE_CATEGORIES_CACHE["last_fetched"] = now
+        global ABASMANESH_PREMIUM_CATEGORIES
+        ABASMANESH_PREMIUM_CATEGORIES = extracted
+        return extracted
+
+    return ABASMANESH_PREMIUM_CATEGORIES
+
 def get_all_categories() -> List[Dict[str, Any]]:
     """دریافت فهرست کامل ۱۶ دسته‌بندی رسمی عباس‌منش."""
+    if _LIVE_CATEGORIES_CACHE.get("categories"):
+        return _LIVE_CATEGORIES_CACHE["categories"]
     return ABASMANESH_PREMIUM_CATEGORIES
 
 def get_category_by_id(cat_id_or_slug: str | int) -> Optional[Dict[str, Any]]:
     """یافتن دسته‌بندی بر اساس شناسه یا اسلاگ."""
     s_val = str(cat_id_or_slug).strip()
-    for cat in ABASMANESH_PREMIUM_CATEGORIES:
+    active_cats = get_all_categories()
+    for cat in active_cats:
         if str(cat["id"]) == s_val or cat["slug"] == s_val or s_val in cat["url"]:
             return cat
     return None
@@ -254,17 +339,22 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
             if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
                 continue
 
-            # استخراج تصویر شاخص کامل و باکیفیت
+            # استخراج تصویر شاخص کامل و باکیفیت (اولویت اول با data-src جهت دور زدن لود تنبل و پلیس‌هولدرهای خالی)
             img = card.find("img")
             card_cover = ""
             if img:
-                src = img.get("src") or img.get("data-src") or img.get("data-lazy-src") or img.get("data-original") or ""
+                src = img.get("data-src") or img.get("data-lazy-src") or img.get("data-original") or img.get("src") or ""
                 if not src and img.get("srcset"):
                     srcset_parts = [p.strip().split(" ")[0] for p in img["srcset"].split(",") if p.strip()]
                     if srcset_parts:
                         src = srcset_parts[-1]
                 if src:
-                    card_cover = ("https://abasmanesh.com" + src) if src.startswith("/") else src
+                    if src.startswith("//"):
+                        card_cover = "https:" + src
+                    elif src.startswith("/"):
+                        card_cover = "https://abasmanesh.com" + src
+                    else:
+                        card_cover = src
 
             # استخراج عنوان مقاله
             title = ""
@@ -418,6 +508,27 @@ async def _fetch_single_article(
 
     primary_url = audio_dl or video_dl or clean_url
 
+    lesson_text = ""
+    if BeautifulSoup and 'soup' in locals() and soup:
+        try:
+            content_el = (
+                soup.find("div", class_=lambda c: c and any(x in c for x in ["entry-content", "post-content", "article__body", "article-content"]))
+                or soup.find("article")
+                or soup.find("main")
+            )
+            if content_el:
+                p_list = []
+                for p in content_el.find_all("p"):
+                    p_txt = p.get_text(strip=True)
+                    if len(p_txt) > 25 and not any(skip in p_txt for skip in ["دیدگاه", "نظرات", "دانلود", "ثبت‌نام", "حقوق این سایت", "اشتراک"]):
+                        p_list.append(p_txt)
+                    if sum(len(x) for x in p_list) > 1200:
+                        break
+                if p_list:
+                    lesson_text = "\n\n".join(p_list[:4])
+        except Exception as p_err:
+            logger.debug(f"[feed_scraper] Error extracting lesson text: {p_err}")
+
     return {
         "title": title,
         "tag": tag,
@@ -430,6 +541,7 @@ async def _fetch_single_article(
         "video_download_url": video_dl,
         "video_url": video_dl,
         "direct_download_url": audio_dl or video_dl,
+        "lesson_text": lesson_text,
         "chapters": chapters,
         "links": [u for u in (audio_dl, video_dl) if u],
         "published_at": ""
@@ -592,6 +704,10 @@ class FeedScraper:
     """
     ARTICLES_BASE_URL = ARTICLES_BASE_URL
     CATEGORIES = ABASMANESH_PREMIUM_CATEGORIES
+
+    @staticmethod
+    async def fetch_live_categories(force_refresh: bool = False) -> List[Dict[str, Any]]:
+        return await fetch_live_categories(force_refresh=force_refresh)
 
     @staticmethod
     def get_all_categories() -> List[Dict[str, Any]]:

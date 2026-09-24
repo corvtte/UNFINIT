@@ -961,7 +961,7 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
-                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">فایل‌های دانلودی هدیه</span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">دانلودها (هدیه)</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">39p</span>
                 </button>
 
@@ -2105,6 +2105,12 @@ def render_dashboard_html() -> str:
                             <span>به‌روزرسانی صفحه</span>
                         </button>
                     </div>
+                <!-- Live Categories Selector Filter Bar (16 Categories) -->
+                <div class="flex items-center gap-2 p-2 rounded-xl border overflow-x-auto no-scrollbar" style="background: var(--glass-bg); border-color: var(--card-border);" id="feedCategoriesBar">
+                    <button type="button" onclick="selectFeedCategory('')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap active theme-accent-btn" data-cat="">
+                        <span>🌐 همه دانلودها (آرشیو)</span>
+                    </button>
+                    <span class="text-xs text-slate-400 font-mono py-1 px-2" id="feedCategoriesLoading">در حال واکشی ۱۶ دسته‌بندی زنده...</span>
                 </div>
 
                 <!-- Pagination Controls: Top -->
@@ -5774,16 +5780,72 @@ def render_dashboard_html() -> str:
         window.testTodaySign = testTodaySign;
 
         let currentFeedPage = 1;
+        let currentFeedCategory = '';
         const totalFeedPages = 39;
         window.currentFeedPage = 1;
+        window.currentFeedCategory = '';
 
-        async function fetchFeedDownloads(force, page) {{
+        async function loadFeedCategories() {{
+            const bar = document.getElementById('feedCategoriesBar');
+            if (!bar) return;
+            try {{
+                const res = await fetch('/api/feed/categories');
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.categories) && data.categories.length > 0) {{
+                    const loadingEl = document.getElementById('feedCategoriesLoading');
+                    if (loadingEl) loadingEl.remove();
+
+                    const allBtn = '<button type="button" onclick="selectFeedCategory(\\'\\')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ' + (!currentFeedCategory ? 'theme-accent-btn active' : 'theme-card-btn') + '" data-cat="">' +
+                        '<span>🌐 همه دانلودها (آرشیو)</span>' +
+                    '</button>';
+
+                    const catBtns = data.categories.map(function(c) {{
+                        const isActive = currentFeedCategory === c.slug;
+                        const btnClass = isActive ? 'theme-accent-btn active' : 'theme-card-btn';
+                        const safeTitle = (c.title || '').replace(/'/g, "\\\\'");
+                        return '<button type="button" onclick="selectFeedCategory(\\'' + c.slug + '\\')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ' + btnClass + '" data-cat="' + c.slug + '">' +
+                            '<span>' + safeTitle + '</span>' +
+                        '</button>';
+                    }}).join('');
+
+                    bar.innerHTML = allBtn + catBtns;
+                }}
+            }} catch (err) {{
+                console.debug('loadFeedCategories error', err);
+            }}
+        }}
+        window.loadFeedCategories = loadFeedCategories;
+
+        function selectFeedCategory(slug) {{
+            currentFeedCategory = slug || '';
+            window.currentFeedCategory = currentFeedCategory;
+            currentFeedPage = 1;
+            window.currentFeedPage = 1;
+
+            const btns = document.querySelectorAll('.feed-cat-btn');
+            btns.forEach(function(b) {{
+                if (b.getAttribute('data-cat') === currentFeedCategory) {{
+                    b.className = 'feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap theme-accent-btn active';
+                }} else {{
+                    b.className = 'feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap theme-card-btn';
+                }}
+            }});
+
+            fetchFeedDownloads(false, 1, currentFeedCategory);
+        }}
+        window.selectFeedCategory = selectFeedCategory;
+
+        async function fetchFeedDownloads(force, page, category) {{
             const container = document.getElementById('feedDownloadsContainer');
             const btn = document.getElementById('btnRefreshFeed');
             if (!container) return;
-            if (typeof page === 'number' && page >= 1 && page <= totalFeedPages) {{
+            if (typeof page === 'number' && page >= 1) {{
                 currentFeedPage = page;
                 window.currentFeedPage = page;
+            }}
+            if (category !== undefined) {{
+                currentFeedCategory = category;
+                window.currentFeedCategory = category;
             }}
             const curPageEl = document.getElementById('feedCurrentPage');
             const curPageBottomEl = document.getElementById('feedCurrentPageBottom');
@@ -5794,11 +5856,15 @@ def render_dashboard_html() -> str:
                 btn.disabled = true;
                 btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>در حال رصد سایت...</span>';
             }}
+            const loadingMsg = currentFeedCategory
+                ? 'در حال دریافت فایل‌های دسته‌بندی انتخابی...'
+                : 'در حال دریافت ۲۵ هدیه دانلودی صفحه ' + toPersianDigits(currentFeedPage) + ' از سایت...';
             if (force || container.children.length === 0 || container.innerText.includes('در حال بارگذاری')) {{
-                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">در حال دریافت ۲۵ هدیه دانلودی صفحه ' + toPersianDigits(currentFeedPage) + ' از سایت...</div>';
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">' + loadingMsg + '</div>';
             }}
             try {{
-                const res = await fetch('/api/feed/latest?page=' + currentFeedPage + '&limit=25' + (force ? '&force=1' : ''));
+                const catParam = currentFeedCategory ? ('&cat=' + encodeURIComponent(currentFeedCategory)) : '';
+                const res = await fetch('/api/feed/latest?page=' + currentFeedPage + '&limit=25' + (force ? '&force=1' : '') + catParam);
                 const data = await res.json();
                 if (data.ok && Array.isArray(data.items) && data.items.length > 0) {{
                     container.innerHTML = data.items.map(function(item) {{
@@ -6154,6 +6220,7 @@ def render_dashboard_html() -> str:
                     sortSelect.value = savedSort;
                 }}
                 fetchFeedDownloads(false);
+                loadFeedCategories();
                 if (typeof window.initProductSubtabsDragAndDrop === 'function') {{
                     window.initProductSubtabsDragAndDrop();
                 }}
@@ -6462,6 +6529,8 @@ def render_dashboard_html() -> str:
                 window.changeStudioSort = changeStudioSort;
                 window.refreshStudioList = refreshStudioList;
                 window.cleanupStudioDrops = cleanupStudioDrops;
+                window.loadFeedCategories = loadFeedCategories;
+                window.selectFeedCategory = selectFeedCategory;
                 window.fetchFeedDownloads = fetchFeedDownloads;
                 window.changeFeedPage = changeFeedPage;
                 window.openFeedDispatchModal = openFeedDispatchModal;

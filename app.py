@@ -773,13 +773,34 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
-        elif path == "/api/feed/latest":
+        elif path == "/api/feed/categories":
             try:
-                from services.feed_scraper import get_latest_free_downloads
+                from services.feed_scraper import fetch_live_categories
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 query_params = urllib.parse.parse_qs(parsed.query)
                 force = query_params.get("force", ["0"])[0].lower() in ("1", "true", "yes")
+                cats = loop.run_until_complete(fetch_live_categories(force_refresh=force))
+                loop.close()
+                res = {"ok": True, "categories": cats, "count": len(cats)}
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/feed/latest":
+            try:
+                from services.feed_scraper import get_latest_free_downloads, get_category_episodes
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                query_params = urllib.parse.parse_qs(parsed.query)
+                force = query_params.get("force", ["0"])[0].lower() in ("1", "true", "yes")
+                cat = query_params.get("category", [""])[0] or query_params.get("cat", [""])[0]
                 page_raw = query_params.get("page", ["1"])[0]
                 try:
                     page = max(1, int(page_raw))
@@ -790,9 +811,17 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     limit = max(1, int(limit_raw))
                 except Exception:
                     limit = 25
-                items = loop.run_until_complete(get_latest_free_downloads(limit=limit, force_refresh=force, page=page))
+
+                if cat:
+                    cat_res = loop.run_until_complete(get_category_episodes(cat, page=page, limit=limit, force_refresh=force))
+                    items = cat_res.get("episodes", [])
+                    has_next = cat_res.get("has_next", False)
+                    res = {"ok": True, "items": items, "count": len(items), "page": page, "category": cat_res.get("category"), "has_next": has_next}
+                else:
+                    items = loop.run_until_complete(get_latest_free_downloads(limit=limit, force_refresh=force, page=page))
+                    res = {"ok": True, "items": items, "count": len(items), "page": page, "total_pages": 39}
+
                 loop.close()
-                res = {"ok": True, "items": items, "count": len(items), "page": page, "total_pages": 39}
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

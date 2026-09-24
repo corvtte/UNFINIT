@@ -500,6 +500,74 @@ class TelegramAdapter:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    async def split_and_transfer_video_to_bale(self, drop_id: str, parts_count: int, status_msg: Any) -> bool:
+        """
+        تقسیم هوشمند ویدیو به تعداد پارت‌های مشخص و ارسال ترتیبی به بله با حفظ کیفیت و تضمین سقف ۴۵MB
+        """
+        drop = session_manager.get_session(drop_id)
+        if not drop:
+            try:
+                from core.database import db_get_media_session
+                drop = db_get_media_session(drop_id)
+            except Exception:
+                pass
+        if not drop:
+            await status_msg.edit_text("❌ اطلاعات فایل منقضی شده است.")
+            return False
+
+        target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+        if not target_chat:
+            await status_msg.edit_text("❌ شناسه چت بله تنظیم نشده است.")
+            return False
+
+        w_path = Path(drop.get("working_path") or "")
+        if not w_path.exists():
+            await status_msg.edit_text("❌ فایل ویدیو روی سرور یافت نشد.")
+            return False
+
+        safe_limit_mb = 45.0
+        parts_count = max(2, min(int(parts_count), 20))
+
+        await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت بدون افت کیفیت...</b>", parse_mode=enums.ParseMode.HTML)
+        try:
+            parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count, target_max_mb=safe_limit_mb)
+            if not parts_list:
+                await status_msg.edit_text("❌ خطا در تقسیم فایل ویدیو با FFmpeg.")
+                return False
+
+            all_ok = True
+            for p_idx, part_file in enumerate(parts_list, 1):
+                part_sz_mb = part_file.stat().st_size / (1024 * 1024)
+                if part_sz_mb > 48.5:
+                    await status_msg.edit_text(f"🗜 <b>بهینه‌سازی سریع پارت {p_idx} ({part_sz_mb:.1f}MB) جهت رعایت سقف ۴۵MB بله...</b>", parse_mode=enums.ParseMode.HTML)
+                    comp_out, _, _, _, _ = SmartVideoCompressor.compress_if_needed(part_file, target_max_mb=safe_limit_mb)
+                    if comp_out and comp_out.exists():
+                        part_file = comp_out
+
+                await status_msg.edit_text(f"📤 <b>در حال ارسال پارت {p_idx} از {len(parts_list)} به بله...</b>", parse_mode=enums.ParseMode.HTML)
+                p_tech = inspect_technical_metadata(part_file)
+                res = await self.bale_adapter.send_video(
+                    target_chat, part_file,
+                    caption=f"✅ پارت {p_idx} از {len(parts_list)} (منتقل شده از تلگرام)\n📄 <b>{escape(part_file.name)}</b>",
+                    duration=p_tech.get("duration_sec"),
+                    width=p_tech.get("width"),
+                    height=p_tech.get("height")
+                )
+                if not res.get("ok"):
+                    all_ok = False
+                    await status_msg.edit_text(f"❌ خطا در ارسال پارت {p_idx}: {res.get('error') or str(res)}", parse_mode=enums.ParseMode.HTML)
+                    break
+                await asyncio.sleep(1.0)
+
+            if all_ok:
+                await status_msg.edit_text(f"✅ <b>ویدیو با موفقیت به {len(parts_list)} پارت باکیفیت تقسیم و به بله منتقل شد!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>", parse_mode=enums.ParseMode.HTML)
+                return True
+            return False
+        except Exception as s_err:
+            logger.error(f"Error in split_and_transfer_video_to_bale: {s_err}", exc_info=True)
+            await status_msg.edit_text(f"❌ خطا در تقسیم و ارسال پارت‌ها: {s_err}", parse_mode=enums.ParseMode.HTML)
+            return False
+
     def build_media_keyboard(self, drop_id: str, data: dict, is_sub: bool = False) -> InlineKeyboardMarkup:
         if is_sub:
             return InlineKeyboardMarkup([
@@ -3223,6 +3291,7 @@ class TelegramAdapter:
                         except Exception:
                             await callback_query.message.reply_text(err_txt, parse_mode=None)
             elif action == "back":
+                session_manager.clear_user_action(f"tg_{user_id}")
                 card_txt = TelegramFormatter.format_light_card(drop)
                 kb = self.build_media_keyboard(drop_id, drop, is_sub=False)
                 await callback_query.message.edit_text(card_txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
@@ -3582,27 +3651,33 @@ class TelegramAdapter:
                 dur_m = int(qual_info.get("duration_sec", 0) // 60)
                 init_mb = qual_info.get("initial_size_mb", 0.0)
 
+                session_manager.set_user_action(
+                    f"tg_{user_id}",
+                    "await_split_parts",
+                    drop_id,
+                    extra={"msg_id": status_msg.id, "drop_id": drop_id}
+                )
+
                 kb_rows = [
                     [
-                        InlineKeyboardButton("✂️ تقسیم به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
-                        InlineKeyboardButton("✂️ تقسیم به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
+                        InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2")
                     ],
                     [
-                        InlineKeyboardButton("🗜 فشرده‌سازی معمولی", callback_data=f"smeta:force_bale:{drop_id}")
+                        InlineKeyboardButton("🗜 فشرده‌سازی تا سقف بله", callback_data=f"smeta:force_bale:{drop_id}")
+                    ],
+                    [
+                        InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
                     ]
                 ]
-                if rec_parts > 3:
-                    kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم خودکار به {rec_parts} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")])
-                kb_rows.append([
-                    InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
-                ])
                 split_kb = InlineKeyboardMarkup(kb_rows)
                 await status_msg.edit_text(
                     f"✂️ <b>دستیار تقسیم هوشمند ویدیو (Split Assistant):</b>\n"
                     f"📄 فایل: <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>\n"
                     f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{init_mb} MB</code>\n"
                     f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
-                    "تعداد پارت‌های مورد نظر جهت تقسیم بدون افت کیفیت (Stream Copy) و ارسال به بله را انتخاب فرمایید:",
+                    "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
+                    "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی تا سقف بله»</b>\n"
+                    "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!",
                     parse_mode=enums.ParseMode.HTML,
                     reply_markup=split_kb
                 )
@@ -3614,48 +3689,9 @@ class TelegramAdapter:
                     return
                 status_msg = callback_query.message
                 await ensure_binary(status_msg)
-                w_path = Path(drop.get("working_path") or "")
-                if not w_path.exists():
-                    await status_msg.edit_text("❌ فایل ویدیو یافت نشد.")
-                    return
-
-                safe_limit_mb = 45.0
                 parts_count = int(parts[3]) if len(parts) > 3 and str(parts[3]).isdigit() else 2
-                parts_count = max(2, parts_count)
-
-                await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت انتخابی...</b>", parse_mode=enums.ParseMode.HTML)
-                try:
-                    parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count, target_max_mb=safe_limit_mb)
-                    if not parts_list:
-                        await status_msg.edit_text("❌ خطا در تقسیم فایل ویدیو با FFmpeg.")
-                        return
-                    all_ok = True
-                    for p_idx, part_file in enumerate(parts_list, 1):
-                        part_sz_mb = part_file.stat().st_size / (1024 * 1024)
-                        if part_sz_mb > 48.5:
-                            await status_msg.edit_text(f"🗜 <b>بهینه‌سازی سریع پارت {p_idx} ({part_sz_mb:.1f}MB) جهت رعایت قطعی سقف بله...</b>", parse_mode=enums.ParseMode.HTML)
-                            comp_out, _, _, _, _ = SmartVideoCompressor.compress_video(part_file, target_max_mb=safe_limit_mb)
-                            if comp_out and comp_out.exists():
-                                part_file = comp_out
-
-                        await status_msg.edit_text(f"📤 <b>در حال ارسال پارت {p_idx} از {len(parts_list)} به بله...</b>", parse_mode=enums.ParseMode.HTML)
-                        p_tech = inspect_technical_metadata(part_file)
-                        res = await self.bale_adapter.send_video(
-                            target_chat, part_file,
-                            caption=f"✅ پارت {p_idx} از {len(parts_list)} (منتقل شده از تلگرام)\n📄 <b>{escape(part_file.name)}</b>",
-                            duration=p_tech.get("duration_sec"),
-                            width=p_tech.get("width"),
-                            height=p_tech.get("height")
-                        )
-                        if not res.get("ok"):
-                            all_ok = False
-                            await status_msg.edit_text(f"❌ خطا در ارسال پارت {p_idx}: {res.get('error') or str(res)}", parse_mode=enums.ParseMode.HTML)
-                            break
-                        await asyncio.sleep(1.0)
-                    if all_ok:
-                        await status_msg.edit_text(f"✅ <b>ویدیو با موفقیت به {len(parts_list)} پارت باکیفیت تقسیم و به بله منتقل شد!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>", parse_mode=enums.ParseMode.HTML)
-                except Exception as s_err:
-                    await status_msg.edit_text(f"❌ خطا در تقسیم و ارسال پارت‌ها: {s_err}", parse_mode=enums.ParseMode.HTML)
+                session_manager.clear_user_action(f"tg_{user_id}")
+                await self.split_and_transfer_video_to_bale(drop_id, parts_count, status_msg)
 
             elif action in ("send_bale", "force_bale"):
                 target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
@@ -3676,23 +3712,31 @@ class TelegramAdapter:
                         est_res = qual_info.get("estimated_resolution", "360p")
                         rec_parts = qual_info.get("recommended_parts", 2)
                         dur_mins = int(qual_info.get("duration_sec", 0) // 60)
+                        session_manager.set_user_action(
+                            f"tg_{user_id}",
+                            "await_split_parts",
+                            drop_id,
+                            extra={"msg_id": status_msg.id, "drop_id": drop_id}
+                        )
                         warn_text = (
                             f"⚠️ <b>طول این ویدیو بالاست ({dur_mins} دقیقه).</b>\n"
                             f"فشرده‌سازی تا سقف بله کیفیت را به شدت کاهش می‌دهد (<code>{est_res}</code>).\n\n"
-                            "جهت حفظ کیفیت تصویر و تجربه مطلوب، یکی از گزینه‌های زیر را انتخاب فرمایید:"
+                            f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
+                            "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
+                            "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی معمولی»</b>\n"
+                            "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!"
                         )
                         kb_rows = [
                             [
-                                InlineKeyboardButton("✂️ تقسیم به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
-                                InlineKeyboardButton("✂️ تقسیم به ۳ پارت", callback_data=f"smeta:split_bale:{drop_id}:3")
+                                InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2")
                             ],
                             [
                                 InlineKeyboardButton("🗜 فشرده‌سازی معمولی", callback_data=f"smeta:force_bale:{drop_id}")
+                            ],
+                            [
+                                InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
                             ]
                         ]
-                        if rec_parts > 3:
-                            kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم خودکار به {rec_parts} پارت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")])
-                        kb_rows.append([InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")])
                         warn_kb = InlineKeyboardMarkup(kb_rows)
                         await status_msg.edit_text(warn_text, parse_mode=enums.ParseMode.HTML, reply_markup=warn_kb)
                         return
@@ -4264,6 +4308,31 @@ class TelegramAdapter:
                     await message.delete()
                 except Exception: pass
                 return
+
+            # Smart Video Split custom parts count handler
+            if act == "await_split_parts" and text:
+                drop_id = str(user_act.get("value") or "")
+                # Parse digits (including Persian/Arabic digits)
+                persian_digits = "۰۱۲۳۴۵۶۷۸۹"
+                arabic_digits = "٠١٢٣٤٥٦٧٨٩"
+                clean_text = text.strip()
+                for i in range(10):
+                    clean_text = clean_text.replace(persian_digits[i], str(i)).replace(arabic_digits[i], str(i))
+                clean_num = re.sub(r"\D", "", clean_text)
+
+                if clean_num.isdigit():
+                    num_parts = int(clean_num)
+                    if 2 <= num_parts <= 20:
+                        session_manager.clear_user_action(f"tg_{user_id}")
+                        status_m = await message.reply_text(f"⏳ <b>درخواست شما دریافت شد: تقسیم ویدیو به {num_parts} پارت...</b>", parse_mode=enums.ParseMode.HTML)
+                        await self.split_and_transfer_video_to_bale(drop_id, num_parts, status_m)
+                        return
+                    else:
+                        await message.reply_text("⚠️ لطفاً عددی بین <b>۲</b> تا <b>۲۰</b> برای تعداد پارت‌ها وارد فرمایید.", parse_mode=enums.ParseMode.HTML)
+                        return
+                else:
+                    await message.reply_text("⚠️ لطفاً تعداد پارت‌ها را به صورت عدد لاتین یا فارسی (مانند ۳ یا ۴) ارسال فرمایید یا از کلیدهای زیر پیام استفاده نمایید.", parse_mode=enums.ParseMode.HTML)
+                    return
 
             # Support message handler
             if act == "await_support_msg" and text:

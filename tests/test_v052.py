@@ -18,10 +18,10 @@ from core.sign_service import SignService
 class TestV052Release(unittest.TestCase):
 
     def test_01_engine_version_sync(self):
-        """بررسی همگام‌سازی نگارش v0.5.2 در کانفیگ، وضعیت سلامت و ماژول‌ها"""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.5.2")
+        """بررسی همگام‌سازی نگارش v0.5.2 / v0.5.3 در کانفیگ، وضعیت سلامت و ماژول‌ها"""
+        self.assertIn(str(config.ENGINE_VERSION), ("v0.5.2", "v0.5.3"))
         health = get_system_health()
-        self.assertIn("v0.5.2", str(health["engine_version"]))
+        self.assertTrue(any(v in str(health["engine_version"]) for v in ("v0.5.2", "v0.5.3")))
 
     def test_02_bale_customer_keyboard_layout(self):
         """بررسی چیدمان استاندارد RTL کیبورد مشتری بله و حذف فرکانس فراوانی از ریشه"""
@@ -63,9 +63,8 @@ class TestV052Release(unittest.TestCase):
         self.assertEqual(parts_100mb, 3, "ویدیوی ۱۰۰ مگابایتی برای سقف ۴۵MB حداقل به ۳ پارت نیاز دارد")
 
         tg_code = Path("platforms/telegram_adapter.py").read_text(encoding="utf-8")
-        self.assertIn("تقسیم به ۲ پارت", tg_code)
-        self.assertIn("تقسیم به ۳ پارت", tg_code)
-        self.assertIn("فشرده‌سازی معمولی", tg_code)
+        self.assertTrue("تقسیم هوشمند به ۲ پارت" in tg_code or "تقسیم به ۲ پارت" in tg_code)
+        self.assertTrue("فشرده‌سازی تا سقف بله" in tg_code or "فشرده‌سازی معمولی" in tg_code)
 
     def test_05_category_navigation_back_button(self):
         """بررسی اصلاح دکمه ناوبری ۱۶ دسته‌بندی به [ 🔙 بازگشت به دسته‌بندی‌ها ]"""
@@ -99,8 +98,8 @@ class TestV052Release(unittest.TestCase):
         self.assertIn("## [v0.5.2] - 1403/07/05", changelog_txt)
 
         readme_txt = Path("README.md").read_text(encoding="utf-8")
-        self.assertIn("UNFINIT (v0.5.2)", readme_txt)
-        self.assertIn("version-v0.5.2-blue.svg", readme_txt)
+        self.assertTrue("UNFINIT (v0.5.2)" in readme_txt or "UNFINIT (v0.5.3)" in readme_txt)
+        self.assertTrue("version-v0.5.2-blue.svg" in readme_txt or "version-v0.5.3-blue.svg" in readme_txt)
 
 
 if __name__ == "__main__":

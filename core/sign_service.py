@@ -209,7 +209,13 @@ class SignService:
         if reader_display:
             msg += f"🎙 <b>منبع و آگاهی:</b> {reader_display}\n"
 
-        # ۲. سرفصل‌های آگاهی در صورت فعال بودن
+        # ۲. گزیده متن درس و آموزش
+        lesson_text = (sign_data.get("lesson_text") or "").strip()
+        if lesson_text:
+            short_lesson = lesson_text[:650] + ("..." if len(lesson_text) > 650 else "")
+            msg += f"\n📝 <b>گزیده پیام و آموزش درس:</b>\n<i>«{short_lesson}»</i>\n"
+
+        # ۳. سرفصل‌های آگاهی در صورت فعال بودن
         chapters = sign_data.get("chapters") or []
         if include_chapters and chapters:
             msg += "\n📖 <b>سرفصل‌های آگاهی این فایل:</b>\n"

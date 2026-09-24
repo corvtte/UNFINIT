@@ -164,18 +164,22 @@ class SmartVideoCompressor:
     @staticmethod
     def compress_if_needed(
         file_path: str | Path,
-        progress_callback: Optional[Callable[[str], None]] = None
+        progress_callback: Optional[Callable[[str], None]] = None,
+        target_max_mb: Optional[float] = None
     ) -> Tuple[Path, int, int, int, bool]:
         """
         Compresses any video format (mp4, mkv, avi, mov, etc.) 
-        if file size exceeds MAX_SAFE_BALE_SIZE_BYTES (49.99 MB).
+        if file size exceeds MAX_SAFE_BALE_SIZE_BYTES or given target_max_mb.
         """
         src = Path(file_path)
         if not src.exists():
             raise FileNotFoundError(f"File not found: {src}")
 
         initial_size = src.stat().st_size
-        safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+        if target_max_mb is not None:
+            safe_limit_mb = float(target_max_mb)
+        else:
+            safe_limit_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
         target_mb = max(1.0, round(safe_limit_mb - 1.5, 2))
         max_safe_bytes = int(safe_limit_mb * 1024 * 1024)
         target_max_bytes = int(target_mb * 1024 * 1024)
@@ -311,6 +315,9 @@ class SmartVideoCompressor:
             "initial_size_mb": init_mb
         }
 
+    # نام مستعار جهت سازگاری و جلوگیری از خطای AttributeError
+    compress_video = compress_if_needed
+
 
 class SmartVideoSplitter:
     """
@@ -395,7 +402,7 @@ class SmartVideoSplitter:
                 # در صورتی که پارت تولیدشده از ۴۸.۵ مگابایت عبور کرده باشد، فشرده‌سازی خودکار تا ۴۵MB
                 if part_sz_mb > 48.5:
                     logger.info(f"Split part {out_p.name} ({part_sz_mb:.1f}MB) exceeds 48.5MB, auto-compressing to safe 45MB...")
-                    comp_out, _, _, _, ok = SmartVideoCompressor.compress_video(out_p, target_max_mb=SAFE_BALE_PART_LIMIT_MB)
+                    comp_out, _, _, _, ok = SmartVideoCompressor.compress_if_needed(out_p, target_max_mb=SAFE_BALE_PART_LIMIT_MB)
                     if ok and comp_out and comp_out.exists() and comp_out.stat().st_size > 0:
                         try:
                             out_p.unlink(missing_ok=True)
