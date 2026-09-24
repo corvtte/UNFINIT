@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -51,7 +52,16 @@ class SessionManager:
                     self._sessions.update(db_sess)
             db_acts = db_get_all_user_actions()
             if db_acts:
-                self._user_actions.update(db_acts)
+                now_t = time.time()
+                for k, v in db_acts.items():
+                    extra = v.get("extra") or {}
+                    c_at = extra.get("_created_at") or v.get("created_at")
+                    # اگر اکشن بیش از ۳۰ دقیقه پیش ساخته شده، آن را از دیتابیس پاک کن
+                    if c_at and (now_t - float(c_at) > 1800):
+                        db_clear_user_action(k)
+                        continue
+                    v["created_at"] = float(c_at) if c_at else now_t
+                    self._user_actions[k] = v
         except Exception:
             pass
 
@@ -116,30 +126,52 @@ class SessionManager:
         return existed
 
     def set_user_action(self, user_key: str, action: str, drop_id: str, extra: Optional[Dict[str, Any]] = None):
+        """
+        ثبت اکشن موقت کاربر همراه با زمان‌سنجی انقضای ۳۰ دقیقه‌ای.
+        """
+        now_t = time.time()
+        extra_dict = dict(extra or {})
+        extra_dict["_created_at"] = now_t
         action_obj = {
             "action": action,
             "drop_id": drop_id,
-            "extra": extra or {}
+            "extra": extra_dict,
+            "created_at": now_t
         }
         self._user_actions[user_key] = action_obj
         try:
-            db_save_user_action(user_key, action, drop_id, extra or {})
+            db_save_user_action(user_key, action, drop_id, extra_dict)
         except Exception:
             pass
 
     def get_user_action(self, user_key: str) -> Optional[Dict[str, Any]]:
+        """
+        دریافت اکشن معلق کاربر با بررسی عدم انقضای ۳۰ دقیقه‌ای.
+        """
+        act = None
         if user_key in self._user_actions:
-            return self._user_actions[user_key]
-        try:
-            db_act = db_get_user_action(user_key)
-            if db_act:
-                self._user_actions[user_key] = db_act
-                return db_act
-        except Exception:
-            pass
+            act = self._user_actions[user_key]
+        else:
+            try:
+                db_act = db_get_user_action(user_key)
+                if db_act:
+                    self._user_actions[user_key] = db_act
+                    act = db_act
+            except Exception:
+                pass
+
+        if act:
+            c_at = (act.get("extra") or {}).get("_created_at") or act.get("created_at")
+            if c_at and (time.time() - float(c_at) > 1800):
+                self.clear_user_action(user_key)
+                return None
+            return act
         return None
 
     def clear_user_action(self, user_key: str):
+        """
+        پاکسازی اکشن معلق کاربر از حافظه رم و دیتابیس SQLite.
+        """
         if user_key in self._user_actions:
             del self._user_actions[user_key]
         try:

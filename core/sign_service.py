@@ -36,6 +36,7 @@ class SignService:
 
     CACHE_DIR: Path = config.DATA_DIR / "sign_cache"
     INDEX_FILE: Path = config.DATA_DIR / "sign_cache" / "user_signs.json"
+    ABASMANESH_ARCHIVE_URL: str = "https://abasmanesh.com/fa/articles/"
 
     @classmethod
     def _ensure_storage(cls) -> None:
@@ -118,7 +119,7 @@ class SignService:
 
         items = []
         try:
-            items = await get_latest_free_downloads(page=target_page, limit=25)
+            items = await get_latest_free_downloads(page=target_page, limit=25, base_url="https://abasmanesh.com/fa/articles/")
         except Exception as e:
             logger.warning(f"[sign_service] Failed to fetch page {target_page}: {e}")
 
@@ -134,7 +135,7 @@ class SignService:
             "tag": selected.get("tag", "فایل دانلودی"),
             "audio_url": selected.get("audio_download_url") or selected.get("audio_url") or selected.get("direct_download_url", ""),
             "video_url": selected.get("video_download_url") or selected.get("video_url", ""),
-            "page_url": selected.get("page_url", "https://abasmanesh.com/fa/free-download-list/"),
+            "page_url": selected.get("page_url", "https://abasmanesh.com/fa/articles/"),
             "cover_url": selected.get("cover_url", ""),
             "page_number": target_page,
             "date": today,

@@ -111,24 +111,31 @@ class MediaService:
             with open(part_p, "wb") as f_out:
                 async for chunk in client.stream_media(target_media, limit=0):
                     f_out.write(chunk)
-                    written_bytes += len(chunk)
+                    f_out.flush()
+                    current_bytes = part_p.stat().st_size
                     now = time.time()
-                    if progress_callback and (now - last_edit >= 1.2 or (total_size and written_bytes == total_size)):
+                    if progress_callback and (now - last_edit >= 1.2 or (total_size and current_bytes >= total_size)):
                         last_edit = now
                         try:
-                            cb_res = progress_callback(written_bytes, total_size or written_bytes, now - start_time)
+                            cb_res = progress_callback(current_bytes, total_size or current_bytes, now - start_time)
                             if asyncio.iscoroutine(cb_res):
                                 await cb_res
                         except Exception:
                             pass
 
-            if part_p.exists() and part_p.stat().st_size > 0:
-                if dest_p.exists():
-                    try: dest_p.unlink()
-                    except Exception: pass
-                part_p.rename(dest_p)
-                logger.info(f"Turbo multi-chunk streaming download successful: {dest_p.name} ({dest_p.stat().st_size} bytes)")
-                return True
+            if part_p.exists():
+                actual_bytes = part_p.stat().st_size
+                # اعتبارسنجی یکپارچگی بایت‌ها: اگر حجم کل فایل مشخص بود، باید دانلود دقیقاً تا بایت آخر انجام شده باشد
+                if total_size > 0 and actual_bytes < total_size:
+                    raise ValueError(f"Incomplete turbo stream: got {actual_bytes} bytes, expected {total_size} bytes")
+
+                if actual_bytes > 0:
+                    if dest_p.exists():
+                        try: dest_p.unlink()
+                        except Exception: pass
+                    part_p.rename(dest_p)
+                    logger.info(f"Turbo multi-chunk streaming download successful: {dest_p.name} ({actual_bytes} bytes)")
+                    return True
         except Exception as stream_err:
             logger.warning(f"Turbo stream chunking fell back to standard download_media ({stream_err})")
             if part_p.exists():

@@ -1103,10 +1103,28 @@ class TelegramAdapter:
         @self.app.on_callback_query(filters.regex(r"^(vip_club_info|tg:vip_plan)$"))
         async def handle_vip_club_info_cb(client: Client, callback_query: CallbackQuery):
             """
-            نمایش توضیحات، شرایط و تعرفه عضویت در اشتراک پریمیوم برای کاربر با دکمه شیشه‌ای.
+            نمایش توضیحات، شرایط و تعرفه عضویت در اشتراک پریمیوم یا هاب دسته‌بندی‌ها برای کاربر ویژه.
             """
             await callback_query.answer()
             from core.database import get_system_setting
+            user_id = callback_query.from_user.id
+            is_vip = UserService.is_user_vip(user_id)
+            if is_vip:
+                u = UserService.get_user_by_any_id(user_id)
+                vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                txt = (
+                    "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
+                    f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"
+                    "از طریق گزینه‌های زیر می‌توانید به آرشیو ۱۶ دسته‌بندی رسمی مقالات عباس‌منش و خدمات ویژه دسترسی داشته باشید:"
+                )
+                kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📁 ۱۶ دسته‌بندی مقالات و آموزش‌ها", callback_data="tg_vip_cats:1")],
+                    [InlineKeyboardButton("💎 فرکانس فراوانی و آرامش", callback_data="freq_cats")],
+                    [InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]
+                ])
+                await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+                return
+
             price = await get_system_setting("vip_monthly_price", "111000")
             try:
                 price_formatted = f"{int(price):,}"
@@ -1117,29 +1135,46 @@ class TelegramAdapter:
             txt = (
                 "💎 <b>اشتراک پریمیوم</b>\n\n"
                 "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
-                "۱) درک عمیق‌تر قوانین خدا\n"
-                "۲) پروژه تغییر را در آغوش بگیر\n"
-                "۳) پروژه مهاجرت به مدار بالاتر\n"
-                "۴) پروژه خانه‌تکانی ذهن\n"
-                "۵) روزشمار تحول زندگی من\n\n"
-                "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
-                "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                "▫️ <b>دریافت فایل‌های صوتی و تصویری با متادیتا و کاور اختصاصی</b>\n\n"
                 f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
             )
             if card_num:
                 txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
             else:
                 txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]])
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📁 مشاهده عناوین ۱۶ دسته‌بندی", callback_data="tg_vip_cats:1")],
+                [InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]
+            ])
             await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*عضویت در اشتراک پریمیوم|عضویت در اشتراک پریمیوم|اشتراک پریمیوم|باشگاه پریمیوم|💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|اشتراک VIP|/vip|/premium)$"))
         async def handle_vip_command_tg(client: Client, message: Message):
             """
-            دستور مستقیم تلگرام جهت دریافت اطلاعات پلن اشتراک ماهانه پریمیوم.
+            دستور مستقیم تلگرام جهت دریافت اطلاعات پلن اشتراک ماهانه پریمیوم یا هاب محتوای ویژه.
             """
             from core.database import get_system_setting
+            user_id = message.from_user.id
+            is_vip = UserService.is_user_vip(user_id)
+            if is_vip:
+                u = UserService.get_user_by_any_id(user_id)
+                vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                txt = (
+                    "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
+                    f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"
+                    "از طریق گزینه‌های زیر می‌توانید به آرشیو ۱۶ دسته‌بندی رسمی مقالات عباس‌منش و خدمات ویژه دسترسی داشته باشید:"
+                )
+                kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📁 ۱۶ دسته‌بندی مقالات و آموزش‌ها", callback_data="tg_vip_cats:1")],
+                    [InlineKeyboardButton("💎 فرکانس فراوانی و آرامش", callback_data="freq_cats")],
+                    [InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]
+                ])
+                await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+                return
+
             price = await get_system_setting("vip_monthly_price", "111000")
             try:
                 price_formatted = f"{int(price):,}"
@@ -1150,21 +1185,272 @@ class TelegramAdapter:
             txt = (
                 "💎 <b>اشتراک پریمیوم</b>\n\n"
                 "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
-                "۱) درک عمیق‌تر قوانین خدا\n"
-                "۲) پروژه تغییر را در آغوش بگیر\n"
-                "۳) پروژه مهاجرت به مدار بالاتر\n"
-                "۴) پروژه خانه‌تکانی ذهن\n"
-                "۵) روزشمار تحول زندگی من\n\n"
-                "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
-                "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                "▫️ <b>دریافت فایل‌های صوتی و تصویری با متادیتا و کاور اختصاصی</b>\n\n"
                 f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
             )
             if card_num:
                 txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
             else:
                 txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
-            await message.reply_text(txt, parse_mode=enums.ParseMode.HTML)
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📁 مشاهده عناوین ۱۶ دسته‌بندی", callback_data="tg_vip_cats:1")],
+                [InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]
+            ])
+            await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+
+        @self.app.on_callback_query(filters.regex(r"^tg_vip_cats:(\d+)$"))
+        async def handle_tg_vip_cats(client: Client, callback_query: CallbackQuery):
+            """
+            فهرست ۱۶ دسته‌بندی رسمی مقالات عباس‌منش با صفحه‌بندی ارگونومیک.
+            """
+            await callback_query.answer()
+            from services.feed_scraper import feed_scraper
+            page = int(callback_query.matches[0].group(1))
+            cats = feed_scraper.get_all_categories()
+            limit = 6
+            total_pages = max(1, (len(cats) + limit - 1) // limit)
+            page = min(max(1, page), total_pages)
+            start_idx = (page - 1) * limit
+            page_cats = cats[start_idx:start_idx + limit]
+
+            txt = (
+                "📁 <b>دسته‌بندی‌های رسمی مقالات و آموزش‌های عباس‌منش</b>\n\n"
+                f"صفحه <b>{page}</b> از <b>{total_pages}</b>\n"
+                "جهت مشاهده جلسات، فایل‌های صوتی و تصویری، دسته‌بندی مورد نظر را انتخاب فرمایید:"
+            )
+            buttons = []
+            for c in page_cats:
+                buttons.append([InlineKeyboardButton(f"📂 {c['title']}", callback_data=f"tg_vip_cat:{c['id']}:1")])
+
+            nav_row = []
+            if page > 1:
+                nav_row.append(InlineKeyboardButton("◀️ صفحه قبل", callback_data=f"tg_vip_cats:{page-1}"))
+            if page < total_pages:
+                nav_row.append(InlineKeyboardButton("صفحه بعد ▶️", callback_data=f"tg_vip_cats:{page+1}"))
+            if nav_row:
+                buttons.append(nav_row)
+
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به اشتراک پریمیوم", callback_data="vip_club_info")])
+            try:
+                await callback_query.message.edit_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+            except Exception:
+                await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        @self.app.on_callback_query(filters.regex(r"^tg_vip_cat:(\d+):(\d+)$"))
+        async def handle_tg_vip_cat(client: Client, callback_query: CallbackQuery):
+            """
+            نمایش جلسات و مقالات یک دسته‌بندی همراه با بررسی اشتراک پریمیوم.
+            """
+            await callback_query.answer()
+            from services.feed_scraper import feed_scraper
+            cat_id = int(callback_query.matches[0].group(1))
+            page = int(callback_query.matches[0].group(2))
+            cat = feed_scraper.get_category_by_id(cat_id)
+            if not cat:
+                await callback_query.message.reply_text("❌ دسته‌بندی مورد نظر یافت نشد.")
+                return
+
+            user_id = callback_query.from_user.id
+            is_vip = UserService.is_user_vip(user_id)
+            if not is_vip:
+                lock_txt = (
+                    f"🔒 <b>دسترسی اختصاصی: {escape(cat['title'])}</b>\n\n"
+                    "محتوای کامل و فایل‌های صوتی/تصویری این دسته‌بندی مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                    "با فعال‌سازی اشتراک پریمیوم، علاوه بر ۱۶ دسته‌بندی، به پروژه‌های تحول و فرکانس فراوانی نیز دسترسی خواهید داشت."
+                )
+                lock_kb = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💎 فعال‌سازی اشتراک پریمیوم", callback_data="vip_club_info")],
+                    [InlineKeyboardButton("🔙 بازگشت به دسته‌بندی‌ها", callback_data="tg_vip_cats:1")]
+                ])
+                try:
+                    await callback_query.message.edit_text(lock_txt, parse_mode=enums.ParseMode.HTML, reply_markup=lock_kb)
+                except Exception:
+                    await callback_query.message.reply_text(lock_txt, parse_mode=enums.ParseMode.HTML, reply_markup=lock_kb)
+                return
+
+            wait_m = await callback_query.message.reply_text("⏳ <b>در حال بارگذاری جلسات از سایت عباس‌منش...</b>", parse_mode=enums.ParseMode.HTML)
+            res = await feed_scraper.get_category_episodes(cat_id, page=page, limit=6)
+            episodes = res.get("episodes", [])
+            try: await wait_m.delete()
+            except Exception: pass
+
+            txt = (
+                f"📂 <b>{escape(cat['title'])}</b>\n"
+                f"📄 {escape(cat.get('description', ''))}\n\n"
+                f"صفحه <b>{page}</b> | جلسات یافت‌شده: <b>{len(episodes)}</b>\n"
+                "جهت دریافت صوت یا ویدیو، جلسه مورد نظر را انتخاب فرمایید:"
+            )
+            buttons = []
+            for ep_idx, ep in enumerate(episodes):
+                ep_title = ep.get("title", f"جلسه {ep_idx+1}")
+                buttons.append([InlineKeyboardButton(f"🎧 {ep_title[:40]}", callback_data=f"tg_vip_ep:{cat_id}:{page}:{ep_idx}")])
+
+            nav_row = []
+            if page > 1:
+                nav_row.append(InlineKeyboardButton("◀️ صفحه قبل", callback_data=f"tg_vip_cat:{cat_id}:{page-1}"))
+            if res.get("has_next"):
+                nav_row.append(InlineKeyboardButton("صفحه بعد ▶️", callback_data=f"tg_vip_cat:{cat_id}:{page+1}"))
+            if nav_row:
+                buttons.append(nav_row)
+
+            buttons.append([InlineKeyboardButton("🔙 بازگشت به دسته‌ها", callback_data="tg_vip_cats:1")])
+            try:
+                await callback_query.message.edit_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+            except Exception:
+                await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
+
+        @self.app.on_callback_query(filters.regex(r"^tg_vip_ep:(\d+):(\d+):(\d+)$"))
+        async def handle_tg_vip_ep(client: Client, callback_query: CallbackQuery):
+            """
+            مشاهده جزییات یک مقاله و انتخاب فرمت دریافت (صوت یا ویدیو).
+            """
+            await callback_query.answer()
+            from services.feed_scraper import feed_scraper
+            cat_id = int(callback_query.matches[0].group(1))
+            page = int(callback_query.matches[0].group(2))
+            ep_idx = int(callback_query.matches[0].group(3))
+
+            res = await feed_scraper.get_category_episodes(cat_id, page=page, limit=6)
+            episodes = res.get("episodes", [])
+            if ep_idx >= len(episodes):
+                await callback_query.message.reply_text("❌ جلسه مورد نظر یافت نشد.")
+                return
+
+            ep = episodes[ep_idx]
+            txt = (
+                f"💎 <b>{escape(ep.get('title', ''))}</b>\n\n"
+                f"📂 دسته‌بندی: <b>{escape(res.get('category', {}).get('title', ''))}</b>\n"
+            )
+            if ep.get("chapters"):
+                txt += "\n📌 <b>سرفصل‌های این بخش:</b>\n" + "\n".join(f"▫️ {c}" for c in ep["chapters"][:3]) + "\n"
+
+            txt += "\nفرمت مورد نظر جهت دریافت مستقیم را انتخاب فرمایید:"
+            btns = []
+            dl_row = []
+            if ep.get("audio_download_url") or ep.get("audio_url"):
+                dl_row.append(InlineKeyboardButton("🎧 دریافت صوت (MP3)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio"))
+            if ep.get("video_download_url") or ep.get("video_url"):
+                dl_row.append(InlineKeyboardButton("🎬 دریافت ویدیو (MP4)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:video"))
+            if dl_row:
+                btns.append(dl_row)
+            btns.append([InlineKeyboardButton("🔙 بازگشت به لیست جلسات", callback_data=f"tg_vip_cat:{cat_id}:{page}")])
+
+            try:
+                await callback_query.message.edit_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btns))
+            except Exception:
+                await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btns))
+
+        @self.app.on_callback_query(filters.regex(r"^tg_vip_dl:(\d+):(\d+):(\d+):(audio|video)$"))
+        async def handle_tg_vip_dl(client: Client, callback_query: CallbackQuery):
+            """
+            دانلود و ارسال فایل صوتی یا ویدیویی جلسه پریمیوم همراه با کش سراسری file_id.
+            """
+            await callback_query.answer()
+            from services.feed_scraper import feed_scraper
+            from core.database import db_get_cached_file_id, db_set_cached_file_id
+            cat_id = int(callback_query.matches[0].group(1))
+            page = int(callback_query.matches[0].group(2))
+            ep_idx = int(callback_query.matches[0].group(3))
+            media_type = callback_query.matches[0].group(4)
+
+            user_id = callback_query.from_user.id
+            if not UserService.is_user_vip(user_id):
+                await callback_query.message.reply_text("🔒 جهت دانلود این فایل نیاز به اشتراک فعال پریمیوم دارید.")
+                return
+
+            res = await feed_scraper.get_category_episodes(cat_id, page=page, limit=6)
+            episodes = res.get("episodes", [])
+            if ep_idx >= len(episodes):
+                await callback_query.message.reply_text("❌ جلسه یافت نشد.")
+                return
+
+            ep = episodes[ep_idx]
+            url = (ep.get("audio_download_url") or ep.get("audio_url")) if media_type == "audio" else (ep.get("video_download_url") or ep.get("video_url"))
+            if not url:
+                await callback_query.message.reply_text("❌ لینک دانلودی برای این فرمت موجود نیست.")
+                return
+
+            status_msg = await callback_query.message.reply_text(
+                f"⏳ <b>در حال آماده‌سازی و ارسال {'صوت' if media_type == 'audio' else 'ویدیو'}...</b>\n"
+                f"📄 {escape(ep.get('title', ''))}",
+                parse_mode=enums.ParseMode.HTML
+            )
+
+            file_key = f"abas_{cat_id}_{page}_{ep_idx}_{media_type}_{abs(hash(url))}"
+            cached_fid = await db_get_cached_file_id(file_key, "telegram")
+            if cached_fid:
+                try:
+                    if media_type == "audio":
+                        await client.send_audio(
+                            chat_id=callback_query.message.chat.id,
+                            audio=cached_fid,
+                            caption=f"🎧 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                    else:
+                        await client.send_video(
+                            chat_id=callback_query.message.chat.id,
+                            video=cached_fid,
+                            caption=f"🎬 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                    await status_msg.delete()
+                    return
+                except Exception as e:
+                    logger.warning(f"Failed sending cached file_id in telegram: {e}")
+
+            # Download locally and send
+            ext = ".mp3" if media_type == "audio" else ".mp4"
+            target_path = config.TEMP_DIR / f"vip_tg_{uuid.uuid4().hex[:8]}{ext}"
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                import aiohttp
+                async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
+                    async with sess.get(url, timeout=aiohttp.ClientTimeout(total=180)) as resp:
+                        if resp.status == 200:
+                            with open(target_path, "wb") as f_out:
+                                async for chunk in resp.content.iter_chunked(128 * 1024):
+                                    f_out.write(chunk)
+                        else:
+                            await status_msg.edit_text("❌ خطا در دانلود فایل از سرور منبع.")
+                            return
+
+                if not target_path.exists() or target_path.stat().st_size == 0:
+                    await status_msg.edit_text("❌ فایل دانلود شده نامعتبر است.")
+                    return
+
+                if media_type == "audio":
+                    sent = await client.send_audio(
+                        chat_id=callback_query.message.chat.id,
+                        audio=str(target_path),
+                        title=ep.get("title", "فایل صوتی"),
+                        performer="استاد عباس‌منش",
+                        caption=f"🎧 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    if sent and sent.audio:
+                        await db_set_cached_file_id(file_key, "telegram", sent.audio.file_id, "audio")
+                else:
+                    sent = await client.send_video(
+                        chat_id=callback_query.message.chat.id,
+                        video=str(target_path),
+                        caption=f"🎬 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    if sent and sent.video:
+                        await db_set_cached_file_id(file_key, "telegram", sent.video.file_id, "video")
+
+                await status_msg.delete()
+            except Exception as e:
+                logger.error(f"Error sending VIP media in telegram: {e}")
+                await status_msg.edit_text(f"❌ خطا در ارسال فایل: {e}")
+            finally:
+                if target_path.exists():
+                    try: target_path.unlink()
+                    except Exception: pass
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*فرکانس فراوانی|فرکانس فراوانی|فرکانس|/frequency)$"))
         async def customer_frequency_menu(client: Client, message: Message):
@@ -2421,6 +2707,7 @@ class TelegramAdapter:
         @self.app.on_message(filters.private & (filters.audio | filters.document | filters.voice | filters.video))
         async def incoming_media(client: Client, message: Message):
             user_id = message.from_user.id
+            session_manager.clear_user_action(f"tg_{user_id}")
             media_obj = message.audio or message.document or message.voice or message.video
             raw_fn = getattr(media_obj, "file_name", "") or ""
             mime_type = getattr(media_obj, "mime_type", "") or ""
@@ -2801,7 +3088,7 @@ class TelegramAdapter:
                                 last_edit[0] = now
                                 last_pct[0] = pct
                                 elapsed = max(0.01, now - start_t[0])
-                                txt = format_transfer_progress(current, total, elapsed, stage_title="در حال دریافت پرسرعت فایل از تلگرام...")
+                                txt = format_transfer_progress(current, total, elapsed, stage_title="در حال دریافت فایل از تلگرام...")
                                 try:
                                     await status_m.edit_text(txt, parse_mode=enums.ParseMode.HTML)
                                 except Exception:
@@ -3356,15 +3643,15 @@ class TelegramAdapter:
                             f"فشرده‌سازی تا سقف بله کیفیت را به شدت کاهش می‌دهد (<code>{est_res}</code>).\n\n"
                             "جهت حفظ کیفیت تصویر و تجربه مطلوب، یکی از گزینه‌های زیر را انتخاب فرمایید:"
                         )
-                        warn_kb = InlineKeyboardMarkup([
-                            [
-                                InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}"),
-                                InlineKeyboardButton("🗜 ادامه فشرده‌سازی با افت کیفیت", callback_data=f"smeta:force_bale:{drop_id}")
-                            ],
-                            [
-                                InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")
-                            ]
-                        ])
+                        split_row = [
+                            InlineKeyboardButton("✂️ تقسیم هوشمند به ۲ پارت", callback_data=f"smeta:split_bale:{drop_id}:2"),
+                            InlineKeyboardButton("🗜 ادامه فشرده‌سازی", callback_data=f"smeta:force_bale:{drop_id}")
+                        ]
+                        kb_rows = [split_row]
+                        if rec_parts > 2:
+                            kb_rows.append([InlineKeyboardButton(f"✂️ تقسیم هوشمند به {rec_parts} پارت باکیفیت", callback_data=f"smeta:split_bale:{drop_id}:{rec_parts}")])
+                        kb_rows.append([InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")])
+                        warn_kb = InlineKeyboardMarkup(kb_rows)
                         await status_msg.edit_text(warn_text, parse_mode=enums.ParseMode.HTML, reply_markup=warn_kb)
                         return
 

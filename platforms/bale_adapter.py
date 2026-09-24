@@ -2186,6 +2186,23 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if cb_data in ("vip_club_info", "bale:vip_plan"):
+                                        is_vip = UserService.is_user_vip(chat_id)
+                                        if is_vip:
+                                            u = UserService.get_user_by_any_id(chat_id)
+                                            vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                                            txt = (
+                                                "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
+                                                f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"
+                                                "جهت دسترسی به محتوای اختصاصی، بخش مورد نظر خود را انتخاب فرمایید:"
+                                            )
+                                            vip_btns = [
+                                                [{"text": "📁 ۱۶ دسته‌بندی مقالات و آموزش‌ها", "callback_data": "bale:vip_cats:1"}],
+                                                [{"text": "💎 فرکانس فراوانی و آرامش", "callback_data": "bale:freq_cats"}],
+                                                [{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}]
+                                            ]
+                                            await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns})
+                                            continue
+
                                         price = await get_system_setting("vip_monthly_price", "111000")
                                         try:
                                             price_val = int(price)
@@ -2200,14 +2217,10 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         txt = (
                                             "💎 <b>اشتراک پریمیوم</b>\n\n"
                                             "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
-                                            "۱) درک عمیق‌تر قوانین خدا\n"
-                                            "۲) پروژه تغییر را در آغوش بگیر\n"
-                                            "۳) پروژه مهاجرت به مدار بالاتر\n"
-                                            "۴) پروژه خانه‌تکانی ذهن\n"
-                                            "۵) روزشمار تحول زندگی من\n\n"
-                                            "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
-                                            "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                                            "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                                            "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                                            "▫️ <b>دریافت فایل‌های صوتی و تصویری مستقیم در بله</b>\n\n"
                                             f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
                                         )
                                         vip_btns = []
@@ -2216,6 +2229,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if card_num:
                                             txt += f"\n💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n"
                                             vip_btns.append([{"text": "🧾 ارسال رسید واریز کارت به کارت", "callback_data": "bale:vip_pay_card"}])
+                                        vip_btns.append([{"text": "📁 مشاهده عناوین ۱۶ دسته‌بندی", "callback_data": "bale:vip_cats:1"}])
                                         vip_btns.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns} if vip_btns else None)
                                         continue
@@ -2253,6 +2267,214 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             "لطفاً تصویر رسید واریز یا شماره پیگیری خود را ارسال فرمایید تا پس از بررسی فعال شود:\n"
                                             "(جهت انصراف عبارت <code>/cancel</code> را بفرستید)"
                                         )
+                                        continue
+
+                                    if cb_data.startswith("bale:vip_cats:"):
+                                        from services.feed_scraper import feed_scraper
+                                        page_str = cb_data.split(":")[-1]
+                                        page = int(page_str) if page_str.isdigit() else 1
+                                        cats = feed_scraper.get_all_categories()
+                                        limit = 6
+                                        total_pages = max(1, (len(cats) + limit - 1) // limit)
+                                        page = min(max(1, page), total_pages)
+                                        start_idx = (page - 1) * limit
+                                        page_cats = cats[start_idx:start_idx + limit]
+
+                                        txt = (
+                                            "📁 <b>دسته‌بندی‌های رسمی مقالات و آموزش‌های عباس‌منش</b>\n\n"
+                                            f"صفحه <b>{page}</b> از <b>{total_pages}</b>\n"
+                                            "جهت مشاهده جلسات، فایل‌های صوتی و تصویری، دسته‌بندی مورد نظر را انتخاب فرمایید:"
+                                        )
+                                        buttons = []
+                                        for c in page_cats:
+                                            buttons.append([{"text": f"📂 {c['title']}", "callback_data": f"bale:vip_cat:{c['id']}:1"}])
+
+                                        nav_row = []
+                                        if page > 1:
+                                            nav_row.append({"text": "◀️ صفحه قبل", "callback_data": f"bale:vip_cats:{page-1}"})
+                                        if page < total_pages:
+                                            nav_row.append({"text": "صفحه بعد ▶️", "callback_data": f"bale:vip_cats:{page+1}"})
+                                        if nav_row:
+                                            buttons.append(nav_row)
+
+                                        buttons.append([{"text": "🔙 بازگشت به اشتراک پریمیوم", "callback_data": "vip_club_info"}])
+                                        await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": buttons})
+                                        continue
+
+                                    if cb_data.startswith("bale:vip_cat:"):
+                                        from services.feed_scraper import feed_scraper
+                                        parts = cb_data.split(":")
+                                        cat_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+                                        page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+                                        cat = feed_scraper.get_category_by_id(cat_id)
+                                        if not cat:
+                                            await bale.send_message(chat_id, "❌ دسته‌بندی یافت نشد.")
+                                            continue
+
+                                        is_vip = UserService.is_user_vip(chat_id)
+                                        if not is_vip:
+                                            lock_txt = (
+                                                f"🔒 <b>دسترسی اختصاصی: {escape(cat['title'])}</b>\n\n"
+                                                "محتوای کامل و فایل‌های صوتی/تصویری این دسته‌بندی مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                                                "با فعال‌سازی اشتراک پریمیوم، علاوه بر ۱۶ دسته‌بندی، به پروژه‌های تحول و فرکانس فراوانی نیز دسترسی خواهید داشت."
+                                            )
+                                            lock_kb = {
+                                                "inline_keyboard": [
+                                                    [{"text": "💎 فعال‌سازی اشتراک پریمیوم", "callback_data": "vip_club_info"}],
+                                                    [{"text": "🔙 بازگشت به دسته‌بندی‌ها", "callback_data": "bale:vip_cats:1"}]
+                                                ]
+                                            }
+                                            await bale.send_message(chat_id, lock_txt, reply_markup=lock_kb)
+                                            continue
+
+                                        res = await feed_scraper.get_category_episodes(cat_id, page=page, limit=6)
+                                        episodes = res.get("episodes", [])
+                                        txt = (
+                                            f"📂 <b>{escape(cat['title'])}</b>\n"
+                                            f"📄 {escape(cat.get('description', ''))}\n\n"
+                                            f"صفحه <b>{page}</b> | جلسات یافت‌شده: <b>{len(episodes)}</b>\n"
+                                            "جهت دریافت صوت یا ویدیو، جلسه مورد نظر را انتخاب فرمایید:"
+                                        )
+                                        buttons = []
+                                        for ep_idx, ep in enumerate(episodes):
+                                            ep_title = ep.get("title", f"جلسه {ep_idx+1}")
+                                            buttons.append([{"text": f"🎧 {ep_title[:40]}", "callback_data": f"bale:vip_ep:{cat_id}:{page}:{ep_idx}"}])
+
+                                        nav_row = []
+                                        if page > 1:
+                                            nav_row.append({"text": "◀️ صفحه قبل", "callback_data": f"bale:vip_cat:{cat_id}:{page-1}"})
+                                        if res.get("has_next"):
+                                            nav_row.append({"text": "صفحه بعد ▶️", "callback_data": f"bale:vip_cat:{cat_id}:{page+1}"})
+                                        if nav_row:
+                                            buttons.append(nav_row)
+
+                                        buttons.append([{"text": "🔙 بازگشت به دسته‌ها", "callback_data": "bale:vip_cats:1"}])
+                                        await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": buttons})
+                                        continue
+
+                                    if cb_data.startswith("bale:vip_ep:"):
+                                        from services.feed_scraper import feed_scraper
+                                        parts = cb_data.split(":")
+                                        cat_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+                                        page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+                                        ep_idx = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 0
+
+                                        res = await feed_scraper.get_category_episodes(cat_id, page=page, limit=6)
+                                        episodes = res.get("episodes", [])
+                                        if ep_idx >= len(episodes):
+                                            await bale.send_message(chat_id, "❌ جلسه یافت نشد.")
+                                            continue
+
+                                        ep = episodes[ep_idx]
+                                        txt = (
+                                            f"💎 <b>{escape(ep.get('title', ''))}</b>\n\n"
+                                            f"📂 دسته‌بندی: <b>{escape(res.get('category', {}).get('title', ''))}</b>\n"
+                                        )
+                                        if ep.get("chapters"):
+                                            txt += "\n📌 <b>سرفصل‌های این بخش:</b>\n" + "\n".join(f"▫️ {c}" for c in ep["chapters"][:3]) + "\n"
+
+                                        txt += "\nفرمت مورد نظر جهت دریافت مستقیم را انتخاب فرمایید:"
+                                        btns = []
+                                        dl_row = []
+                                        if ep.get("audio_download_url") or ep.get("audio_url"):
+                                            dl_row.append({"text": "🎧 دریافت صوت (MP3)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"})
+                                        if ep.get("video_download_url") or ep.get("video_url"):
+                                            dl_row.append({"text": "🎬 دریافت ویدیو (MP4)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:video"})
+                                        if dl_row:
+                                            btns.append(dl_row)
+                                        btns.append([{"text": "🔙 بازگشت به لیست جلسات", "callback_data": f"bale:vip_cat:{cat_id}:{page}"}])
+                                        await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": btns})
+                                        continue
+
+                                    if cb_data.startswith("bale:vip_dl:"):
+                                        from services.feed_scraper import feed_scraper
+                                        from core.database import db_get_cached_file_id, db_set_cached_file_id
+                                        parts = cb_data.split(":")
+                                        cat_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
+                                        page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+                                        ep_idx = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 0
+                                        media_type = parts[5] if len(parts) > 5 else "audio"
+
+                                        if not UserService.is_user_vip(chat_id):
+                                            await bale.send_message(chat_id, "🔒 جهت دریافت این فایل نیاز به اشتراک فعال پریمیوم دارید.")
+                                            continue
+
+                                        res = await feed_scraper.get_category_episodes(cat_id, page=page, limit=6)
+                                        episodes = res.get("episodes", [])
+                                        if ep_idx >= len(episodes):
+                                            await bale.send_message(chat_id, "❌ جلسه یافت نشد.")
+                                            continue
+
+                                        ep = episodes[ep_idx]
+                                        url = (ep.get("audio_download_url") or ep.get("audio_url")) if media_type == "audio" else (ep.get("video_download_url") or ep.get("video_url"))
+                                        if not url:
+                                            await bale.send_message(chat_id, "❌ لینک دانلودی برای این فرمت موجود نیست.")
+                                            continue
+
+                                        await bale.send_message(
+                                            chat_id,
+                                            f"⏳ <b>در حال آماده‌سازی و ارسال {'صوت' if media_type == 'audio' else 'ویدیو'}...</b>\n"
+                                            f"📄 {escape(ep.get('title', ''))}"
+                                        )
+
+                                        file_key = f"abas_{cat_id}_{page}_{ep_idx}_{media_type}_{abs(hash(url))}"
+                                        cached_fid = await db_get_cached_file_id(file_key, "bale")
+                                        if cached_fid:
+                                            try:
+                                                if media_type == "audio":
+                                                    await bale.send_audio(chat_id, cached_fid, caption=f"🎧 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم")
+                                                else:
+                                                    await bale.send_video(chat_id, cached_fid, caption=f"🎬 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم")
+                                                continue
+                                            except Exception as e:
+                                                logger.warning(f"Failed sending cached file_id in bale: {e}")
+
+                                        ext = ".mp3" if media_type == "audio" else ".mp4"
+                                        target_path = config.TEMP_DIR / f"vip_bale_{uuid.uuid4().hex[:8]}{ext}"
+                                        target_path.parent.mkdir(parents=True, exist_ok=True)
+                                        try:
+                                            import aiohttp
+                                            async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
+                                                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=180)) as resp:
+                                                    if resp.status == 200:
+                                                        with open(target_path, "wb") as f_out:
+                                                            async for chunk in resp.content.iter_chunked(128 * 1024):
+                                                                f_out.write(chunk)
+                                                    else:
+                                                        await bale.send_message(chat_id, "❌ خطا در دانلود فایل از سرور منبع.")
+                                                        continue
+
+                                            if not target_path.exists() or target_path.stat().st_size == 0:
+                                                await bale.send_message(chat_id, "❌ فایل نامعتبر است.")
+                                                continue
+
+                                            if media_type == "audio":
+                                                sent = await bale.send_audio(
+                                                    chat_id,
+                                                    target_path,
+                                                    caption=f"🎧 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
+                                                    title=ep.get("title", "فایل صوتی"),
+                                                    performer="استاد عباس‌منش"
+                                                )
+                                                f_id = (sent.get("result") or {}).get("audio", {}).get("file_id") if isinstance(sent, dict) else None
+                                                if f_id:
+                                                    await db_set_cached_file_id(file_key, "bale", f_id, "audio")
+                                            else:
+                                                sent = await bale.send_video(
+                                                    chat_id,
+                                                    target_path,
+                                                    caption=f"🎬 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم"
+                                                )
+                                                f_id = (sent.get("result") or {}).get("video", {}).get("file_id") if isinstance(sent, dict) else None
+                                                if f_id:
+                                                    await db_set_cached_file_id(file_key, "bale", f_id, "video")
+                                        except Exception as e:
+                                            logger.error(f"Error sending VIP media in bale: {e}")
+                                            await bale.send_message(chat_id, f"❌ خطا در ارسال فایل: {e}")
+                                        finally:
+                                            if target_path.exists():
+                                                try: target_path.unlink()
+                                                except Exception: pass
                                         continue
 
                                     if cb_data in ("bale:prods_hub", "bale:prods_back"):
@@ -2966,6 +3188,23 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if any(text.startswith(cmd) for cmd in ["💎 عضویت در اشتراک پریمیوم", "💎 عضویت در باشگاه پریمیوم VIP", "عضویت در اشتراک پریمیوم", "اشتراک پریمیوم", "باشگاه پریمیوم", "اشتراک VIP", "/vip", "/premium"]):
+                                        is_vip = UserService.is_user_vip(chat_id)
+                                        if is_vip:
+                                            u = UserService.get_user_by_any_id(chat_id)
+                                            vip_until_show = getattr(u, 'vip_until', '')[:10] if u else ""
+                                            txt = (
+                                                "💎 <b>باشگاه مشترکین پریمیوم</b>\n\n"
+                                                f"اشتراک پریمیوم شما تا تاریخ <b>{vip_until_show or 'فعال'}</b> معتبر است.\n\n"
+                                                "جهت دسترسی به محتوای اختصاصی، بخش مورد نظر خود را انتخاب فرمایید:"
+                                            )
+                                            vip_btns = [
+                                                [{"text": "📁 ۱۶ دسته‌بندی مقالات و آموزش‌ها", "callback_data": "bale:vip_cats:1"}],
+                                                [{"text": "💎 فرکانس فراوانی و آرامش", "callback_data": "bale:freq_cats"}],
+                                                [{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}]
+                                            ]
+                                            await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns})
+                                            continue
+
                                         price = await get_system_setting("vip_monthly_price", "111000")
                                         try:
                                             price_val = int(price)
@@ -2979,14 +3218,10 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         txt = (
                                             "💎 <b>اشتراک پریمیوم</b>\n\n"
                                             "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام:</b>\n"
-                                            "۱) درک عمیق‌تر قوانین خدا\n"
-                                            "۲) پروژه تغییر را در آغوش بگیر\n"
-                                            "۳) پروژه مهاجرت به مدار بالاتر\n"
-                                            "۴) پروژه خانه‌تکانی ذهن\n"
-                                            "۵) روزشمار تحول زندگی من\n\n"
-                                            "▫️ دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)\n"
-                                            "▫️ دریافت نسخه‌های صوتی و تحلیل‌های اختصاصی\n\n"
+                                            "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                                            "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                                            "▫️ <b>دریافت فایل‌های صوتی و تصویری مستقیم در بله</b>\n\n"
                                             f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
                                         )
                                         vip_btns = []
@@ -2995,6 +3230,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if card_num:
                                             txt += f"\n💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n"
                                             vip_btns.append([{"text": "🧾 ارسال رسید واریز کارت به کارت", "callback_data": "bale:vip_pay_card"}])
+                                        vip_btns.append([{"text": "📁 مشاهده عناوین ۱۶ دسته‌بندی", "callback_data": "bale:vip_cats:1"}])
                                         vip_btns.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns} if vip_btns else None)
                                         continue

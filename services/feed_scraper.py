@@ -31,13 +31,143 @@ BROWSER_HEADERS = {
 }
 
 BASE_FEED_URL = "https://abasmanesh.com/fa/free-download-list/"
+ARTICLES_BASE_URL = "https://abasmanesh.com/fa/articles/"
+
+# ۱۶ دسته‌بندی رسمی دانلودهای هدیه و مقالات سایت عباس‌منش (مختص مشترکین پریمیوم)
+ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
+    {
+        "id": 1,
+        "slug": "the-series-of-focus-on-positive-points",
+        "title": "سریال تمرکز بر نکات مثبت",
+        "url": "https://abasmanesh.com/fa/category/free-download/the-series-of-focus-on-positive-points/",
+        "path": "/fa/category/free-download/the-series-of-focus-on-positive-points/"
+    },
+    {
+        "id": 2,
+        "slug": "paradise-life-series",
+        "title": "سریال زندگی در بهشت",
+        "url": "https://abasmanesh.com/fa/category/free-download/paradise-life-series/",
+        "path": "/fa/category/free-download/paradise-life-series/"
+    },
+    {
+        "id": 3,
+        "slug": "travel-around-the-usa-series",
+        "title": "سریال سفر به دور آمریکا",
+        "url": "https://abasmanesh.com/fa/category/free-download/travel-around-the-usa-series/",
+        "path": "/fa/category/free-download/travel-around-the-usa-series/"
+    },
+    {
+        "id": 4,
+        "slug": "interview-with-master-abasmanesh",
+        "title": "مصاحبه با استاد عباس‌منش و Liveها",
+        "url": "https://abasmanesh.com/fa/category/free-download/interview-with-master-abasmanesh/",
+        "path": "/fa/category/free-download/interview-with-master-abasmanesh/"
+    },
+    {
+        "id": 5,
+        "slug": "unchanging-laws-of-god",
+        "title": "قوانین بدون تغییر خداوند",
+        "url": "https://abasmanesh.com/fa/category/free-download/unchanging-laws-of-god/",
+        "path": "/fa/category/free-download/unchanging-laws-of-god/"
+    },
+    {
+        "id": 6,
+        "slug": "practicing-monotheism",
+        "title": "اجرای توحید در عمل",
+        "url": "https://abasmanesh.com/fa/category/free-download/practicing-monotheism/",
+        "path": "/fa/category/free-download/practicing-monotheism/"
+    },
+    {
+        "id": 7,
+        "slug": "distinguishing-essence-from-branches",
+        "title": "توانایی تشخیص اصل از فرع",
+        "url": "https://abasmanesh.com/fa/category/free-download/distinguishing-essence-from-branches/",
+        "path": "/fa/category/free-download/distinguishing-essence-from-branches/"
+    },
+    {
+        "id": 8,
+        "slug": "faith-that-leads-to-action",
+        "title": "ایمانی که عمل می‌آورد",
+        "url": "https://abasmanesh.com/fa/category/free-download/faith-that-leads-to-action/",
+        "path": "/fa/category/free-download/faith-that-leads-to-action/"
+    },
+    {
+        "id": 9,
+        "slug": "ability-to-control-the-mind",
+        "title": "توانایی کنترل ذهن",
+        "url": "https://abasmanesh.com/fa/category/free-download/ability-to-control-the-mind/",
+        "path": "/fa/category/free-download/ability-to-control-the-mind/"
+    },
+    {
+        "id": 10,
+        "slug": "wealth-creating-beliefs",
+        "title": "باورهای ثروت‌ساز",
+        "url": "https://abasmanesh.com/fa/category/free-download/wealth-creating-beliefs/",
+        "path": "/fa/category/free-download/wealth-creating-beliefs/"
+    },
+    {
+        "id": 11,
+        "slug": "be-the-programmer-of-your-life",
+        "title": "برنامه‌نویس زندگی‌ات باش",
+        "url": "https://abasmanesh.com/fa/category/free-download/be-the-programmer-of-your-life/",
+        "path": "/fa/category/free-download/be-the-programmer-of-your-life/"
+    },
+    {
+        "id": 12,
+        "slug": "being-at-peace-with-ourselves",
+        "title": "در صلح بودن با خودمان",
+        "url": "https://abasmanesh.com/fa/category/free-download/being-at-peace-with-ourselves/",
+        "path": "/fa/category/free-download/being-at-peace-with-ourselves/"
+    },
+    {
+        "id": 13,
+        "slug": "investing-in-yourself",
+        "title": "سرمایه‌گذاری روی خودت",
+        "url": "https://abasmanesh.com/fa/category/free-download/investing-in-yourself/",
+        "path": "/fa/category/free-download/investing-in-yourself/"
+    },
+    {
+        "id": 14,
+        "slug": "peace-in-light-of-awareness",
+        "title": "آرامش در پرتو آگاهی",
+        "url": "https://abasmanesh.com/fa/category/free-download/peace-in-light-of-awareness/",
+        "path": "/fa/category/free-download/peace-in-light-of-awareness/"
+    },
+    {
+        "id": 15,
+        "slug": "evolutionary-steps-for-guidance",
+        "title": "قدم‌های تکاملی برای هدایت‌شدن",
+        "url": "https://abasmanesh.com/fa/category/free-download/evolutionary-steps-for-guidance/",
+        "path": "/fa/category/free-download/evolutionary-steps-for-guidance/"
+    },
+    {
+        "id": 16,
+        "slug": "all-articles",
+        "title": "کلیدها و تمام دانلودها",
+        "url": "https://abasmanesh.com/fa/articles/",
+        "path": "/fa/articles/"
+    }
+]
 
 # In-memory cache to prevent spamming target site
 _CACHE: Dict[str, Any] = {
     "items": [],
     "last_fetched": 0.0
 }
+_ARTICLE_CACHE: Dict[str, Dict[str, Any]] = {}
 CACHE_TTL_SEC = 300.0  # 5 minutes cache
+
+def get_all_categories() -> List[Dict[str, Any]]:
+    """دریافت فهرست کامل ۱۶ دسته‌بندی رسمی عباس‌منش."""
+    return ABASMANESH_PREMIUM_CATEGORIES
+
+def get_category_by_id(cat_id_or_slug: str | int) -> Optional[Dict[str, Any]]:
+    """یافتن دسته‌بندی بر اساس شناسه یا اسلاگ."""
+    s_val = str(cat_id_or_slug).strip()
+    for cat in ABASMANESH_PREMIUM_CATEGORIES:
+        if str(cat["id"]) == s_val or cat["slug"] == s_val or s_val in cat["url"]:
+            return cat
+    return None
 
 FALLBACK_ITEMS = [
     {
@@ -185,19 +315,31 @@ async def _fetch_single_article(session: aiohttp.ClientSession, url: str, title:
     }
 
 
-async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1) -> List[Dict[str, Any]]:
+async def get_latest_free_downloads(
+    limit: int = 25,
+    force_refresh: bool = False,
+    page: int = 1,
+    base_url: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
-    Scrapes free downloads from abasmanesh.com/fa/free-download-list/ with dynamic pagination.
-    Returns a structured list of dicts with title, direct media links, and cover.
+    استخراج داینامیک آرشیو مقالات و دانلودهای سایت عباس‌منش با صفحه‌بندی.
+    ورودی‌ها:
+        limit (int): سقف تعداد مقالات
+        force_refresh (bool): عدم استفاده از کش
+        page (int): شماره صفحه
+        base_url (str): آدرس پایه مخزن (پیش‌فرض https://abasmanesh.com/fa/articles/)
+    خروجی:
+        List[Dict[str, Any]]: لیست جلسات و فایل‌ها همراه با لینک مستقیم
     """
     now = time.time()
-    cache_key = f"page_{page}"
+    effective_base = (base_url or ARTICLES_BASE_URL).rstrip("/") + "/"
+    cache_key = f"feed_{hash(effective_base)}_p{page}"
     if not force_refresh and cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
         return _CACHE[cache_key]["items"][:limit]
     if page == 1 and not force_refresh and _CACHE.get("items") and (now - _CACHE.get("last_fetched", 0) < CACHE_TTL_SEC):
         return _CACHE["items"][:limit]
 
-    target_url = f"https://abasmanesh.com/fa/free-download-list/page/{page}/" if page > 1 else BASE_FEED_URL
+    target_url = f"{effective_base}page/{page}/" if page > 1 else effective_base
     timeout = aiohttp.ClientTimeout(total=20)
     try:
         async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
@@ -281,3 +423,139 @@ async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False
         logger.warning(f"[feed_scraper] Failed to scrape live feed: {e}")
 
     return FALLBACK_ITEMS[:limit] if page == 1 else []
+
+
+async def get_category_episodes(
+    category_id_or_slug: str | int,
+    page: int = 1,
+    limit: int = 15,
+    force_refresh: bool = False
+) -> Dict[str, Any]:
+    """
+    اسکرپ داینامیک جلسات و فایل‌های یک دسته‌بندی خاص از ۱۶ دسته هدیه سایت عباس‌منش.
+    لینک‌های فایل‌ها به صورت پویا استخراج شده و هیچ لینکی هاردکد نمی‌شود.
+    
+    ورودی‌ها:
+        category_id_or_slug (str | int): شناسه عددی (۱ تا ۱۶) یا اسلاگ دسته
+        page (int): شماره صفحه
+        limit (int): تعداد جلسات در صفحه
+        force_refresh (bool): دور زدن کش
+    خروجی:
+        Dict[str, Any]: شامل category (مشخصات دسته), episodes (فایل‌ها و لینک‌ها), page, has_next
+    """
+    cat = get_category_by_id(category_id_or_slug)
+    if not cat:
+        cat = ABASMANESH_PREMIUM_CATEGORIES[0]
+
+    now = time.time()
+    cache_key = f"cat_{cat['id']}_p{page}"
+    if not force_refresh and cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
+        return _CACHE[cache_key]["data"]
+
+    target_url = cat["url"]
+    if page > 1:
+        target_url = f"{cat['url'].rstrip('/')}/page/{page}/"
+
+    timeout = aiohttp.ClientTimeout(total=20)
+    articles_to_fetch = []
+    try:
+        async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
+            async with session.get(target_url) as resp:
+                if resp.status == 200:
+                    html = await resp.text()
+                    seen_urls = set()
+                    if BeautifulSoup:
+                        soup = BeautifulSoup(html, "html.parser")
+                        main_c = soup.find("main") or soup.find("div", id="content") or soup
+                        for a in main_c.find_all("a", href=True):
+                            h = a["href"].split("?")[0].rstrip("/") + "/"
+                            t = a.get_text(strip=True)
+                            if not t or len(t) < 4:
+                                continue
+                            if any(x in t for x in ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه", "نظرات"]):
+                                continue
+                            if "/fa/" in h and not any(x in h for x in ["category", "cart", "account", "login", "table-of-contents"]):
+                                if h in seen_urls or h == "https://abasmanesh.com/fa/":
+                                    continue
+                                seen_urls.add(h)
+                                title = _clean_title(t)
+                                articles_to_fetch.append((h, title))
+                                if len(articles_to_fetch) >= limit:
+                                    break
+                    else:
+                        matches = re.findall(r'<a\s+[^>]*href=["\'](https://abasmanesh\.com/fa/[^"\']+)["\'][^>]*>(.*?)</a>', html, re.DOTALL)
+                        for href, raw_t in matches:
+                            clean_t = re.sub(r"<[^>]+>", "", raw_t).strip()
+                            if not clean_t or len(clean_t) < 4:
+                                continue
+                            if any(x in clean_t for x in ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه"]):
+                                continue
+                            h = href.split("?")[0].rstrip("/") + "/"
+                            if h in seen_urls or "category" in h:
+                                continue
+                            seen_urls.add(h)
+                            articles_to_fetch.append((h, _clean_title(clean_t)))
+                            if len(articles_to_fetch) >= limit:
+                                break
+
+            episodes = []
+            if articles_to_fetch:
+                tasks = [
+                    _fetch_single_article(session, url, title)
+                    for url, title in articles_to_fetch[:limit]
+                ]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for idx, r in enumerate(results):
+                    if isinstance(r, dict) and r.get("title"):
+                        r["category_id"] = cat["id"]
+                        r["category_title"] = cat["title"]
+                        r["episode_index"] = ((page - 1) * limit) + idx + 1
+                        episodes.append(r)
+
+            result_obj = {
+                "category": cat,
+                "episodes": episodes,
+                "page": page,
+                "has_next": len(episodes) >= limit
+            }
+            if episodes:
+                _CACHE[cache_key] = {"data": result_obj, "last_fetched": now}
+            return result_obj
+
+    except Exception as e:
+        logger.warning(f"[feed_scraper] Failed to scrape category {cat['slug']}: {e}")
+
+    return {
+        "category": cat,
+        "episodes": FALLBACK_ITEMS[:limit],
+        "page": page,
+        "has_next": False
+    }
+
+
+class FeedScraper:
+    """
+    سرویس اسکرپر داینامیک مقالات، هدایا و ۱۶ دسته‌بندی سایت عباس‌منش.
+    """
+    ARTICLES_BASE_URL = ARTICLES_BASE_URL
+    CATEGORIES = ABASMANESH_PREMIUM_CATEGORIES
+
+    @staticmethod
+    def get_all_categories() -> List[Dict[str, Any]]:
+        return get_all_categories()
+
+    @staticmethod
+    def get_category_by_id(cat_id_or_slug: Union[str, int]) -> Optional[Dict[str, Any]]:
+        return get_category_by_id(cat_id_or_slug)
+
+    @staticmethod
+    async def get_category_episodes(category_id_or_slug: Union[str, int], page: int = 1, limit: int = 15, force_refresh: bool = False) -> Dict[str, Any]:
+        return await get_category_episodes(category_id_or_slug, page=page, limit=limit, force_refresh=force_refresh)
+
+    @staticmethod
+    async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1, base_url: Optional[str] = None) -> List[Dict[str, Any]]:
+        return await get_latest_free_downloads(limit=limit, force_refresh=force_refresh, page=page, base_url=base_url)
+
+
+feed_scraper = FeedScraper()
+

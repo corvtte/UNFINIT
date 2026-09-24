@@ -3497,7 +3497,7 @@ def render_dashboard_html() -> str:
     <!-- Mobile Bottom Navigation Bar (Material 3 Ergonomic Bar) -->
     <nav id="mobileBottomNav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 px-3 py-2 border-t flex items-center justify-around select-none shadow-2xl backdrop-blur-lg" style="background: var(--card-bg, #0f172a); border-color: var(--card-border, #1e293b);">
         <!-- 1. Dashboard -->
-        <button type="button" onclick="switchTab('dashboard')" data-tab="dashboard" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-slate-400 hover:text-cyan-300 transition active cursor-pointer">
+        <button type="button" onclick="switchTab('dashboard')" data-tab="dashboard" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-cyan-400 hover:text-cyan-300 transition cursor-pointer active">
             <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
             </svg>
@@ -3512,12 +3512,12 @@ def render_dashboard_html() -> str:
             <span class="text-[10px] font-medium">استودیو</span>
         </button>
 
-        <!-- 3. CENTER: Products (Elevated Prominent Button) -->
-        <button type="button" onclick="switchTab('courses')" data-tab="courses" class="relative -top-4 flex flex-col items-center justify-center theme-accent-btn w-14 h-14 rounded-2xl shadow-xl shadow-cyan-500/30 text-white transition transform active:scale-95 border-2 border-white/20 cursor-pointer">
-            <svg class="w-6 h-6 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <!-- 3. Products -->
+        <button type="button" onclick="switchTab('courses')" data-tab="courses" class="flex flex-col items-center justify-center gap-1 py-1 px-2 text-slate-400 hover:text-cyan-300 transition cursor-pointer">
+            <svg class="w-5 h-5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
             </svg>
-            <span class="text-[9px] font-bold mt-0.5">محصولات</span>
+            <span class="text-[10px] font-medium">محصولات</span>
         </button>
 
         <!-- 4. Orders -->
@@ -3818,17 +3818,12 @@ def render_dashboard_html() -> str:
                         if (bottomNav) {{
                             bottomNav.querySelectorAll('[data-tab]').forEach(btn => {{
                                 btn.classList.remove('active', 'text-cyan-400');
-                                if (!btn.classList.contains('theme-accent-btn')) {{
-                                    btn.classList.add('text-slate-400');
-                                }}
+                                btn.classList.add('text-slate-400');
                             }});
                             const activeBottomBtn = bottomNav.querySelector(`[data-tab="${{rawTab}}"]`);
                             if (activeBottomBtn) {{
-                                activeBottomBtn.classList.add('active');
-                                if (!activeBottomBtn.classList.contains('theme-accent-btn')) {{
-                                    activeBottomBtn.classList.add('text-cyan-400');
-                                    activeBottomBtn.classList.remove('text-slate-400');
-                                }}
+                                activeBottomBtn.classList.add('active', 'text-cyan-400');
+                                activeBottomBtn.classList.remove('text-slate-400');
                             }}
                         }}
 
