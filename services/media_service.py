@@ -815,6 +815,26 @@ class MediaService:
                             logger.error("[BatchQueue] Bale target chat not configured")
                             break
                         caption_clean = f"📄 پارت {idx} از {total_count}: <b>{s_name}</b>" if total_count > 1 else f"📄 <b>{s_name}</b>"
+                        last_bale_q_edit = [0.0]
+                        def _bale_q_progress(curr: int, tot: int):
+                            now = time.time()
+                            if (now - last_bale_q_edit[0] < 3.0) and (curr < tot):
+                                return
+                            last_bale_q_edit[0] = now
+                            pct = min(99, max(0, int((curr / max(1, tot)) * 100))) if curr < tot else 100
+                            cur_mb = curr / (1024 * 1024)
+                            tot_mb = tot / (1024 * 1024)
+                            prog_msg = (
+                                f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(pct)}</code>\n"
+                                f"📄 <b>{s_name}</b>\n"
+                                f"🚢 در حال بارگذاری در بله ({cur_mb:.1f} از {tot_mb:.1f} MB)..."
+                            )
+                            try:
+                                loop = asyncio.get_running_loop()
+                                loop.create_task(_update_status(prog_msg))
+                            except Exception:
+                                pass
+
                         if s_data.get("media_type") == "video":
                             t_spec = inspect_technical_metadata(final_p)
                             res = await bale_adapter.send_video(
@@ -822,14 +842,16 @@ class MediaService:
                                 caption=caption_clean,
                                 duration=t_spec.get("duration_sec"),
                                 width=t_spec.get("width"),
-                                height=t_spec.get("height")
+                                height=t_spec.get("height"),
+                                progress_callback=_bale_q_progress
                             )
                         else:
                             res = await bale_adapter.send_audio(
                                 target_chat, final_p,
                                 title=t_info.get("title"),
                                 performer=t_info.get("artist"),
-                                caption=caption_clean
+                                caption=caption_clean,
+                                progress_callback=_bale_q_progress
                             )
                         if res.get("ok"):
                             success_count += 1

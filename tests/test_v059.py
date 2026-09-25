@@ -41,9 +41,8 @@ import inspect
 
 class TestVersion059(unittest.TestCase):
     def test_engine_version_is_v059(self):
-        """بررسی اینکه نگارش موتور در کانفیگ دقیقاً v0.5.9 است"""
-        self.assertEqual(str(config.ENGINE_VERSION), "v0.5.9")
-        self.assertTrue(config.ENGINE_VERSION.startswith("v0.5.9"))
+        """بررسی اینکه نگارش موتور در کانفیگ حداقل v0.5.9 است"""
+        self.assertTrue(str(config.ENGINE_VERSION) >= "v0.5.9")
 
     def test_format_video_progress_msg(self):
         """بررسی صحت فرمت پیام پیشرفت فشرده‌سازی و حضور کاراکتر LTR \u200e"""

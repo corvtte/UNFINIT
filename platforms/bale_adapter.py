@@ -170,10 +170,12 @@ from aiohttp import payload
 
 class ProgressFileReader(io.IOBase):
     """
-    خواننده باینری فایل بر پایه io.IOBase همراه با گزارش دوره‌ای بایت‌های خوانده‌شده
-    جهت پایش نوار پیشرفت زنده در تلگرام و بله با سازگاری ۱۰۰٪ با aiohttp.FormData.
+    خواننده باینری فایل بر پایه io.IOBase با تفویض کامل متدهای فایلی (fileno, seek, tell)
+    و ارسال گزارش دوره‌ای بایت‌های ارسالی جهت فعال‌سازی نوار پیشرفت زنده آپلود.
+    این کلاس با ارائه متد fileno() امکان محاسبه دقیق و خودکار Content-Length را در aiohttp
+    فراهم آورده و از ارسال غیراستاندارد Transfer-Encoding: chunked به سرورهای بله جلوگیری می‌کند.
     """
-    def __init__(self, file_path: Any, callback: Optional[Callable[[int, int], None]] = None, chunk_size: int = 1024 * 1024):
+    def __init__(self, file_path: Any, callback: Optional[Callable[[int, int], None]] = None, chunk_size: int = 64 * 1024):
         super().__init__()
         self.callback = callback
         self.chunk_size = chunk_size
@@ -198,6 +200,15 @@ class ProgressFileReader(io.IOBase):
             self.total_bytes = p.stat().st_size
             self._f = open(p, "rb")
 
+    def fileno(self) -> int:
+        if hasattr(self._f, "fileno"):
+            return self._f.fileno()
+        raise OSError("fileno not available")
+
+    @property
+    def name(self) -> Optional[str]:
+        return getattr(self, "file_path", None) or getattr(self._f, "name", None)
+
     def read(self, size: int = -1) -> bytes:
         if size is None or size <= 0:
             size = self.chunk_size
@@ -214,6 +225,13 @@ class ProgressFileReader(io.IOBase):
     def readinto(self, b) -> int:
         if hasattr(self._f, "readinto"):
             res = self._f.readinto(b)
+            if res:
+                self.bytes_read += res
+                if self.callback:
+                    try:
+                        self.callback(self.bytes_read, self.total_bytes)
+                    except Exception:
+                        pass
         else:
             data = self.read(len(b))
             res = len(data)
@@ -490,7 +508,9 @@ class BaleAdapter:
         document: Union[str, Path, bytes],
         caption: Optional[str] = None,
         filename: Optional[str] = None,
-        reply_markup: Optional[Dict[str, Any]] = None
+        reply_markup: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        **kwargs
     ) -> Dict[str, Any]:
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
@@ -504,7 +524,8 @@ class BaleAdapter:
             else:
                 form.add_field("reply_markup", str(reply_markup))
         try:
-            bale_upload_timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=90)
+            # پیکربندی تایم‌اوت سخاوتمندانه ۱۸۰۰ ثانیه‌ای برای آپلودهای سنگین
+            bale_upload_timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=180)
             if isinstance(document, bytes):
                 fname = filename or "document.bin"
                 form.add_field("document", document, filename=fname, content_type="application/octet-stream")
@@ -516,7 +537,8 @@ class BaleAdapter:
                 if not p.exists():
                     return {"ok": False, "error": f"File {p} not found"}
                 fname = filename or p.name
-                with open(p, "rb") as f:
+                reader = ProgressFileReader(p, progress_callback, chunk_size=64 * 1024) if progress_callback else open(p, "rb")
+                with reader as f:
                     form.add_field("document", f, filename=fname, content_type="application/octet-stream")
                     async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                         async with session.post(url_doc, data=form) as resp:
@@ -576,12 +598,12 @@ class BaleAdapter:
         if width: form.add_field("width", str(int(width)))
         if height: form.add_field("height", str(int(height)))
 
-        # پیکربندی تایم‌اوت مقاوم طبق استاندارد ۳۰۰ ثانیه کل، ۳۰ ثانیه اتصال، ۹۰ ثانیه خواندن سوکت
-        bale_video_timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=90)
+        # پیکربندی تایم‌اوت سخاوتمندانه ۱۸۰۰ ثانیه‌ای (۳۰ دقیقه)، ۶۰ ثانیه اتصال، ۱۸۰ ثانیه خواندن سوکت
+        bale_video_timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=180)
         last_error_diag = "Unknown error"
 
         try:
-            reader = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            reader = ProgressFileReader(path_obj, progress_callback, chunk_size=64 * 1024) if progress_callback else open(path_obj, "rb")
             with reader as f:
                 form.add_field("video", f, filename=clean_send_name, content_type="video/mp4")
                 async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
@@ -610,7 +632,7 @@ class BaleAdapter:
                 form_doc = aiohttp.FormData(quote_fields=False)
                 form_doc.add_field("chat_id", str(chat_id))
                 if clean_caption: form_doc.add_field("caption", clean_caption)
-                reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+                reader_doc = ProgressFileReader(path_obj, progress_callback, chunk_size=64 * 1024) if progress_callback else open(path_obj, "rb")
                 with reader_doc as f:
                     form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
                     async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
@@ -884,6 +906,7 @@ class BaleAdapter:
         performer: Optional[str] = None,
         caption: Optional[str] = None,
         duration: Optional[int] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -939,7 +962,7 @@ class BaleAdapter:
         except Exception:
             pass
 
-        progress_callback = kwargs.get("progress_callback")
+        progress_callback = progress_callback or kwargs.get("progress_callback")
         max_safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.5))
         if file_size_bytes > (max_safe_mb * 1024 * 1024):
             logger.info(f"Bale send_audio: file size ({file_size_bytes / (1024*1024):.2f}MB) exceeds {max_safe_mb}MB. Directly routing to sendDocument.")
@@ -949,10 +972,10 @@ class BaleAdapter:
                 form_doc.add_field("chat_id", str(chat_id))
                 if clean_caption: form_doc.add_field("caption", clean_caption)
                 if markup_str: form_doc.add_field("reply_markup", markup_str)
-                reader_large = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+                reader_large = ProgressFileReader(path_obj, progress_callback, chunk_size=64 * 1024) if progress_callback else open(path_obj, "rb")
                 with reader_large as f:
                     form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
-                    timeout = aiohttp.ClientTimeout(total=1800, connect=30)
+                    timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=180)
                     async with aiohttp.ClientSession(timeout=timeout) as session:
                         async with session.post(url_doc, data=form_doc) as resp:
                             res_doc = await resp.json()
@@ -972,10 +995,10 @@ class BaleAdapter:
         content_type = "audio/mp4" if path_obj.suffix.lower() == ".m4a" else "audio/mpeg"
         
         try:
-            reader_audio = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            reader_audio = ProgressFileReader(path_obj, progress_callback, chunk_size=64 * 1024) if progress_callback else open(path_obj, "rb")
             with reader_audio as f:
                 form.add_field("audio", f, filename=clean_send_name, content_type=content_type)
-                timeout = aiohttp.ClientTimeout(total=1800, connect=30)
+                timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=180)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(url_audio, data=form) as resp:
                         res = await resp.json()
@@ -993,10 +1016,10 @@ class BaleAdapter:
             form_doc.add_field("chat_id", str(chat_id))
             if clean_caption: form_doc.add_field("caption", clean_caption)
             if markup_str: form_doc.add_field("reply_markup", markup_str)
-            reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+            reader_doc = ProgressFileReader(path_obj, progress_callback, chunk_size=64 * 1024) if progress_callback else open(path_obj, "rb")
             with reader_doc as f:
                 form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
-                timeout = aiohttp.ClientTimeout(total=1800, connect=30)
+                timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=180)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(url_doc, data=form_doc) as resp:
                         res_doc = await resp.json()
