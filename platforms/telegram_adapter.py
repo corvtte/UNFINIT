@@ -4002,52 +4002,73 @@ class TelegramAdapter:
                 try:
                     final_path, send_name, transfer_info = MediaService.prepare_for_transfer(drop_id, "bale", progress_callback=update_cb)
                     p_final = Path(str(final_path))
-                    final_size_mb = p_final.stat().st_size / (1024 * 1024) if p_final.exists() else 0.0
-                    status_text = (
-                        "🚀 <b>در حال ارسال پرسرعت فایل به بله...</b>\n\n"
-                        "⏳ لطفاً ۱ تا ۲ دقیقه شکیبا باشید (فایل به طور مستقیم و با حداکثر پهنای باند ارسال می‌شود)"
+                    actual_path = str(p_final)
+                    file_size_mb = (os.path.getsize(actual_path) / (1024 * 1024)) if p_final.exists() else 0.0
+
+                    await status_msg.edit_text(
+                        f"🚀 <b>در حال ارسال فایل به بله ({file_size_mb:.1f} مگابایت)...</b>\n"
+                        "⏳ لطفاً حدود ۱ دقیقه شکیبا باشید.",
+                        parse_mode=enums.ParseMode.HTML
                     )
-                    await status_msg.edit_text(status_text, parse_mode=enums.ParseMode.HTML)
-                    logger.info(f"[TG Callback smeta:send_bale] Direct wire-speed dispatch to Bale target={target_chat} for '{send_name}' ({final_size_mb:.2f} MB)")
+                    logger.info(f"[TG Callback smeta:send_bale] Direct bytes dispatch to Bale target={target_chat} for '{send_name}' ({file_size_mb:.2f} MB)")
+
+                    clean_caption = f"📄 <b>{escape(send_name)}</b>"
 
                     if drop.get("media_type") == "video":
                         tech = inspect_technical_metadata(p_final)
                         res = await self.bale_adapter.send_video(
-                            target_chat,
-                            p_final,
+                            chat_id=target_chat,
+                            file_path=actual_path,
                             filename=send_name,
-                            caption=f"📄 <b>{escape(send_name)}</b>",
+                            caption=clean_caption,
                             duration=tech.get("duration_sec"),
                             width=tech.get("width"),
                             height=tech.get("height")
                         )
+                        if not (res and res.get("ok")):
+                            logger.warning(f"[TG Callback smeta:send_bale] send_video unconfirmed, trying send_document fallback...")
+                            res = await self.bale_adapter.send_document(
+                                chat_id=target_chat,
+                                document=actual_path,
+                                filename=send_name,
+                                caption=clean_caption
+                            )
                     else:
                         res = await self.bale_adapter.send_audio(
-                            target_chat,
-                            p_final,
+                            chat_id=target_chat,
+                            file_path=actual_path,
                             filename=send_name,
-                            title=transfer_info["title"],
-                            performer=transfer_info["artist"],
-                            caption=f"📄 <b>{escape(send_name)}</b>"
+                            title=transfer_info.get("title"),
+                            performer=transfer_info.get("artist"),
+                            caption=clean_caption
                         )
+                        if not (res and res.get("ok")):
+                            logger.warning(f"[TG Callback smeta:send_bale] send_audio unconfirmed, trying send_document fallback...")
+                            res = await self.bale_adapter.send_document(
+                                chat_id=target_chat,
+                                document=actual_path,
+                                filename=send_name,
+                                caption=clean_caption
+                            )
 
                     if res and res.get("ok"):
-                        logger.info(f"[TG Callback smeta:send_bale] Successfully delivered to Bale: {send_name}")
-                        await status_msg.edit_text(f"✅ <b>فایل با موفقیت به بله ارسال شد.</b>\n📄 <code>{escape(send_name)}</code>", parse_mode=enums.ParseMode.HTML)
-                    else:
-                        desc = res.get("description", res.get("error", "خطای ارتباط با سرور بله")) if res else "پاسخی دریافت نشد"
-                        logger.error(f"[TG Callback smeta:send_bale] Dispatch failed: {desc}")
+                        logger.info(f"[TG Callback smeta:send_bale] Dispatch successful to Bale chat_id={target_chat}!")
                         await status_msg.edit_text(
-                            f"❌ <b>خطا در ارسال به بله:</b> {escape(str(desc))}\n"
-                            f"💡 لطفاً مجدداً دکمه ارسال را بزنید.",
+                            f"✅ <b>فایل با موفقیت به بله ارسال و تحویل داده شد!</b>\n📄 <code>{escape(send_name)}</code>",
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                    else:
+                        error_desc = res.get("description") if isinstance(res, dict) else (res.get("error") if isinstance(res, dict) else "پاسخی دریافت نشد")
+                        logger.error(f"[TG Callback smeta:send_bale] Bale error: {error_desc}")
+                        await status_msg.edit_text(
+                            f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(error_desc))}</code>",
                             parse_mode=enums.ParseMode.HTML
                         )
 
                 except Exception as e:
-                    logger.exception(f"[TG Callback smeta:send_bale] Exception during dispatch: {e}")
+                    logger.exception(f"[TG Callback smeta:send_bale] Unexpected error: {e}")
                     await status_msg.edit_text(
-                        f"❌ <b>خطا در ارسال به بله:</b> [{escape(str(e))}]\n"
-                        f"💡 لطفاً دکمه ارسال را مجدداً بزنید.",
+                        f"❌ <b>خطای پیش‌بینی‌نشده در ارسال:</b>\n<code>{escape(str(e))}</code>",
                         parse_mode=enums.ParseMode.HTML
                     )
 

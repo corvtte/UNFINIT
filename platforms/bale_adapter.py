@@ -428,18 +428,16 @@ class BaleAdapter:
         **kwargs
     ) -> Dict[str, Any]:
         """
-        ارسال فایل/سند با استریم مستقیم و خالص بومی سیستم‌عامل (Native OS File Streaming).
-        بدون هرگونه رپِر یا مانیتورینگ میانی جهت دستیابی به حداکثر سرعت شبکه خطی (Wire-Speed).
+        ارسال فایل/سند با ارسال بایت‌های خالص در حافظه (Direct Bytes Dispatch).
+        این روش هدر دقیق Content-Length را تضمین کرده و مانع قطعی اتصال با Nginx بله می‌گردد.
         """
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
         url_doc = f"{self.base_url}/sendDocument"
 
-        bale_upload_timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=300)
-        f = None
-        should_close = False
+        bale_upload_timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=90)
         try:
-            form = aiohttp.FormData(quote_fields=False)
+            form = aiohttp.FormData(quote_fields=True)
             form.add_field("chat_id", str(chat_id))
             if caption:
                 form.add_field("caption", BaleFormatter.clean_text(caption))
@@ -449,34 +447,24 @@ class BaleAdapter:
                 else:
                     form.add_field("reply_markup", str(reply_markup))
 
-            file_size_mb = 0.0
             if isinstance(document, bytes):
+                file_bytes = document
                 fname = filename or "document.bin"
-                file_size_mb = len(document) / (1024 * 1024)
-                form.add_field("document", document, filename=fname, content_type="application/octet-stream")
             elif hasattr(document, "read"):
-                f = document
-                raw_name = filename or getattr(f, "name", None) or "document.bin"
+                file_bytes = document.read()
+                raw_name = filename or getattr(document, "name", None) or "document.bin"
                 fname = clean_display_filename(Path(str(raw_name)).name)
-                try:
-                    pos = f.tell()
-                    f.seek(0, io.SEEK_END)
-                    file_size_mb = f.tell() / (1024 * 1024)
-                    f.seek(pos, io.SEEK_SET)
-                except Exception:
-                    pass
-                form.add_field("document", f, filename=fname, content_type="application/octet-stream")
             else:
                 p = Path(str(document))
                 if not p.exists():
                     return {"ok": False, "error": f"File {p} not found"}
                 fname = clean_display_filename(filename or p.name)
-                file_size_mb = p.stat().st_size / (1024 * 1024)
-                f = open(p, "rb")
-                should_close = True
-                form.add_field("document", f, filename=fname, content_type="application/octet-stream")
+                file_bytes = p.read_bytes()
 
-            logger.info(f"[Bale Dispatch] Starting high-speed upload: '{fname}' ({file_size_mb:.2f}MB) -> chat_id={chat_id} via sendDocument...")
+            file_size_mb = len(file_bytes) / (1024 * 1024)
+            form.add_field("document", file_bytes, filename=fname, content_type="application/octet-stream")
+
+            logger.info(f"[Bale Dispatch] Starting upload: '{fname}' ({file_size_mb:.2f}MB) -> chat_id: {chat_id} via sendDocument...")
 
             async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                 async with session.post(url_doc, data=form) as resp:
@@ -489,12 +477,6 @@ class BaleAdapter:
             err_msg = f"{type(e).__name__}: {e or repr(e)}"
             logger.error(f"Bale send_document exception: {err_msg}")
             return {"ok": False, "error": err_msg}
-        finally:
-            if should_close and f and hasattr(f, "close"):
-                try:
-                    f.close()
-                except Exception:
-                    pass
 
     async def send_photo_by_id(
         self,
@@ -532,110 +514,71 @@ class BaleAdapter:
         **kwargs
     ) -> Dict[str, Any]:
         """
-        ارسال ویدیو با استریم خالص بومی پایتون open(file, 'rb') به عنوان ویدیو واقعی (sendVideo).
-        بدون هرگونه رپِر، کلاس میانی یا پایشگر در حین ارسال جهت پخش مستقیم در ویدیوپلیر بله.
-        فالبک هوشمند به sendDocument منحصراً در صورت بروز خطای سمت سرور بله اجرا می‌گردد.
+        ارسال ویدیو با بایت‌های خالص در حافظه (Direct Bytes Dispatch).
+        تضمین Content-Length، استفاده از quote_fields=True و فالبک فوری به sendDocument در صورت بروز خطا.
         """
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
 
-        f = None
-        should_close = False
-        path_obj = None
-
-        if hasattr(file_path, "read"):
-            f = file_path
-            raw_fn = filename or getattr(f, "name", None) or "video.mp4"
-            clean_send_name = clean_display_filename(Path(str(raw_fn)).name)
-        else:
-            path_obj = Path(str(file_path))
-            if not path_obj.exists():
-                return {"ok": False, "error": "Video file not found on disk"}
-            clean_send_name = clean_display_filename(filename or path_obj.name)
-            f = open(path_obj, "rb")
-            should_close = True
-
-        file_size_mb = (path_obj.stat().st_size / (1024 * 1024)) if path_obj and path_obj.exists() else 0.0
+        file_bytes = None
+        clean_send_name = "video.mp4"
+        file_size_mb = 0.0
         clean_caption = BaleFormatter.clean_text(urllib.parse.unquote(str(caption))) if caption else None
-        url_video = f"{self.base_url}/sendVideo"
-        bale_video_timeout = aiohttp.ClientTimeout(total=900, connect=60, sock_read=300)
-        last_error_diag = "Unknown error"
 
         try:
-            form = aiohttp.FormData(quote_fields=False)
+            if isinstance(file_path, bytes):
+                file_bytes = file_path
+                raw_fn = filename or "video.mp4"
+                clean_send_name = clean_display_filename(Path(str(raw_fn)).name)
+            elif hasattr(file_path, "read"):
+                file_bytes = file_path.read()
+                raw_fn = filename or getattr(file_path, "name", None) or "video.mp4"
+                clean_send_name = clean_display_filename(Path(str(raw_fn)).name)
+            else:
+                path_obj = Path(str(file_path))
+                if not path_obj.exists():
+                    return {"ok": False, "error": "Video file not found on disk"}
+                clean_send_name = clean_display_filename(filename or path_obj.name)
+                file_bytes = path_obj.read_bytes()
+
+            file_size_mb = len(file_bytes) / (1024 * 1024)
+            url_video = f"{self.base_url}/sendVideo"
+            bale_upload_timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=90)
+
+            form = aiohttp.FormData(quote_fields=True)
             form.add_field("chat_id", str(chat_id))
             if clean_caption: form.add_field("caption", clean_caption)
             if duration: form.add_field("duration", str(int(duration)))
             if width: form.add_field("width", str(int(width)))
             if height: form.add_field("height", str(int(height)))
-            form.add_field("video", f, filename=clean_send_name, content_type="video/mp4")
+            form.add_field("video", file_bytes, filename=clean_send_name, content_type="video/mp4")
 
-            logger.info(f"[Bale Dispatch] Starting high-speed upload: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id} via sendVideo...")
+            logger.info(f"[Bale Dispatch] Starting upload: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id: {chat_id} via sendVideo...")
 
-            async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
+            async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                 async with session.post(url_video, data=form) as resp:
                     resp_data = await resp.json()
                     logger.info(f"[Bale Response] HTTP {resp.status} for '{clean_send_name}': {resp_data}")
                     if resp.status == 200 and resp_data.get("ok"):
-                        logger.info(f"Bale sendVideo successful: {resp_data}")
                         return resp_data
-                    last_error_diag = f"HTTP {resp.status}: {resp_data}"
-                    logger.error(f"[Bale Error] Failed to send sendVideo to {chat_id}: status={resp.status}, response={resp_data}")
-                    logger.warning(f"Bale sendVideo returned error: {resp_data}, falling back to sendDocument...")
+                    logger.warning(f"[Bale Video Unconfirmed] HTTP {resp.status} response={resp_data}, falling back to send_document...")
         except Exception as e:
-            last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
-            logger.warning(f"Bale sendVideo exception: {last_error_diag}, falling back to sendDocument...")
-        finally:
-            if should_close and f and hasattr(f, "close"):
-                try:
-                    f.close()
-                except Exception:
-                    pass
+            logger.warning(f"[Bale Video Exception] {type(e).__name__}: {e}, falling back to send_document...")
 
-        # Fallback به sendDocument با حداکثر ۲ تلاش مجدد
-        for attempt in range(1, 3):
-            f_fallback = None
-            should_close_fb = False
-            try:
-                if path_obj and path_obj.exists():
-                    f_fallback = open(path_obj, "rb")
-                    should_close_fb = True
-                elif hasattr(file_path, "seek"):
-                    file_path.seek(0)
-                    f_fallback = file_path
-                else:
-                    break
-
-                url_doc = f"{self.base_url}/sendDocument"
-                form_doc = aiohttp.FormData(quote_fields=False)
-                form_doc.add_field("chat_id", str(chat_id))
-                if clean_caption: form_doc.add_field("caption", clean_caption)
-                form_doc.add_field("document", f_fallback, filename=clean_send_name, content_type="application/octet-stream")
-
-                logger.info(f"[Bale Dispatch] Fallback attempt {attempt} via sendDocument: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id}...")
-
-                async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
-                    async with session.post(url_doc, data=form_doc) as resp:
-                        res_doc = await resp.json()
-                        logger.info(f"[Bale Response] Fallback attempt {attempt} HTTP {resp.status} for '{clean_send_name}': {res_doc}")
-                        if resp.status == 200 and res_doc.get("ok"):
-                            logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
-                            return res_doc
-                        last_error_diag = f"sendDocument attempt {attempt} HTTP {resp.status}: {res_doc}"
-                        logger.error(f"[Bale Error] Fallback attempt {attempt} failed: {last_error_diag}")
-            except Exception as e:
-                last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
-                logger.error(f"Bale fallback sendDocument attempt {attempt} exception: {last_error_diag}")
-            finally:
-                if should_close_fb and f_fallback and hasattr(f_fallback, "close"):
-                    try:
-                        f_fallback.close()
-                    except Exception:
-                        pass
-            if attempt < 2:
-                await asyncio.sleep(2.0)
-
-        return {"ok": False, "error": f"خطا در ارسال به بله (ویدیو و سند): {last_error_diag}"}
+        # Fallback فوری به send_document با همان file_bytes
+        try:
+            if file_bytes is None:
+                return {"ok": False, "error": "No file bytes available for fallback dispatch"}
+            logger.info(f"[Bale Dispatch] Fallback via send_document for '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id: {chat_id}...")
+            return await self.send_document(
+                chat_id=chat_id,
+                document=file_bytes,
+                caption=clean_caption,
+                filename=clean_send_name
+            )
+        except Exception as fb_err:
+            logger.error(f"[Bale Fallback Exception] {type(fb_err).__name__}: {fb_err}")
+            return {"ok": False, "error": f"Failed both send_video and send_document: {fb_err}"}
 
     async def edit_message_text(self, chat_id: str | int, message_id: int, text: str, reply_markup: Any = None) -> Dict[str, Any]:
         if not self.token:
@@ -893,9 +836,8 @@ class BaleAdapter:
         **kwargs
     ) -> Dict[str, Any]:
         """
-        ارسال فایل صوتی به چت بله از طریق استریم مستقیم و خالص بومی open(file, 'rb') به عنوان صوت واقعی (sendAudio).
-        محدودیت مصنوعی ۲۰ مگابایت برچیده شده و فایل‌های صوتی تا ۵۰ مگابایت مستقیماً با sendAudio ارسال می‌شوند تا در موزیک‌پلیر بله پخش گردند.
-        فالبک به sendDocument منحصراً در صورت بروز خطای واقعی از سوی سرور بله اجرا می‌گردد.
+        ارسال فایل صوتی به چت بله از طریق بایت‌های خالص در حافظه (Direct Bytes Dispatch).
+        تضمین Content-Length، استفاده از quote_fields=True و فالبک فوری به send_document در صورت بروز خطا.
         """
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
@@ -904,22 +846,21 @@ class BaleAdapter:
         if not actual_path:
             return {"ok": False, "error": "file_path is required for send_audio"}
 
-        f = None
-        should_close = False
-        path_obj = None
+        file_bytes = None
         clean_send_name = "audio.mp3"
+        file_size_mb = 0.0
 
-        if hasattr(actual_path, "read"):
-            f = actual_path
-            raw_fn = filename or getattr(f, "name", None) or "audio.mp3"
-            clean_send_name = clean_display_filename(Path(str(raw_fn)).name)
+        if isinstance(actual_path, bytes):
+            file_bytes = actual_path
+            clean_send_name = clean_display_filename(filename or "audio.mp3")
+        elif hasattr(actual_path, "read"):
+            file_bytes = actual_path.read()
+            clean_send_name = clean_display_filename(filename or getattr(actual_path, "name", "audio.mp3"))
         elif isinstance(actual_path, (str, Path)):
             p = Path(str(actual_path))
             if p.exists():
-                path_obj = p
                 clean_send_name = clean_display_filename(filename or p.name)
-                f = open(p, "rb")
-                should_close = True
+                file_bytes = p.read_bytes()
             else:
                 # ارسال از طریق URL مستقیم
                 url_audio = f"{self.base_url}/sendAudio"
@@ -939,7 +880,7 @@ class BaleAdapter:
         else:
             return {"ok": False, "error": "Unsupported audio input type"}
 
-        file_size_mb = (path_obj.stat().st_size / (1024 * 1024)) if path_obj and path_obj.exists() else 0.0
+        file_size_mb = len(file_bytes) / (1024 * 1024)
         clean_title = urllib.parse.unquote(str(title)).strip() if title else None
         clean_performer = urllib.parse.unquote(str(performer)).strip() if performer else None
         clean_caption = BaleFormatter.clean_text(urllib.parse.unquote(str(caption))) if caption else None
@@ -947,13 +888,11 @@ class BaleAdapter:
         markup = kwargs.get("reply_markup") or kwargs.get("markup")
         markup_str = json.dumps(markup) if isinstance(markup, dict) else (str(markup) if markup else None)
 
-        bale_audio_timeout = aiohttp.ClientTimeout(total=900, connect=60, sock_read=300)
-        last_error_diag = "Unknown error"
+        url_audio = f"{self.base_url}/sendAudio"
+        bale_upload_timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=90)
 
         try:
-            # ارسال همواره با متد استاندارد sendAudio جهت پخش مستقیم در موزیک‌پلیر بله
-            url_audio = f"{self.base_url}/sendAudio"
-            form_audio = aiohttp.FormData(quote_fields=False)
+            form_audio = aiohttp.FormData(quote_fields=True)
             form_audio.add_field("chat_id", str(chat_id))
             if clean_title: form_audio.add_field("title", clean_title)
             if clean_performer: form_audio.add_field("performer", clean_performer)
@@ -961,76 +900,35 @@ class BaleAdapter:
             if duration: form_audio.add_field("duration", str(int(duration)))
             if markup_str: form_audio.add_field("reply_markup", markup_str)
 
-            content_type = "audio/mp4" if (path_obj and path_obj.suffix.lower() == ".m4a") else "audio/mpeg"
-            form_audio.add_field("audio", f, filename=clean_send_name, content_type=content_type)
+            content_type = "audio/mp4" if clean_send_name.lower().endswith(".m4a") else "audio/mpeg"
+            form_audio.add_field("audio", file_bytes, filename=clean_send_name, content_type=content_type)
 
-            logger.info(f"[Bale Dispatch] Starting high-speed upload: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id} via sendAudio...")
+            logger.info(f"[Bale Dispatch] Starting upload: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id: {chat_id} via sendAudio...")
 
-            async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session:
+            async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                 async with session.post(url_audio, data=form_audio) as resp:
                     resp_data = await resp.json()
                     logger.info(f"[Bale Response] HTTP {resp.status} for '{clean_send_name}': {resp_data}")
                     if resp.status == 200 and resp_data.get("ok"):
-                        logger.info(f"Bale sendAudio successful: {resp_data}")
                         return resp_data
-                    last_error_diag = f"HTTP {resp.status}: {resp_data}"
-                    logger.error(f"[Bale Error] Failed to send sendAudio to {chat_id}: status={resp.status}, response={resp_data}")
-                    logger.warning(f"Bale sendAudio returned error: {resp_data}, falling back to sendDocument...")
+                    logger.warning(f"[Bale Audio Unconfirmed] HTTP {resp.status} response={resp_data}, falling back to send_document...")
         except Exception as e:
-            last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
-            logger.warning(f"Bale sendAudio exception: {last_error_diag}, falling back to sendDocument...")
-        finally:
-            if should_close and f and hasattr(f, "close"):
-                try:
-                    f.close()
-                except Exception:
-                    pass
+            logger.warning(f"[Bale Audio Exception] {type(e).__name__}: {e}, falling back to send_document...")
 
-        # فالبک به sendDocument صرفاً در صورت بروز خطای واقعی در sendAudio
-        for attempt in range(1, 3):
-            f_fallback = None
-            should_close_fb = False
-            try:
-                if path_obj and path_obj.exists():
-                    f_fallback = open(path_obj, "rb")
-                    should_close_fb = True
-                elif hasattr(actual_path, "seek"):
-                    actual_path.seek(0)
-                    f_fallback = actual_path
-                else:
-                    break
-
-                url_doc = f"{self.base_url}/sendDocument"
-                form_doc = aiohttp.FormData(quote_fields=False)
-                form_doc.add_field("chat_id", str(chat_id))
-                if clean_caption: form_doc.add_field("caption", clean_caption)
-                if markup_str: form_doc.add_field("reply_markup", markup_str)
-                form_doc.add_field("document", f_fallback, filename=clean_send_name, content_type="application/octet-stream")
-
-                logger.info(f"[Bale Dispatch] Audio fallback attempt {attempt} via sendDocument: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id}...")
-
-                async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session_doc:
-                    async with session_doc.post(url_doc, data=form_doc) as resp_doc:
-                        res_doc = await resp_doc.json()
-                        logger.info(f"[Bale Response] Audio fallback attempt {attempt} HTTP {resp_doc.status} for '{clean_send_name}': {res_doc}")
-                        if resp_doc.status == 200 and res_doc.get("ok"):
-                            logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
-                            return res_doc
-                        last_error_diag = f"sendDocument attempt {attempt} HTTP {resp_doc.status}: {res_doc}"
-                        logger.error(f"[Bale Error] Audio fallback attempt {attempt} failed: {last_error_diag}")
-            except Exception as e:
-                last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
-                logger.error(f"Bale fallback sendDocument attempt {attempt} exception: {last_error_diag}")
-            finally:
-                if should_close_fb and f_fallback and hasattr(f_fallback, "close"):
-                    try:
-                        f_fallback.close()
-                    except Exception:
-                        pass
-            if attempt < 2:
-                await asyncio.sleep(2.0)
-
-        return {"ok": False, "error": f"خطا در ارسال فایل صوتی به بله: {last_error_diag}"}
+        # فالبک فوری به send_document با همان file_bytes
+        try:
+            if file_bytes is None:
+                return {"ok": False, "error": "No file bytes available for fallback dispatch"}
+            logger.info(f"[Bale Dispatch] Audio fallback via send_document for '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id: {chat_id}...")
+            return await self.send_document(
+                chat_id=chat_id,
+                document=file_bytes,
+                caption=clean_caption,
+                filename=clean_send_name
+            )
+        except Exception as fb_err:
+            logger.error(f"[Bale Audio Fallback Exception] {type(fb_err).__name__}: {fb_err}")
+            return {"ok": False, "error": f"Failed both send_audio and send_document: {fb_err}"}
 
     async def download_file(self, file_id: str, destination_path: Path) -> bool:
         try:
