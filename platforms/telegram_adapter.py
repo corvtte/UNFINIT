@@ -464,7 +464,7 @@ class TelegramAdapter:
             return {"ok": False, "error": "No bot token configured"}
         try:
             import aiohttp
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=4, connect=2, sock_read=3)) as session:
                 # 1. استعلام وضعیت جاری وب‌هوک
                 try:
                     async with session.get(f"https://api.telegram.org/bot{token}/getWebhookInfo") as resp:
@@ -486,7 +486,7 @@ class TelegramAdapter:
                     logger.info(f"[TG Webhook] deleteWebhook response: {del_data}")
                     return del_data
         except Exception as e_wh:
-            logger.warning(f"[TG Webhook] Error clearing Bot API webhook: {e_wh}")
+            logger.warning(f"[TG Webhook] Note while checking/clearing webhook: {e_wh or 'timeout'}")
             return {"ok": False, "error": str(e_wh)}
 
     async def start_client(self):
@@ -494,8 +494,8 @@ class TelegramAdapter:
         راه‌اندازی امن کلاینت MTProto تلگرام با مهار وب‌هوک‌های قدیمی،
         اعتبارسنجی زنده شناسه ربات (get_me) و بازیابی خودکار در صورت بروز خطای سشن.
         """
-        # گام ۱: پاکسازی وب‌هوک جهت آزادسازی جریان آپدیت‌های MTProto
-        await self.clear_webhook()
+        # گام ۱: پاکسازی وب‌هوک به صورت تسک پس‌زمینه بدون مسدودسازی اتصال MTProto
+        asyncio.create_task(self.clear_webhook())
 
         # گام ۲: اخذ قفل پردازه جهت جلوگیری از تداخل سشن در هاگینگ‌فیس
         await asyncio.to_thread(acquire_telegram_pid_lock, 30)
