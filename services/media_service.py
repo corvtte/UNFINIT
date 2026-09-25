@@ -40,7 +40,53 @@ def clean_display_filename(filename: str) -> str:
     return clean or "audio.mp3"
 
 
+class SequentialBatchQueue:
+    """
+    صف ترتیبی FIFO برای مهار فشار همزمان پردازش و انتقال دسته‌جمعی رسانه‌ها (Batch Media Transfers).
+    تنها یک دسته در هر لحظه پردازش می‌شود تا از اشباع پردازنده سرور و فریز شدن نوار پیشرفت جلوگیری شود.
+    """
+    def __init__(self):
+        self._queue: Optional[asyncio.Queue] = None
+        self._worker_task: Optional[asyncio.Task] = None
+
+    def _ensure_queue(self):
+        if self._queue is None:
+            self._queue = asyncio.Queue()
+
+    def _ensure_worker(self):
+        if self._worker_task is None or self._worker_task.done():
+            self._worker_task = asyncio.create_task(self._worker_loop())
+
+    async def enqueue(self, coroutine_fn: Callable[[], Any]) -> Any:
+        self._ensure_queue()
+        loop = asyncio.get_running_loop()
+        fut = loop.create_future()
+        await self._queue.put((coroutine_fn, fut))
+        self._ensure_worker()
+        return await fut
+
+    async def _worker_loop(self):
+        while True:
+            try:
+                coro_fn, fut = await self._queue.get()
+                try:
+                    res = await coro_fn()
+                    if not fut.done():
+                        fut.set_result(res)
+                except Exception as ex:
+                    if not fut.done():
+                        fut.set_exception(ex)
+                finally:
+                    self._queue.task_done()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[SequentialBatchQueue] Unhandled loop error: {e}")
+
+
 class MediaService:
+    batch_queue: SequentialBatchQueue = SequentialBatchQueue()
+
     @staticmethod
     def register_incoming_message_meta(
         drop_id: str,
@@ -598,7 +644,7 @@ class MediaService:
                 info["final_bitrate"] = final_bitrate
                 return final_path, send_name, info
             elif working_path.suffix.lower() in VIDEO_EXTENSIONS:
-                final_path, init_sz, final_sz, final_bitrate, was_comp = SmartVideoCompressor.compress_if_needed(
+                final_path, init_sz, final_sz, final_bitrate, was_comp = SmartVideoCompressor.compress_if_needed_sync(
                     working_path, progress_callback=progress_callback
                 )
                 session["compressed_path"] = str(final_path)
@@ -609,3 +655,203 @@ class MediaService:
 
         info["final_size_bytes"] = info["initial_size_bytes"]
         return working_path, send_name, info
+
+    @staticmethod
+    async def prepare_for_transfer_async(
+        drop_id: str,
+        target_platform: str,
+        progress_callback: Optional[Callable[[str], Any]] = None
+    ) -> Tuple[Path, str, Dict[str, Any]]:
+        """
+        نسخه کاملاً غیرمسدودکننده (Async) آماده‌سازی رسانه برای انتقال.
+        فشرده‌سازی ویدیو به صورت ناهمگام انجام می‌شود تا حلقه رویدادهای Asyncio هرگز قفل نشود.
+        """
+        session = session_manager.get_session(drop_id)
+        if not session or not session.get("working_path"):
+            raise ValueError(f"Session or local binary not found for drop_id: {drop_id}")
+
+        working_path = MediaService.apply_draft_tags_to_file(drop_id)
+        raw_name = session.get("audio_filename") or working_path.name
+        send_name = clean_display_filename(raw_name)
+
+        title_val = (
+            session.get("draft_tags", {}).get("title") or 
+            session.get("embed_meta", {}).get("title") or 
+            session.get("api_meta", {}).get("title") or 
+            send_name
+        )
+        artist_val = (
+            session.get("draft_tags", {}).get("artist") or 
+            session.get("embed_meta", {}).get("artist") or 
+            session.get("api_meta", {}).get("artist") or 
+            (config.DEFAULT_ARTIST if getattr(config, "APPLY_DEFAULT_ARTIST_TAG", False) else "")
+        )
+
+        if getattr(config, "AUTO_RENAME_FILE_TO_TITLE", False) and title_val and title_val != send_name:
+            sanitized_title = re.sub(r'[\\/*?:"<>|]', '', title_val).strip()
+            if sanitized_title:
+                send_name = f"{sanitized_title}{working_path.suffix}"
+
+        info = {
+            "initial_size_bytes": working_path.stat().st_size if working_path.exists() else 0,
+            "final_size_bytes": 0,
+            "was_compressed": False,
+            "target_platform": target_platform,
+            "title": title_val,
+            "artist": artist_val,
+            "caption": session.get("caption", "")
+        }
+
+        if target_platform in ("rubika", "rubika_bot", "rubika_user"):
+            if working_path.suffix.lower() in AUDIO_EXTENSIONS and working_path.suffix.lower() != ".mp3":
+                converted_p, was_conv = convert_audio_to_mp3_if_needed(working_path)
+                if was_conv:
+                    working_path = converted_p
+                    session["working_path"] = str(working_path)
+                    send_name = Path(send_name).with_suffix(".mp3").name
+                    info["initial_size_bytes"] = working_path.stat().st_size
+
+        if target_platform == "bale":
+            if working_path.suffix.lower() in AUDIO_EXTENSIONS:
+                final_path, init_sz, final_sz, final_bitrate, was_comp = SmartAudioCompressor.compress_if_needed(
+                    working_path, progress_callback=progress_callback
+                )
+                session["compressed_path"] = str(final_path)
+                info["final_size_bytes"] = final_sz
+                info["was_compressed"] = was_comp
+                info["final_bitrate"] = final_bitrate
+                return final_path, send_name, info
+            elif working_path.suffix.lower() in VIDEO_EXTENSIONS:
+                final_path, init_sz, final_sz, final_bitrate, was_comp = await SmartVideoCompressor.compress_if_needed(
+                    working_path, progress_callback=progress_callback
+                )
+                session["compressed_path"] = str(final_path)
+                info["final_size_bytes"] = final_sz
+                info["was_compressed"] = was_comp
+                info["final_bitrate"] = final_bitrate
+                return final_path, send_name, info
+
+        info["final_size_bytes"] = info["initial_size_bytes"]
+        return working_path, send_name, info
+
+    @classmethod
+    async def process_batch_sequentially(
+        cls,
+        items: List[Dict[str, Any]],
+        destination: str,
+        bale_adapter: Any = None,
+        rubika_adapter: Any = None,
+        status_callback: Optional[Callable[[str], Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        پردازش کاملاً ترتیبی (FIFO Sequential) دسته‌ای از فایل‌ها در یک صف امن (asyncio.Queue).
+        برای هر فایل:
+        دانلود ➔ بررسی و فشرده‌سازی/تقسیم در صورت نیاز ➔ ارسال به پیام‌رسان مقصد ➔ تایید و ثبت پایان.
+        وضعیت هر فایل به صورت پویا با نوار پیشرفت نمایش داده می‌شود:
+        📦 فایل ۲ از ۳: [████▒▒▒] 45%
+        """
+        async def _job():
+            total_count = len(items)
+            success_count = 0
+            dest_name = "بله" if destination == "bale" else "روبیکا"
+
+            def _make_bar(pct: int, length: int = 8) -> str:
+                f = min(length, max(0, int(round(length * pct / 100))))
+                return f"[{'█' * f}{'▒' * (length - f)}] {pct}%"
+
+            async def _update_status(txt: str):
+                if status_callback:
+                    try:
+                        res = status_callback(txt)
+                        if asyncio.iscoroutine(res):
+                            await res
+                    except Exception:
+                        pass
+
+            for idx, it in enumerate(items, 1):
+                s_drop_id = it.get("drop_id")
+                s_data = it.get("data", {})
+                fn = s_data.get("filename") or "media"
+                raw_sz = int(s_data.get("file_size") or 1)
+
+                # مرحله ۱: دانلود فایل
+                await _update_status(
+                    f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(15)}</code>\n"
+                    f"📄 <b>{fn}</b>\n"
+                    f"📥 در حال دانلود از مبدا..."
+                )
+
+                dl_ok = await cls.ensure_local_binary(s_drop_id)
+                if not dl_ok:
+                    logger.error(f"[BatchQueue] Failed to download binary for drop_id: {s_drop_id}")
+                    continue
+
+                # مرحله ۲: آماده‌سازی و بهینه‌سازی غیرمسدودکننده
+                await _update_status(
+                    f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(45)}</code>\n"
+                    f"📄 <b>{fn}</b>\n"
+                    f"⚙️ در حال بهینه‌سازی و بررسی سقف حجم..."
+                )
+
+                try:
+                    final_p, s_name, t_info = await cls.prepare_for_transfer_async(
+                        s_drop_id, destination, progress_callback=_update_status
+                    )
+                except Exception as prep_err:
+                    logger.warning(f"[BatchQueue] Async prep fallback: {prep_err}")
+                    final_p, s_name, t_info = cls.prepare_for_transfer(s_drop_id, destination)
+
+                # مرحله ۳: ارسال ترتیبی به پلتفرم مقصد با نوار پیشرفت زنده
+                await _update_status(
+                    f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(75)}</code>\n"
+                    f"📄 <b>{s_name}</b>\n"
+                    f"🚢 در حال ارسال به {dest_name}..."
+                )
+
+                try:
+                    if destination == "bale" and bale_adapter:
+                        target_chat = bale_adapter.get_admin_chat_id()
+                        if not target_chat:
+                            logger.error("[BatchQueue] Bale target chat not configured")
+                            break
+                        caption_clean = f"📄 پارت {idx} از {total_count}: <b>{s_name}</b>" if total_count > 1 else f"📄 <b>{s_name}</b>"
+                        if s_data.get("media_type") == "video":
+                            t_spec = inspect_technical_metadata(final_p)
+                            res = await bale_adapter.send_video(
+                                target_chat, final_p,
+                                caption=caption_clean,
+                                duration=t_spec.get("duration_sec"),
+                                width=t_spec.get("width"),
+                                height=t_spec.get("height")
+                            )
+                        else:
+                            res = await bale_adapter.send_audio(
+                                target_chat, final_p,
+                                title=t_info.get("title"),
+                                performer=t_info.get("artist"),
+                                caption=caption_clean
+                            )
+                        if res.get("ok"):
+                            success_count += 1
+                    elif destination == "rubika" and rubika_adapter:
+                        target_chat = rubika_adapter.get_admin_guid()
+                        res = await rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"📄 {s_name}")
+                        if res.get("ok") or res.get("status") == "OK":
+                            success_count += 1
+                except Exception as send_err:
+                    logger.error(f"[BatchQueue] Error sending item {idx}: {send_err}")
+
+                # اعلام اتمام پردازش فایل جاری
+                await _update_status(
+                    f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(100)}</code>\n"
+                    f"✅ <b>{s_name}</b> با موفقیت به {dest_name} منتقل شد!"
+                )
+                await asyncio.sleep(1.0)
+
+            return {
+                "total": total_count,
+                "success": success_count,
+                "destination": dest_name
+            }
+
+        return await cls.batch_queue.enqueue(_job)

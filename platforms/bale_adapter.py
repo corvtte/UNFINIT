@@ -501,10 +501,11 @@ class BaleAdapter:
             else:
                 form.add_field("reply_markup", str(reply_markup))
         try:
+            bale_upload_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=120)
             if isinstance(document, bytes):
                 fname = filename or "document.bin"
                 form.add_field("document", document, filename=fname, content_type="application/octet-stream")
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                     async with session.post(url_doc, data=form) as resp:
                         return await resp.json()
             else:
@@ -514,7 +515,7 @@ class BaleAdapter:
                 fname = filename or p.name
                 with open(p, "rb") as f:
                     form.add_field("document", f, filename=fname, content_type="application/octet-stream")
-                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                    async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                         async with session.post(url_doc, data=form) as resp:
                             return await resp.json()
         except Exception as e:
@@ -570,22 +571,29 @@ class BaleAdapter:
         if width: form.add_field("width", str(int(width)))
         if height: form.add_field("height", str(int(height)))
 
+        # پیکربندی تایم‌اوت مقاوم طبق استاندارد ۴۵۰ ثانیه کل، ۳۰ ثانیه اتصال، ۱۲۰ ثانیه خواندن سوکت
+        bale_video_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=120)
+
         try:
             reader = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
             with reader as f:
                 form.add_field("video", f, filename=clean_send_name, content_type="video/mp4")
-                timeout = aiohttp.ClientTimeout(total=1800, connect=30)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
                     async with session.post(url_video, data=form) as resp:
-                        res = await resp.json()
-                        if res.get("ok"):
-                            logger.info(f"Bale sendVideo successful: {res}")
-                            return res
-                        logger.warning(f"Bale sendVideo returned error: {res}, falling back to sendDocument...")
+                        if resp.status == 200:
+                            res = await resp.json()
+                            if res.get("ok"):
+                                logger.info(f"Bale sendVideo successful: {res}")
+                                return res
+                            logger.warning(f"Bale sendVideo returned error: {res}, falling back to sendDocument...")
+                        elif resp.status == 413:
+                            logger.warning("Bale sendVideo returned 413 (Entity Too Large), falling back to sendDocument...")
+                        else:
+                            logger.warning(f"Bale sendVideo HTTP {resp.status}, falling back to sendDocument...")
         except Exception as e:
             logger.warning(f"Bale sendVideo exception: {e}, falling back to sendDocument...")
 
-        # Fallback to sendDocument
+        # Fallback به sendDocument در صورت بروز خطای ۴۱۳ یا عدم پشتیبانی مستقیم استریم
         try:
             url_doc = f"{self.base_url}/sendDocument"
             form_doc = aiohttp.FormData(quote_fields=False)
@@ -594,12 +602,12 @@ class BaleAdapter:
             reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
             with reader_doc as f:
                 form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
-                timeout = aiohttp.ClientTimeout(total=1800, connect=30)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
                     async with session.post(url_doc, data=form_doc) as resp:
                         res_doc = await resp.json()
                         return res_doc
         except Exception as e:
+            logger.error(f"Bale fallback sendDocument failed: {e}")
             return {"ok": False, "error": str(e)}
 
     async def edit_message_text(self, chat_id: str | int, message_id: int, text: str, reply_markup: Any = None) -> Dict[str, Any]:

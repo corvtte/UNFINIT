@@ -582,44 +582,77 @@ class TelegramAdapter:
         safe_limit_mb = 45.0
         parts_count = max(2, min(int(parts_count), 20))
 
-        await status_msg.edit_text(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت بدون افت کیفیت...</b>", parse_mode=enums.ParseMode.HTML)
+        async def _safe_update(txt: str):
+            try:
+                await status_msg.edit_text(txt, parse_mode=enums.ParseMode.HTML)
+            except Exception as e:
+                logger.debug(f"Status msg edit failed: {e}")
+
+        # Active Failure Alerts (No More Silent Freezes): کل فرآیند در try...except قرار می‌گیرد
         try:
-            parts_list = SmartVideoSplitter.split_video(w_path, num_parts=parts_count, target_max_mb=safe_limit_mb)
+            await _safe_update(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت بدون افت کیفیت...</b>")
+
+            # 1. Splitting کاملاً غیرمسدودکننده با FFmpeg آسنکرون
+            parts_list = await SmartVideoSplitter.split_video_async(
+                w_path,
+                num_parts=parts_count,
+                target_max_mb=safe_limit_mb,
+                progress_callback=_safe_update
+            )
             if not parts_list:
-                await status_msg.edit_text("❌ خطا در تقسیم فایل ویدیو با FFmpeg.")
+                await _safe_update("❌ خطا در تقسیم فایل ویدیو با FFmpeg: هیچ پارتی تولید نشد.")
                 return False
 
-            all_ok = True
+            total_parts = len(parts_list)
+
+            # 2 & 3. Secondary Compression Check & Sequential Bale Upload
             for p_idx, part_file in enumerate(parts_list, 1):
                 part_sz_mb = part_file.stat().st_size / (1024 * 1024)
+
+                # فشرده‌سازی ثانویه در صورت فراتر رفتن هر پارت از سقف ۴۸.۵ مگابایت
                 if part_sz_mb > 48.5:
-                    await status_msg.edit_text(f"🗜 <b>بهینه‌سازی سریع پارت {p_idx} ({part_sz_mb:.1f}MB) جهت رعایت سقف ۴۵MB بله...</b>", parse_mode=enums.ParseMode.HTML)
-                    comp_out, _, _, _, _ = SmartVideoCompressor.compress_if_needed(part_file, target_max_mb=safe_limit_mb)
+                    comp_out, _, _, _, was_c = await SmartVideoCompressor.compress_if_needed(
+                        part_file,
+                        target_max_mb=safe_limit_mb,
+                        progress_callback=_safe_update,
+                        part_info=f"پارت {p_idx} از {total_parts}"
+                    )
                     if comp_out and comp_out.exists():
                         part_file = comp_out
+                        part_sz_mb = part_file.stat().st_size / (1024 * 1024)
 
-                await status_msg.edit_text(f"📤 <b>در حال ارسال پارت {p_idx} از {len(parts_list)} به بله...</b>", parse_mode=enums.ParseMode.HTML)
+                # ارسال ترتیبی به بله با پیام در حال ارسال و شکیبایی
+                await _safe_update(f"🚢 <b>در حال ارسال پارت {p_idx} از {total_parts} به بله ({part_sz_mb:.1f} مگابایت)... لطفاً شکیبا باشید</b>")
+
                 p_tech = inspect_technical_metadata(part_file)
+                caption_part = f"📄 پارت {p_idx} از {total_parts}: <b>{escape(part_file.name)}</b>"
+
                 res = await self.bale_adapter.send_video(
-                    target_chat, part_file,
-                    caption=f"📄 پارت {p_idx} از {len(parts_list)}: <b>{escape(part_file.name)}</b>",
+                    target_chat,
+                    part_file,
+                    caption=caption_part,
                     duration=p_tech.get("duration_sec"),
                     width=p_tech.get("width"),
                     height=p_tech.get("height")
                 )
+
                 if not res.get("ok"):
-                    all_ok = False
-                    await status_msg.edit_text(f"❌ خطا در ارسال پارت {p_idx}: {res.get('error') or str(res)}", parse_mode=enums.ParseMode.HTML)
-                    break
+                    err_msg = res.get("error") or str(res)
+                    raise RuntimeError(f"پارت {p_idx}: {err_msg}")
+
+                if p_idx < total_parts:
+                    await _safe_update(f"✅ پارت {p_idx} از {total_parts} با موفقیت به بله ارسال شد! در حال آماده‌سازی و ارسال پارت {p_idx + 1}...")
+                else:
+                    await _safe_update(f"✅ <b>تمام {total_parts} پارت ویدیو با موفقیت به بله ارسال شدند!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>")
+
                 await asyncio.sleep(1.0)
 
-            if all_ok:
-                await status_msg.edit_text(f"✅ <b>ویدیو با موفقیت به {len(parts_list)} پارت باکیفیت تقسیم و به بله منتقل شد!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>", parse_mode=enums.ParseMode.HTML)
-                return True
-            return False
+            return True
+
         except Exception as s_err:
             logger.error(f"Error in split_and_transfer_video_to_bale: {s_err}", exc_info=True)
-            await status_msg.edit_text(f"❌ خطا در تقسیم و ارسال پارت‌ها: {s_err}", parse_mode=enums.ParseMode.HTML)
+            alert_text = f"❌ <b>خطا در ارسال پارت به بله:</b> [{escape(str(s_err))}] | فرآیند متوقف شد."
+            await _safe_update(alert_text)
             return False
 
     def build_media_keyboard(self, drop_id: str, data: dict, is_sub: bool = False) -> InlineKeyboardMarkup:
@@ -3874,8 +3907,6 @@ class TelegramAdapter:
                 return
 
             status_msg = callback_query.message
-            total_count = len(items)
-            success_count = 0
             dest_name = "بله" if dest == "bale" else "روبیکا"
 
             async def _safe_edit_batch(text: str):
@@ -3884,81 +3915,18 @@ class TelegramAdapter:
                 except Exception:
                     pass
 
-            for idx, it in enumerate(items, 1):
-                s_drop_id = it["drop_id"]
-                s_data = it["data"]
-                fn = s_data.get("filename") or "media"
-                raw_sz = int(s_data.get("file_size") or 1)
-
-                file_start_t = [time.time()]
-                file_last_edit = [time.time()]
-                file_last_pct = [0]
-
-                def file_progress_cb(current, total):
-                    now_t = time.time()
-                    pct = int((current / total) * 100) if total > 0 else 0
-                    if (now_t - file_last_edit[0] >= 1.5 and abs(pct - file_last_pct[0]) >= 5) or current >= total:
-                        file_last_edit[0] = now_t
-                        file_last_pct[0] = pct
-                        el = max(0.01, now_t - file_start_t[0])
-                        txt_prog = format_transfer_progress(
-                            current, total, el,
-                            stage_title="⏳ در حال انتقال فایل‌ها به بله...",
-                            file_index=idx,
-                            total_files=total_count,
-                            filename=fn
-                        )
-                        asyncio.create_task(_safe_edit_batch(txt_prog))
-
-                await _safe_edit_batch(
-                    format_transfer_progress(
-                        0, raw_sz, 0.1,
-                        stage_title="⏳ در حال آماده‌سازی و انتقال به بله...",
-                        file_index=idx,
-                        total_files=total_count,
-                        filename=fn
-                    )
-                )
-
-                try:
-                    dl_ok = await MediaService.ensure_local_binary(s_drop_id)
-                    if not dl_ok:
-                        continue
-                    final_p, s_name, t_info = MediaService.prepare_for_transfer(s_drop_id, dest)
-                    if dest == "bale":
-                        t_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
-                        if not t_chat:
-                            break
-                        caption_clean = f"📄 پارت {idx} از {total_count}: <b>{escape(s_name)}</b>" if total_count > 1 else f"📄 <b>{escape(s_name)}</b>"
-                        if s_data.get("media_type") == "video":
-                            t_spec = inspect_technical_metadata(final_p)
-                            res = await self.bale_adapter.send_video(
-                                t_chat, final_p,
-                                caption=caption_clean,
-                                duration=t_spec.get("duration_sec"),
-                                width=t_spec.get("width"),
-                                height=t_spec.get("height"),
-                                progress_callback=file_progress_cb
-                            )
-                        else:
-                            res = await self.bale_adapter.send_audio(
-                                t_chat, final_p,
-                                title=t_info.get("title"),
-                                performer=t_info.get("artist"),
-                                caption=caption_clean,
-                                progress_callback=file_progress_cb
-                            )
-                        if res.get("ok"):
-                            success_count += 1
-                    elif dest == "rubika":
-                        target_chat = self.rubika_adapter.get_admin_guid() if self.rubika_adapter else None
-                        res = await self.rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"📄 {s_name}")
-                        if res.get("ok") or res.get("status") == "OK":
-                            success_count += 1
-                except Exception as ex:
-                    logger.error(f"[BatchForward] Item {idx} error: {ex}")
+            batch_res = await MediaService.process_batch_sequentially(
+                items=items,
+                destination=dest,
+                bale_adapter=self.bale_adapter,
+                rubika_adapter=self.rubika_adapter,
+                status_callback=_safe_edit_batch
+            )
 
             self._batch_registry.pop(batch_id, None)
+            total_count = batch_res.get("total", len(items))
+            success_count = batch_res.get("success", 0)
+
             if success_count == total_count:
                 await status_msg.edit_text(f"✅ <b>تمام {total_count} فایل با موفقیت به {dest_name} منتقل شدند!</b>", parse_mode=enums.ParseMode.HTML)
             else:

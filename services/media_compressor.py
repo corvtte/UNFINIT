@@ -1,17 +1,20 @@
+# -*- coding: utf-8 -*-
 """
-Services wrapper for media compressor.
-Re-exports SmartAudioCompressor, SmartVideoCompressor, and convert_audio_to_mp3_if_needed
-from media.compressor with full compatibility.
+ماژول سازگاری فشرده‌ساز رسانه سرویس‌ها (Services Media Compressor Wrapper)
 """
 
-from media.compressor import (
+from services.compressor import (
+    SAFE_BALE_PART_LIMIT_MB,
     SmartAudioCompressor,
     SmartVideoCompressor,
+    SmartVideoSplitter,
     convert_audio_to_mp3_if_needed
 )
 
 __all__ = [
+    "SAFE_BALE_PART_LIMIT_MB",
     "SmartAudioCompressor",
     "SmartVideoCompressor",
+    "SmartVideoSplitter",
     "convert_audio_to_mp3_if_needed"
 ]
