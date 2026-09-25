@@ -43,7 +43,13 @@ from core.formatters import (
 )
 from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService, ProductItem
-from services.media_service import MediaService, clean_display_filename, clean_public_filename
+from services.media_service import (
+    MediaService,
+    clean_display_filename,
+    clean_public_filename,
+    get_bale_max_size_mb,
+    compress_video_async
+)
 from services.session_manager import session_manager
 from services.url_service import UrlService
 from services.user_service import UserService, normalize_phone
@@ -55,8 +61,8 @@ from media.compressor import SmartVideoCompressor, SmartVideoSplitter, SmartAudi
 
 logger = get_logger("telegram_adapter")
 
-# سقف سختگیرانه ارسال مستقیم بدون اسپلیت به بله (مگابایت)
-MAX_DIRECT_BALE_MB: float = 48.5
+# سقف پیش‌فرض بله (در صورت عدم وجود مقدار در تنظیمات وب‌پنل)
+DEFAULT_SAFE_BALE_MB: float = 48.0
 
 _ACTIVE_TELEGRAM_ADAPTER: Optional[Any] = None
 
@@ -701,7 +707,7 @@ class TelegramAdapter:
             await status_msg.edit_text("❌ فایل ویدیو روی سرور یافت نشد.")
             return False
 
-        safe_limit_mb = 45.0
+        safe_limit_mb = await get_bale_max_size_mb()
         parts_count = max(2, min(int(parts_count), 20))
 
         async def _safe_update(txt: str):
@@ -735,8 +741,8 @@ class TelegramAdapter:
                 created_parts.append(part_file)
                 part_sz_mb = part_file.stat().st_size / (1024 * 1024)
 
-                # گام ۲: فشرده‌سازی در صورت فراتر رفتن پارت از ۴۸.۵ مگابایت
-                if part_sz_mb > 48.5:
+                # گام ۲: فشرده‌سازی در صورت فراتر رفتن پارت از سقف مجاز بله
+                if part_sz_mb > safe_limit_mb:
                     await _safe_update(f"⚙️ پارت {p_idx} از {total_parts} دارای حجم {part_sz_mb:.1f}MB است و نیاز به بهینه‌سازی دارد...")
                     comp_out, _, _, _, was_c = await SmartVideoCompressor.compress_if_needed(
                         part_file,
@@ -3893,7 +3899,7 @@ class TelegramAdapter:
                 if not w_path.exists():
                     await status_msg.edit_text("❌ فایل ویدیو روی سرور یافت نشد.")
                     return
-                safe_limit_mb = 48.5
+                safe_limit_mb = await get_bale_max_size_mb()
                 qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
                 rec_parts = qual_info.get("recommended_parts", 2)
                 dur_m = int(qual_info.get("duration_sec", 0) // 60)
@@ -3922,7 +3928,7 @@ class TelegramAdapter:
                     f"✂️ <b>دستیار تقسیم هوشمند ویدیو (Split Assistant):</b>\n"
                     f"📄 فایل: <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>\n"
                     f"⏱ مدت زمان: <code>{dur_m} دقیقه</code> | حجم اولیه: <code>{init_mb} MB</code>\n"
-                    f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۸.۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
+                    f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف {safe_limit_mb:.1f}MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                     "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
                     "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜 فشرده‌سازی تا سقف بله»</b>\n"
                     "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!",
@@ -3942,21 +3948,112 @@ class TelegramAdapter:
                 session_manager.clear_user_action(f"tg_{user_id}")
                 await self.split_and_transfer_video_to_bale(drop_id, parts_count, status_msg)
 
-            elif action in ("send_bale", "force_bale"):
+            elif action == "force_bale":
+                # فشرده‌سازی مستقیم و هوشمند ویدیو تا سقف مجاز بله و ارسال پرسرعت
+                target_chat = await self.get_bale_target_chat()
+                if not target_chat:
+                    logger.error("[TG Callback smeta:force_bale] No valid Bale target chat found in config or database!")
+                    await callback_query.message.reply_text("❌ شناسه مقصد بله یافت نشد! لطفاً در پنل وب شناسه کانال یا ادمین بله را تنظیم کنید.")
+                    return
+
+                status_msg = callback_query.message
+                await ensure_binary(status_msg)
+                w_path = Path(drop.get("working_path") or "")
+                if not w_path.exists():
+                    await status_msg.edit_text("❌ فایل روی سرور یافت نشد.")
+                    return
+
+                target_mb = await get_bale_max_size_mb()
+                chat_id = callback_query.message.chat.id
+
+                last_text = ""
+                async def compression_progress(percent, speed, eta_str, orig_mb, target_mb):
+                    nonlocal last_text
+                    bar_length = 10
+                    pct = min(100.0, max(0.0, float(percent)))
+                    filled = int(bar_length * pct // 100)
+                    bar = "█" * filled + "░" * (bar_length - filled)
+                    spd_val = f"{float(speed):.1f}x" if isinstance(speed, (int, float)) else str(speed)
+                    text = (
+                        f"🗜 <b>در حال فشرده‌سازی هوشمند ویدیو...</b>\n\n"
+                        f"<code>[{bar}] {pct:.1f}%</code>\n\n"
+                        f"⏱ <b>باقیمانده:</b> <code>{eta_str}</code> | ⚡️ <b>سرعت:</b> <code>{spd_val}</code>\n"
+                        f"📦 <b>حجم اولیه:</b> <code>{orig_mb:.1f} MB</code> ➔ 🎯 <b>هدف:</b> <code>زیر {target_mb:.1f} MB</code>"
+                    )
+                    if text != last_text:
+                        last_text = text
+                        try:
+                            await self.app.edit_message_text(chat_id=chat_id, message_id=status_msg.id, text=text, parse_mode=enums.ParseMode.HTML)
+                        except Exception:
+                            pass
+
+                compressed_file = w_path.parent / f"compressed_{w_path.name}"
+                success = await compress_video_async(
+                    input_path=str(w_path),
+                    output_path=str(compressed_file),
+                    target_mb=target_mb,
+                    progress_callback=compression_progress
+                )
+
+                if not success or not compressed_file.exists() or compressed_file.stat().st_size == 0:
+                    await self.app.edit_message_text(chat_id=chat_id, message_id=status_msg.id, text="❌ خطا در فشرده‌سازی ویدیو!")
+                    return
+
+                await self.app.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=status_msg.id,
+                    text="🚀 <b>فشرده‌سازی پایان یافت! در حال ارسال پرسرعت به بله...</b>",
+                    parse_mode=enums.ParseMode.HTML
+                )
+
+                clean_name = clean_public_filename(drop.get("audio_filename") or w_path.name)
+                tech = inspect_technical_metadata(compressed_file)
+                res = await self.bale_adapter.send_video(
+                    chat_id=target_chat,
+                    file_path=str(compressed_file),
+                    filename=clean_name,
+                    caption=f"🎬 <b>{escape(clean_name)}</b>",
+                    duration=tech.get("duration_sec"),
+                    width=tech.get("width"),
+                    height=tech.get("height")
+                )
+                if res and res.get("ok"):
+                    await self.app.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=status_msg.id,
+                        text=f"🎬 <b>ویدیوی فشرده‌شده با موفقیت به بله منتقل شد!</b>\n📁 <b>نام فایل:</b> <code>{escape(clean_name)}</code>",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                else:
+                    err = ""
+                    if isinstance(res, dict):
+                        err = res.get("description") or res.get("error") or str(res)
+                    else:
+                        err = str(res) if res is not None else "پاسخی از سرور دریافت نشد"
+                    await self.app.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=status_msg.id,
+                        text=f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(err))}</code>",
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                return
+
+            elif action == "send_bale":
                 target_chat = await self.get_bale_target_chat()
                 if not target_chat:
                     logger.error("[TG Callback smeta:send_bale] No valid Bale target chat found in config or database!")
                     await callback_query.message.reply_text("❌ شناسه مقصد بله یافت نشد! لطفاً در پنل وب شناسه کانال یا ادمین بله را تنظیم کنید.")
                     return
 
-                status_msg = callback_query.message if action == "force_bale" else await callback_query.message.reply_text("📥 <b>در حال آماده‌سازی فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
+                status_msg = await callback_query.message.reply_text("📥 <b>در حال آماده‌سازی فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
                 await ensure_binary(status_msg)
 
                 w_path = Path(drop.get("working_path") or "")
 
-                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (صرفاً و منحصراً برای فایل‌های بالای ۴۸.۵ مگابایت)
-                if action != "force_bale" and drop.get("media_type") == "video" and w_path.exists():
-                    safe_limit_mb = 48.5
+                safe_limit_mb = await get_bale_max_size_mb()
+
+                # دستیار هوشمند تصمیم‌گیری فشرده‌سازی یا تقسیم ویدیو (صرفاً برای فایل‌های فراتر از سقف بله)
+                if drop.get("media_type") == "video" and w_path.exists():
                     file_size_mb = w_path.stat().st_size / (1024 * 1024)
                     if file_size_mb > safe_limit_mb:
                         qual_info = SmartVideoCompressor.precalculate_video_quality(w_path, target_max_mb=safe_limit_mb)
@@ -3972,7 +4069,7 @@ class TelegramAdapter:
                         warn_text = (
                             f"⚠️ <b>حجم این ویدیو بیش از سقف مجاز بله است ({file_size_mb:.2f} MB).</b>\n"
                             f"جهت ارسال موفق به بله، می‌توانید آن را به پارت‌های باکیفیت تقسیم کرده یا فشرده فرمایید:\n\n"
-                            f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف ۴۸.۵MB بله: <b>{rec_parts} پارت</b></i>\n\n"
+                            f"💡 <i>پارت‌های پیشنهادی بر مبنای سقف {safe_limit_mb:.1f}MB بله: <b>{rec_parts} پارت</b></i>\n\n"
                             "👇 <b>گزینه مورد نظر خود را انتخاب فرمایید:</b>\n"
                             "• کلیک روی <b>«✂️ تقسیم هوشمند به ۲ پارت»</b> یا <b>«🗜️ فشرده‌سازی هوشمند تا سقف بله»</b>\n"
                             "• یا اگر مایلید ویدیو به تعداد دلخواه تقسیم شود، <b>عدد مورد نظر (مثلاً ۳ یا ۴)</b> را همین‌جا در چت ارسال کنید!"
@@ -3992,11 +4089,11 @@ class TelegramAdapter:
                         await status_msg.edit_text(warn_text, parse_mode=enums.ParseMode.HTML, reply_markup=warn_kb)
                         return
 
-                if w_path.exists() and (w_path.stat().st_size / (1024 * 1024)) >= 48.5:
+                if w_path.exists() and (w_path.stat().st_size / (1024 * 1024)) >= safe_limit_mb:
                     orig_sz_mb = f"{w_path.stat().st_size / (1024 * 1024):.1f}"
                     await status_msg.edit_text(
                         "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                        f"📊 حجم فعلی: <code>{orig_sz_mb} MB</code> ➔ هدف: <code>زیر 48.5 MB</code>\n"
+                        f"📊 حجم فعلی: <code>{orig_sz_mb} MB</code> ➔ هدف: <code>زیر {safe_limit_mb:.1f} MB</code>\n"
                         "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید...",
                         parse_mode=enums.ParseMode.HTML
                     )

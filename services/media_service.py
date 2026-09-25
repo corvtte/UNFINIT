@@ -55,6 +55,128 @@ def clean_display_filename(filename: str) -> str:
     return clean_public_filename(filename)
 
 
+async def get_bale_max_size_mb() -> float:
+    """
+    دریافت سقف مجاز فایل در بله به صورت کاملاً پویا از دیتابیس / تنظیمات وب‌پنل در settings.json.
+    هیچ سقف ثابتی نباید هاردکد شود و اولویت با مقدار ورودی ادمین در پنل وب است.
+    """
+    from core.database import get_system_setting
+    # 1. Read from system settings (configured via UNFINIT Web Panel in /data/settings.json)
+    for key in ("bale_max_file_size_mb", "bale_max_size", "bale_limit_mb", "bale_upload_limit", "MAX_SAFE_BALE_SIZE_MB", "max_safe_bale_size_mb"):
+        val = await get_system_setting(key, None)
+        if val is not None and str(val).strip() not in ("", "0", "None"):
+            try:
+                return float(str(val).strip())
+            except ValueError:
+                pass
+
+    # 2. Check config attributes
+    cfg_val = getattr(config, "BALE_MAX_FILE_SIZE_MB", None) or getattr(config, "BALE_FILE_LIMIT_MB", None) or getattr(config, "MAX_SAFE_BALE_SIZE_MB", None)
+    if cfg_val is not None:
+        try:
+            return float(cfg_val)
+        except ValueError:
+            pass
+
+    # 3. Safe fallback if completely unconfigured
+    return 48.0
+
+
+async def compress_video_async(
+    input_path: str,
+    output_path: str,
+    target_mb: Optional[float] = None,
+    progress_callback: Optional[Callable] = None
+) -> bool:
+    """
+    فشرده‌سازی غیرمسدودکننده ویدیو با استفاده از asyncio.create_subprocess_exec و فلگ -progress pipe:1
+    جهت مهار فریز حلقه رویدادها و گزارش پیشرفت زنده هر ۳ ثانیه یک‌بار.
+    """
+    input_p = Path(input_path)
+    output_p = Path(output_path)
+    if not input_p.exists():
+        return False
+    orig_mb = input_p.stat().st_size / (1024 * 1024)
+
+    if target_mb is None:
+        target_mb = await get_bale_max_size_mb()
+
+    # 1. Probe duration asynchronously via ffprobe
+    duration = 0.0
+    try:
+        probe_cmd = [
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", str(input_p)
+        ]
+        proc_probe = await asyncio.create_subprocess_exec(
+            *probe_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc_probe.communicate()
+        duration = float(stdout.decode().strip())
+    except Exception:
+        duration = 0.0
+
+    # 2. Compute dynamic video bitrate
+    audio_bitrate_kbps = 64
+    if duration > 0:
+        target_total_bitrate_kbps = (target_mb * 8192) / duration
+        video_bitrate_kbps = max(int(target_total_bitrate_kbps - audio_bitrate_kbps), 150)
+    else:
+        video_bitrate_kbps = 350
+
+    # 3. Non-blocking FFmpeg process with -progress pipe:1 and -threads 0
+    cmd = [
+        "ffmpeg", "-y", "-i", str(input_p),
+        "-c:v", "libx264", "-b:v", f"{video_bitrate_kbps}k",
+        "-preset", "faster", "-threads", "0",
+        "-c:a", "aac", "-b:a", f"{audio_bitrate_kbps}k",
+        "-movflags", "+faststart",
+        "-progress", "pipe:1",
+        str(output_p)
+    ]
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL
+    )
+
+    last_update = 0.0
+    start_time = time.time()
+
+    # Read progress asynchronously without blocking event loop
+    while True:
+        line = await proc.stdout.readline()
+        if not line:
+            break
+        text = line.decode('utf-8', errors='ignore').strip()
+
+        if text.startswith("out_time_us="):
+            try:
+                parts = text.split("=")
+                if len(parts) > 1 and parts[1].isdigit():
+                    out_us = int(parts[1])
+                    out_sec = out_us / 1_000_000.0
+                    if duration > 0:
+                        percent = min((out_sec / duration) * 100.0, 99.0)
+                        now = time.time()
+                        elapsed = now - start_time
+                        speed = (out_sec / elapsed) if elapsed > 0 else 1.0
+                        remaining_sec = (duration - out_sec) / speed if speed > 0 else 0
+                        eta_str = f"{int(remaining_sec // 60):02d}:{int(remaining_sec % 60):02d}"
+
+                        if progress_callback and (now - last_update >= 3.0 or percent >= 98.0):
+                            last_update = now
+                            res = progress_callback(percent, speed, eta_str, orig_mb, target_mb)
+                            if asyncio.iscoroutine(res):
+                                asyncio.create_task(res)
+            except Exception:
+                pass
+
+    await proc.wait()
+    return output_p.exists() and output_p.stat().st_size > 0
+
+
 class SequentialBatchQueue:
     """
     صف ترتیبی FIFO برای مهار فشار همزمان پردازش و انتقال دسته‌جمعی رسانه‌ها (Batch Media Transfers).

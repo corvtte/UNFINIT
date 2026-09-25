@@ -30,7 +30,7 @@ from core.formatters import (
 )
 from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService
-from services.media_service import MediaService, clean_display_filename, clean_public_filename
+from services.media_service import MediaService, clean_display_filename, clean_public_filename, get_bale_max_size_mb
 from services.session_manager import session_manager
 from services.url_service import UrlService
 from services.user_service import UserService, normalize_phone
@@ -1339,9 +1339,9 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                         # Safe dynamic limit management for Bale
                                         final_send_path = temp_dest
-                                        safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+                                        safe_mb = await get_bale_max_size_mb()
                                         target_mb = max(1.0, round(safe_mb - 1.5, 2))
-                                        if sz_mb >= safe_mb or sz > getattr(config, "MAX_SAFE_BALE_SIZE_BYTES", int(safe_mb * 1024 * 1024)):
+                                        if sz_mb >= safe_mb or sz > int(safe_mb * 1024 * 1024):
                                             orig_mb = f"{sz_mb:.1f}"
                                             try:
                                                 await bale.edit_message_text(
@@ -1929,9 +1929,9 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 ok, final_mp3, info = MediaService.extract_audio_from_video(drop_id)
                                                 if ok and final_mp3.exists():
                                                     sz_mb = final_mp3.stat().st_size / (1024 * 1024)
-                                                    safe_mb = float(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99))
+                                                    safe_mb = await get_bale_max_size_mb()
                                                     target_mb = max(1.0, round(safe_mb - 1.5, 2))
-                                                    if sz_mb >= safe_mb or final_mp3.stat().st_size > getattr(config, "MAX_SAFE_BALE_SIZE_BYTES", int(safe_mb * 1024 * 1024)):
+                                                    if sz_mb >= safe_mb or final_mp3.stat().st_size > int(safe_mb * 1024 * 1024):
                                                         orig_size_str = f"{sz_mb:.1f}"
                                                         await bale.send_message(
                                                             chat_id,
@@ -2003,12 +2003,13 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await ensure_bale_binary()
                                             try:
                                                 w_path = Path(drop.get("working_path") or "")
-                                                if w_path.exists() and (w_path.stat().st_size / (1024 * 1024)) >= 49.99:
+                                                safe_mb = await get_bale_max_size_mb()
+                                                if w_path.exists() and (w_path.stat().st_size / (1024 * 1024)) >= safe_mb:
                                                     orig_sz_mb = f"{w_path.stat().st_size / (1024 * 1024):.1f}"
                                                     await bale.send_message(
                                                         chat_id,
                                                         "🎛 <b>در حال فشرده‌سازی هوشمند جهت رعایت سقف بله...</b>\n"
-                                                        f"📊 حجم فعلی: <code>{orig_sz_mb} MB</code> ➔ هدف: <code>زیر 49.9 MB</code>\n"
+                                                        f"📊 حجم فعلی: <code>{orig_sz_mb} MB</code> ➔ هدف: <code>زیر {safe_mb:.1f} MB</code>\n"
                                                         "⚙️ فرآیند بهینه‌سازی صدا و تصویر در حال اجراست، لطفاً شکیبا باشید..."
                                                     )
                                                 final_p, fn, info = MediaService.prepare_for_transfer(drop_id, "bale")

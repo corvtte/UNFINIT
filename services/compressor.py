@@ -817,11 +817,11 @@ class SmartVideoSplitter:
 
             if out_p.exists() and out_p.stat().st_size > 0:
                 part_sz_mb = out_p.stat().st_size / (1024 * 1024)
-                if part_sz_mb > 48.5:
-                    logger.info(f"Split part {out_p.name} ({part_sz_mb:.1f}MB) exceeds 48.5MB, auto-compressing...")
+                if part_sz_mb > target_max_mb:
+                    logger.info(f"Split part {out_p.name} ({part_sz_mb:.1f}MB) exceeds target {target_max_mb:.1f}MB, auto-compressing...")
                     comp_out, _, _, _, ok = await SmartVideoCompressor.compress_if_needed(
                         out_p,
-                        target_max_mb=SAFE_BALE_PART_LIMIT_MB,
+                        target_max_mb=target_max_mb,
                         part_info=f"پارت {i} از {num_parts}",
                         progress_callback=progress_callback
                     )
