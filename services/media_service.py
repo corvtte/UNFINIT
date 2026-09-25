@@ -757,7 +757,7 @@ class MediaService:
 
             def _make_bar(pct: int, length: int = 8) -> str:
                 f = min(length, max(0, int(round(length * pct / 100))))
-                return f"[{'█' * f}{'▒' * (length - f)}] {pct}%"
+                return f"[{'█' * f}{'░' * (length - f)}] \u200e{pct}%"
 
             async def _update_status(txt: str):
                 if status_callback:

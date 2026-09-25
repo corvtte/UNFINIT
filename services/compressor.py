@@ -35,10 +35,11 @@ def _format_video_progress_msg(
 ) -> str:
     """
     فرمت‌بندی پیام گزارش زنده فشرده‌سازی هوشمند ویدیو با نوار پیشرفت بلاکی، سرعت و زمان باقی‌مانده.
+    استفاده از کاراکتر ایزولاسیون LTR جهت ثبات چیدمان درصد و زمان.
     """
     total_blocks = 12
     filled = min(total_blocks, max(0, int(round(total_blocks * pct / 100))))
-    bar = f"[{'█' * filled}{'▒' * (total_blocks - filled)}] {pct}%"
+    bar = f"[{'█' * filled}{'▒' * (total_blocks - filled)}] \u200e{pct}%"
 
     m, s = divmod(int(max(0, remaining_sec)), 60)
     h, m = divmod(m, 60)
@@ -48,9 +49,55 @@ def _format_video_progress_msg(
 
     return (
         f"{header}\n"
-        f"{bar} (سرعت: {speed} | زمان باقیمانده: {time_rem_str})\n"
+        f"{bar} (سرعت: {speed} | باقیمانده: {time_rem_str})\n"
         f"📊 حجم اولیه: {orig_mb:.1f} MB ➔ برآورد نهایی: ~{target_mb:.0f} MB"
     )
+
+
+async def get_video_duration_async(file_path: str | Path) -> float:
+    """
+    سنجش دقیق مدت‌زمان فایل ویدیویی بر حسب ثانیه با ffprobe پیش از ورود به محاسبات فشرده‌سازی.
+    """
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1', str(file_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        val = float(stdout.decode().strip())
+        if val > 0:
+            return val
+    except Exception:
+        pass
+
+    try:
+        tech = inspect_technical_metadata(Path(file_path))
+        return float(tech.get("duration_sec", 0) or 0.0)
+    except Exception:
+        return 0.0
+
+
+def get_video_duration_sync(file_path: str | Path) -> float:
+    """نسخه همگام سنجش مدت‌زمان ویدیو با ffprobe"""
+    try:
+        res = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'default=noprint_wrappers=1:nokey=1', str(file_path)],
+            capture_output=True, text=True, timeout=10
+        )
+        val = float(res.stdout.strip())
+        if val > 0:
+            return val
+    except Exception:
+        pass
+
+    try:
+        tech = inspect_technical_metadata(Path(file_path))
+        return float(tech.get("duration_sec", 0) or 0.0)
+    except Exception:
+        return 0.0
 
 
 class SmartAudioCompressor:
@@ -259,6 +306,13 @@ class SmartVideoCompressor:
                             speed_val = float(v.replace("x", "").strip())
                         except Exception:
                             speed_val = 1.0
+                    elif k == "out_time":
+                        try:
+                            t_parts = v.split(":")
+                            if len(t_parts) == 3:
+                                current_sec = float(t_parts[0]) * 3600 + float(t_parts[1]) * 60 + float(t_parts[2])
+                        except Exception:
+                            pass
                     elif k == "progress" and v == "end":
                         current_sec = duration_sec
 
@@ -266,7 +320,7 @@ class SmartVideoCompressor:
                 if progress_callback and (now - last_update >= 3.0) and duration_sec > 0:
                     last_update = now
                     pct = min(99, max(1, int((current_sec / duration_sec) * 100)))
-                    rem_sec = max(0.0, (duration_sec - current_sec) / max(0.1, speed_val))
+                    rem_sec = max(0, int((duration_sec - current_sec) / max(0.1, speed_val)))
                     msg = _format_video_progress_msg(
                         pct=pct,
                         speed=speed,
@@ -336,12 +390,24 @@ class SmartVideoCompressor:
                             current_sec = int(v) / 1_000_000.0
                         except Exception:
                             pass
+                    elif k == "out_time_ms":
+                        try:
+                            current_sec = int(v) / 1_000.0
+                        except Exception:
+                            pass
                     elif k == "speed":
                         speed = v
                         try:
                             speed_val = float(v.replace("x", "").strip())
                         except Exception:
                             speed_val = 1.0
+                    elif k == "out_time":
+                        try:
+                            t_parts = v.split(":")
+                            if len(t_parts) == 3:
+                                current_sec = float(t_parts[0]) * 3600 + float(t_parts[1]) * 60 + float(t_parts[2])
+                        except Exception:
+                            pass
                     elif k == "progress" and v == "end":
                         current_sec = duration_sec
 
@@ -349,7 +415,7 @@ class SmartVideoCompressor:
                 if progress_callback and (now - last_update >= 3.0) and duration_sec > 0:
                     last_update = now
                     pct = min(99, max(1, int((current_sec / duration_sec) * 100)))
-                    rem_sec = max(0.0, (duration_sec - current_sec) / max(0.1, speed_val))
+                    rem_sec = max(0, int((duration_sec - current_sec) / max(0.1, speed_val)))
                     msg = _format_video_progress_msg(
                         pct=pct,
                         speed=speed,
@@ -403,8 +469,11 @@ class SmartVideoCompressor:
             tech = inspect_technical_metadata(src)
             return src, initial_size, initial_size, tech.get("bitrate_kbps", 800), False
 
-        tech = inspect_technical_metadata(src)
-        dur = float(tech.get("duration_sec", 0) or 0)
+        # پروب دقیق مدت زمان با ffprobe به جای تکیه بر اطلاعات فرضی یا والد
+        dur = await get_video_duration_async(src)
+        if dur <= 0:
+            tech = inspect_technical_metadata(src)
+            dur = float(tech.get("duration_sec", 0) or 0)
         audio_kbps = 64 if dur > 1800 else 96
         target_v_bitrate = cls.calculate_target_video_bitrate(
             dur, target_max_bytes, audio_bitrate_kbps=audio_kbps
@@ -581,6 +650,11 @@ class SmartVideoCompressor:
             "initial_size_mb": init_mb
         }
 
+    # متدهای سنجش دقیق مدت زمان با ffprobe
+    get_video_duration_async = staticmethod(get_video_duration_async)
+    get_video_duration = staticmethod(get_video_duration_async)
+    get_video_duration_sync = staticmethod(get_video_duration_sync)
+
     # نام مستعار جهت سازگاری و جلوگیری از خطای AttributeError
     compress_video = compress_if_needed
     compress_video_sync = compress_if_needed_sync
@@ -591,6 +665,72 @@ class SmartVideoSplitter:
     کلاس مدیریت تقسیم هوشمند ویدیو به پارت‌های باکیفیت و ایمن
     با پشتیبانی کامل از اجرای غیرمسدودکننده (Async FFmpeg) و فشرده‌سازی ثانویه خودکار.
     """
+
+    @classmethod
+    async def split_single_part_async(
+        cls,
+        file_path: str | Path,
+        part_index: int,
+        num_parts: int,
+        total_duration: float
+    ) -> Path:
+        """
+        برش و استخراج یک پارت منفرد از ویدیو به صورت کاملاً غیرمسدودکننده با استفاده از Stream Copy سریع
+        یا انکود سبک Ultrafast در صورت عدم پشتیبانی کپی جریان.
+        """
+        src = Path(file_path)
+        if not src.exists():
+            raise FileNotFoundError(f"Input video not found: {file_path}")
+
+        if total_duration <= 0:
+            total_duration = await get_video_duration_async(src)
+            if total_duration <= 0:
+                total_duration = 600.0
+
+        part_duration = total_duration / num_parts
+        start_sec = (part_index - 1) * part_duration
+        out_p = config.TEMP_DIR / f"{src.stem}_part{part_index}of{num_parts}{src.suffix}"
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd_copy = [
+            "ffmpeg", "-y",
+            "-ss", f"{start_sec:.2f}",
+            "-t", f"{part_duration:.2f}",
+            "-i", str(src),
+            "-c", "copy",
+            "-avoid_negative_ts", "make_zero",
+            str(out_p)
+        ]
+        logger.info(f"Splitting single part {part_index}/{num_parts} (copy): {cmd_copy}")
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd_copy,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await proc.communicate()
+
+        if proc.returncode != 0 or not out_p.exists() or out_p.stat().st_size < 1000:
+            logger.warning(f"Stream copy split failed for part {part_index}, falling back to fast encode...")
+            cmd_enc = [
+                "ffmpeg", "-y",
+                "-ss", f"{start_sec:.2f}",
+                "-t", f"{part_duration:.2f}",
+                "-i", str(src),
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-c:a", "aac",
+                "-b:a", "96k",
+                str(out_p)
+            ]
+            proc_enc = await asyncio.create_subprocess_exec(
+                *cmd_enc,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            await proc_enc.communicate()
+
+        return out_p
 
     @classmethod
     async def split_video_async(
@@ -619,12 +759,13 @@ class SmartVideoSplitter:
             num_parts = max(2, math.ceil(total_mb / target_max_mb))
             logger.info(f"SmartVideoSplitter async: Auto-calculated parts = {num_parts} for {total_mb:.1f}MB")
 
-        tech = inspect_technical_metadata(src)
-        dur = float(tech.get("duration_sec", 0) or 0)
+        dur = await get_video_duration_async(src)
+        if dur <= 0:
+            tech = inspect_technical_metadata(src)
+            dur = float(tech.get("duration_sec", 0) or 0)
         if dur <= 0:
             dur = 600.0
 
-        part_duration = dur / num_parts
         output_files: List[Path] = []
 
         if progress_callback:
@@ -637,58 +778,17 @@ class SmartVideoSplitter:
             except Exception:
                 pass
 
-        for i in range(num_parts):
-            start_sec = i * part_duration
-            out_p = config.TEMP_DIR / f"{src.stem}_part{i+1}of{num_parts}{src.suffix}"
-            out_p.parent.mkdir(parents=True, exist_ok=True)
-
-            cmd_copy = [
-                "ffmpeg", "-y",
-                "-ss", f"{start_sec:.2f}",
-                "-t", f"{part_duration:.2f}",
-                "-i", str(src),
-                "-c", "copy",
-                "-avoid_negative_ts", "make_zero",
-                str(out_p)
-            ]
-            logger.info(f"Splitting part {i+1}/{num_parts} (copy): {cmd_copy}")
-
-            proc = await asyncio.create_subprocess_exec(
-                *cmd_copy,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            _, _ = await proc.communicate()
-
-            if proc.returncode != 0 or not out_p.exists() or out_p.stat().st_size < 1000:
-                logger.warning(f"Stream copy split failed for part {i+1}, falling back to fast encode...")
-                cmd_enc = [
-                    "ffmpeg", "-y",
-                    "-ss", f"{start_sec:.2f}",
-                    "-t", f"{part_duration:.2f}",
-                    "-i", str(src),
-                    "-c:v", "libx264",
-                    "-preset", "ultrafast",
-                    "-c:a", "aac",
-                    "-b:a", "96k",
-                    str(out_p)
-                ]
-                proc_enc = await asyncio.create_subprocess_exec(
-                    *cmd_enc,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                await proc_enc.communicate()
+        for i in range(1, num_parts + 1):
+            out_p = await cls.split_single_part_async(src, i, num_parts, dur)
 
             if out_p.exists() and out_p.stat().st_size > 0:
                 part_sz_mb = out_p.stat().st_size / (1024 * 1024)
-                # بررسی ثانویه و فشرده‌سازی خودکار در صورت عبور از ۴۸.۵ مگابایت
                 if part_sz_mb > 48.5:
                     logger.info(f"Split part {out_p.name} ({part_sz_mb:.1f}MB) exceeds 48.5MB, auto-compressing...")
                     comp_out, _, _, _, ok = await SmartVideoCompressor.compress_if_needed(
                         out_p,
                         target_max_mb=SAFE_BALE_PART_LIMIT_MB,
-                        part_info=f"پارت {i+1} از {num_parts}",
+                        part_info=f"پارت {i} از {num_parts}",
                         progress_callback=progress_callback
                     )
                     if ok and comp_out and comp_out.exists() and comp_out.stat().st_size > 0:
@@ -700,7 +800,7 @@ class SmartVideoSplitter:
                             out_p = comp_out
                 output_files.append(out_p)
             else:
-                logger.error(f"Failed to generate part {i+1} of {src.name}")
+                logger.error(f"Failed to generate part {i} of {src.name}")
 
         return output_files
 

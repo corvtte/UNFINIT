@@ -588,52 +588,57 @@ class TelegramAdapter:
             except Exception as e:
                 logger.debug(f"Status msg edit failed: {e}")
 
-        # Active Failure Alerts (No More Silent Freezes): کل فرآیند در try...except قرار می‌گیرد
+        # Active Failure Alerts & Pipelined Execution: پردازش و ارسال گام‌به‌گام و فوری هر پارت به بله
         try:
-            await _safe_update(f"✂️ <b>در حال تقسیم هوشمند ویدیو به {parts_count} پارت بدون افت کیفیت...</b>")
+            from services.compressor import get_video_duration_async
+            total_dur = await get_video_duration_async(w_path)
+            if total_dur <= 0:
+                p_tech = inspect_technical_metadata(w_path)
+                total_dur = float(p_tech.get("duration_sec", 0) or 0)
+            if total_dur <= 0:
+                total_dur = 600.0
 
-            # 1. Splitting کاملاً غیرمسدودکننده با FFmpeg آسنکرون
-            parts_list = await SmartVideoSplitter.split_video_async(
-                w_path,
-                num_parts=parts_count,
-                target_max_mb=safe_limit_mb,
-                progress_callback=_safe_update
-            )
-            if not parts_list:
-                await _safe_update("❌ خطا در تقسیم فایل ویدیو با FFmpeg: هیچ پارتی تولید نشد.")
-                return False
+            total_parts = parts_count
+            created_parts = []
 
-            total_parts = len(parts_list)
+            for p_idx in range(1, total_parts + 1):
+                # گام ۱: برش بلادرنگ پارت جاری
+                await _safe_update(f"✂️ <b>در حال استخراج و برش پارت {p_idx} از {total_parts}...</b>")
+                part_file = await SmartVideoSplitter.split_single_part_async(
+                    w_path, p_idx, total_parts, total_dur
+                )
+                if not part_file or not part_file.exists() or part_file.stat().st_size == 0:
+                    raise RuntimeError(f"خطا در تولید پارت {p_idx}")
 
-            # 2 & 3. Secondary Compression Check & Sequential Bale Upload
-            for p_idx, part_file in enumerate(parts_list, 1):
+                created_parts.append(part_file)
                 part_sz_mb = part_file.stat().st_size / (1024 * 1024)
 
-                # فشرده‌سازی ثانویه در صورت فراتر رفتن هر پارت از سقف ۴۸.۵ مگابایت
+                # گام ۲: فشرده‌سازی در صورت فراتر رفتن پارت از ۴۸.۵ مگابایت
                 if part_sz_mb > 48.5:
+                    await _safe_update(f"⚙️ پارت {p_idx} از {total_parts} دارای حجم {part_sz_mb:.1f}MB است و نیاز به بهینه‌سازی دارد...")
                     comp_out, _, _, _, was_c = await SmartVideoCompressor.compress_if_needed(
                         part_file,
                         target_max_mb=safe_limit_mb,
                         progress_callback=_safe_update,
                         part_info=f"پارت {p_idx} از {total_parts}"
                     )
-                    if comp_out and comp_out.exists():
+                    if comp_out and comp_out.exists() and comp_out.stat().st_size > 0:
                         part_file = comp_out
                         part_sz_mb = part_file.stat().st_size / (1024 * 1024)
 
-                # ارسال ترتیبی به بله با پیام در حال ارسال و شکیبایی
-                await _safe_update(f"🚢 <b>در حال ارسال پارت {p_idx} از {total_parts} به بله ({part_sz_mb:.1f} مگابایت)... لطفاً شکیبا باشید</b>")
+                # گام ۳: ارسال فوری پارت جاری به بله بدون انتظار برای سایر پارت‌ها (Pipelined Transfer)
+                await _safe_update(f"🚢 <b>در حال ارسال فوری پارت {p_idx} از {total_parts} به بله ({part_sz_mb:.1f} مگابایت)... لطفاً شکیبا باشید</b>")
 
-                p_tech = inspect_technical_metadata(part_file)
+                part_tech = inspect_technical_metadata(part_file)
                 caption_part = f"📄 پارت {p_idx} از {total_parts}: <b>{escape(part_file.name)}</b>"
 
                 res = await self.bale_adapter.send_video(
                     target_chat,
                     part_file,
                     caption=caption_part,
-                    duration=p_tech.get("duration_sec"),
-                    width=p_tech.get("width"),
-                    height=p_tech.get("height")
+                    duration=part_tech.get("duration_sec"),
+                    width=part_tech.get("width"),
+                    height=part_tech.get("height")
                 )
 
                 if not res.get("ok"):
@@ -641,7 +646,7 @@ class TelegramAdapter:
                     raise RuntimeError(f"پارت {p_idx}: {err_msg}")
 
                 if p_idx < total_parts:
-                    await _safe_update(f"✅ پارت {p_idx} از {total_parts} با موفقیت به بله ارسال شد! در حال آماده‌سازی و ارسال پارت {p_idx + 1}...")
+                    await _safe_update(f"✅ پارت {p_idx} از {total_parts} با موفقیت به بله تحویل شد!\n⚡️ بلافاصله در حال آماده‌سازی و ارسال پارت {p_idx + 1}...")
                 else:
                     await _safe_update(f"✅ <b>تمام {total_parts} پارت ویدیو با موفقیت به بله ارسال شدند!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>")
 

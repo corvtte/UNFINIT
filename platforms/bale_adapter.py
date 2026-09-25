@@ -173,9 +173,10 @@ class ProgressFileReader(io.IOBase):
     خواننده باینری فایل بر پایه io.IOBase همراه با گزارش دوره‌ای بایت‌های خوانده‌شده
     جهت پایش نوار پیشرفت زنده در تلگرام و بله با سازگاری ۱۰۰٪ با aiohttp.FormData.
     """
-    def __init__(self, file_path: Any, callback: Optional[Callable[[int, int], None]] = None):
+    def __init__(self, file_path: Any, callback: Optional[Callable[[int, int], None]] = None, chunk_size: int = 1024 * 1024):
         super().__init__()
         self.callback = callback
+        self.chunk_size = chunk_size
         self.bytes_read = 0
         if isinstance(file_path, (bytes, bytearray)):
             self.total_bytes = len(file_path)
@@ -198,6 +199,8 @@ class ProgressFileReader(io.IOBase):
             self._f = open(p, "rb")
 
     def read(self, size: int = -1) -> bytes:
+        if size is None or size <= 0:
+            size = self.chunk_size
         chunk = self._f.read(size)
         if chunk:
             self.bytes_read += len(chunk)
@@ -501,7 +504,7 @@ class BaleAdapter:
             else:
                 form.add_field("reply_markup", str(reply_markup))
         try:
-            bale_upload_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=120)
+            bale_upload_timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=90)
             if isinstance(document, bytes):
                 fname = filename or "document.bin"
                 form.add_field("document", document, filename=fname, content_type="application/octet-stream")
@@ -519,7 +522,9 @@ class BaleAdapter:
                         async with session.post(url_doc, data=form) as resp:
                             return await resp.json()
         except Exception as e:
-            return {"ok": False, "error": str(e)}
+            err_msg = f"{type(e).__name__}: {e or repr(e)}"
+            logger.error(f"Bale send_document exception: {err_msg}")
+            return {"ok": False, "error": err_msg}
 
     async def send_photo_by_id(
         self,
@@ -571,8 +576,9 @@ class BaleAdapter:
         if width: form.add_field("width", str(int(width)))
         if height: form.add_field("height", str(int(height)))
 
-        # پیکربندی تایم‌اوت مقاوم طبق استاندارد ۴۵۰ ثانیه کل، ۳۰ ثانیه اتصال، ۱۲۰ ثانیه خواندن سوکت
-        bale_video_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=120)
+        # پیکربندی تایم‌اوت مقاوم طبق استاندارد ۳۰۰ ثانیه کل، ۳۰ ثانیه اتصال، ۹۰ ثانیه خواندن سوکت
+        bale_video_timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=90)
+        last_error_diag = "Unknown error"
 
         try:
             reader = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
@@ -585,30 +591,47 @@ class BaleAdapter:
                             if res.get("ok"):
                                 logger.info(f"Bale sendVideo successful: {res}")
                                 return res
+                            last_error_diag = f"HTTP 200 but ok=False: {res}"
                             logger.warning(f"Bale sendVideo returned error: {res}, falling back to sendDocument...")
                         elif resp.status == 413:
+                            last_error_diag = "HTTP 413 (Entity Too Large)"
                             logger.warning("Bale sendVideo returned 413 (Entity Too Large), falling back to sendDocument...")
                         else:
+                            last_error_diag = f"HTTP status {resp.status}"
                             logger.warning(f"Bale sendVideo HTTP {resp.status}, falling back to sendDocument...")
         except Exception as e:
-            logger.warning(f"Bale sendVideo exception: {e}, falling back to sendDocument...")
+            last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
+            logger.warning(f"Bale sendVideo exception: {last_error_diag}, falling back to sendDocument...")
 
-        # Fallback به sendDocument در صورت بروز خطای ۴۱۳ یا عدم پشتیبانی مستقیم استریم
-        try:
-            url_doc = f"{self.base_url}/sendDocument"
-            form_doc = aiohttp.FormData(quote_fields=False)
-            form_doc.add_field("chat_id", str(chat_id))
-            if clean_caption: form_doc.add_field("caption", clean_caption)
-            reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
-            with reader_doc as f:
-                form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
-                async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
-                    async with session.post(url_doc, data=form_doc) as resp:
-                        res_doc = await resp.json()
-                        return res_doc
-        except Exception as e:
-            logger.error(f"Bale fallback sendDocument failed: {e}")
-            return {"ok": False, "error": str(e)}
+        # Fallback به sendDocument با حداکثر ۲ تلاش مجدد در صورت بروز خطا در sendVideo
+        for attempt in range(1, 3):
+            try:
+                url_doc = f"{self.base_url}/sendDocument"
+                form_doc = aiohttp.FormData(quote_fields=False)
+                form_doc.add_field("chat_id", str(chat_id))
+                if clean_caption: form_doc.add_field("caption", clean_caption)
+                reader_doc = ProgressFileReader(path_obj, progress_callback) if progress_callback else open(path_obj, "rb")
+                with reader_doc as f:
+                    form_doc.add_field("document", f, filename=clean_send_name, content_type="application/octet-stream")
+                    async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
+                        async with session.post(url_doc, data=form_doc) as resp:
+                            if resp.status == 200:
+                                res_doc = await resp.json()
+                                if res_doc.get("ok"):
+                                    logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
+                                    return res_doc
+                                last_error_diag = f"sendDocument attempt {attempt} returned: {res_doc}"
+                                logger.warning(f"Bale fallback sendDocument attempt {attempt} returned non-ok: {res_doc}")
+                            else:
+                                last_error_diag = f"sendDocument attempt {attempt} HTTP {resp.status}"
+                                logger.warning(f"Bale fallback sendDocument attempt {attempt} HTTP status: {resp.status}")
+            except Exception as e:
+                last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
+                logger.error(f"Bale fallback sendDocument attempt {attempt} failed: {last_error_diag}")
+            if attempt < 2:
+                await asyncio.sleep(2.0)
+
+        return {"ok": False, "error": f"خطا در ارسال به بله (ویدیو و سند): {last_error_diag}"}
 
     async def edit_message_text(self, chat_id: str | int, message_id: int, text: str, reply_markup: Any = None) -> Dict[str, Any]:
         if not self.token:
