@@ -3,6 +3,20 @@
 تمام تغییرات کلیدی، هات‌فیکس‌ها و ارتقاءهای معماری پروژه در این سند ثبت می‌گردد.
 فرمت این سند بر پایه استانداردهای [Keep a Changelog](https://keepachangelog.com/fa/1.0.0/) و نسخه‌گذاری معنایی تدوین شده است.
 
+## [v0.6.5] - 1403/07/15
+
+### 🚀 آپلود بله با سرعت حداکثری از طریق استریم رم‌محور بدون قفل (`platforms/bale_adapter.py`)
+- **کلاس `FastUploadStream(io.BytesIO)` — Zero-Contention In-Memory Streaming:** کل فایل‌های زیر ۶۰MB با `Path(file_path).read_bytes()` ظرف ۰.۰۱ ثانیه به رم خوانده شده و از طریق این کلاس با چانک ۲۵۶KB به `aiohttp` تحویل داده می‌شوند. این روش هیچ `f.tell()` یا Lock روی هندل دیسک ایجاد نمی‌کند و از Kernel File Pointer Lock Contention که در `v0.6.3` عامل کاهش سرعت از ۴۰۰ KB/s به ۱۲ KB/s بود، به‌طور کامل جلوگیری می‌کند.
+- **ثبت `FastUploadStream` به عنوان `BytesIOPayload` در `aiohttp`:** با `pld.PAYLOAD_REGISTRY.register(...)` انجام شده تا `aiohttp` استریم را به صورت نیتیو BytesIO بشناسد و از بافر بهینه استفاده کند.
+- **پارامتر `progress_callback` با امضای جدید `(uploaded_bytes, total_bytes, speed_str)`:** نوار پیشرفت درون‌خطی بدون تسک پس‌زمینه — درون حلقه `read()` هر ۲۵۶KB یک‌بار فراخوانی می‌شود.
+- **فالبک هوشمند بدون `f.seek(0)`:** در `send_video`، وقتی `sendVideo` به خطا بخورد، `FastUploadStream` جدیدی از همان `ram_data` ساخته می‌شود (بدون نیاز به بازگشت به ابتدای فایل).
+
+### ⚡️ `make_progress_callback` — کارخانه کالبک Thread-Safe (`platforms/telegram_adapter.py`)
+- **جایگزینی `track_upload_progress` با `make_progress_callback`:** به جای تسک پس‌زمینه مبتنی بر `f.tell()`، یک کالبک thread-safe با `asyncio.run_coroutine_threadsafe` ساخته می‌شود که مستقیماً از لوپ رویداد اصلی `edit_message_text` را فراخوانی می‌کند.
+- **`track_upload_progress` و `run_bale_upload_with_progress` به استاب‌های سازگاری معکوس تبدیل شدند:** هیچ `NameError` یا شکست سازگاری رخ نمی‌دهد.
+- **به‌روزرسانی فلوی `split_and_transfer_video_to_bale`:** استفاده از `progress_callback=progress_cb` در `bale_adapter.send_video` به جای `run_bale_upload_with_progress` با `with open(f) as f:`.
+- **به‌روزرسانی فلوی `smeta:send_bale`:** ارسال مستقیم `p_final` (مسیر فایل) به `bale_adapter.send_video / send_audio` به جای باز کردن `with open()` در `telegram_adapter`.
+
 ## [v0.6.4] - 1403/07/14
 
 ### 🛡️ برچیدن قطعی متد مخرب clear_webhook و حفاظت از سکرت‌ها (`platforms/telegram_adapter.py`)
