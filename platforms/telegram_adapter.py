@@ -8,6 +8,10 @@ from platforms.rubika_adapter import RubikaAdapter
 import os
 import uuid
 import asyncio
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
 from pathlib import Path
 from html import escape
 import math
@@ -445,10 +449,77 @@ atexit.register(release_telegram_pid_lock)
 
 
 class TelegramAdapter:
+    """
+    آداپتور رسمی و یکپارچه پلتفرم تلگرام بر پایه کتابخانه Pyrogram (MTProto).
+    این کلاس تعاملات کاربر، پردازش فایل‌های رسانه‌ای، پرداخت‌ها و دیسپچ رویدادها را بر عهده دارد.
+    """
+
+    async def clear_webhook(self) -> Dict[str, Any]:
+        """
+        بررسی وضعیت وب‌هوک و حذف قطعی وب‌هوک‌های احتمالی روی توکن ربات تلگرام.
+        وجود وب‌هوک مانع از دریافت آپدیت‌ها توسط کلاینت MTProto می‌شود.
+        """
+        token = config.TELEGRAM_BOT_TOKEN
+        if not token:
+            return {"ok": False, "error": "No bot token configured"}
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+                # 1. استعلام وضعیت جاری وب‌هوک
+                try:
+                    async with session.get(f"https://api.telegram.org/bot{token}/getWebhookInfo") as resp:
+                        info = await resp.json()
+                        curr_url = info.get("result", {}).get("url", "")
+                        if curr_url:
+                            logger.warning(f"[TG Webhook] Detected active Bot API webhook at '{curr_url}'. Deleting to allow MTProto updates...")
+                        else:
+                            logger.info("[TG Webhook] Webhook status confirmed clear (no active webhook URL).")
+                except Exception as e_info:
+                    logger.debug(f"[TG Webhook] getWebhookInfo note: {e_info}")
+
+                # 2. حذف قطعی وب‌هوک با حفظ آپدیت‌های در صف
+                async with session.post(
+                    f"https://api.telegram.org/bot{token}/deleteWebhook",
+                    json={"drop_pending_updates": False}
+                ) as del_resp:
+                    del_data = await del_resp.json()
+                    logger.info(f"[TG Webhook] deleteWebhook response: {del_data}")
+                    return del_data
+        except Exception as e_wh:
+            logger.warning(f"[TG Webhook] Error clearing Bot API webhook: {e_wh}")
+            return {"ok": False, "error": str(e_wh)}
+
     async def start_client(self):
-        """Safely acquires PID lock and starts Telegram MTProto Client."""
+        """
+        راه‌اندازی امن کلاینت MTProto تلگرام با مهار وب‌هوک‌های قدیمی،
+        اعتبارسنجی زنده شناسه ربات (get_me) و بازیابی خودکار در صورت بروز خطای سشن.
+        """
+        # گام ۱: پاکسازی وب‌هوک جهت آزادسازی جریان آپدیت‌های MTProto
+        await self.clear_webhook()
+
+        # گام ۲: اخذ قفل پردازه جهت جلوگیری از تداخل سشن در هاگینگ‌فیس
         await asyncio.to_thread(acquire_telegram_pid_lock, 30)
-        await self.app.start()
+
+        # گام ۳: راه‌اندازی کلاینت پایروگرام همراه با خودترمیمی در صورت خرابی سشن محلی
+        try:
+            await self.app.start()
+        except Exception as start_err:
+            logger.warning(f"[TG start_client] First start attempt failed ({start_err}). Resetting session file...")
+            session_file = config.DATA_DIR / "unfinit_store_session.session"
+            try:
+                session_file.unlink(missing_ok=True)
+            except Exception:
+                pass
+            await self.app.start()
+
+        # گام ۴: اعتبارسنجی قطعی هویت ربات و ثبت در لاگ سیستم
+        try:
+            me = await self.app.get_me()
+            self.bot_username = me.username
+            self.bot_id = me.id
+            logger.info(f"[TG MTProto] Verified bot identity: @{me.username} (ID: {me.id}) - MTProto Client is ONLINE and listening!")
+        except Exception as e_me:
+            logger.error(f"[TG MTProto] Failed to verify bot identity via get_me(): {e_me}")
 
     async def stop_client(self):
         """Stops Telegram Client and releases PID lock."""
@@ -470,6 +541,8 @@ class TelegramAdapter:
             workdir=str(config.DATA_DIR),
             in_memory=use_in_memory
         )
+        self.bot_username: Optional[str] = None
+        self.bot_id: Optional[int] = None
         self.bale_adapter = None
         self.rubika_adapter = RubikaAdapter()
         self.instagram_adapter = InstagramAdapter()
@@ -848,91 +921,124 @@ class TelegramAdapter:
 
         asyncio.create_task(run_event_loop())
 
+        # ثبت لاگ سراسری و بی‌درنگ کلیه پیام‌ها و تعاملات دریافتی از تلگرام (گروه مستقل ۱-)
+        @self.app.on_message(group=-1)
+        async def global_incoming_message_logger(client: Client, message: Message):
+            try:
+                u = message.from_user
+                u_str = f"user_id={u.id} (@{u.username or 'no_user'})" if u else "unknown"
+                t_str = (message.text or message.caption or (f"<{message.media}>" if getattr(message, "media", None) else ""))[:80]
+                logger.info(f"[TG Incoming Msg] {u_str}: '{t_str}'")
+            except Exception:
+                pass
+
+        @self.app.on_callback_query(group=-1)
+        async def global_incoming_callback_logger(client: Client, query: CallbackQuery):
+            try:
+                u = query.from_user
+                u_str = f"user_id={u.id} (@{u.username or 'no_user'})" if u else "unknown"
+                logger.info(f"[TG Incoming Callback] {u_str}: data='{query.data}'")
+            except Exception:
+                pass
+
         @self.app.on_message(filters.private & (filters.command(["ping", "پینگ"]) | filters.regex(r"^(/ping|ping|پینگ)$")))
         async def ping_cmd(client: Client, message: Message):
-            now = time.time()
-            msg_dt = message.date.timestamp() if getattr(message, "date", None) else now
-            diff_ms = int(abs(now - msg_dt) * 1000)
-            net_lat = diff_ms if (20 <= diff_ms <= 2500) else 165
-
-            t0 = time.time()
-            db_st = "متصل ✅"
             try:
-                from core.database import fetch_one
-                await fetch_one("SELECT 1")
-            except Exception:
-                db_st = "خطا در اتصال ❌"
-            db_lat = round((time.time() - t0) * 1000, 1)
-            t_time = get_tehran_now_str()
+                now = time.time()
+                msg_dt = message.date.timestamp() if getattr(message, "date", None) else now
+                diff_ms = int(abs(now - msg_dt) * 1000)
+                net_lat = diff_ms if (20 <= diff_ms <= 2500) else 165
 
-            ping_msg = (
-                "🏓 <b>پینگ و وضعیت سلامت سیستم</b>\n\n"
-                "✈️ <b>پلتفرم:</b> پیام‌رسان تلگرام (MTProto Client)\n"
-                f"🌐 <b>تاخیر شبکه و پیام‌رسان:</b> <code>{net_lat} ms</code>\n"
-                f"⚡️ <b>سرعت پردازش داخلی دیتابیس:</b> <code>{db_lat} ms</code>\n"
-                f"💾 <b>پایگاه داده SQLite:</b> {db_st}\n"
-                "🚀 <b>سرور ابری:</b> آنلاین (Hugging Face Port 7860)\n"
-                f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
-                f"🕒 <b>زمان سرور (تهران):</b> <code>{t_time}</code>"
-            )
-            await message.reply_text(ping_msg, parse_mode=enums.ParseMode.HTML)
+                t0 = time.time()
+                db_st = "متصل ✅"
+                try:
+                    from core.database import fetch_one
+                    await fetch_one("SELECT 1")
+                except Exception:
+                    db_st = "خطا در اتصال ❌"
+                db_lat = round((time.time() - t0) * 1000, 1)
+                t_time = get_tehran_now_str()
+
+                ping_msg = (
+                    "🏓 <b>پینگ و وضعیت سلامت سیستم</b>\n\n"
+                    "✈️ <b>پلتفرم:</b> پیام‌رسان تلگرام (MTProto Client)\n"
+                    f"🌐 <b>تاخیر شبکه و پیام‌رسان:</b> <code>{net_lat} ms</code>\n"
+                    f"⚡️ <b>سرعت پردازش داخلی دیتابیس:</b> <code>{db_lat} ms</code>\n"
+                    f"💾 <b>پایگاه داده SQLite:</b> {db_st}\n"
+                    "🚀 <b>سرور ابری:</b> آنلاین (Hugging Face Port 7860)\n"
+                    f"🚀 <b>نگارش موتور:</b> <code>{config.ENGINE_VERSION}</code>\n"
+                    f"🕒 <b>زمان سرور (تهران):</b> <code>{t_time}</code>"
+                )
+                await message.reply_text(ping_msg, parse_mode=enums.ParseMode.HTML)
+            except Exception as e_ping:
+                logger.error(f"[Telegram] ping_cmd error: {e_ping}", exc_info=True)
+                await message.reply_text(f"🏓 پینگ: سیستم فعال است (v{config.ENGINE_VERSION})")
 
         @self.app.on_message(filters.private & (filters.command("start") | filters.regex(r"^/start")))
         async def start_handler(client: Client, message: Message):
-            user_id = message.from_user.id
-            if not config.TELEGRAM_OWNER_ID and not self.admin_chat_id:
-                self.admin_chat_id = user_id
+            try:
+                user_id = message.from_user.id
+                if not config.TELEGRAM_OWNER_ID and not self.admin_chat_id:
+                    self.admin_chat_id = user_id
 
-            # Referral deep link parsing (e.g. /start ref_abc123)
-            ref_param = None
-            if getattr(message, "command", None) and len(message.command) > 1:
-                ref_param = message.command[1]
-            elif message.text:
-                parts = message.text.strip().split()
-                if len(parts) > 1:
-                    ref_param = parts[1]
-            if ref_param:
-                ref_code = ReferralService.parse_referral_code(ref_param)
-                if ref_code:
-                    session_manager.set_user_action(f"tg_ref_{user_id}", ref_code, ref_code)
-                    logger.info(f"[Telegram] User {user_id} started bot with referral code {ref_code}")
-                    try:
-                        ReferralService.record_referral(
-                            referred_id=user_id,
-                            referrer_id=ref_code,
-                            platform="telegram"
-                        )
-                    except Exception as e_ref:
-                        logger.warning(f"[Telegram] record_referral error: {e_ref}")
+                # Referral deep link parsing (e.g. /start ref_abc123)
+                ref_param = None
+                if getattr(message, "command", None) and len(message.command) > 1:
+                    ref_param = message.command[1]
+                elif message.text:
+                    parts = message.text.strip().split()
+                    if len(parts) > 1:
+                        ref_param = parts[1]
+                if ref_param:
+                    ref_code = ReferralService.parse_referral_code(ref_param)
+                    if ref_code:
+                        session_manager.set_user_action(f"tg_ref_{user_id}", ref_code, ref_code)
+                        logger.info(f"[Telegram] User {user_id} started bot with referral code {ref_code}")
+                        try:
+                            ReferralService.record_referral(
+                                referred_id=user_id,
+                                referrer_id=ref_code,
+                                platform="telegram"
+                            )
+                        except Exception as e_ref:
+                            logger.warning(f"[Telegram] record_referral error: {e_ref}")
 
-            await StoreService.get_or_create_customer(user_id, platform="telegram")
+                try:
+                    await StoreService.get_or_create_customer(user_id, platform="telegram")
+                except Exception as e_cust:
+                    logger.warning(f"[Telegram] get_or_create_customer note: {e_cust}")
 
-            if not await check_force_join_telegram(client, user_id) and not self.is_admin(user_id):
-                ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
-                await message.reply_text(
-                    "⚠️ <b>برای استفاده از امکانات ربات ابتدا باید در کانال رسمی ما عضو شوید:</b>",
-                    parse_mode=enums.ParseMode.HTML,
-                    reply_markup=build_telegram_force_join_keyboard(ch)
-                )
-                return
+                if not await check_force_join_telegram(client, user_id) and not self.is_admin(user_id):
+                    ch = await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM)
+                    await message.reply_text(
+                        "⚠️ <b>برای استفاده از امکانات ربات ابتدا باید در کانال رسمی ما عضو شوید:</b>",
+                        parse_mode=enums.ParseMode.HTML,
+                        reply_markup=build_telegram_force_join_keyboard(ch)
+                    )
+                    return
 
-            s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
-            w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
-            if self.is_admin(user_id):
-                welcome = "\n".join([
-                    f"🎛 <b>پنل مدیریت یکپارچه فروشگاه | {escape(s_name)}</b>",
-                    "",
-                    escape(w_text),
-                    "",
-                    "سلام مدیر گرامی خوش آمدید. تمامی امکانات فروشگاه، سفارش‌ها و هاب رسانه در دسترس شماست.",
-                    "",
-                    f"🟢 <b>وضعیت بله:</b> <code>{'آنلاین ✅' if config.BALE_BOT_TOKEN else 'غیرفعال ❌'}</code>",
-                    f"🟣 <b>وضعیت روبیکا:</b> <code>{'آنلاین ✅' if config.RUBIKA_BOT_TOKEN or (self.rubika_adapter and self.rubika_adapter.has_user_session()) else 'غیرفعال ❌'}</code>",
-                ])
-                await message.reply_text(welcome, parse_mode=enums.ParseMode.HTML, reply_markup=get_admin_keyboard())
-            else:
+                s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
                 w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
-                await message.reply_text(w_text, parse_mode=enums.ParseMode.HTML, reply_markup=get_customer_keyboard())
+                if self.is_admin(user_id):
+                    welcome = "\n".join([
+                        f"🎛 <b>پنل مدیریت یکپارچه فروشگاه | {escape(s_name)}</b>",
+                        "",
+                        escape(w_text),
+                        "",
+                        "سلام مدیر گرامی خوش آمدید. تمامی امکانات فروشگاه، سفارش‌ها و هاب رسانه در دسترس شماست.",
+                        "",
+                        f"🟢 <b>وضعیت بله:</b> <code>{'آنلاین ✅' if config.BALE_BOT_TOKEN else 'غیرفعال ❌'}</code>",
+                        f"🟣 <b>وضعیت روبیکا:</b> <code>{'آنلاین ✅' if config.RUBIKA_BOT_TOKEN or (self.rubika_adapter and self.rubika_adapter.has_user_session()) else 'غیرفعال ❌'}</code>",
+                    ])
+                    await message.reply_text(welcome, parse_mode=enums.ParseMode.HTML, reply_markup=get_admin_keyboard())
+                else:
+                    await message.reply_text(w_text, parse_mode=enums.ParseMode.HTML, reply_markup=get_customer_keyboard())
+            except Exception as e_start:
+                logger.error(f"[Telegram] start_handler exception: {e_start}", exc_info=True)
+                try:
+                    await message.reply_text("🌸 سلام! به ربات خوش آمدید.", reply_markup=get_customer_keyboard())
+                except Exception:
+                    pass
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(👥\s*پیش‌نمایش پنل مشتری|👁\s*پیش‌نمایش پنل مشتری|پیش‌نمایش پنل مشتری)"))
         async def preview_customer_panel(client: Client, message: Message):
