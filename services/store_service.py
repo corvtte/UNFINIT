@@ -980,7 +980,7 @@ class StoreService:
 
             # Direct SQLite fallback for BALE_OWNER_ID and BALE_BOT_TOKEN
             db_bale_owner = (await get_system_setting("BALE_OWNER_ID", "")) or (await get_system_setting("bale_owner_id", ""))
-            target_bale_id = config.BALE_OWNER_ID or db_bale_owner or (bale_adapter.get_admin_chat_id() if bale_adapter else "402479514")
+            target_bale_id = (bale_adapter.get_admin_chat_id() if bale_adapter else None) or config.BALE_OWNER_ID or db_bale_owner or None
             db_bale_token = (await get_system_setting("BALE_BOT_TOKEN", "")) or (await get_system_setting("bale_bot_token", ""))
             has_bale_token = bool(config.BALE_BOT_TOKEN or db_bale_token)
 

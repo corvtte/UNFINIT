@@ -11,7 +11,7 @@ from html import escape
 import urllib.parse
 import collections
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Union, Callable
 from core.config import config
 from core.logger import get_logger
 from core.formatters import (
@@ -177,11 +177,43 @@ def format_bale_transfer_progress(
 import io
 
 # =============================================================================
-# نگارش v0.6.6: استریم خالص بومی سیستم‌عامل (Native OS File Streaming)
 # =============================================================================
-# کارکرد: بدون هرگونه رپِر، کلاس میانی، شمارنده یا پایشگر در حین ارسال.
-# جریان داده مستقیماً توسط سوکت شبکه سیستم‌عامل با حداکثر پهنای باند به بله ارسال می‌شود.
+# نگارش v0.7.1: استریم نامسدودکننده فایل و پیشرفت تراتل‌شده (Throttled File Streamer)
 # =============================================================================
+# کارکرد: ارسال بایت‌ها با چانک‌های ۲۵۶KB به صورت آسنکرون جهت حداکثر پهنای باند Wire-Speed
+# بدون هیچ‌گونه قفل‌شدگی سوکت شبکه یا اسپم تلگرام؛ به‌روزرسانی نوار پیشرفت با تراتل ۴ ثانیه‌ای.
+# =============================================================================
+
+class ThrottledFileStreamer:
+    """
+    استریم نامسدودکننده فایل بر بستر سوکت به همراه گزارش پیشرفت با تراتل زمانی (Throttled Progress Reporting).
+    ارسال بایت‌ها با چانک‌های ۲۵۶KB به صورت آسنکرون جهت دستیابی به حداکثر پهنای باند و جلوگیری از مسدودی سوکت.
+    """
+    def __init__(self, file_path: Union[str, Path], callback: Optional[Callable] = None, throttle_seconds: float = 4.0):
+        self.file_path = Path(file_path)
+        self.total_size = self.file_path.stat().st_size
+        self.callback = callback
+        self.throttle_seconds = throttle_seconds
+        self.bytes_read = 0
+        self.last_update = 0.0
+
+    async def __aiter__(self):
+        chunk_size = 256 * 1024  # 256KB chunks for maximum wire throughput
+        with open(self.file_path, "rb") as f:
+            while chunk := f.read(chunk_size):
+                self.bytes_read += len(chunk)
+                now = time.time()
+                if self.callback and (now - self.last_update >= self.throttle_seconds or self.bytes_read == self.total_size):
+                    self.last_update = now
+                    percent = (self.bytes_read / self.total_size) * 100 if self.total_size > 0 else 100.0
+                    try:
+                        res = self.callback(self.bytes_read, self.total_size, percent)
+                        if asyncio.iscoroutine(res):
+                            asyncio.create_task(res)
+                    except Exception:
+                        pass
+                yield chunk
+
 
 # آلیاس‌های سازگاری معکوس (Backward Compat Aliases)
 ProgressFileWrapper = Any
@@ -323,7 +355,10 @@ class BaleAdapter:
 
 
     def get_admin_chat_id(self) -> Optional[str]:
-        return config.BALE_OWNER_ID or ACTIVE_BALE_ADMIN_ID or "402479514"
+        admin = ACTIVE_BALE_ADMIN_ID or (getattr(config, "BALE_OWNER_ID", None) or None)
+        if admin and str(admin).strip() not in ("", "0", "None"):
+            return str(admin).strip()
+        return None
 
     def is_admin(self, chat_id: str | int) -> bool:
         if not chat_id:
@@ -444,7 +479,7 @@ class BaleAdapter:
             else:
                 form.add_field("reply_markup", str(reply_markup))
 
-        bale_upload_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=180)
+        bale_upload_timeout = aiohttp.ClientTimeout(total=600, connect=30, sock_read=300)
         try:
             if isinstance(document, (bytes, bytearray)):
                 fname = filename or "document.bin"
@@ -468,13 +503,22 @@ class BaleAdapter:
                 if not p.exists():
                     return {"ok": False, "error": f"File {p} not found"}
                 fname = clean_display_filename(filename or p.name)
-                with open(p, "rb") as f:
-                    form.add_field("document", f, filename=fname, content_type="application/octet-stream")
+                if progress_callback:
+                    streamer = ThrottledFileStreamer(p, callback=progress_callback, throttle_seconds=4.0)
+                    form.add_field("document", streamer, filename=fname, content_type="application/octet-stream")
                     async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                         async with session.post(url_doc, data=form) as resp:
                             res_data = await resp.json()
                             logger.info(f"[Bale Response sendDocument] HTTP {resp.status}: {res_data}")
                             return res_data
+                else:
+                    with open(p, "rb") as f:
+                        form.add_field("document", f, filename=fname, content_type="application/octet-stream")
+                        async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
+                            async with session.post(url_doc, data=form) as resp:
+                                res_data = await resp.json()
+                                logger.info(f"[Bale Response sendDocument] HTTP {resp.status}: {res_data}")
+                                return res_data
         except Exception as e:
             err_msg = f"{type(e).__name__}: {e or repr(e)}"
             logger.error(f"Bale send_document exception: {err_msg}")

@@ -497,6 +497,7 @@ class TelegramAdapter:
         self._media_batch_queue: Dict[int, Any] = {}
         self._batch_registry: Dict[str, List[Any]] = {}
         self._handlers_registered: bool = False
+        self.config = config
 
 
     def get_admin_id(self) -> int | str:
@@ -639,32 +640,39 @@ class TelegramAdapter:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    async def get_bale_target_chat(self) -> Optional[Union[int, str]]:
+    async def get_bale_target_chat(self) -> Union[int, str, None]:
         """
-        استخراج شناسه مقصد معتبر جهت ارسال فایل‌ها به پیام‌رسان بله با زنجیره فال‌بک ضدگلوله.
-        ترتیب اولویت:
-        1. تنظیم صریح BALE_CHANNEL_ID در پیکربندی هسته یا متغیرهای محیطی
-        2. شناسه پیش‌فرض کانال بله DEFAULT_BALE_CHAT_ID
-        3. شناسه کانال یا چت ذخیره‌شده در دیتابیس (تنظیمات سیستم: bale_channel_id)
-        4. شناسه ادمین بله از طریق متد get_admin_chat_id() در آداپتور بله
-        5. شناسه مالک بله BALE_OWNER_ID در پیکربندی
+        استخراج پویا و هوشمند شناسه چت مقصد در بله با اولویت‌بندی داینامیک:
+        1. تنظیمات دیتابیس / settings.json (کلید bale_channel_id)
+        2. شناسه فعال ادمین بله از متد get_admin_chat_id() آداپتور بله
+        3. شناسه کانال یا چت پیش‌فرض در متغیرهای محیطی / کانفیگ (BALE_CHANNEL_ID یا DEFAULT_BALE_CHAT_ID)
+        4. شناسه مالک بله در کانفیگ (BALE_OWNER_ID)
         """
-        target = (
-            getattr(config, "BALE_CHANNEL_ID", None)
-            or getattr(config, "DEFAULT_BALE_CHAT_ID", None)
-            or (await get_system_setting("bale_channel_id", ""))
-            or (self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None)
-            or getattr(config, "BALE_OWNER_ID", None)
-        )
-        if target:
-            t_str = str(target).strip()
-            if t_str and t_str != "0":
-                if t_str.startswith("@"):
-                    return t_str
-                try:
-                    return int(t_str)
-                except ValueError:
-                    return t_str
+        # 1. Dynamic database / settings.json configuration
+        db_target = await get_system_setting("bale_channel_id", "")
+        if db_target and str(db_target).strip() not in ("", "0", "None"):
+            t = str(db_target).strip()
+            return t if t.startswith("@") else (int(t) if t.lstrip("-").isdigit() else t)
+
+        # 2. Dynamic Bale Admin Chat ID from active adapter
+        if hasattr(self, "bale_adapter") and self.bale_adapter:
+            admin_id = self.bale_adapter.get_admin_chat_id()
+            if admin_id and str(admin_id).strip() not in ("", "0", "None"):
+                t = str(admin_id).strip()
+                return int(t) if t.lstrip("-").isdigit() else t
+
+        # 3. Environment or config channel / chat settings
+        cfg = getattr(self, "config", config)
+        cfg_channel = getattr(cfg, "BALE_CHANNEL_ID", None) or getattr(cfg, "DEFAULT_BALE_CHAT_ID", None)
+        if cfg_channel and str(cfg_channel).strip() not in ("", "0", "None"):
+            t = str(cfg_channel).strip()
+            return t if t.startswith("@") else (int(t) if t.lstrip("-").isdigit() else t)
+
+        cfg_owner = getattr(cfg, "BALE_OWNER_ID", None)
+        if cfg_owner and str(cfg_owner).strip() not in ("", "0", "None"):
+            t = str(cfg_owner).strip()
+            return int(t) if t.lstrip("-").isdigit() else t
+
         return None
 
     async def split_and_transfer_video_to_bale(self, drop_id: str, parts_count: int, status_msg: Any) -> bool:
@@ -3925,7 +3933,7 @@ class TelegramAdapter:
                 target_chat = await self.get_bale_target_chat()
                 if not target_chat:
                     logger.error("[TG Callback smeta:split_bale] No valid Bale target chat found in config or database!")
-                    await callback_query.message.reply_text("❌ شناسه چت مقصد بله تنظیم نشده است.")
+                    await callback_query.message.reply_text("❌ شناسه مقصد بله یافت نشد! لطفاً در پنل وب شناسه کانال یا ادمین بله را تنظیم کنید.")
                     return
                 status_msg = callback_query.message
                 await ensure_binary(status_msg)
@@ -3937,7 +3945,7 @@ class TelegramAdapter:
                 target_chat = await self.get_bale_target_chat()
                 if not target_chat:
                     logger.error("[TG Callback smeta:send_bale] No valid Bale target chat found in config or database!")
-                    await callback_query.message.reply_text("❌ شناسه چت مقصد بله تنظیم نشده است.")
+                    await callback_query.message.reply_text("❌ شناسه مقصد بله یافت نشد! لطفاً در پنل وب شناسه کانال یا ادمین بله را تنظیم کنید.")
                     return
 
                 status_msg = callback_query.message if action == "force_bale" else await callback_query.message.reply_text("📥 <b>در حال آماده‌سازی فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
@@ -4004,48 +4012,56 @@ class TelegramAdapter:
                     p_final = Path(str(final_path))
                     file_size_mb = (p_final.stat().st_size / (1024 * 1024)) if p_final.exists() else 0.0
 
-                    await status_msg.edit_text(
-                        "🚀 <b>در حال ارسال فایل به بله... لطفاً حدود ۱ تا ۲ دقیقه شکیبا باشید.</b>",
-                        parse_mode=enums.ParseMode.HTML
-                    )
-                    logger.info(f"[TG Callback smeta:send_bale] Dispatching to Bale target={target_chat} for '{send_name}' ({file_size_mb:.2f} MB)")
+                    target_chat_id = await self.get_bale_target_chat()
+                    if not target_chat_id:
+                        await status_msg.edit_text(
+                            "❌ <b>شناسه مقصد بله یافت نشد!</b>\nلطفاً در پنل وب شناسه کانال یا ادمین بله را تنظیم کنید.",
+                            parse_mode=enums.ParseMode.HTML
+                        )
+                        return
 
-                    if drop.get("media_type") == "video":
-                        tech = inspect_technical_metadata(p_final)
-                        res = await self.bale_adapter.send_video(
-                            target_chat,
-                            p_final,
-                            filename=send_name,
-                            caption=f"📄 <b>{escape(send_name)}</b>",
-                            duration=tech.get("duration_sec"),
-                            width=tech.get("width"),
-                            height=tech.get("height")
+                    last_text = ""
+                    async def telegram_progress(bytes_sent, total_bytes, percent):
+                        nonlocal last_text
+                        bar_length = 10
+                        filled = int(bar_length * percent // 100)
+                        bar = "█" * filled + "░" * (bar_length - filled)
+                        text = (
+                            f"🚀 <b>در حال انتقال به بله...</b>\n\n"
+                            f"<code>[{bar}] {percent:.1f}%</code>\n"
+                            f"📦 <b>حجم:</b> <code>{bytes_sent / (1024 * 1024):.1f} / {total_bytes / (1024 * 1024):.1f} MB</code>"
                         )
-                    else:
-                        res = await self.bale_adapter.send_audio(
-                            target_chat,
-                            p_final,
-                            filename=send_name,
-                            title=transfer_info.get("title"),
-                            performer=transfer_info.get("artist"),
-                            caption=f"📄 <b>{escape(send_name)}</b>"
-                        )
+                        if text != last_text:
+                            last_text = text
+                            try:
+                                await status_msg.edit_text(text, parse_mode=enums.ParseMode.HTML)
+                            except Exception:
+                                pass
+
+                    logger.info(f"[TG Callback smeta:send_bale] Fast-path document dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
+                    res = await self.bale_adapter.send_document(
+                        chat_id=target_chat_id,
+                        document=p_final,
+                        filename=send_name,
+                        caption=f"📄 <b>{escape(send_name)}</b>",
+                        progress_callback=telegram_progress
+                    )
 
                     if res and res.get("ok"):
-                        logger.info(f"[TG Callback smeta:send_bale] Dispatch successful to Bale chat_id={target_chat}!")
+                        logger.info(f"[TG Callback smeta:send_bale] Fast-path document dispatch successful to Bale chat_id={target_chat_id}!")
                         await status_msg.edit_text(
                             f"✅ <b>فایل با موفقیت به بله منتقل شد!</b>\n📁 <b>نام فایل:</b> <code>{escape(send_name)}</code>",
                             parse_mode=enums.ParseMode.HTML
                         )
                     else:
-                        err_desc = ""
+                        err = ""
                         if isinstance(res, dict):
-                            err_desc = res.get("description") or res.get("error") or str(res)
+                            err = res.get("description") or res.get("error") or str(res)
                         else:
-                            err_desc = str(res) if res is not None else "پاسخی از سرور دریافت نشد"
-                        logger.error(f"[TG Callback smeta:send_bale] Dispatch failed: {err_desc}")
+                            err = str(res) if res is not None else "پاسخی از سرور دریافت نشد"
+                        logger.error(f"[TG Callback smeta:send_bale] Dispatch failed: {err}")
                         await status_msg.edit_text(
-                            f"❌ <b>خطا در ارتباط با سرورهای بله:</b>\n<code>{escape(str(err_desc))}</code>",
+                            f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(err))}</code>",
                             parse_mode=enums.ParseMode.HTML
                         )
 
