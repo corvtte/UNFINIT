@@ -4002,54 +4002,34 @@ class TelegramAdapter:
                 try:
                     final_path, send_name, transfer_info = MediaService.prepare_for_transfer(drop_id, "bale", progress_callback=update_cb)
                     p_final = Path(str(final_path))
-                    actual_path = str(p_final)
-                    file_size_mb = (os.path.getsize(actual_path) / (1024 * 1024)) if p_final.exists() else 0.0
+                    file_size_mb = (p_final.stat().st_size / (1024 * 1024)) if p_final.exists() else 0.0
 
                     await status_msg.edit_text(
-                        f"🚀 <b>در حال انتقال پرسرعت فایل به بله ({file_size_mb:.1f} مگابایت)...</b>\n"
-                        "⏳ با توجه به حجم فایل، این فرآیند حدود ۲ دقیقه زمان می‌برد. لطفاً صبور باشید.",
+                        "🚀 <b>در حال ارسال فایل به بله... لطفاً حدود ۱ تا ۲ دقیقه شکیبا باشید.</b>",
                         parse_mode=enums.ParseMode.HTML
                     )
-                    logger.info(f"[TG Callback smeta:send_bale] Direct bytes dispatch to Bale target={target_chat} for '{send_name}' ({file_size_mb:.2f} MB)")
-
-                    clean_caption = f"📄 <b>{escape(send_name)}</b>"
+                    logger.info(f"[TG Callback smeta:send_bale] Dispatching to Bale target={target_chat} for '{send_name}' ({file_size_mb:.2f} MB)")
 
                     if drop.get("media_type") == "video":
                         tech = inspect_technical_metadata(p_final)
                         res = await self.bale_adapter.send_video(
-                            chat_id=target_chat,
-                            file_path=actual_path,
+                            target_chat,
+                            p_final,
                             filename=send_name,
-                            caption=clean_caption,
+                            caption=f"📄 <b>{escape(send_name)}</b>",
                             duration=tech.get("duration_sec"),
                             width=tech.get("width"),
                             height=tech.get("height")
                         )
-                        if not (res and res.get("ok")):
-                            logger.warning(f"[TG Callback smeta:send_bale] send_video unconfirmed, trying send_document fallback...")
-                            res = await self.bale_adapter.send_document(
-                                chat_id=target_chat,
-                                document=actual_path,
-                                filename=send_name,
-                                caption=clean_caption
-                            )
                     else:
                         res = await self.bale_adapter.send_audio(
-                            chat_id=target_chat,
-                            file_path=actual_path,
+                            target_chat,
+                            p_final,
                             filename=send_name,
                             title=transfer_info.get("title"),
                             performer=transfer_info.get("artist"),
-                            caption=clean_caption
+                            caption=f"📄 <b>{escape(send_name)}</b>"
                         )
-                        if not (res and res.get("ok")):
-                            logger.warning(f"[TG Callback smeta:send_bale] send_audio unconfirmed, trying send_document fallback...")
-                            res = await self.bale_adapter.send_document(
-                                chat_id=target_chat,
-                                document=actual_path,
-                                filename=send_name,
-                                caption=clean_caption
-                            )
 
                     if res and res.get("ok"):
                         logger.info(f"[TG Callback smeta:send_bale] Dispatch successful to Bale chat_id={target_chat}!")
@@ -4058,17 +4038,21 @@ class TelegramAdapter:
                             parse_mode=enums.ParseMode.HTML
                         )
                     else:
-                        error_desc = res.get("description") if isinstance(res, dict) else (res.get("error") if isinstance(res, dict) else "پاسخی دریافت نشد")
-                        logger.error(f"[TG Callback smeta:send_bale] Bale error: {error_desc}")
+                        err_desc = ""
+                        if isinstance(res, dict):
+                            err_desc = res.get("description") or res.get("error") or str(res)
+                        else:
+                            err_desc = str(res) if res is not None else "پاسخی از سرور دریافت نشد"
+                        logger.error(f"[TG Callback smeta:send_bale] Dispatch failed: {err_desc}")
                         await status_msg.edit_text(
-                            f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(error_desc))}</code>",
+                            f"❌ <b>خطا در ارتباط با سرورهای بله:</b>\n<code>{escape(str(err_desc))}</code>",
                             parse_mode=enums.ParseMode.HTML
                         )
 
                 except Exception as e:
-                    logger.exception(f"[TG Callback smeta:send_bale] Unexpected error: {e}")
+                    logger.exception(f"[TG Callback smeta:send_bale] Exception during dispatch: {e}")
                     await status_msg.edit_text(
-                        f"❌ <b>خطای پیش‌بینی‌نشده در ارسال:</b>\n<code>{escape(str(e))}</code>",
+                        f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(e))}</code>",
                         parse_mode=enums.ParseMode.HTML
                     )
 
