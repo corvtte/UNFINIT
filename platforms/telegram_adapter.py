@@ -58,21 +58,41 @@ logger = get_logger("telegram_adapter")
 # سقف سختگیرانه ارسال مستقیم بدون اسپلیت به بله (مگابایت)
 MAX_DIRECT_BALE_MB: float = 48.5
 
+_ACTIVE_TELEGRAM_ADAPTER: Optional[Any] = None
+
 async def track_upload_progress(
     f: Any,
     total_size: int,
-    status_msg: Any,
-    header_text: str
+    status_msg_or_chat_id: Any,
+    header_text_or_msg_id: Any,
+    header_text: str = ""
 ):
     """
     پایشگر کاملاً مستقل پس‌زمینه (Decoupled Background Poller) مبتنی بر f.tell().
     کارکرد و هدف:
     این متد هر ۳ ثانیه موقعیت پوینتر فایل (f.tell()) را در حافظه استعلام کرده و سرعت و نوار
-    پیشرفت آپلود بله را در پیام تلگرام به‌روزرسانی می‌کند.
-    هیچ تداخلی با جریان بایت‌ها و سوکت سیستم‌عامل نداشته و سرعت آپلود را در حداکثر پهنای باند حفظ می‌کند.
+    پیشرفت آپلود بله را در پیام تلگرام به‌روزرسانی می‌کند بدون اینکه هیچ‌گونه سرباری روی سوکت شبکه بگذارد.
     """
-    start_time = time.time()
-    last_time = start_time
+    chat_id = None
+    status_msg_id = None
+    status_msg = None
+    final_header = header_text
+
+    # تشخیص هوشمند پارامترها جهت انطباق با هر دو امضای فراخوانی
+    if hasattr(status_msg_or_chat_id, "edit_text"):
+        status_msg = status_msg_or_chat_id
+        final_header = str(header_text_or_msg_id or "")
+        chat_id = getattr(getattr(status_msg, "chat", None), "id", None)
+        status_msg_id = getattr(status_msg, "id", None)
+    elif isinstance(status_msg_or_chat_id, (int, str)) and isinstance(header_text_or_msg_id, int):
+        chat_id = int(status_msg_or_chat_id)
+        status_msg_id = int(header_text_or_msg_id)
+        final_header = header_text
+    else:
+        status_msg = status_msg_or_chat_id
+        final_header = str(header_text_or_msg_id or "")
+
+    last_time = time.time()
     last_bytes = 0
     last_text = ""
     try:
@@ -108,18 +128,28 @@ async def track_upload_progress(
                 bar = "█" * filled + "░" * (bar_len - filled)
 
                 text = (
-                    f"{header_text}\n\n"
+                    f"{final_header}\n\n"
                     f"[{bar}] {pct}% ({curr_mb:.1f} از {total_mb:.1f} مگابایت)\n"
                     f"⚡️ <b>سرعت آپلود:</b> {speed_str} | لطفاً شکیبا باشید"
                 )
                 if text != last_text:
                     try:
-                        await status_msg.edit_text(text, parse_mode=enums.ParseMode.HTML)
+                        if status_msg and hasattr(status_msg, "edit_text"):
+                            await status_msg.edit_text(text, parse_mode=enums.ParseMode.HTML)
+                        elif _ACTIVE_TELEGRAM_ADAPTER and getattr(_ACTIVE_TELEGRAM_ADAPTER, "app", None) and chat_id and status_msg_id:
+                            await _ACTIVE_TELEGRAM_ADAPTER.app.edit_message_text(
+                                chat_id=chat_id,
+                                message_id=status_msg_id,
+                                text=text,
+                                parse_mode=enums.ParseMode.HTML
+                            )
                         last_text = text
                     except Exception:
                         pass
     except asyncio.CancelledError:
         pass
+    except Exception as e:
+        logger.error(f"[track_upload_progress error] {e}")
 
 
 async def run_bale_upload_with_progress(
@@ -154,6 +184,10 @@ async def run_bale_upload_with_progress(
         return await coro
     finally:
         poller_task.cancel()
+        try:
+            await poller_task
+        except (asyncio.CancelledError, Exception):
+            pass
         await asyncio.sleep(0.05)
 
 
@@ -489,53 +523,15 @@ class TelegramAdapter:
     این کلاس تعاملات کاربر، پردازش فایل‌های رسانه‌ای، پرداخت‌ها و دیسپچ رویدادها را بر عهده دارد.
     """
 
-    async def clear_webhook(self) -> Dict[str, Any]:
-        """
-        بررسی وضعیت وب‌هوک و حذف قطعی وب‌هوک‌های احتمالی روی توکن ربات تلگرام.
-        وجود وب‌هوک مانع از دریافت آپدیت‌ها توسط کلاینت MTProto می‌شود.
-        """
-        token = config.TELEGRAM_BOT_TOKEN
-        if not token:
-            return {"ok": False, "error": "No bot token configured"}
-        try:
-            import aiohttp
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=4, connect=2, sock_read=3)) as session:
-                # 1. استعلام وضعیت جاری وب‌هوک
-                try:
-                    async with session.get(f"https://api.telegram.org/bot{token}/getWebhookInfo") as resp:
-                        info = await resp.json()
-                        curr_url = info.get("result", {}).get("url", "")
-                        if curr_url:
-                            logger.warning(f"[TG Webhook] Detected active Bot API webhook at '{curr_url}'. Deleting to allow MTProto updates...")
-                        else:
-                            logger.info("[TG Webhook] Webhook status confirmed clear (no active webhook URL).")
-                except Exception as e_info:
-                    logger.debug(f"[TG Webhook] getWebhookInfo note: {e_info}")
-
-                # 2. حذف قطعی وب‌هوک با حفظ آپدیت‌های در صف
-                async with session.post(
-                    f"https://api.telegram.org/bot{token}/deleteWebhook",
-                    json={"drop_pending_updates": False}
-                ) as del_resp:
-                    del_data = await del_resp.json()
-                    logger.info(f"[TG Webhook] deleteWebhook response: {del_data}")
-                    return del_data
-        except Exception as e_wh:
-            logger.warning(f"[TG Webhook] Note while checking/clearing webhook: {e_wh or 'timeout'}")
-            return {"ok": False, "error": str(e_wh)}
-
     async def start_client(self):
         """
-        راه‌اندازی امن کلاینت MTProto تلگرام با مهار وب‌هوک‌های قدیمی،
+        راه‌اندازی امن کلاینت MTProto تلگرام با اخذ قفل پردازه،
         اعتبارسنجی زنده شناسه ربات (get_me) و بازیابی خودکار در صورت بروز خطای سشن.
         """
-        # گام ۱: پاکسازی وب‌هوک به صورت تسک پس‌زمینه بدون مسدودسازی اتصال MTProto
-        asyncio.create_task(self.clear_webhook())
-
-        # گام ۲: اخذ قفل پردازه جهت جلوگیری از تداخل سشن در هاگینگ‌فیس
+        # گام ۱: اخذ قفل پردازه جهت جلوگیری از تداخل سشن در هاگینگ‌فیس
         await asyncio.to_thread(acquire_telegram_pid_lock, 30)
 
-        # گام ۳: راه‌اندازی کلاینت پایروگرام همراه با خودترمیمی در صورت خرابی سشن محلی
+        # گام ۲: راه‌اندازی کلاینت پایروگرام همراه با خودترمیمی در صورت خرابی سشن محلی
         try:
             await self.app.start()
         except Exception as start_err:
@@ -547,7 +543,7 @@ class TelegramAdapter:
                 pass
             await self.app.start()
 
-        # گام ۴: اعتبارسنجی قطعی هویت ربات و ثبت در لاگ سیستم
+        # گام ۳: اعتبارسنجی قطعی هویت ربات و ثبت در لاگ سیستم
         try:
             me = await self.app.get_me()
             self.bot_username = me.username
@@ -565,6 +561,8 @@ class TelegramAdapter:
             release_telegram_pid_lock()
 
     def __init__(self):
+        global _ACTIVE_TELEGRAM_ADAPTER
+        _ACTIVE_TELEGRAM_ADAPTER = self
         use_in_memory = os.getenv("TESTING") == "true" or os.getenv("PYTEST_CURRENT_TEST") is not None
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
         session_name = "unfinit_store_session" if use_in_memory else str(config.DATA_DIR / "unfinit_store_session")
@@ -956,7 +954,11 @@ class TelegramAdapter:
                     pass
                 await asyncio.sleep(1)
 
-        asyncio.create_task(run_event_loop())
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(run_event_loop())
+        except RuntimeError:
+            pass
 
         # ثبت لاگ سراسری و بی‌درنگ کلیه پیام‌ها و تعاملات دریافتی از تلگرام (گروه مستقل ۱-)
         @self.app.on_message(group=-1)
@@ -3075,126 +3077,131 @@ class TelegramAdapter:
         # Incoming Audio/Video Media Hub (Admin Only Access Control)
         @self.app.on_message(filters.private & (filters.audio | filters.document | filters.voice | filters.video))
         async def incoming_media(client: Client, message: Message):
-            user_id = message.from_user.id
-            session_manager.clear_user_action(f"tg_{user_id}")
-            media_obj = message.audio or message.document or message.voice or message.video
-            raw_fn = getattr(media_obj, "file_name", "") or ""
-            mime_type = getattr(media_obj, "mime_type", "") or ""
-            if raw_fn.lower().endswith(".svg") or mime_type.lower() == "image/svg+xml":
+            try:
+                user_id = message.from_user.id if message.from_user else (message.chat.id if message.chat else 0)
+                if not user_id:
+                    return
+                session_manager.clear_user_action(f"tg_{user_id}")
+                media_obj = message.audio or message.document or message.voice or message.video
+                raw_fn = getattr(media_obj, "file_name", "") or ""
+                mime_type = getattr(media_obj, "mime_type", "") or ""
+                if raw_fn.lower().endswith(".svg") or mime_type.lower() == "image/svg+xml":
+                    file_id = getattr(media_obj, "file_id", "")
+                    svg_kb = InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("⚪️ سفید (#FFF)", callback_data=f"tg_svg_recol:white:{file_id}"),
+                            InlineKeyboardButton("⚫️ مشکی (#000)", callback_data=f"tg_svg_recol:black:{file_id}")
+                        ],
+                        [
+                            InlineKeyboardButton("🎨 ارسال کد هگز", callback_data=f"tg_svg_hex:{file_id}")
+                        ],
+                        [
+                            InlineKeyboardButton("🖼 خروجی PNG شفاف", callback_data=f"tg_svg:png:{file_id}"),
+                            InlineKeyboardButton("🖼 خروجی JPG", callback_data=f"tg_svg:jpg:{file_id}")
+                        ],
+                        [
+                            InlineKeyboardButton("📥 دریافت مجدد فایل SVG", callback_data=f"tg_svg:svg:{file_id}")
+                        ]
+                    ])
+                    await message.reply_text(
+                        f"🎨 <b>استودیوی وکتور SVG:</b> <code>{escape(raw_fn or 'vector.svg')}</code>\n\n"
+                        "عملیات مورد نظر خود را جهت تغییر رنگ یا تبدیل فرمت انتخاب فرمایید:",
+                        parse_mode=enums.ParseMode.HTML,
+                        reply_markup=svg_kb
+                    )
+                    return
+
+                if not self.is_admin(user_id):
+                    await message.reply_text(
+                        f"📚 <b>به فروشگاه دوره‌های آموزشی {escape(config.STORE_NAME)} خوش آمدید.</b>\n\n"
+                        "جهت مشاهده کاتالوگ دوره‌ها، دریافت هدایا یا ارتباط با پشتیبانی، لطفاً از دکمه‌های منوی زیر استفاده فرمایید:",
+                        parse_mode=enums.ParseMode.HTML,
+                        reply_markup=get_customer_keyboard()
+                    )
+                    return
+
+                drop_id = uuid.uuid4().hex[:8]
+                media_type = "video" if message.video else ("audio" if (message.audio or message.voice) else "document")
+                raw_fn = getattr(media_obj, "file_name", "") or ("video.mp4" if media_type == "video" else "audio.mp3")
+                fn = clean_display_filename(raw_fn)
+                sz = getattr(media_obj, "file_size", 0)
                 file_id = getattr(media_obj, "file_id", "")
-                svg_kb = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("⚪️ سفید (#FFF)", callback_data=f"tg_svg_recol:white:{file_id}"),
-                        InlineKeyboardButton("⚫️ مشکی (#000)", callback_data=f"tg_svg_recol:black:{file_id}")
-                    ],
-                    [
-                        InlineKeyboardButton("🎨 ارسال کد هگز", callback_data=f"tg_svg_hex:{file_id}")
-                    ],
-                    [
-                        InlineKeyboardButton("🖼 خروجی PNG شفاف", callback_data=f"tg_svg:png:{file_id}"),
-                        InlineKeyboardButton("🖼 خروجی JPG", callback_data=f"tg_svg:jpg:{file_id}")
-                    ],
-                    [
-                        InlineKeyboardButton("📥 دریافت مجدد فایل SVG", callback_data=f"tg_svg:svg:{file_id}")
-                    ]
-                ])
-                await message.reply_text(
-                    f"🎨 <b>استودیوی وکتور SVG:</b> <code>{escape(raw_fn or 'vector.svg')}</code>\n\n"
-                    "عملیات مورد نظر خود را جهت تغییر رنگ یا تبدیل فرمت انتخاب فرمایید:",
-                    parse_mode=enums.ParseMode.HTML,
-                    reply_markup=svg_kb
+
+                api_meta = {
+                    "filename": fn, "file_size": sz,
+                    "duration_sec": getattr(media_obj, "duration", 0),
+                    "title": getattr(media_obj, "title", ""),
+                    "artist": getattr(media_obj, "performer", "")
+                }
+
+                data = MediaService.register_incoming_message_meta(
+                    drop_id, "telegram", user_id, file_id, fn, sz,
+                    media_type=media_type, api_meta=api_meta, caption=message.caption or "", raw_message=message
                 )
-                return
 
-            if not self.is_admin(user_id):
-                await message.reply_text(
-                    f"📚 <b>به فروشگاه دوره‌های آموزشی {escape(config.STORE_NAME)} خوش آمدید.</b>\n\n"
-                    "جهت مشاهده کاتالوگ دوره‌ها، دریافت هدایا یا ارتباط با پشتیبانی، لطفاً از دکمه‌های منوی زیر استفاده فرمایید:",
-                    parse_mode=enums.ParseMode.HTML,
-                    reply_markup=get_customer_keyboard()
-                )
-                return
+                # سیستم ارسال دسته‌جمعی رسانه‌ها (Batch Forwarding Manager) با دی‌بانس زمانی
+                if user_id not in self._media_batch_queue:
+                    self._media_batch_queue[user_id] = {"timer": None, "items": []}
 
-            drop_id = uuid.uuid4().hex[:8]
-            media_type = "video" if message.video else ("audio" if (message.audio or message.voice) else "document")
-            raw_fn = getattr(media_obj, "file_name", "") or ("video.mp4" if media_type == "video" else "audio.mp3")
-            fn = clean_display_filename(raw_fn)
-            sz = getattr(media_obj, "file_size", 0)
-            file_id = getattr(media_obj, "file_id", "")
+                batch_info = self._media_batch_queue[user_id]
+                if batch_info.get("timer"):
+                    try:
+                        batch_info["timer"].cancel()
+                    except Exception:
+                        pass
 
-            api_meta = {
-                "filename": fn, "file_size": sz,
-                "duration_sec": getattr(media_obj, "duration", 0),
-                "title": getattr(media_obj, "title", ""),
-                "artist": getattr(media_obj, "performer", "")
-            }
+                batch_info["items"].append({
+                    "drop_id": drop_id,
+                    "data": data,
+                    "message": message
+                })
 
-            data = MediaService.register_incoming_message_meta(
-                drop_id, "telegram", user_id, file_id, fn, sz,
-                media_type=media_type, api_meta=api_meta, caption=message.caption or "", raw_message=message
-            )
+                async def _dispatch_media_batch(uid: int):
+                    try:
+                        await asyncio.sleep(1.2)
+                        b = self._media_batch_queue.pop(uid, None)
+                        if not b or not b.get("items"):
+                            return
+                        items = b["items"]
+                        if len(items) == 1:
+                            # دریافت تکی: نمایش کارت لایت استاندارد با کیبورد کامل
+                            single = items[0]
+                            s_data = single["data"]
+                            s_drop_id = single["drop_id"]
+                            s_msg = single["message"]
+                            card_text = TelegramFormatter.format_light_card(s_data)
+                            kb = self.build_media_keyboard(s_drop_id, s_data)
+                            sent_card = await s_msg.reply_text(card_text, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+                            s_data["card_msg_id"] = sent_card.id
+                        elif len(items) > 1:
+                            # دریافت گروهی/دسته‌جمعی: نمایش پیام متمرکز با دکمه‌های شیشه‌ای
+                            b_id = uuid.uuid4().hex[:8]
+                            self._batch_registry[b_id] = items
+                            total_sz = sum(it["data"].get("file_size", 0) for it in items)
+                            total_mb = f"{total_sz / (1024 * 1024):.2f}"
+                            batch_kb = InlineKeyboardMarkup([
+                                [
+                                    InlineKeyboardButton("🚀 ارسال دسته‌جمعی به بله", callback_data=f"smeta_batch:bale:{b_id}"),
+                                    InlineKeyboardButton("🚀 ارسال به روبیکا", callback_data=f"smeta_batch:rubika:{b_id}")
+                                ],
+                                [
+                                    InlineKeyboardButton("❌ لغو ارسال دسته‌جمعی", callback_data=f"smeta_batch:cancel:{b_id}")
+                                ]
+                            ])
+                            last_msg = items[-1]["message"]
+                            await last_msg.reply_text(
+                                f"📦 <b>تعداد {len(items)} فایل آماده انتقال شناسایی شد.</b>\n"
+                                f"📊 مجموع حجم فایل‌ها: <code>{total_mb} MB</code>\n\n"
+                                "لطفاً مقصد مورد نظر جهت انتقال یکپارچه را انتخاب فرمایید:",
+                                parse_mode=enums.ParseMode.HTML,
+                                reply_markup=batch_kb
+                            )
+                    except Exception as b_err:
+                        logger.error(f"[BatchForwarding] Error dispatching batch: {b_err}")
 
-            # سیستم ارسال دسته‌جمعی رسانه‌ها (Batch Forwarding Manager) با دی‌بانس زمانی
-            if user_id not in self._media_batch_queue:
-                self._media_batch_queue[user_id] = {"timer": None, "items": []}
-
-            batch_info = self._media_batch_queue[user_id]
-            if batch_info.get("timer"):
-                try:
-                    batch_info["timer"].cancel()
-                except Exception:
-                    pass
-
-            batch_info["items"].append({
-                "drop_id": drop_id,
-                "data": data,
-                "message": message
-            })
-
-            async def _dispatch_media_batch(uid: int):
-                try:
-                    await asyncio.sleep(1.2)
-                    b = self._media_batch_queue.pop(uid, None)
-                    if not b or not b.get("items"):
-                        return
-                    items = b["items"]
-                    if len(items) == 1:
-                        # دریافت تکی: نمایش کارت لایت استاندارد با کیبورد کامل
-                        single = items[0]
-                        s_data = single["data"]
-                        s_drop_id = single["drop_id"]
-                        s_msg = single["message"]
-                        card_text = TelegramFormatter.format_light_card(s_data)
-                        kb = self.build_media_keyboard(s_drop_id, s_data)
-                        sent_card = await s_msg.reply_text(card_text, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
-                        s_data["card_msg_id"] = sent_card.id
-                    elif len(items) > 1:
-                        # دریافت گروهی/دسته‌جمعی: نمایش پیام متمرکز با دکمه‌های شیشه‌ای
-                        b_id = uuid.uuid4().hex[:8]
-                        self._batch_registry[b_id] = items
-                        total_sz = sum(it["data"].get("file_size", 0) for it in items)
-                        total_mb = f"{total_sz / (1024 * 1024):.2f}"
-                        batch_kb = InlineKeyboardMarkup([
-                            [
-                                InlineKeyboardButton("🚀 ارسال دسته‌جمعی به بله", callback_data=f"smeta_batch:bale:{b_id}"),
-                                InlineKeyboardButton("🚀 ارسال به روبیکا", callback_data=f"smeta_batch:rubika:{b_id}")
-                            ],
-                            [
-                                InlineKeyboardButton("❌ لغو ارسال دسته‌جمعی", callback_data=f"smeta_batch:cancel:{b_id}")
-                            ]
-                        ])
-                        last_msg = items[-1]["message"]
-                        await last_msg.reply_text(
-                            f"📦 <b>تعداد {len(items)} فایل آماده انتقال شناسایی شد.</b>\n"
-                            f"📊 مجموع حجم فایل‌ها: <code>{total_mb} MB</code>\n\n"
-                            "لطفاً مقصد مورد نظر جهت انتقال یکپارچه را انتخاب فرمایید:",
-                            parse_mode=enums.ParseMode.HTML,
-                            reply_markup=batch_kb
-                        )
-                except Exception as b_err:
-                    logger.error(f"[BatchForwarding] Error dispatching batch: {b_err}")
-
-            batch_info["timer"] = asyncio.create_task(_dispatch_media_batch(user_id))
+                batch_info["timer"] = asyncio.create_task(_dispatch_media_batch(user_id))
+            except Exception as e:
+                logger.exception(f"Error handling media: {e}")
 
         # SVG Vector Callbacks: Hex Input & Recolor
         @self.app.on_callback_query(filters.regex(r"^tg_svg_hex:"))
