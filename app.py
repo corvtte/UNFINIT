@@ -2099,7 +2099,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 new_settings = payload.get("settings") or {}
                 if not isinstance(new_settings, dict):
                     new_settings = {}
-                for root_k in ("MAX_SAFE_BALE_SIZE_MB", "SUPPORT_CENTER_TEXT", "INVITE_FRIENDS_TEXT", "THEME", "STORE_NAME", "WELCOME_TEXT"):
+                for root_k in ("MAX_SAFE_BALE_SIZE_MB", "bale_max_file_size_mb", "bale_safety_buffer_percent", "SUPPORT_CENTER_TEXT", "INVITE_FRIENDS_TEXT", "THEME", "STORE_NAME", "WELCOME_TEXT"):
                     if root_k in payload and root_k not in new_settings:
                         new_settings[root_k] = payload[root_k]
                 new_pwd = str(new_settings.get("NEW_ADMIN_PASSWORD") or "").strip()
@@ -2160,6 +2160,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "ZARINPAL_MERCHANT_ID": "zarinpal_merchant_id",
                         "ZARINPAL_SANDBOX": "zarinpal_sandbox",
                         "MAX_SAFE_BALE_SIZE_MB": "max_safe_bale_size_mb",
+                        "bale_max_file_size_mb": "bale_max_file_size_mb",
+                        "bale_safety_buffer_percent": "bale_safety_buffer_percent",
                         "HF_TOKEN": "HF_TOKEN",
                         "HF_SPACE_ID": "HF_SPACE_ID",
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",

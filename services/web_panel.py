@@ -101,6 +101,33 @@ def build_themes_css(all_themes: Dict[str, Any]) -> str:
     return "\n".join(css_blocks)
 
 
+def get_bale_cap_config(settings_dict: Optional[Dict[str, Any]] = None) -> Tuple[float, float, float]:
+    """
+    دریافت سقف پایه بله، درصد بافر امنیتی و حجم هدف مؤثر انکودر.
+    خروجی: (سقف پایه به مگابایت، درصد بافر، حجم مؤثر انکودر به مگابایت)
+    """
+    if settings_dict is None:
+        settings_dict = {}
+        settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
+        if settings_file.exists():
+            try:
+                with open(settings_file, "r", encoding="utf-8") as f:
+                    settings_dict = json.load(f)
+            except Exception:
+                settings_dict = {}
+    try:
+        cap = float(settings_dict.get("bale_max_file_size_mb") or settings_dict.get("MAX_SAFE_BALE_SIZE_MB") or getattr(config, "MAX_SAFE_BALE_SIZE_MB", 50.0))
+    except Exception:
+        cap = 50.0
+    try:
+        buf = float(settings_dict.get("bale_safety_buffer_percent") or 3.0)
+    except Exception:
+        buf = 3.0
+    buf = max(0.0, min(buf, 15.0))
+    effective = round(cap * (1.0 - (buf / 100.0)), 2)
+    return cap, buf, effective
+
+
 def get_system_health() -> Dict[str, Any]:
     uptime_sec = int(time.time() - SERVER_START_TIME)
     h = uptime_sec // 3600
@@ -345,6 +372,8 @@ def render_dashboard_html() -> str:
                 settings = json.load(sf)
     except Exception as se:
         logger.warning(f"Failed to load settings in render_dashboard_html: {se}")
+
+    bale_cap, bale_buf, bale_effective = get_bale_cap_config(settings)
 
     from services.feed_scraper import get_all_categories
     all_cats = get_all_categories()
@@ -1192,14 +1221,14 @@ def render_dashboard_html() -> str:
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">شناسه مقصد: <code style="color: var(--accent-color);">{p['bale']['owner_id']}</code></p>
-                        <p class="text-xs text-slate-400 mt-1">سقف ایمن: <span class="font-semibold" style="color: var(--accent-color);"><span id="baleCardSafeSize">{config.MAX_SAFE_BALE_SIZE_MB} MB</span> (کمپرس خودکار)</span></p>
+                        <p class="text-xs text-slate-400 mt-1">سقف مجاز: <span class="font-semibold" style="color: var(--accent-color);"><span id="baleCardSafeSize">{bale_cap} MB</span></span> | بافر: <span class="font-semibold" style="color: var(--accent-color);"><span id="baleCardBuffer">{bale_buf}%</span></span> <span class="text-[11px] text-slate-400">(هدف انکودر: <span id="baleCardEffective">{bale_effective} MB</span>)</span></p>
                     </div>
                     <div class="mt-3">
-                        <button type="button" onclick="editBaleSafeLimit()" class="theme-card-btn w-full py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5" style="border: 1px solid var(--card-border);">
+                        <button type="button" onclick="openBaleCapModal()" class="theme-card-btn w-full py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 cursor-pointer" style="border: 1px solid var(--card-border);">
                             <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
                             </svg>
-                            <span>ویرایش سقف ایمن حجم</span>
+                            <span>ویرایش سقف و بافر بله</span>
                         </button>
                     </div>
                 </div>
@@ -3524,6 +3553,47 @@ def render_dashboard_html() -> str:
             </div>
         </div>
 
+        <!-- Modal: Bale Cap & Safety Buffer Configuration (تنظیم سقف حجم و بافر امنیتی بله) -->
+        <div id="modalBaleCapSettings" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
+                <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--card-border);">
+                    <h3 class="text-sm font-bold flex items-center gap-2" style="color: var(--text-main);">
+                        <svg class="w-4 h-4 text-cyan-400 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                        </svg>
+                        <span>تنظیم سقف حجم و بافر امنیتی بله</span>
+                    </h3>
+                    <button type="button" onclick="closeBaleCapModal()" class="text-slate-400 hover:text-white text-base transition">✕</button>
+                </div>
+                <form id="formBaleCapSettings" onsubmit="submitBaleCapSettings(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs mb-1" style="color: var(--text-muted);">سقف مجاز بله (مگابایت) *</label>
+                        <input type="number" step="0.1" min="1" max="50" id="baleCapInput" required value="{bale_cap}" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);" oninput="calcEffectiveCap()">
+                        <span class="text-[11px] text-slate-500 mt-1 block">حداکثر سقف مجاز بارگذاری پیام‌رسان بله (پیش‌فرض ۵۰ مگابایت)</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs mb-1" style="color: var(--text-muted);">بافر حاشیه امنیتی انکودر (درصد) *</label>
+                        <input type="number" step="0.1" min="0" max="15" id="baleBufferInput" required value="{bale_buf}" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);" oninput="calcEffectiveCap()">
+                        <span class="text-[11px] text-slate-500 mt-1 block">درصد کسر از سقف جهت تضمین عدم سرریز بیت‌ریت (مثال: ۳٪ یا ۲٪)</span>
+                    </div>
+                    <div class="p-3 rounded-xl border" style="background: var(--panel-bg); border-color: var(--card-border);">
+                        <div class="flex justify-between items-center text-xs">
+                            <span style="color: var(--text-muted);">هدف نهایی فشرده‌سازی:</span>
+                            <span class="font-bold font-mono" style="color: var(--accent-color);"><span id="previewEffectiveCap">{bale_effective}</span> مگابایت</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2 border-t" style="border-color: var(--card-border);">
+                        <button type="button" onclick="closeBaleCapModal()" class="px-4 py-2 rounded-xl text-xs border hover:bg-white/5 transition" style="border-color: var(--card-border); color: var(--text-muted);">
+                            انصراف
+                        </button>
+                        <button type="submit" id="btnSaveBaleCap" class="px-5 py-2 rounded-xl text-xs font-bold text-white transition flex items-center gap-1.5 shadow-lg shadow-cyan-500/20" style="background: var(--accent-color);">
+                            <span>ذخیره تنظیمات</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Modal: Edit Frequency Item (مودال ویرایش باور و فرکانس فراوانی) -->
         <div id="modalEditFrequency" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="glass-card max-w-lg w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
@@ -4063,14 +4133,49 @@ def render_dashboard_html() -> str:
                 }}
                 window.toggleLogsDrawer = toggleLogsDrawer;
 
-                async function editBaleSafeLimit() {{
-                    const curLimit = '{config.MAX_SAFE_BALE_SIZE_MB}';
-                    const inputVal = prompt('سقف ایمن فشرده‌سازی بله را بر حسب مگابایت وارد نمایید (مثال: 48.50):', curLimit);
-                    if (!inputVal) return;
-                    const valFloat = parseFloat(inputVal.trim());
-                    if (isNaN(valFloat) || valFloat <= 0 || valFloat > 50) {{
-                        alert('مقدار سقف باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
+                function openBaleCapModal() {{
+                    const m = document.getElementById('modalBaleCapSettings');
+                    if (m) m.classList.remove('hidden');
+                    calcEffectiveCap();
+                }}
+                window.openBaleCapModal = openBaleCapModal;
+
+                function closeBaleCapModal() {{
+                    const m = document.getElementById('modalBaleCapSettings');
+                    if (m) m.classList.add('hidden');
+                }}
+                window.closeBaleCapModal = closeBaleCapModal;
+
+                function calcEffectiveCap() {{
+                    const cInput = document.getElementById('baleCapInput');
+                    const bInput = document.getElementById('baleBufferInput');
+                    const c = parseFloat(cInput ? cInput.value : 50.0) || 50.0;
+                    const b = parseFloat(bInput ? bInput.value : 3.0) || 3.0;
+                    const eff = (c * (1.0 - (b / 100.0))).toFixed(2);
+                    const el = document.getElementById('previewEffectiveCap');
+                    if (el) el.textContent = eff;
+                }}
+                window.calcEffectiveCap = calcEffectiveCap;
+
+                async function submitBaleCapSettings(e) {{
+                    e.preventDefault();
+                    const cInput = document.getElementById('baleCapInput');
+                    const bInput = document.getElementById('baleBufferInput');
+                    const c = parseFloat(cInput ? cInput.value : 50.0);
+                    const b = parseFloat(bInput ? bInput.value : 3.0);
+                    if (isNaN(c) || c <= 0 || c > 50) {{
+                        alert('سقف مجاز باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
                         return;
+                    }}
+                    if (isNaN(b) || b < 0 || b > 15) {{
+                        alert('بافر امنیتی باید بین ۰ تا ۱۵ درصد باشد.');
+                        return;
+                    }}
+                    const eff = (c * (1.0 - (b / 100.0))).toFixed(2);
+                    const btn = document.getElementById('btnSaveBaleCap');
+                    if (btn) {{
+                        btn.disabled = true;
+                        btn.innerHTML = '<span>در حال ذخیره...</span>';
                     }}
                     try {{
                         const pwd = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || localStorage.getItem('unfinit_admin_pwd') || '';
@@ -4084,24 +4189,40 @@ def render_dashboard_html() -> str:
                             }},
                             body: JSON.stringify({{
                                 password: pwd,
-                                settings: {{ MAX_SAFE_BALE_SIZE_MB: valFloat.toFixed(2) }},
-                                MAX_SAFE_BALE_SIZE_MB: valFloat.toFixed(2)
+                                settings: {{
+                                    bale_max_file_size_mb: c,
+                                    bale_safety_buffer_percent: b,
+                                    MAX_SAFE_BALE_SIZE_MB: c
+                                }},
+                                bale_max_file_size_mb: c,
+                                bale_safety_buffer_percent: b
                             }})
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            const d1 = document.getElementById('dashBaleSafeSize');
-                            const d2 = document.getElementById('baleCardSafeSize');
-                            if (d1) d1.textContent = valFloat.toFixed(2) + ' MB';
-                            if (d2) d2.textContent = valFloat.toFixed(2) + ' MB';
+                            const d1 = document.getElementById('baleCardSafeSize');
+                            const d2 = document.getElementById('baleCardBuffer');
+                            const d3 = document.getElementById('baleCardEffective');
+                            const d4 = document.getElementById('dashBaleSafeSize');
+                            if (d1) d1.textContent = c.toFixed(1) + ' MB';
+                            if (d2) d2.textContent = b.toFixed(1) + '%';
+                            if (d3) d3.textContent = eff + ' MB';
+                            if (d4) d4.textContent = c.toFixed(1) + ' MB';
+                            closeBaleCapModal();
                         }} else {{
                             alert('خطا در ذخیره تنظیمات: ' + (data.error || 'عملیات ناموفق بود'));
                         }}
-                    }} catch (e) {{
-                        alert('خطا در برقراری ارتباط: ' + e.message);
+                    }} catch (err) {{
+                        alert('خطا در برقراری ارتباط: ' + err.message);
+                    }} finally {{
+                        if (btn) {{
+                            btn.disabled = false;
+                            btn.innerHTML = '<span>ذخیره تنظیمات</span>';
+                        }}
                     }}
                 }}
-                window.editBaleSafeLimit = editBaleSafeLimit;
+                window.submitBaleCapSettings = submitBaleCapSettings;
+                window.editBaleSafeLimit = openBaleCapModal;
 
                 /**
                  * تابع قطع ارتباط و حذف نشست پلتفرم‌ها به صورت غیرهمگام (AJAX)

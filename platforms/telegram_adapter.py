@@ -48,6 +48,7 @@ from services.media_service import (
     clean_display_filename,
     clean_public_filename,
     get_bale_max_size_mb,
+    get_bale_compression_settings,
     compress_video_async
 )
 from services.session_manager import session_manager
@@ -3963,11 +3964,12 @@ class TelegramAdapter:
                     await status_msg.edit_text("❌ فایل روی سرور یافت نشد.")
                     return
 
-                target_mb = await get_bale_max_size_mb()
+                raw_cap_mb, buf_pct, effective_mb = await get_bale_compression_settings()
+                target_mb = effective_mb
                 chat_id = callback_query.message.chat.id
 
                 last_text = ""
-                async def compression_progress(percent, speed, eta_str, orig_mb, target_mb):
+                async def compression_progress(percent, speed, eta_str, orig_mb, _tgt=None):
                     nonlocal last_text
                     bar_length = 10
                     pct = min(100.0, max(0.0, float(percent)))
@@ -3979,7 +3981,7 @@ class TelegramAdapter:
                         f"<code>[{bar}] {pct:.1f}%</code>\n\n"
                         f"⏱ <b>باقیمانده:</b> <code>{eta_str}</code> | ⚡️ <b>سرعت:</b> <code>{spd_val}</code>\n"
                         f"📦 <b>حجم اولیه:</b> <code>{orig_mb:.1f} مگابایت</code>\n"
-                        f"🎯 <b>حجم هدف:</b> <code>زیر {target_mb:.1f} مگابایت</code>"
+                        f"🎯 <b>حجم هدف:</b> <code>زیر {raw_cap_mb:.1f} مگابایت</code>"
                     )
                     if text != last_text:
                         last_text = text

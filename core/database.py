@@ -179,7 +179,9 @@ def sync_settings_to_json_and_env() -> None:
         "DEFAULT_ARTIST": config.DEFAULT_ARTIST,
         "SUPPORT_CENTER_TEXT": getattr(config, "SUPPORT_CENTER_TEXT", ""),
         "INVITE_FRIENDS_TEXT": getattr(config, "INVITE_FRIENDS_TEXT", ""),
-        "THEME": getattr(config, "THEME", "default-dark")
+        "THEME": getattr(config, "THEME", "default-dark"),
+        "bale_max_file_size_mb": 50.0,
+        "bale_safety_buffer_percent": 3.0
     }
     SENSITIVE_KEYS = {
         "TELEGRAM_BOT_TOKEN", "BALE_BOT_TOKEN", "RUBIKA_BOT_TOKEN",

@@ -6,6 +6,7 @@ import asyncio
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Callable, Union
+import math
 from core.config import config
 from core.logger import get_logger
 from media.inspector import inspect_all_metadata, inspect_technical_metadata, inspect_audio_stream
@@ -18,6 +19,7 @@ from media.tagger import (
     copy_all_id3_tags
 )
 from media.compressor import SmartAudioCompressor, SmartVideoCompressor, convert_audio_to_mp3_if_needed
+from services.compressor import SmartVideoSplitter, get_video_duration_async
 from services.session_manager import session_manager
 
 logger = get_logger("media_service")
@@ -72,31 +74,42 @@ def clean_display_filename(filename: str) -> str:
     return clean_public_filename(filename)
 
 
+async def get_bale_compression_settings() -> Tuple[float, float, float]:
+    """
+    دریافت سقف پایه، درصد بافر امنیتی و حجم هدف مؤثر انکودر بله به صورت کاملاً پویا از دیتابیس و settings.json.
+    خروجی: (سقف پایه به مگابایت، درصد بافر امنیتی، حجم هدف مؤثر انکودر به مگابایت)
+    """
+    from core.database import get_system_setting
+    cap_val = await get_system_setting("bale_max_file_size_mb", None)
+    if cap_val is None:
+        cap_val = await get_system_setting("bale_safe_limit_mb", None)
+    if cap_val is None:
+        cap_val = await get_system_setting("MAX_SAFE_BALE_SIZE_MB", None)
+    if cap_val is None:
+        cap_val = getattr(config, "MAX_SAFE_BALE_SIZE_MB", 50.0)
+    try:
+        raw_cap_mb = float(str(cap_val).strip())
+    except Exception:
+        raw_cap_mb = 50.0
+
+    buf_val = await get_system_setting("bale_safety_buffer_percent", 3.0)
+    try:
+        buffer_percent = float(str(buf_val).strip())
+    except Exception:
+        buffer_percent = 3.0
+
+    buffer_percent = max(0.0, min(buffer_percent, 15.0))
+    effective_target_mb = round(raw_cap_mb * (1.0 - (buffer_percent / 100.0)), 2)
+    return raw_cap_mb, buffer_percent, effective_target_mb
+
+
 async def get_bale_max_size_mb() -> float:
     """
     دریافت سقف مجاز فایل در بله به صورت کاملاً پویا از دیتابیس / تنظیمات وب‌پنل در settings.json.
     هیچ سقف ثابتی نباید هاردکد شود و اولویت با مقدار ورودی ادمین در پنل وب است.
     """
-    from core.database import get_system_setting
-    # 1. Read from system settings (configured via UNFINIT Web Panel in /data/settings.json)
-    for key in ("bale_max_file_size_mb", "bale_max_size", "bale_limit_mb", "bale_upload_limit", "MAX_SAFE_BALE_SIZE_MB", "max_safe_bale_size_mb"):
-        val = await get_system_setting(key, None)
-        if val is not None and str(val).strip() not in ("", "0", "None"):
-            try:
-                return float(str(val).strip())
-            except ValueError:
-                pass
-
-    # 2. Check config attributes
-    cfg_val = getattr(config, "BALE_MAX_FILE_SIZE_MB", None) or getattr(config, "BALE_FILE_LIMIT_MB", None) or getattr(config, "MAX_SAFE_BALE_SIZE_MB", None)
-    if cfg_val is not None:
-        try:
-            return float(cfg_val)
-        except ValueError:
-            pass
-
-    # 3. Safe fallback if completely unconfigured
-    return 48.0
+    raw_cap_mb, _, _ = await get_bale_compression_settings()
+    return raw_cap_mb
 
 
 async def compress_video_async(
@@ -115,8 +128,9 @@ async def compress_video_async(
         return False
     orig_mb = input_p.stat().st_size / (1024 * 1024)
 
+    raw_cap, buf_pct, effective_mb = await get_bale_compression_settings()
     if target_mb is None:
-        target_mb = await get_bale_max_size_mb()
+        target_mb = effective_mb
 
     # 1. Probe duration asynchronously via ffprobe
     duration = 0.0
@@ -185,14 +199,21 @@ async def compress_video_async(
 
                         if progress_callback and (now - last_update >= 3.0 or percent >= 98.0):
                             last_update = now
-                            res = progress_callback(percent, speed, eta_str, orig_mb, target_mb)
+                            res = progress_callback(percent, speed, eta_str, orig_mb, raw_cap)
                             if asyncio.iscoroutine(res):
                                 asyncio.create_task(res)
             except Exception:
                 pass
 
     await proc.wait()
-    return output_p.exists() and output_p.stat().st_size > 0
+    success = output_p.exists() and output_p.stat().st_size > 0
+    if success:
+        final_size_mb = output_p.stat().st_size / (1024 * 1024)
+        if final_size_mb > raw_cap:
+            logger.warning(
+                f"[CompressVideo] Output size {final_size_mb:.2f}MB exceeded base cap {raw_cap:.2f}MB (effective target was {target_mb:.2f}MB)"
+            )
+    return success
 
 
 class SequentialBatchQueue:
@@ -941,7 +962,100 @@ class MediaService:
                     logger.error(f"[BatchQueue] Failed to download binary for drop_id: {s_drop_id}")
                     continue
 
-                # مرحله ۲: آماده‌سازی و بهینه‌سازی غیرمسدودکننده
+                # مرحله ۲: آماده‌سازی و بررسی پیش‌پرواز (Pre-flight Auto-Split Check)
+                session = session_manager.get_session(s_drop_id) or {}
+                local_p = Path(session.get("working_path") or config.TEMP_DIR / f"{s_drop_id}_{fn}")
+                if not local_p.exists():
+                    local_p = Path(session.get("download_path") or "")
+
+                is_video = (s_data.get("media_type") == "video") or Path(fn).suffix.lower() in VIDEO_EXTENSIONS
+                raw_dur = 0.0
+                raw_sz_mb = (local_p.stat().st_size / (1024 * 1024)) if local_p.exists() else (raw_sz / (1024 * 1024))
+                if is_video and local_p.exists():
+                    tech = inspect_technical_metadata(local_p)
+                    raw_dur = float(tech.get("duration_sec", 0) or 0)
+                    if raw_dur <= 0:
+                        raw_dur = await get_video_duration_async(local_p)
+
+                # اگر ویدیو طولانی‌تر از ۲۵ دقیقه (۱۵۰۰ ثانیه) یا حجیم‌تر از ۱۲۰ مگابایت باشد،
+                # برای جلوگیری از افت شدید کیفیت، خودکار به پارت‌های ۲۵ دقیقه‌ای تقسیم می‌شود.
+                needs_auto_split = (destination == "bale") and is_video and (raw_dur > 1500 or raw_sz_mb > 120.0)
+
+                if needs_auto_split and bale_adapter:
+                    target_chat = bale_adapter.get_admin_chat_id()
+                    if not target_chat:
+                        logger.error("[BatchQueue] Bale target chat not configured")
+                        break
+
+                    if raw_dur > 1500:
+                        num_parts = max(2, math.ceil(raw_dur / 1500))
+                    else:
+                        num_parts = max(2, math.ceil(raw_sz_mb / 45.0))
+
+                    await _update_status(
+                        f"✂️ <b>فایل {idx} از {total_count} حجیم است ({raw_sz_mb:.1f}MB | {int(raw_dur // 60)} دقیقه)</b>\n"
+                        f"⚙️ در حال تقسیم هوشمند به {num_parts} پارت باکیفیت..."
+                    )
+
+                    raw_cap, _, effective_mb = await get_bale_compression_settings()
+                    split_parts = await SmartVideoSplitter.split_video_async(
+                        local_p,
+                        num_parts=num_parts,
+                        target_max_mb=effective_mb,
+                        progress_callback=_update_status
+                    )
+
+                    if not split_parts:
+                        logger.error(f"[BatchQueue] Auto-split failed for {local_p}")
+                        continue
+
+                    split_success = 0
+                    for p_idx, part_file in enumerate(split_parts, 1):
+                        part_name = clean_public_filename(fn, is_split_part=True, part_idx=p_idx, total_parts=len(split_parts))
+                        caption_part = f"🎬 <b>{part_name}</b>"
+                        part_bytes = part_file.stat().st_size
+                        tot_part_mb = part_bytes / (1024 * 1024)
+
+                        async def _part_progress(curr: int, total: int):
+                            pct = min(99, max(1, int((curr / total) * 100))) if total > 0 else 0
+                            cur_mb = curr / (1024 * 1024)
+                            prog_msg = (
+                                f"📦 <b>فایل {idx} از {total_count} (پارت {p_idx} از {len(split_parts)}):</b> <code>{_make_bar(pct)}</code>\n"
+                                f"🎬 <b>{part_name}</b>\n"
+                                f"🚢 در حال بارگذاری در بله ({cur_mb:.1f} از {tot_part_mb:.1f} MB)..."
+                            )
+                            await _update_status(prog_msg)
+
+                        t_spec = inspect_technical_metadata(part_file)
+                        res = await bale_adapter.send_video(
+                            target_chat,
+                            part_file,
+                            filename=part_name,
+                            caption=caption_part,
+                            duration=t_spec.get("duration_sec"),
+                            width=t_spec.get("width"),
+                            height=t_spec.get("height"),
+                            progress_callback=_part_progress
+                        )
+                        if res.get("ok"):
+                            split_success += 1
+
+                    if split_success == len(split_parts):
+                        success_count += 1
+                        await _update_status(
+                            f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(100)}</code>\n"
+                            f"✅ تمام {len(split_parts)} پارت <b>{fn}</b> با موفقیت منتقل شدند!"
+                        )
+                    else:
+                        if split_success > 0:
+                            success_count += 1
+                        await _update_status(
+                            f"⚠️ {split_success} پارت از {len(split_parts)} پارت <b>{fn}</b> به بله منتقل شد."
+                        )
+                    await asyncio.sleep(1.0)
+                    continue
+
+                # مرحله ۲ (عادی): آماده‌سازی و بهینه‌سازی غیرمسدودکننده
                 await _update_status(
                     f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(45)}</code>\n"
                     f"📄 <b>{fn}</b>\n"
