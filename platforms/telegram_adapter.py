@@ -4012,6 +4012,7 @@ class TelegramAdapter:
                     p_final = Path(str(final_path))
                     file_size_mb = (p_final.stat().st_size / (1024 * 1024)) if p_final.exists() else 0.0
 
+                    chat_id = callback_query.message.chat.id
                     target_chat_id = await self.get_bale_target_chat()
                     if not target_chat_id:
                         await status_msg.edit_text(
@@ -4034,23 +4035,42 @@ class TelegramAdapter:
                         if text != last_text:
                             last_text = text
                             try:
-                                await status_msg.edit_text(text, parse_mode=enums.ParseMode.HTML)
+                                await self.app.edit_message_text(chat_id=chat_id, message_id=status_msg.id, text=text, parse_mode=enums.ParseMode.HTML)
                             except Exception:
                                 pass
 
-                    logger.info(f"[TG Callback smeta:send_bale] Fast-path document dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
-                    res = await self.bale_adapter.send_document(
-                        chat_id=target_chat_id,
-                        document=p_final,
-                        filename=send_name,
-                        caption=f"📄 <b>{escape(send_name)}</b>",
-                        progress_callback=telegram_progress
-                    )
+                    is_video = (drop.get("media_type") == "video") or p_final.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi")
+                    if is_video:
+                        tech = inspect_technical_metadata(p_final)
+                        logger.info(f"[TG Callback smeta:send_bale] Native video dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
+                        res = await self.bale_adapter.send_video(
+                            chat_id=target_chat_id,
+                            file_path=p_final,
+                            filename=send_name,
+                            caption=f"🎬 <b>{escape(send_name)}</b>",
+                            duration=tech.get("duration_sec"),
+                            width=tech.get("width"),
+                            height=tech.get("height"),
+                            progress_callback=telegram_progress
+                        )
+                        success_text = "🎬 <b>ویدیوی تصویری با موفقیت به بله منتقل شد و آماده پخش است!</b>"
+                    else:
+                        logger.info(f"[TG Callback smeta:send_bale] Fast-path document dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
+                        res = await self.bale_adapter.send_document(
+                            chat_id=target_chat_id,
+                            document=p_final,
+                            filename=send_name,
+                            caption=f"📄 <b>{escape(send_name)}</b>",
+                            progress_callback=telegram_progress
+                        )
+                        success_text = f"✅ <b>فایل با موفقیت به بله منتقل شد!</b>\n📁 <b>نام فایل:</b> <code>{escape(send_name)}</code>"
 
                     if res and res.get("ok"):
-                        logger.info(f"[TG Callback smeta:send_bale] Fast-path document dispatch successful to Bale chat_id={target_chat_id}!")
-                        await status_msg.edit_text(
-                            f"✅ <b>فایل با موفقیت به بله منتقل شد!</b>\n📁 <b>نام فایل:</b> <code>{escape(send_name)}</code>",
+                        logger.info(f"[TG Callback smeta:send_bale] Dispatch successful to Bale chat_id={target_chat_id}!")
+                        await self.app.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=status_msg.id,
+                            text=success_text,
                             parse_mode=enums.ParseMode.HTML
                         )
                     else:
@@ -4060,8 +4080,10 @@ class TelegramAdapter:
                         else:
                             err = str(res) if res is not None else "پاسخی از سرور دریافت نشد"
                         logger.error(f"[TG Callback smeta:send_bale] Dispatch failed: {err}")
-                        await status_msg.edit_text(
-                            f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(err))}</code>",
+                        await self.app.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=status_msg.id,
+                            text=f"❌ <b>خطا در ارسال به بله:</b>\n<code>{escape(str(err))}</code>",
                             parse_mode=enums.ParseMode.HTML
                         )
 

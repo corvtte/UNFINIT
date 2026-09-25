@@ -585,22 +585,22 @@ class BaleAdapter:
         if width: form.add_field("width", str(int(width)))
         if height: form.add_field("height", str(int(height)))
 
-        bale_video_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=180)
+        bale_video_timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=None)
 
         try:
             if path_obj:
-                with open(path_obj, "rb") as f:
-                    form.add_field("video", f, filename=clean_send_name, content_type="video/mp4")
-                    async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
-                        async with session.post(url_video, data=form) as resp:
-                            if resp.status == 200:
-                                res = await resp.json()
-                                if res.get("ok"):
-                                    logger.info(f"Bale sendVideo successful: {res}")
-                                    return res
-                                logger.warning(f"Bale sendVideo returned error: {res}, falling back to sendDocument...")
-                            else:
-                                logger.warning(f"Bale sendVideo HTTP {resp.status}, falling back to sendDocument...")
+                streamer = ThrottledFileStreamer(path_obj, callback=progress_callback, throttle_seconds=3.0)
+                form.add_field("video", streamer, filename=clean_send_name, content_type="video/mp4")
+                async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
+                    async with session.post(url_video, data=form) as resp:
+                        if resp.status == 200:
+                            res = await resp.json()
+                            if res.get("ok"):
+                                logger.info(f"Bale sendVideo successful: {res}")
+                                return res
+                            logger.warning(f"Bale sendVideo returned error: {res}, falling back to sendDocument...")
+                        else:
+                            logger.warning(f"Bale sendVideo HTTP {resp.status}, falling back to sendDocument...")
             else:
                 form.add_field("video", file_path, filename=clean_send_name, content_type="video/mp4")
                 async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
@@ -617,7 +617,8 @@ class BaleAdapter:
             chat_id=chat_id,
             document=path_obj if path_obj else file_path,
             caption=clean_caption,
-            filename=clean_send_name
+            filename=clean_send_name,
+            progress_callback=progress_callback
         )
 
     async def edit_message_text(self, chat_id: str | int, message_id: int, text: str, reply_markup: Any = None) -> Dict[str, Any]:
