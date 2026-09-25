@@ -47,7 +47,8 @@ def format_compression_progress(
         f"⚙️ <b>فشرده‌سازی هوشمند ویدیو{p_str}</b>\n\n"
         f"<code>[{bar}] {pct:.1f}%</code>\n\n"
         f"⏱ <b>باقیمانده:</b> <code>{eta_str}</code> | ⚡️ <b>سرعت:</b> <code>{spd_str}</code>\n"
-        f"📦 <b>حجم:</b> <code>{orig_mb:.1f} MB</code> ➔ 🎯 <b>تخمین:</b> <code>{est_mb:.1f} MB</code>"
+        f"📦 <b>حجم اولیه:</b> <code>{orig_mb:.1f} مگابایت</code>\n"
+        f"🎯 <b>حجم هدف:</b> <code>زیر {est_mb:.1f} مگابایت</code>"
     )
 
 
@@ -517,7 +518,8 @@ class SmartVideoCompressor:
         cmd = [
             "ffmpeg", "-y", "-i", str(src),
             "-c:v", "libx264",
-            "-preset", "faster",
+            "-preset", "veryfast",
+            "-tune", "fastdecode",
             "-crf", "23",
             "-threads", "0",
             "-b:v", f"{target_v_bitrate}k",
@@ -554,7 +556,8 @@ class SmartVideoCompressor:
             cmd_adj = [
                 "ffmpeg", "-y", "-i", str(src),
                 "-c:v", "libx264",
-                "-preset", "faster",
+                "-preset", "veryfast",
+                "-tune", "fastdecode",
                 "-crf", "23",
                 "-threads", "0",
                 "-b:v", f"{adj_v}k",
@@ -750,7 +753,8 @@ class SmartVideoSplitter:
                 "-t", f"{part_duration:.2f}",
                 "-i", str(src),
                 "-c:v", "libx264",
-                "-preset", "faster",
+                "-preset", "veryfast",
+                "-tune", "fastdecode",
                 "-crf", "23",
                 "-threads", "0",
                 "-c:a", "copy",

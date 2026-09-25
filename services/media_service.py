@@ -5,7 +5,7 @@ import shutil
 import asyncio
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, Callable
+from typing import Dict, Any, Optional, Tuple, Callable, Union
 from core.config import config
 from core.logger import get_logger
 from media.inspector import inspect_all_metadata, inspect_technical_metadata, inspect_audio_stream
@@ -26,24 +26,41 @@ AUDIO_EXTENSIONS = {".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac", ".wma", ".o
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".m4v", ".ts"}
 
 
-def clean_public_filename(raw_name: str, part_idx: Optional[int] = None, total_parts: Optional[int] = None) -> str:
+def clean_public_filename(
+    raw_name: str,
+    is_split_part: Union[bool, int] = False,
+    part_idx: Optional[int] = None,
+    total_parts: Optional[int] = None
+) -> str:
     """
-    پاکسازی قطعی نام فایل و حذف هش‌ها و پیشوندهای سیستمی (مانند compressed_، temp_ یا شناسه هش هگز)
-    و قالب‌بندی استاندارد فارسی برای پارت‌ها (مثلاً: نام فایل - پارت ۱ از ۲.mp4).
+    پاکسازی قطعی نام فایل و حذف هش‌ها و پیشوندهای سیستمی (مانند compressed_، temp_ یا شناسه هش هگز).
+    قالب‌بندی 'پارت X از Y' صرفاً و منحصراً زمانی اعمال می‌شود که فایل در عملیات اسپلیت تقسیم شده باشد (is_split_part=True).
+    فایل‌های مستقل در ارسال‌های گروهی هرگز برچسب پارت دریافت نمی‌کنند.
     """
     if not raw_name:
         return "media_file"
     import urllib.parse
     name = urllib.parse.unquote(str(raw_name).strip())
-    # Remove internal tags like 'compressed_', 'lazy_', 'temp_', UUIDs or hex hashes (e.g. 8a4be8db_)
+    # Strip internal engine prefixes and hashes
     name = re.sub(r'^(compressed_|lazy_|temp_|raw_|trimmed_|[a-f0-9]{6,16}_)+', '', name, flags=re.IGNORECASE)
-    name = re.sub(r'(_part\d+of\d+|\.part\d+)', '', name, flags=re.IGNORECASE)
     p = Path(name)
     base = p.stem.strip()
     ext = p.suffix.strip()
-    
-    if part_idx is not None and total_parts is not None and int(total_parts) > 1:
+
+    # Clean existing part tags if any
+    base = re.sub(r'(_part\d+of\d+|\.part\d+|- پارت \d+ از \d+)', '', base, flags=re.IGNORECASE).strip()
+
+    # Handle legacy positional calls if any: clean_public_filename(raw, 1, 2)
+    if isinstance(is_split_part, int) and not isinstance(is_split_part, bool):
+        total_parts = part_idx
+        part_idx = is_split_part
+        is_split_part = True
+
+    # ONLY apply "پارت X از Y" if is_split_part is TRUE (explicitly a split chunk)
+    if is_split_part and part_idx is not None and total_parts is not None and int(total_parts) > 1:
         return f"{base} - پارت {part_idx} از {total_parts}{ext}"
+
+    # Independent files in batch dispatch must NEVER have part numbers in their name
     return f"{base}{ext}"
 
 
@@ -128,7 +145,8 @@ async def compress_video_async(
     cmd = [
         "ffmpeg", "-y", "-i", str(input_p),
         "-c:v", "libx264", "-b:v", f"{video_bitrate_kbps}k",
-        "-preset", "faster", "-threads", "0",
+        "-preset", "veryfast", "-tune", "fastdecode", "-threads", "0",
+        "-vf", "scale='min(1280,iw)':-2",
         "-c:a", "aac", "-b:a", f"{audio_bitrate_kbps}k",
         "-movflags", "+faststart",
         "-progress", "pipe:1",
@@ -939,9 +957,19 @@ class MediaService:
                     final_p, s_name, t_info = cls.prepare_for_transfer(s_drop_id, destination)
 
                 # مرحله ۳: ارسال ترتیبی به پلتفرم مقصد با نوار پیشرفت زنده
+                clean_s_name = clean_public_filename(s_name, is_split_part=False)
+                media_type = s_data.get("media_type")
+                if media_type == "video":
+                    file_emoji = "🎬"
+                elif media_type == "audio":
+                    file_emoji = "🎧"
+                else:
+                    file_emoji = "📄"
+
+                # مرحله ۳: ارسال ترتیبی به پلتفرم مقصد با نوار پیشرفت زنده
                 await _update_status(
                     f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(75)}</code>\n"
-                    f"📄 <b>{s_name}</b>\n"
+                    f"{file_emoji} <b>{clean_s_name}</b>\n"
                     f"🚢 در حال ارسال به {dest_name}..."
                 )
 
@@ -951,66 +979,55 @@ class MediaService:
                         if not target_chat:
                             logger.error("[BatchQueue] Bale target chat not configured")
                             break
-                        caption_clean = f"📄 پارت {idx} از {total_count}: <b>{s_name}</b>" if total_count > 1 else f"📄 <b>{s_name}</b>"
-                        total_bytes = final_p.stat().st_size
-                        with open(final_p, "rb") as f:
-                            async def _poll_batch_progress():
-                                last_t = time.time()
-                                last_b = 0
-                                try:
-                                    while True:
-                                        await asyncio.sleep(3.0)
-                                        if getattr(f, "closed", False):
-                                            break
-                                        curr = f.tell()
-                                        if curr >= total_bytes:
-                                            break
-                                        now = time.time()
-                                        dt = now - last_t
-                                        speed_kb = ((curr - last_b) / 1024) / dt if dt > 0 else 0
-                                        speed_str = f"{speed_kb / 1024:.1f} MB/s" if speed_kb >= 1024 else f"{int(speed_kb)} KB/s"
-                                        last_b = curr
-                                        last_t = now
-                                        pct = min(99, max(1, int((curr / total_bytes) * 100)))
-                                        cur_mb = curr / (1024 * 1024)
-                                        tot_mb = total_bytes / (1024 * 1024)
-                                        prog_msg = (
-                                            f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(pct)}</code>\n"
-                                            f"📄 <b>{s_name}</b>\n"
-                                            f"🚢 در حال بارگذاری در بله ({cur_mb:.1f} از {tot_mb:.1f} MB | {speed_str})..."
-                                        )
-                                        await _update_status(prog_msg)
-                                except asyncio.CancelledError:
-                                    pass
+                        caption_clean = f"{file_emoji} <b>{clean_s_name}</b>"
 
-                            poll_task = asyncio.create_task(_poll_batch_progress())
-                            try:
-                                if s_data.get("media_type") == "video":
-                                    t_spec = inspect_technical_metadata(final_p)
-                                    res = await bale_adapter.send_video(
-                                        target_chat, f,
-                                        filename=s_name,
-                                        caption=caption_clean,
-                                        duration=t_spec.get("duration_sec"),
-                                        width=t_spec.get("width"),
-                                        height=t_spec.get("height")
-                                    )
-                                else:
-                                    res = await bale_adapter.send_audio(
-                                        target_chat, f,
-                                        filename=s_name,
-                                        title=t_info.get("title"),
-                                        performer=t_info.get("artist"),
-                                        caption=caption_clean
-                                    )
-                            finally:
-                                poll_task.cancel()
-                                await asyncio.sleep(0.05)
+                        # کال‌بک تراتل‌شده پیشرفت ارسال در پیام‌رسان بله
+                        async def _batch_progress(curr: int, total: int):
+                            pct = min(99, max(1, int((curr / total) * 100))) if total > 0 else 0
+                            cur_mb = curr / (1024 * 1024)
+                            tot_mb = total / (1024 * 1024)
+                            prog_msg = (
+                                f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(pct)}</code>\n"
+                                f"{file_emoji} <b>{clean_s_name}</b>\n"
+                                f"🚢 در حال بارگذاری در بله ({cur_mb:.1f} از {tot_mb:.1f} MB)..."
+                            )
+                            await _update_status(prog_msg)
+
+                        if media_type == "video":
+                            t_spec = inspect_technical_metadata(final_p)
+                            res = await bale_adapter.send_video(
+                                target_chat,
+                                final_p,
+                                filename=clean_s_name,
+                                caption=caption_clean,
+                                duration=t_spec.get("duration_sec"),
+                                width=t_spec.get("width"),
+                                height=t_spec.get("height"),
+                                progress_callback=_batch_progress
+                            )
+                        elif media_type == "audio":
+                            res = await bale_adapter.send_audio(
+                                target_chat,
+                                final_p,
+                                filename=clean_s_name,
+                                title=t_info.get("title"),
+                                performer=None,
+                                caption=caption_clean,
+                                progress_callback=_batch_progress
+                            )
+                        else:
+                            res = await bale_adapter.send_document(
+                                target_chat,
+                                final_p,
+                                filename=clean_s_name,
+                                caption=caption_clean,
+                                progress_callback=_batch_progress
+                            )
                         if res.get("ok"):
                             success_count += 1
                     elif destination == "rubika" and rubika_adapter:
                         target_chat = rubika_adapter.get_admin_guid()
-                        res = await rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"📄 {s_name}")
+                        res = await rubika_adapter.send_audio_bot_api(target_chat, final_p, caption=f"{file_emoji} {clean_s_name}")
                         if res.get("ok") or res.get("status") == "OK":
                             success_count += 1
                 except Exception as send_err:
@@ -1019,7 +1036,7 @@ class MediaService:
                 # اعلام اتمام پردازش فایل جاری
                 await _update_status(
                     f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(100)}</code>\n"
-                    f"✅ <b>{s_name}</b> با موفقیت به {dest_name} منتقل شد!"
+                    f"✅ <b>{clean_s_name}</b> با موفقیت به {dest_name} منتقل شد!"
                 )
                 await asyncio.sleep(1.0)
 

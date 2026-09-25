@@ -895,6 +895,8 @@ class BaleAdapter:
 
         clean_title = urllib.parse.unquote(str(title)).strip() if title else None
         clean_performer = urllib.parse.unquote(str(performer)).strip() if performer else None
+        if clean_performer and clean_performer.upper() in ["UNFINIT", "UNFINIT ACADEMY", "UNFINIT STORE", "UNFINIT_STORE"]:
+            clean_performer = None
 
         markup = kwargs.get("reply_markup") or kwargs.get("markup")
         markup_str = json.dumps(markup) if isinstance(markup, dict) else (str(markup) if markup else None)

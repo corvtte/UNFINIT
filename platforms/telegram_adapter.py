@@ -756,7 +756,7 @@ class TelegramAdapter:
 
                 # گام ۳: ارسال فوری پارت جاری به بله با استریم مستقیم نیتیو (v0.6.6)
                 orig_fn = drop.get("audio_filename") or part_file.name
-                clean_part_name = clean_public_filename(orig_fn, part_idx=p_idx, total_parts=total_parts)
+                clean_part_name = clean_public_filename(orig_fn, is_split_part=True, part_idx=p_idx, total_parts=total_parts)
                 part_tech = inspect_technical_metadata(part_file)
                 caption_part = f"🎬 <b>{escape(clean_part_name)}</b>"
                 status_text = (
@@ -783,7 +783,7 @@ class TelegramAdapter:
                 if p_idx < total_parts:
                     await _safe_update(f"✅ پارت {p_idx} از {total_parts} با موفقیت به بله تحویل شد!\n⚡️ بلافاصله در حال آماده‌سازی و ارسال پارت {p_idx + 1}...")
                 else:
-                    clean_total_name = clean_public_filename(drop.get('audio_filename', 'video.mp4'))
+                    clean_total_name = clean_public_filename(drop.get('audio_filename', 'video.mp4'), is_split_part=False)
                     await _safe_update(f"✅ <b>تمام {total_parts} پارت ویدیو با موفقیت به بله ارسال شدند!</b>\n🎬 <code>{escape(clean_total_name)}</code>")
 
                 await asyncio.sleep(1.0)
@@ -3978,7 +3978,8 @@ class TelegramAdapter:
                         f"🗜 <b>در حال فشرده‌سازی هوشمند ویدیو...</b>\n\n"
                         f"<code>[{bar}] {pct:.1f}%</code>\n\n"
                         f"⏱ <b>باقیمانده:</b> <code>{eta_str}</code> | ⚡️ <b>سرعت:</b> <code>{spd_val}</code>\n"
-                        f"📦 <b>حجم اولیه:</b> <code>{orig_mb:.1f} MB</code> ➔ 🎯 <b>هدف:</b> <code>زیر {target_mb:.1f} MB</code>"
+                        f"📦 <b>حجم اولیه:</b> <code>{orig_mb:.1f} مگابایت</code>\n"
+                        f"🎯 <b>حجم هدف:</b> <code>زیر {target_mb:.1f} مگابایت</code>"
                     )
                     if text != last_text:
                         last_text = text
@@ -4137,7 +4138,7 @@ class TelegramAdapter:
                             except Exception:
                                 pass
 
-                    clean_send_name = clean_public_filename(send_name or p_final.name)
+                    clean_send_name = clean_public_filename(send_name or p_final.name, is_split_part=False)
                     is_video = (drop.get("media_type") == "video") or p_final.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi")
                     is_audio = (drop.get("media_type") == "audio") or p_final.suffix.lower() in (".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac", ".wma", ".opus")
 
@@ -4164,7 +4165,7 @@ class TelegramAdapter:
                             filename=clean_send_name,
                             caption=f"🎧 <b>{escape(clean_send_name)}</b>",
                             title=clean_send_name,
-                            performer=drop.get("performer") or "UNFINIT",
+                            performer=drop.get("performer") or None,
                             duration=tech.get("duration_sec"),
                             progress_callback=telegram_progress
                         )
