@@ -69,7 +69,7 @@ class Config:
     این کلاس وظیفه خواندن متغیرهای محیطی، مقادیر پیش‌فرض امن، مسیرهای دایرکتوری داده،
     آپلودها، سشن‌ها، و تنظیمات ارتباط با پلتفرم‌های پیام‌رسان و هوش مصنوعی را بر عهده دارد.
     """
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.6.7").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.6.8").strip())
     THEME: str = (os.environ.get("THEME") or "default-dark").strip()
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "false").strip().lower() in ("true", "1", "yes")
@@ -101,6 +101,8 @@ class Config:
     # 2. Bale Secrets
     BALE_BOT_TOKEN: str = (os.environ.get("BALE_BOT_TOKEN") or "").strip()
     BALE_OWNER_ID: str = (os.environ.get("BALE_OWNER_ID") or os.environ.get("BALE_TARGET_CHAT_ID") or "402479514").strip()
+    BALE_CHANNEL_ID: str = (os.environ.get("BALE_CHANNEL_ID") or os.environ.get("DEFAULT_BALE_CHAT_ID") or "").strip()
+    DEFAULT_BALE_CHAT_ID: str = (os.environ.get("DEFAULT_BALE_CHAT_ID") or os.environ.get("BALE_CHANNEL_ID") or "").strip()
     BALE_PAYMENT_TOKEN: str = (os.environ.get("BALE_PAYMENT_TOKEN") or os.environ.get("BALE_PROVIDER_TOKEN") or "").strip()
 
     # 3. Rubika Secrets
@@ -170,6 +172,8 @@ class Config:
 
         self.BALE_BOT_TOKEN = (os.environ.get("BALE_BOT_TOKEN") or "").strip()
         self.BALE_OWNER_ID = (os.environ.get("BALE_OWNER_ID") or os.environ.get("BALE_TARGET_CHAT_ID") or "402479514").strip()
+        self.BALE_CHANNEL_ID = (os.environ.get("BALE_CHANNEL_ID") or os.environ.get("DEFAULT_BALE_CHAT_ID") or "").strip()
+        self.DEFAULT_BALE_CHAT_ID = (os.environ.get("DEFAULT_BALE_CHAT_ID") or os.environ.get("BALE_CHANNEL_ID") or "").strip()
         self.BALE_PAYMENT_TOKEN = (os.environ.get("BALE_PAYMENT_TOKEN") or os.environ.get("BALE_PROVIDER_TOKEN") or "").strip()
 
         self.RUBIKA_BOT_TOKEN = (os.environ.get("RUBIKA_BOT_TOKEN") or "").strip()
@@ -230,7 +234,7 @@ class Config:
         self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "false").strip().lower() in ("true", "1", "yes")
         self.AUTO_RENAME_FILE_TO_TITLE = (os.environ.get("AUTO_RENAME_FILE_TO_TITLE") or "false").strip().lower() in ("true", "1", "yes")
         self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.6.7").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.6.8").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
@@ -306,7 +310,7 @@ class Config:
     GEMINI_MODEL: str = (os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash").strip()
 
     # 12. Engine Version
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.6.7").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.6.8").strip())
 
 config = Config()
 ENGINE_VERSION = config.ENGINE_VERSION

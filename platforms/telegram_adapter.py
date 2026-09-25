@@ -639,6 +639,34 @@ class TelegramAdapter:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+    async def get_bale_target_chat(self) -> Optional[Union[int, str]]:
+        """
+        استخراج شناسه مقصد معتبر جهت ارسال فایل‌ها به پیام‌رسان بله با زنجیره فال‌بک ضدگلوله.
+        ترتیب اولویت:
+        1. تنظیم صریح BALE_CHANNEL_ID در پیکربندی هسته یا متغیرهای محیطی
+        2. شناسه پیش‌فرض کانال بله DEFAULT_BALE_CHAT_ID
+        3. شناسه کانال یا چت ذخیره‌شده در دیتابیس (تنظیمات سیستم: bale_channel_id)
+        4. شناسه ادمین بله از طریق متد get_admin_chat_id() در آداپتور بله
+        5. شناسه مالک بله BALE_OWNER_ID در پیکربندی
+        """
+        target = (
+            getattr(config, "BALE_CHANNEL_ID", None)
+            or getattr(config, "DEFAULT_BALE_CHAT_ID", None)
+            or (await get_system_setting("bale_channel_id", ""))
+            or (self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None)
+            or getattr(config, "BALE_OWNER_ID", None)
+        )
+        if target:
+            t_str = str(target).strip()
+            if t_str and t_str != "0":
+                if t_str.startswith("@"):
+                    return t_str
+                try:
+                    return int(t_str)
+                except ValueError:
+                    return t_str
+        return None
+
     async def split_and_transfer_video_to_bale(self, drop_id: str, parts_count: int, status_msg: Any) -> bool:
         """
         تقسیم هوشمند ویدیو به تعداد پارت‌های مشخص و ارسال ترتیبی به بله با حفظ کیفیت و تضمین سقف ۴۵MB
@@ -654,9 +682,10 @@ class TelegramAdapter:
             await status_msg.edit_text("❌ اطلاعات فایل منقضی شده است.")
             return False
 
-        target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+        target_chat = await self.get_bale_target_chat()
         if not target_chat:
-            await status_msg.edit_text("❌ شناسه چت بله تنظیم نشده است.")
+            logger.error("[TG Split Video] No valid Bale target chat ID found in configuration or database!")
+            await status_msg.edit_text("❌ شناسه چت مقصد بله تنظیم نشده است.")
             return False
 
         w_path = Path(drop.get("working_path") or "")
@@ -715,10 +744,11 @@ class TelegramAdapter:
                 part_tech = inspect_technical_metadata(part_file)
                 caption_part = f"📄 پارت {p_idx} از {total_parts}: <b>{escape(part_file.name)}</b>"
                 status_text = (
-                    f"🚢 [پارت {p_idx} از {total_parts}] <b>در حال ارسال فایل به بله...</b>\n\n"
-                    "⏳ لطفاً شکیبا باشید (فایل‌های حجیم معمولاً ۱ تا ۲ دقیقه زمان می‌برند)"
+                    f"🚀 [پارت {p_idx} از {total_parts}] <b>در حال ارسال پرسرعت فایل به بله...</b>\n\n"
+                    "⏳ لطفاً ۱ تا ۲ دقیقه شکیبا باشید (فایل به طور مستقیم و با حداکثر سرعت ارسال می‌شود)"
                 )
                 await _safe_update(status_text)
+                logger.info(f"[TG Split Video] Direct wire-speed dispatch part {p_idx}/{total_parts} to Bale target={target_chat}: '{part_file.name}' ({part_sz_mb:.2f} MB)")
 
                 res = await self.bale_adapter.send_video(
                     target_chat,
@@ -3892,9 +3922,10 @@ class TelegramAdapter:
                 )
 
             elif action == "split_bale":
-                target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+                target_chat = await self.get_bale_target_chat()
                 if not target_chat:
-                    await callback_query.message.reply_text("❌ شناسه چت بله تنظیم نشده است.")
+                    logger.error("[TG Callback smeta:split_bale] No valid Bale target chat found in config or database!")
+                    await callback_query.message.reply_text("❌ شناسه چت مقصد بله تنظیم نشده است.")
                     return
                 status_msg = callback_query.message
                 await ensure_binary(status_msg)
@@ -3903,12 +3934,13 @@ class TelegramAdapter:
                 await self.split_and_transfer_video_to_bale(drop_id, parts_count, status_msg)
 
             elif action in ("send_bale", "force_bale"):
-                target_chat = self.bale_adapter.get_admin_chat_id() if self.bale_adapter else None
+                target_chat = await self.get_bale_target_chat()
                 if not target_chat:
-                    await callback_query.message.reply_text("❌ شناسه چت بله تنظیم نشده است.")
+                    logger.error("[TG Callback smeta:send_bale] No valid Bale target chat found in config or database!")
+                    await callback_query.message.reply_text("❌ شناسه چت مقصد بله تنظیم نشده است.")
                     return
 
-                status_msg = callback_query.message if action == "force_bale" else await callback_query.message.reply_text("📥 <b>در حال دانلود فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
+                status_msg = callback_query.message if action == "force_bale" else await callback_query.message.reply_text("📥 <b>در حال آماده‌سازی فایل از مبدا...</b>", parse_mode=enums.ParseMode.HTML)
                 await ensure_binary(status_msg)
 
                 w_path = Path(drop.get("working_path") or "")
@@ -3970,11 +4002,13 @@ class TelegramAdapter:
                 try:
                     final_path, send_name, transfer_info = MediaService.prepare_for_transfer(drop_id, "bale", progress_callback=update_cb)
                     p_final = Path(str(final_path))
+                    final_size_mb = p_final.stat().st_size / (1024 * 1024) if p_final.exists() else 0.0
                     status_text = (
-                        "🚢 <b>در حال ارسال فایل به بله...</b>\n\n"
-                        "⏳ لطفاً شکیبا باشید (فایل‌های حجیم معمولاً ۱ تا ۲ دقیقه زمان می‌برند)"
+                        "🚀 <b>در حال ارسال پرسرعت فایل به بله...</b>\n\n"
+                        "⏳ لطفاً ۱ تا ۲ دقیقه شکیبا باشید (فایل به طور مستقیم و با حداکثر پهنای باند ارسال می‌شود)"
                     )
                     await status_msg.edit_text(status_text, parse_mode=enums.ParseMode.HTML)
+                    logger.info(f"[TG Callback smeta:send_bale] Direct wire-speed dispatch to Bale target={target_chat} for '{send_name}' ({final_size_mb:.2f} MB)")
 
                     if drop.get("media_type") == "video":
                         tech = inspect_technical_metadata(p_final)
@@ -3998,9 +4032,11 @@ class TelegramAdapter:
                         )
 
                     if res and res.get("ok"):
+                        logger.info(f"[TG Callback smeta:send_bale] Successfully delivered to Bale: {send_name}")
                         await status_msg.edit_text(f"✅ <b>فایل با موفقیت به بله ارسال شد.</b>\n📄 <code>{escape(send_name)}</code>", parse_mode=enums.ParseMode.HTML)
                     else:
                         desc = res.get("description", res.get("error", "خطای ارتباط با سرور بله")) if res else "پاسخی دریافت نشد"
+                        logger.error(f"[TG Callback smeta:send_bale] Dispatch failed: {desc}")
                         await status_msg.edit_text(
                             f"❌ <b>خطا در ارسال به بله:</b> {escape(str(desc))}\n"
                             f"💡 لطفاً مجدداً دکمه ارسال را بزنید.",
@@ -4008,6 +4044,7 @@ class TelegramAdapter:
                         )
 
                 except Exception as e:
+                    logger.exception(f"[TG Callback smeta:send_bale] Exception during dispatch: {e}")
                     await status_msg.edit_text(
                         f"❌ <b>خطا در ارسال به بله:</b> [{escape(str(e))}]\n"
                         f"💡 لطفاً دکمه ارسال را مجدداً بزنید.",

@@ -449,26 +449,42 @@ class BaleAdapter:
                 else:
                     form.add_field("reply_markup", str(reply_markup))
 
+            file_size_mb = 0.0
             if isinstance(document, bytes):
                 fname = filename or "document.bin"
+                file_size_mb = len(document) / (1024 * 1024)
                 form.add_field("document", document, filename=fname, content_type="application/octet-stream")
             elif hasattr(document, "read"):
                 f = document
                 raw_name = filename or getattr(f, "name", None) or "document.bin"
                 fname = clean_display_filename(Path(str(raw_name)).name)
+                try:
+                    pos = f.tell()
+                    f.seek(0, io.SEEK_END)
+                    file_size_mb = f.tell() / (1024 * 1024)
+                    f.seek(pos, io.SEEK_SET)
+                except Exception:
+                    pass
                 form.add_field("document", f, filename=fname, content_type="application/octet-stream")
             else:
                 p = Path(str(document))
                 if not p.exists():
                     return {"ok": False, "error": f"File {p} not found"}
                 fname = clean_display_filename(filename or p.name)
+                file_size_mb = p.stat().st_size / (1024 * 1024)
                 f = open(p, "rb")
                 should_close = True
                 form.add_field("document", f, filename=fname, content_type="application/octet-stream")
 
+            logger.info(f"[Bale Dispatch] Starting high-speed upload: '{fname}' ({file_size_mb:.2f}MB) -> chat_id={chat_id} via sendDocument...")
+
             async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
                 async with session.post(url_doc, data=form) as resp:
-                    return await resp.json()
+                    resp_data = await resp.json()
+                    logger.info(f"[Bale Response] HTTP {resp.status} for '{fname}': {resp_data}")
+                    if resp.status != 200 or not resp_data.get("ok"):
+                        logger.error(f"[Bale Error] Failed to send sendDocument to {chat_id}: status={resp.status}, response={resp_data}")
+                    return resp_data
         except Exception as e:
             err_msg = f"{type(e).__name__}: {e or repr(e)}"
             logger.error(f"Bale send_document exception: {err_msg}")
@@ -539,9 +555,10 @@ class BaleAdapter:
             f = open(path_obj, "rb")
             should_close = True
 
+        file_size_mb = (path_obj.stat().st_size / (1024 * 1024)) if path_obj and path_obj.exists() else 0.0
         clean_caption = BaleFormatter.clean_text(urllib.parse.unquote(str(caption))) if caption else None
         url_video = f"{self.base_url}/sendVideo"
-        bale_video_timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=300)
+        bale_video_timeout = aiohttp.ClientTimeout(total=900, connect=60, sock_read=300)
         last_error_diag = "Unknown error"
 
         try:
@@ -553,21 +570,18 @@ class BaleAdapter:
             if height: form.add_field("height", str(int(height)))
             form.add_field("video", f, filename=clean_send_name, content_type="video/mp4")
 
+            logger.info(f"[Bale Dispatch] Starting high-speed upload: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id} via sendVideo...")
+
             async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
                 async with session.post(url_video, data=form) as resp:
-                    if resp.status == 200:
-                        res = await resp.json()
-                        if res.get("ok"):
-                            logger.info(f"Bale sendVideo successful: {res}")
-                            return res
-                        last_error_diag = f"HTTP 200 but ok=False: {res}"
-                        logger.warning(f"Bale sendVideo returned error: {res}, falling back to sendDocument...")
-                    elif resp.status == 413:
-                        last_error_diag = "HTTP 413 (Entity Too Large)"
-                        logger.warning("Bale sendVideo returned 413, falling back to sendDocument...")
-                    else:
-                        last_error_diag = f"HTTP status {resp.status}"
-                        logger.warning(f"Bale sendVideo HTTP {resp.status}, falling back to sendDocument...")
+                    resp_data = await resp.json()
+                    logger.info(f"[Bale Response] HTTP {resp.status} for '{clean_send_name}': {resp_data}")
+                    if resp.status == 200 and resp_data.get("ok"):
+                        logger.info(f"Bale sendVideo successful: {resp_data}")
+                        return resp_data
+                    last_error_diag = f"HTTP {resp.status}: {resp_data}"
+                    logger.error(f"[Bale Error] Failed to send sendVideo to {chat_id}: status={resp.status}, response={resp_data}")
+                    logger.warning(f"Bale sendVideo returned error: {resp_data}, falling back to sendDocument...")
         except Exception as e:
             last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
             logger.warning(f"Bale sendVideo exception: {last_error_diag}, falling back to sendDocument...")
@@ -597,19 +611,21 @@ class BaleAdapter:
                 form_doc.add_field("chat_id", str(chat_id))
                 if clean_caption: form_doc.add_field("caption", clean_caption)
                 form_doc.add_field("document", f_fallback, filename=clean_send_name, content_type="application/octet-stream")
+
+                logger.info(f"[Bale Dispatch] Fallback attempt {attempt} via sendDocument: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id}...")
+
                 async with aiohttp.ClientSession(timeout=bale_video_timeout) as session:
                     async with session.post(url_doc, data=form_doc) as resp:
-                        if resp.status == 200:
-                            res_doc = await resp.json()
-                            if res_doc.get("ok"):
-                                logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
-                                return res_doc
-                            last_error_diag = f"sendDocument attempt {attempt} returned: {res_doc}"
-                        else:
-                            last_error_diag = f"sendDocument attempt {attempt} HTTP {resp.status}"
+                        res_doc = await resp.json()
+                        logger.info(f"[Bale Response] Fallback attempt {attempt} HTTP {resp.status} for '{clean_send_name}': {res_doc}")
+                        if resp.status == 200 and res_doc.get("ok"):
+                            logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
+                            return res_doc
+                        last_error_diag = f"sendDocument attempt {attempt} HTTP {resp.status}: {res_doc}"
+                        logger.error(f"[Bale Error] Fallback attempt {attempt} failed: {last_error_diag}")
             except Exception as e:
                 last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
-                logger.error(f"Bale fallback sendDocument attempt {attempt} failed: {last_error_diag}")
+                logger.error(f"Bale fallback sendDocument attempt {attempt} exception: {last_error_diag}")
             finally:
                 if should_close_fb and f_fallback and hasattr(f_fallback, "close"):
                     try:
@@ -923,6 +939,7 @@ class BaleAdapter:
         else:
             return {"ok": False, "error": "Unsupported audio input type"}
 
+        file_size_mb = (path_obj.stat().st_size / (1024 * 1024)) if path_obj and path_obj.exists() else 0.0
         clean_title = urllib.parse.unquote(str(title)).strip() if title else None
         clean_performer = urllib.parse.unquote(str(performer)).strip() if performer else None
         clean_caption = BaleFormatter.clean_text(urllib.parse.unquote(str(caption))) if caption else None
@@ -930,7 +947,7 @@ class BaleAdapter:
         markup = kwargs.get("reply_markup") or kwargs.get("markup")
         markup_str = json.dumps(markup) if isinstance(markup, dict) else (str(markup) if markup else None)
 
-        bale_audio_timeout = aiohttp.ClientTimeout(total=1800, connect=60, sock_read=300)
+        bale_audio_timeout = aiohttp.ClientTimeout(total=900, connect=60, sock_read=300)
         last_error_diag = "Unknown error"
 
         try:
@@ -947,18 +964,18 @@ class BaleAdapter:
             content_type = "audio/mp4" if (path_obj and path_obj.suffix.lower() == ".m4a") else "audio/mpeg"
             form_audio.add_field("audio", f, filename=clean_send_name, content_type=content_type)
 
+            logger.info(f"[Bale Dispatch] Starting high-speed upload: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id} via sendAudio...")
+
             async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session:
                 async with session.post(url_audio, data=form_audio) as resp:
-                    if resp.status == 200:
-                        res = await resp.json()
-                        if res.get("ok"):
-                            logger.info(f"Bale sendAudio successful: {res}")
-                            return res
-                        last_error_diag = f"HTTP 200 but ok=False: {res}"
-                        logger.warning(f"Bale sendAudio returned error: {res}, falling back to sendDocument...")
-                    else:
-                        last_error_diag = f"HTTP status {resp.status}"
-                        logger.warning(f"Bale sendAudio HTTP {resp.status}, falling back to sendDocument...")
+                    resp_data = await resp.json()
+                    logger.info(f"[Bale Response] HTTP {resp.status} for '{clean_send_name}': {resp_data}")
+                    if resp.status == 200 and resp_data.get("ok"):
+                        logger.info(f"Bale sendAudio successful: {resp_data}")
+                        return resp_data
+                    last_error_diag = f"HTTP {resp.status}: {resp_data}"
+                    logger.error(f"[Bale Error] Failed to send sendAudio to {chat_id}: status={resp.status}, response={resp_data}")
+                    logger.warning(f"Bale sendAudio returned error: {resp_data}, falling back to sendDocument...")
         except Exception as e:
             last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
             logger.warning(f"Bale sendAudio exception: {last_error_diag}, falling back to sendDocument...")
@@ -989,19 +1006,21 @@ class BaleAdapter:
                 if clean_caption: form_doc.add_field("caption", clean_caption)
                 if markup_str: form_doc.add_field("reply_markup", markup_str)
                 form_doc.add_field("document", f_fallback, filename=clean_send_name, content_type="application/octet-stream")
+
+                logger.info(f"[Bale Dispatch] Audio fallback attempt {attempt} via sendDocument: '{clean_send_name}' ({file_size_mb:.2f}MB) -> chat_id={chat_id}...")
+
                 async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session_doc:
                     async with session_doc.post(url_doc, data=form_doc) as resp_doc:
-                        if resp_doc.status == 200:
-                            res_doc = await resp_doc.json()
-                            if res_doc.get("ok"):
-                                logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
-                                return res_doc
-                            last_error_diag = f"sendDocument attempt {attempt} returned: {res_doc}"
-                        else:
-                            last_error_diag = f"sendDocument attempt {attempt} HTTP {resp_doc.status}"
+                        res_doc = await resp_doc.json()
+                        logger.info(f"[Bale Response] Audio fallback attempt {attempt} HTTP {resp_doc.status} for '{clean_send_name}': {res_doc}")
+                        if resp_doc.status == 200 and res_doc.get("ok"):
+                            logger.info(f"Bale fallback sendDocument attempt {attempt} successful: {res_doc}")
+                            return res_doc
+                        last_error_diag = f"sendDocument attempt {attempt} HTTP {resp_doc.status}: {res_doc}"
+                        logger.error(f"[Bale Error] Audio fallback attempt {attempt} failed: {last_error_diag}")
             except Exception as e:
                 last_error_diag = f"{type(e).__name__}: {e or repr(e)}"
-                logger.error(f"Bale fallback sendDocument attempt {attempt} failed: {last_error_diag}")
+                logger.error(f"Bale fallback sendDocument attempt {attempt} exception: {last_error_diag}")
             finally:
                 if should_close_fb and f_fallback and hasattr(f_fallback, "close"):
                     try:
