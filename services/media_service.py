@@ -815,44 +815,60 @@ class MediaService:
                             logger.error("[BatchQueue] Bale target chat not configured")
                             break
                         caption_clean = f"📄 پارت {idx} از {total_count}: <b>{s_name}</b>" if total_count > 1 else f"📄 <b>{s_name}</b>"
-                        last_bale_q_edit = [0.0]
-                        def _bale_q_progress(curr: int, tot: int):
-                            now = time.time()
-                            if (now - last_bale_q_edit[0] < 3.0) and (curr < tot):
-                                return
-                            last_bale_q_edit[0] = now
-                            pct = min(99, max(0, int((curr / max(1, tot)) * 100))) if curr < tot else 100
-                            cur_mb = curr / (1024 * 1024)
-                            tot_mb = tot / (1024 * 1024)
-                            prog_msg = (
-                                f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(pct)}</code>\n"
-                                f"📄 <b>{s_name}</b>\n"
-                                f"🚢 در حال بارگذاری در بله ({cur_mb:.1f} از {tot_mb:.1f} MB)..."
-                            )
-                            try:
-                                loop = asyncio.get_running_loop()
-                                loop.create_task(_update_status(prog_msg))
-                            except Exception:
-                                pass
+                        total_bytes = final_p.stat().st_size
+                        with open(final_p, "rb") as f:
+                            async def _poll_batch_progress():
+                                last_t = time.time()
+                                last_b = 0
+                                try:
+                                    while True:
+                                        await asyncio.sleep(3.0)
+                                        if getattr(f, "closed", False):
+                                            break
+                                        curr = f.tell()
+                                        if curr >= total_bytes:
+                                            break
+                                        now = time.time()
+                                        dt = now - last_t
+                                        speed_kb = ((curr - last_b) / 1024) / dt if dt > 0 else 0
+                                        speed_str = f"{speed_kb / 1024:.1f} MB/s" if speed_kb >= 1024 else f"{int(speed_kb)} KB/s"
+                                        last_b = curr
+                                        last_t = now
+                                        pct = min(99, max(1, int((curr / total_bytes) * 100)))
+                                        cur_mb = curr / (1024 * 1024)
+                                        tot_mb = total_bytes / (1024 * 1024)
+                                        prog_msg = (
+                                            f"📦 <b>فایل {idx} از {total_count}:</b> <code>{_make_bar(pct)}</code>\n"
+                                            f"📄 <b>{s_name}</b>\n"
+                                            f"🚢 در حال بارگذاری در بله ({cur_mb:.1f} از {tot_mb:.1f} MB | {speed_str})..."
+                                        )
+                                        await _update_status(prog_msg)
+                                except asyncio.CancelledError:
+                                    pass
 
-                        if s_data.get("media_type") == "video":
-                            t_spec = inspect_technical_metadata(final_p)
-                            res = await bale_adapter.send_video(
-                                target_chat, final_p,
-                                caption=caption_clean,
-                                duration=t_spec.get("duration_sec"),
-                                width=t_spec.get("width"),
-                                height=t_spec.get("height"),
-                                progress_callback=_bale_q_progress
-                            )
-                        else:
-                            res = await bale_adapter.send_audio(
-                                target_chat, final_p,
-                                title=t_info.get("title"),
-                                performer=t_info.get("artist"),
-                                caption=caption_clean,
-                                progress_callback=_bale_q_progress
-                            )
+                            poll_task = asyncio.create_task(_poll_batch_progress())
+                            try:
+                                if s_data.get("media_type") == "video":
+                                    t_spec = inspect_technical_metadata(final_p)
+                                    res = await bale_adapter.send_video(
+                                        target_chat, f,
+                                        filename=s_name,
+                                        caption=caption_clean,
+                                        duration=t_spec.get("duration_sec"),
+                                        width=t_spec.get("width"),
+                                        height=t_spec.get("height")
+                                    )
+                                else:
+                                    res = await bale_adapter.send_audio(
+                                        target_chat, f,
+                                        filename=s_name,
+                                        title=t_info.get("title"),
+                                        performer=t_info.get("artist"),
+                                        caption=caption_clean
+                                    )
+                            finally:
+                                poll_task.cancel()
+                                await asyncio.sleep(0.05)
                         if res.get("ok"):
                             success_count += 1
                     elif destination == "rubika" and rubika_adapter:

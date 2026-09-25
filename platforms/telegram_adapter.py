@@ -58,68 +58,103 @@ logger = get_logger("telegram_adapter")
 # سقف سختگیرانه ارسال مستقیم بدون اسپلیت به بله (مگابایت)
 MAX_DIRECT_BALE_MB: float = 48.5
 
-from platforms.bale_adapter import ProgressFileWrapper
-
-async def run_bale_upload_with_progress(
-    tracker: Any,
+async def track_upload_progress(
+    f: Any,
+    total_size: int,
     status_msg: Any,
-    header_text: str,
-    upload_coro: Any
-) -> Dict[str, Any]:
+    header_text: str
+):
     """
-    پایشگر مستقل پس‌زمینه (Decoupled Progress Poller) برای آپلود به بله بدون تداخل با استریم شبکه.
-    
+    پایشگر کاملاً مستقل پس‌زمینه (Decoupled Background Poller) مبتنی بر f.tell().
     کارکرد و هدف:
-    این متد کوروتین آپلود فایل به بله را در پس‌زمینه اجرا کرده و هر ۳.۵ ثانیه بدون هیچ توقف یا
-    هاپینگ ترد در حلقه خواندن بایت‌ها، آمار لحظه‌ای انتقال داده را از شیء ردیاب حافظه‌ای خوانده و
-    پیام وضعیت تلگرام را به‌روزرسانی می‌کند. در صورت بروز هرگونه خطای شبکه در تلگرام، استریم آپلود بله
-    بدون وقفه ادامه می‌یابد.
-
-    ورودی‌ها:
-    - tracker: نمونه کلاس ردیاب ProgressFileWrapper شامل شمارنده بایت‌ها و رشته سرعت.
-    - status_msg: شیء پیام تلگرام جهت ویرایش متن و نمایش درصد پیشرفت و نوار بارگذاری.
-    - header_text: عنوان متنی نمایش داده‌شده در بالای کادر پیشرفت (مثلاً پارت ۱ از ۳).
-    - upload_coro: کوروتین غیرهمگام فراخوانی متد آپلود بله (send_video، send_document یا send_audio).
-
-    خروجی:
-    - دیکشنری نتیجه پاسخ بله (Dict[str, Any]) شامل وضعیت ok و داده‌های پیام یا متن خطای تشخیصی.
+    این متد هر ۳ ثانیه موقعیت پوینتر فایل (f.tell()) را در حافظه استعلام کرده و سرعت و نوار
+    پیشرفت آپلود بله را در پیام تلگرام به‌روزرسانی می‌کند.
+    هیچ تداخلی با جریان بایت‌ها و سوکت سیستم‌عامل نداشته و سرعت آپلود را در حداکثر پهنای باند حفظ می‌کند.
     """
-    upload_task = asyncio.create_task(upload_coro)
+    start_time = time.time()
+    last_time = start_time
+    last_bytes = 0
     last_text = ""
     try:
-        while not upload_task.done():
-            await asyncio.sleep(3.5)
-            if upload_task.done():
+        while True:
+            await asyncio.sleep(3.0)
+            try:
+                if getattr(f, "closed", False):
+                    break
+                current_bytes = f.tell() if hasattr(f, "tell") else getattr(f, "uploaded_bytes", 0)
+            except Exception:
                 break
 
-            curr = getattr(tracker, "uploaded_bytes", 0)
-            tot = getattr(tracker, "total_bytes", 0)
-            if tot > 0 and curr > 0:
-                pct = min(99, max(0, int((curr / tot) * 100)))
-                cur_mb = curr / (1024 * 1024)
-                tot_mb = tot / (1024 * 1024)
-                speed_str = getattr(tracker, "speed_text", "0 KB/s")
+            if total_size > 0 and current_bytes >= total_size:
+                break
 
-                total_blocks = 12
-                filled = min(total_blocks, max(0, int(round(total_blocks * pct / 100))))
-                bar = "█" * filled + "░" * (total_blocks - filled)
+            now = time.time()
+            dt = now - last_time
+            if dt >= 2.5 and total_size > 0:
+                bytes_diff = max(current_bytes - last_bytes, 0)
+                speed_kb = (bytes_diff / 1024) / dt if dt > 0 else 0
+                if speed_kb >= 1024:
+                    speed_str = f"{speed_kb / 1024:.1f} MB/s"
+                else:
+                    speed_str = f"{int(speed_kb)} KB/s"
+                last_bytes = current_bytes
+                last_time = now
 
-                prog_text = (
+                pct = min(max(int((current_bytes / total_size) * 100), 1), 99) if current_bytes < total_size else 99
+                curr_mb = current_bytes / (1024 * 1024)
+                total_mb = total_size / (1024 * 1024)
+                bar_len = 10
+                filled = int(bar_len * (pct / 100))
+                bar = "█" * filled + "░" * (bar_len - filled)
+
+                text = (
                     f"{header_text}\n\n"
-                    f"[{bar}] \u200e{pct}% ({cur_mb:.1f} از {tot_mb:.1f} مگابایت)\n"
+                    f"[{bar}] {pct}% ({curr_mb:.1f} از {total_mb:.1f} مگابایت)\n"
                     f"⚡️ <b>سرعت آپلود:</b> {speed_str} | لطفاً شکیبا باشید"
                 )
-                if prog_text != last_text:
+                if text != last_text:
                     try:
-                        await status_msg.edit_text(prog_text, parse_mode=enums.ParseMode.HTML)
-                        last_text = prog_text
-                    except Exception as e:
-                        logger.debug(f"[bale_poller] Telegram edit suppressed: {e}")
-        return await upload_task
-    except Exception as e:
-        if not upload_task.done():
-            upload_task.cancel()
-        raise e
+                        await status_msg.edit_text(text, parse_mode=enums.ParseMode.HTML)
+                        last_text = text
+                    except Exception:
+                        pass
+    except asyncio.CancelledError:
+        pass
+
+
+async def run_bale_upload_with_progress(
+    file_obj_or_tracker: Any,
+    total_size_or_status: Any,
+    status_msg_or_header: Any,
+    header_text_or_coro: Any,
+    upload_coro: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    اجرای امن کوروتین آپلود بله همراه با پولر مستقل f.tell() بدون مسدودسازی سوکت.
+    سازگار با هر دو نوع امضای فراخوانی (جدید و قدیمی).
+    """
+    if upload_coro is not None:
+        f = file_obj_or_tracker
+        total_size = int(total_size_or_status)
+        status_msg = status_msg_or_header
+        header_text = str(header_text_or_coro)
+        coro = upload_coro
+    else:
+        # سازگاری با امضای قدیمی: (tracker, status_msg, header_text, upload_coro)
+        f = file_obj_or_tracker
+        total_size = getattr(f, "total_bytes", 0) if hasattr(f, "total_bytes") else 0
+        status_msg = total_size_or_status
+        header_text = str(status_msg_or_header)
+        coro = header_text_or_coro
+
+    poller_task = asyncio.create_task(
+        track_upload_progress(f, total_size, status_msg, header_text)
+    )
+    try:
+        return await coro
+    finally:
+        poller_task.cancel()
+        await asyncio.sleep(0.05)
 
 
 async def check_force_join_telegram(client: Client, user_id: int | str) -> bool:
@@ -762,23 +797,25 @@ class TelegramAdapter:
                         part_file = comp_out
                         part_sz_mb = part_file.stat().st_size / (1024 * 1024)
 
-                # گام ۳: ارسال فوری پارت جاری به بله همراه با نوار پیشرفت زنده پولر پس‌زمینه
+                # گام ۳: ارسال فوری پارت جاری به بله همراه با استریم بومی و نوار پیشرفت f.tell()
                 part_tech = inspect_technical_metadata(part_file)
                 caption_part = f"📄 پارت {p_idx} از {total_parts}: <b>{escape(part_file.name)}</b>"
-                tracker = ProgressFileWrapper(part_file)
                 header_text = f"🚢 [پارت {p_idx} از {total_parts}] <b>در حال بارگذاری فایل در بله...</b>"
+                part_size = part_file.stat().st_size
 
-                upload_coro = self.bale_adapter.send_video(
-                    target_chat,
-                    tracker,
-                    caption=caption_part,
-                    duration=part_tech.get("duration_sec"),
-                    width=part_tech.get("width"),
-                    height=part_tech.get("height")
-                )
-                res = await run_bale_upload_with_progress(
-                    tracker, status_msg, header_text, upload_coro
-                )
+                with open(part_file, "rb") as f:
+                    upload_coro = self.bale_adapter.send_video(
+                        target_chat,
+                        f,
+                        filename=part_file.name,
+                        caption=caption_part,
+                        duration=part_tech.get("duration_sec"),
+                        width=part_tech.get("width"),
+                        height=part_tech.get("height")
+                    )
+                    res = await run_bale_upload_with_progress(
+                        f, part_size, status_msg, header_text, upload_coro
+                    )
 
                 if not res.get("ok"):
                     err_msg = res.get("error") or str(res)
@@ -4005,35 +4042,40 @@ class TelegramAdapter:
 
                 try:
                     final_path, send_name, transfer_info = MediaService.prepare_for_transfer(drop_id, "bale", progress_callback=update_cb)
-                    tracker = ProgressFileWrapper(final_path)
+                    p_final = Path(str(final_path))
+                    total_file_size = p_final.stat().st_size
                     header_text = "🚢 <b>در حال بارگذاری فایل در بله...</b>"
 
-                    if drop.get("media_type") == "video":
-                        tech = inspect_technical_metadata(final_path)
-                        upload_coro = self.bale_adapter.send_video(
-                            target_chat,
-                            tracker,
-                            caption=f"📄 <b>{escape(send_name)}</b>",
-                            duration=tech.get("duration_sec"),
-                            width=tech.get("width"),
-                            height=tech.get("height")
-                        )
-                    else:
-                        upload_coro = self.bale_adapter.send_audio(
-                            target_chat,
-                            tracker,
-                            title=transfer_info["title"],
-                            performer=transfer_info["artist"],
-                            caption=f"📄 <b>{escape(send_name)}</b>"
+                    with open(p_final, "rb") as f:
+                        if drop.get("media_type") == "video":
+                            tech = inspect_technical_metadata(p_final)
+                            upload_coro = self.bale_adapter.send_video(
+                                target_chat,
+                                f,
+                                filename=send_name,
+                                caption=f"📄 <b>{escape(send_name)}</b>",
+                                duration=tech.get("duration_sec"),
+                                width=tech.get("width"),
+                                height=tech.get("height")
+                            )
+                        else:
+                            upload_coro = self.bale_adapter.send_audio(
+                                target_chat,
+                                f,
+                                filename=send_name,
+                                title=transfer_info["title"],
+                                performer=transfer_info["artist"],
+                                caption=f"📄 <b>{escape(send_name)}</b>"
+                            )
+
+                        res = await run_bale_upload_with_progress(
+                            f, total_file_size, status_msg, header_text, upload_coro
                         )
 
-                    res = await run_bale_upload_with_progress(
-                        tracker, status_msg, header_text, upload_coro
-                    )
                     if res.get("ok"):
                         await status_msg.edit_text(f"✅ <b>فایل با موفقیت و حفظ کامل متادیتا به بله منتقل شد!</b>\n📄 <code>{escape(send_name)}</code>", parse_mode=enums.ParseMode.HTML)
                     else:
-                        err_info = res.get("error") or str(res)
+                        err_info = res.get("error") or res.get("description") or str(res)
                         await status_msg.edit_text(
                             f"❌ <b>خطا در ارسال به بله:</b> [{escape(str(err_info))}]\n"
                             f"💡 لطفاً دکمه ارسال را مجدداً بزنید.",
