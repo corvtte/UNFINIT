@@ -442,6 +442,14 @@ class TelegramAdapter:
         except Exception as e_me:
             logger.error(f"[TG MTProto] Failed to verify bot identity via get_me(): {e_me}")
 
+        # گام ۴: ثبت قطعی هندلرهای تلگرام با لاگ شفاف و پایش سلامت دیسپچر
+        try:
+            self.register_handlers()
+            total_h = sum(len(h) for h in self.app.dispatcher.groups.values())
+            logger.info(f"[TG MTProto] All {total_h} handlers registered successfully across {len(self.app.dispatcher.groups)} groups!")
+        except Exception as e:
+            logger.exception(f"[TG MTProto FATAL] Failed to register handlers: {e}")
+
     async def stop_client(self):
         """Stops Telegram Client and releases PID lock."""
         try:
@@ -464,6 +472,22 @@ class TelegramAdapter:
             workdir=str(config.DATA_DIR),
             in_memory=use_in_memory
         )
+
+        # همگام‌سازی فوری دیسپچر پایروگرام جهت اطمینان از ثبت قطعی و بی‌درنگ هندلرها
+        from collections import OrderedDict
+        _orig_add_handler = self.app.dispatcher.add_handler
+        def _sync_add_handler(handler, group: int = 0):
+            if group not in self.app.dispatcher.groups:
+                self.app.dispatcher.groups[group] = []
+                self.app.dispatcher.groups = OrderedDict(sorted(self.app.dispatcher.groups.items()))
+            if handler not in self.app.dispatcher.groups[group]:
+                self.app.dispatcher.groups[group].append(handler)
+            try:
+                return _orig_add_handler(handler, group)
+            except Exception:
+                return handler, group
+        self.app.dispatcher.add_handler = _sync_add_handler
+
         self.bot_username: Optional[str] = None
         self.bot_id: Optional[int] = None
         self.bale_adapter = None
@@ -472,6 +496,8 @@ class TelegramAdapter:
         self.admin_chat_id = config.TELEGRAM_OWNER_ID
         self._media_batch_queue: Dict[int, Any] = {}
         self._batch_registry: Dict[str, List[Any]] = {}
+        self._handlers_registered: bool = False
+
 
     def get_admin_id(self) -> int | str:
         return config.TELEGRAM_OWNER_ID or getattr(config, "OWNER_ID", None) or self.admin_chat_id or 0
@@ -813,6 +839,9 @@ class TelegramAdapter:
         return InlineKeyboardMarkup(rows)
 
     def register_handlers(self):
+        if getattr(self, "_handlers_registered", False):
+            return
+        self._handlers_registered = True
         async def run_event_loop():
             from task_store import pop_telegram_events
             while True:
