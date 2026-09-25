@@ -2111,6 +2111,10 @@ def render_dashboard_html() -> str:
                             <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                             <span>به‌روزرسانی صفحه</span>
                         </button>
+                        <button type="button" onclick="createCourseFromCurrentCategory()" id="btnCreateCourseFromCat" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm text-emerald-400 hover:text-emerald-300" title="ایجاد ۱-کلیک دوره آموزشی رایگان شامل جلسات این دسته‌بندی">
+                            <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                            <span>✨ ساخت دوره از این دسته‌بندی</span>
+                        </button>
                     </div>
                 </div>
 
@@ -2839,7 +2843,7 @@ def render_dashboard_html() -> str:
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                 </svg>
                             </span>
-                            <span>تنظیمات پلن اشتراک پریمیوم (VIP Club) و نشانه روزانه</span>
+                            <span>تنظیمات پلن اشتراک پریمیوم و نشانه روزانه</span>
                         </h3>
                         <p class="text-xs text-slate-400 mt-1">مدیریت قیمت اشتراک، درگاه‌ها و شخصی‌سازی متادیتای لید مگنت نشانه امروز من</p>
                     </div>
@@ -2859,11 +2863,11 @@ def render_dashboard_html() -> str:
                             <input type="number" id="cfgVipDurationDays" min="1" max="365" placeholder="۳۰" required class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">شماره کارت اختصاصی VIP</label>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">شماره کارت اختصاصی اشتراک پریمیوم</label>
                             <input type="text" id="cfgVipCardNumber" placeholder="شماره کارت ۱۶ رقمی" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-slate-300 mb-1">توکن درگاه پرداخت بله VIP</label>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">توکن درگاه پرداخت بله اشتراک پریمیوم</label>
                             <input type="password" id="cfgVipBaleToken" placeholder="توکن درگاه بانکی بله" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                     </div>
@@ -3852,8 +3856,8 @@ def render_dashboard_html() -> str:
                         desc: 'پیکربندی هوش چندمدله (VyceAI, Nara, Gemini) و توکن‌های پلتفرم‌ها'
                     }},
                     'frequencies': {{
-                        title: 'باشگاه پریمیوم VIP و مدیریت محتوا',
-                        desc: 'تنظیمات اشتراک ماهانه VIP، شخصی‌سازی نشانه روزانه و کارت‌های فرکانس فراوانی'
+                        title: 'اشتراک پریمیوم و مدیریت محتوا',
+                        desc: 'تنظیمات اشتراک ماهانه پریمیوم، شخصی‌سازی نشانه روزانه و کارت‌های فرکانس فراوانی'
                     }},
                     'settings': {{
                         title: 'تنظیمات سیستمی، دیتابیس و لاگ‌ها',
@@ -4664,7 +4668,7 @@ def render_dashboard_html() -> str:
                             const u = data.user;
                             const isVip = Boolean(u.is_vip || (u.vip_until && new Date(u.vip_until) > new Date()));
                             const expDate = (u.vip_until || '').slice(0, 10);
-                            const vipText = isVip ? ('<span class="text-amber-400 font-bold">💎 اشتراک VIP تا ' + escapeHtml(expDate) + '</span>') : '<span class="text-slate-500">عادی (فاقد اشتراک)</span>';
+                            const vipText = isVip ? ('<span class="text-amber-400 font-bold">💎 اشتراک پریمیوم تا ' + escapeHtml(expDate) + '</span>') : '<span class="text-slate-500">عادی (فاقد اشتراک)</span>';
                             const coursesCount = (u.purchased_courses || []).length;
                             const coursesList = (u.purchased_courses && u.purchased_courses.length) ? u.purchased_courses.map(escapeHtml).join('، ') : 'هنوز دوره‌ای خریداری نشده است.';
                             const avatarLetter = escapeHtml((u.full_name || u.username || 'U')[0].toUpperCase());
@@ -6024,6 +6028,39 @@ def render_dashboard_html() -> str:
             fetchFeedDownloads(false, 1, currentFeedCategory);
         }}
         window.selectFeedCategory = selectFeedCategory;
+
+        async function createCourseFromCurrentCategory() {{
+            const slug = currentFeedCategory || 'free-download';
+            const catName = prompt('عنوان دوره جدید برای این دسته‌بندی را وارد فرمایید:', 'دوره آموزشی ' + (slug || 'هدایای دانلودی'));
+            if (!catName) return;
+            const btn = document.getElementById('btnCreateCourseFromCat');
+            if (btn) {{
+                btn.disabled = true;
+                btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>در حال ساخت دوره...</span>';
+            }}
+            try {{
+                const res = await fetch('/api/courses/create-from-category', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ category_id: slug, course_name: catName }})
+                }});
+                const data = await res.json();
+                if (data.ok) {{
+                    alert('✅ ' + (data.message || 'دوره با موفقیت ساخته شد!'));
+                    switchTab('courses');
+                }} else {{
+                    alert('❌ خطا در ساخت دوره: ' + (data.error || 'ناشناخته'));
+                }}
+            }} catch(err) {{
+                alert('❌ خطای ارتباطی: ' + err.message);
+            }} finally {{
+                if (btn) {{
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg><span>✨ ساخت دوره از این دسته‌بندی</span>';
+                }}
+            }}
+        }}
+        window.createCourseFromCurrentCategory = createCourseFromCurrentCategory;
 
         async function fetchFeedDownloads(force, page, category) {{
             const container = document.getElementById('feedDownloadsContainer');
@@ -8278,7 +8315,9 @@ def render_dashboard_html() -> str:
                 settings['AI_API_KEY'] = settings['GEMINI_API_KEY'];
             }}
             if (typeof getKeyboardCustomizerLayout === 'function') {{
-                settings['CUSTOM_KEYBOARD_LAYOUT'] = getKeyboardCustomizerLayout();
+                const kl = getKeyboardCustomizerLayout();
+                settings['CUSTOM_KEYBOARD_LAYOUT'] = kl;
+                settings['MAIN_KEYBOARD_LAYOUT'] = kl;
             }}
             if (p1) {{
                 settings['NEW_ADMIN_PASSWORD'] = p1;
@@ -8783,10 +8822,9 @@ def render_dashboard_html() -> str:
         // =========================================================================
 
         const DEFAULT_KEYBOARD_LAYOUT = [
+            ["🛍️ دوره‌ها و محصولات"],
             ["✨ نشانه امروز من", "💎 اشتراک پریمیوم"],
-            ["📁 دانلودها (ویژه مشترکین پریمیوم)", "🛍️ دوره‌ها و محصولات"],
-            ["🌊 فرکانس فراوانی", "👤 حساب کاربری"],
-            ["💬 پشتیبانی و تیکت"]
+            ["📁 دانلودها (ویژه مشترکین پریمیوم)", "👤 حساب کاربری"]
         ];
 
         const CANONICAL_KEYBOARD_ACTIONS = [
@@ -9031,7 +9069,8 @@ def render_dashboard_html() -> str:
                     body: JSON.stringify({{
                         password: pwd,
                         settings: {{
-                            CUSTOM_KEYBOARD_LAYOUT: layout
+                            CUSTOM_KEYBOARD_LAYOUT: layout,
+                            MAIN_KEYBOARD_LAYOUT: layout
                         }}
                     }})
                 }});

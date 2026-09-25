@@ -2016,6 +2016,61 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
             return
+        elif path in ("/api/courses/episodes/delete", "/api/courses/delete-episode"):
+            try:
+                product_id = str(payload.get("product_id") or "").strip()
+                part = payload.get("part") if payload.get("part") is not None else payload.get("index")
+
+                if not product_id:
+                    raise ValueError("شناسه دوره الزامی است.")
+                if part is None:
+                    raise ValueError("شماره یا اندیس جلسه الزامی است.")
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(StoreService.delete_course_episode(
+                    product_id=product_id,
+                    episode_part_or_index=int(part)
+                ))
+                loop.close()
+
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"[delete-episode] error: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path in ("/api/courses/create-from-category", "/api/courses/from-category"):
+            try:
+                cat_id = payload.get("category_id") or payload.get("cat_id") or payload.get("slug")
+                course_name = payload.get("course_name") or payload.get("name")
+                if not cat_id:
+                    raise ValueError("شناسه یا اسلاگ دسته‌بندی الزامی است.")
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(StoreService.create_course_from_category(
+                    category_id_or_slug=cat_id,
+                    course_name=course_name
+                ))
+                loop.close()
+
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                logger.error(f"[create-from-category] error: {e}")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
         elif path in ("/api/settings", "/api/settings/save"):
             try:
                 cookie_hdr = self.headers.get("Cookie", "")

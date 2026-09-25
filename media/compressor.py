@@ -162,6 +162,92 @@ class SmartVideoCompressor:
         return video_kbps
 
     @staticmethod
+    def _execute_ffmpeg_progress(
+        cmd: List[str],
+        duration_sec: float,
+        orig_mb: float,
+        target_mb: float,
+        progress_callback: Optional[Callable[[str], None]] = None,
+        timeout_sec: int = 600
+    ) -> None:
+        """
+        اجرای غیرمسدودکننده دستور FFmpeg همراه با استخراج لحظه‌ای زمان و درصد پیشرفت
+        و گزارش واکنشی به پیام‌رسان‌ها با تراتل زمانی هر ۳ ثانیه یک‌بار.
+        """
+        import time
+
+        def _fmt_time(s: float) -> str:
+            m, sec = divmod(int(s), 60)
+            h, m = divmod(m, 60)
+            return f"{h:02d}:{m:02d}:{sec:02d}" if h > 0 else f"{m:02d}:{sec:02d}"
+
+        def _bar(pct: int, length: int = 10) -> str:
+            f = min(length, max(0, int(round(length * pct / 100))))
+            return f"[{'■' * f}{'□' * (length - f)}] {pct}%"
+
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+        except Exception as spawn_err:
+            logger.error(f"Failed to spawn FFmpeg: {spawn_err}")
+            raise RuntimeError(f"خطا در اجرای پردازش FFmpeg: {spawn_err}")
+
+        last_update = time.time()
+        speed = "1.0x"
+        current_sec = 0.0
+
+        if proc.stdout:
+            for line in proc.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                if "=" in line:
+                    k, _, v = line.partition("=")
+                    k, v = k.strip(), v.strip()
+                    if k == "out_time_us":
+                        try:
+                            current_sec = int(v) / 1_000_000.0
+                        except Exception:
+                            pass
+                    elif k == "speed":
+                        speed = v
+                    elif k == "progress" and v == "end":
+                        current_sec = duration_sec
+
+                now = time.time()
+                if progress_callback and (now - last_update >= 3.0) and duration_sec > 0:
+                    last_update = now
+                    pct = min(99, max(1, int((current_sec / duration_sec) * 100)))
+                    msg = (
+                        "⚙️ <b>در حال فشرده‌سازی هوشمند ویدیو...</b>\n"
+                        f"📦 حجم فعلی: <code>{orig_mb:.1f} MB</code> ➔ هدف: <code>زیر {target_mb:.1f} MB</code>\n"
+                        f"📊 پیشرفت: <code>{_bar(pct)}</code>\n"
+                        f"⏱ زمان پردازش: <code>{_fmt_time(current_sec)} / {_fmt_time(duration_sec)}</code>\n"
+                        f"⚡️ سرعت پردازش: <code>{speed}</code>"
+                    )
+                    try:
+                        progress_callback(msg)
+                    except Exception:
+                        pass
+
+        try:
+            _, stderr_data = proc.communicate(timeout=timeout_sec)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            raise TimeoutError("پردازش فشرده‌سازی ویدیوی FFmpeg به دلیل طولانی شدن زمان متوقف شد.")
+
+        if proc.returncode != 0:
+            logger.error(f"FFmpeg process error (code {proc.returncode}): {stderr_data}")
+            raise RuntimeError("خطا در فشرده‌سازی ویدیو با FFmpeg.")
+
+
+    @staticmethod
     def compress_if_needed(
         file_path: str | Path,
         progress_callback: Optional[Callable[[str], None]] = None,
@@ -207,6 +293,8 @@ class SmartVideoCompressor:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         # Ultrafast preset & dynamic scaling to prevent timeouts on HuggingFace CPU
         v_scale = "scale='min(854,iw)':-2" if (target_v_bitrate < 600 or dur > 600) else "scale='min(1280,iw)':-2"
+        orig_mb = initial_size / (1024 * 1024)
+
         cmd = [
             "ffmpeg", "-y", "-i", str(src),
             "-c:v", "libx264",
@@ -218,14 +306,25 @@ class SmartVideoCompressor:
             "-b:a", f"{audio_kbps}k",
             "-vf", v_scale,
             "-movflags", "+faststart",
+            "-progress", "pipe:1",
+            "-nostats",
             str(out_path)
         ]
 
         logger.info(f"Running video smart compression: target_v={target_v_bitrate}k, audio={audio_kbps}k on {src.name} -> {out_path.name}")
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-        if res.returncode != 0 or not out_path.exists():
-            logger.error(f"FFmpeg video compression failed: {res.stderr}")
-            raise RuntimeError("خطا در فشرده‌سازی ویدیو با FFmpeg.")
+        
+        # اجرای غیرمسدودکننده با رصد لحظه‌ای نوار پیشرفت هر ۳ ثانیه
+        SmartVideoCompressor._execute_ffmpeg_progress(
+            cmd=cmd,
+            duration_sec=dur,
+            orig_mb=orig_mb,
+            target_mb=target_mb,
+            progress_callback=progress_callback,
+            timeout_sec=600
+        )
+
+        if not out_path.exists() or out_path.stat().st_size == 0:
+            raise RuntimeError("خطا در فشرده‌سازی ویدیو با FFmpeg: فایل خروجی تولید نشد.")
 
         final_size = out_path.stat().st_size
 
@@ -244,9 +343,18 @@ class SmartVideoCompressor:
                 "-b:a", f"{audio_kbps}k",
                 "-vf", v_adj_scale,
                 "-movflags", "+faststart",
+                "-progress", "pipe:1",
+                "-nostats",
                 str(out_path)
             ]
-            subprocess.run(cmd_adj, capture_output=True, text=True, timeout=600)
+            SmartVideoCompressor._execute_ffmpeg_progress(
+                cmd=cmd_adj,
+                duration_sec=dur,
+                orig_mb=orig_mb,
+                target_mb=target_mb,
+                progress_callback=progress_callback,
+                timeout_sec=600
+            )
             final_size = out_path.stat().st_size
 
         logger.info(

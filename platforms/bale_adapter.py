@@ -68,14 +68,21 @@ class GiftButtonStr(str):
 def get_bale_customer_keyboard() -> dict:
     try:
         from core.database import get_system_setting_sync
-        custom = get_system_setting_sync("CUSTOM_KEYBOARD_LAYOUT", None)
+        custom = get_system_setting_sync("MAIN_KEYBOARD_LAYOUT", None) or get_system_setting_sync("CUSTOM_KEYBOARD_LAYOUT", None)
         if custom and isinstance(custom, list) and len(custom) > 0:
             kb_rows = []
             for row in custom:
                 if isinstance(row, list):
                     r_btns = []
                     for b in row:
-                        b_txt = str(b).strip()
+                        if isinstance(b, dict):
+                            if b.get("active") is False:
+                                continue
+                            t = b.get("title") or b.get("text") or ""
+                            em = b.get("emoji") or ""
+                            b_txt = f"{em} {t}".strip() if em and not t.startswith(em) else t.strip()
+                        else:
+                            b_txt = str(b).strip()
                         if b_txt:
                             r_btns.append({"text": GiftButtonStr(b_txt) if any(x in b_txt for x in ["دانلود", "هدیه"]) else b_txt})
                     if r_btns:
@@ -2418,7 +2425,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         )
                                         buttons = []
                                         for c in page_cats:
-                                            buttons.append([{"text": f"📂 {c['title']}", "callback_data": f"bale:vip_cat:{c['id']}:1"}])
+                                            cat_emoji = c.get("emoji") or "📂"
+                                            buttons.append([{"text": f"{cat_emoji} {c['title']}", "callback_data": f"bale:vip_cat:{c['id']}:1"}])
 
                                         nav_row = []
                                         if page > 1:

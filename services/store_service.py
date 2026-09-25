@@ -265,6 +265,117 @@ class StoreService:
         }
 
     @staticmethod
+    async def delete_course_episode(product_id: str, episode_part_or_index: int) -> Dict[str, Any]:
+        """
+        حذف یک جلسه از سرفصل‌های دوره در پایگاه داده SQLite و دیسک courses.json.
+        """
+        prod = await StoreService.get_product(product_id)
+        if not prod:
+            return {"ok": False, "error": f"دوره با شناسه {product_id} یافت نشد."}
+
+        episodes = list(getattr(prod, "episodes", []) or [])
+        target_idx = -1
+        try:
+            val = int(episode_part_or_index)
+        except Exception:
+            val = -1
+
+        for i, ep in enumerate(episodes):
+            try:
+                p_num = int(ep.get("part", -1))
+            except Exception:
+                p_num = -1
+            if p_num == val or i == val:
+                target_idx = i
+                break
+
+        if target_idx < 0:
+            return {"ok": False, "error": "جلسه مورد نظر در این دوره یافت نشد."}
+
+        removed = episodes.pop(target_idx)
+        # Update SQLite
+        await StoreService.update_product_field(product_id, "episodes", json.dumps(episodes, ensure_ascii=False))
+
+        # Update courses.json
+        try:
+            if config.COURSES_JSON_FILE.exists():
+                with open(config.COURSES_JSON_FILE, "r", encoding="utf-8") as f:
+                    c_list = json.load(f)
+                for c in c_list:
+                    if c.get("product_id") == product_id:
+                        c["episodes"] = episodes
+                        break
+                with open(config.COURSES_JSON_FILE, "w", encoding="utf-8") as f:
+                    json.dump(c_list, f, ensure_ascii=False, indent=2)
+        except Exception as e_json:
+            logger.warning(f"[delete_course_episode] Error updating courses.json: {e_json}")
+
+        await StoreService.backup_products_to_disk()
+        return {
+            "ok": True,
+            "removed_episode": removed,
+            "remaining_episodes": len(episodes),
+            "message": f"جلسه با موفقیت از دوره «{prod.name}» حذف گردید."
+        }
+
+    @staticmethod
+    async def create_course_from_category(category_id_or_slug: Union[str, int], course_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        ساخت خودکار دوره آموزشی ۱-کلیک از جلسات یک دسته‌بندی سایت عباس‌منش.
+        """
+        from services.abasmanesh_crawler import crawler
+        cat_info = crawler.get_category_by_id_or_slug(category_id_or_slug)
+        if not cat_info:
+            return {"ok": False, "error": "دسته‌بندی مورد نظر یافت نشد."}
+
+        c_name = (course_name or f"دوره {cat_info['title']}").strip()
+        cat_data = await crawler.crawl_category(category_id_or_slug, page=1, limit=25)
+        eps = cat_data.get("episodes", [])
+        if not eps:
+            return {"ok": False, "error": "جلسه‌ای در این دسته‌بندی یافت نشد یا سایت در دسترس نیست."}
+
+        formatted_episodes = []
+        for i, ep in enumerate(eps):
+            dl_url = ep.get("direct_download_url") or ep.get("audio_download_url") or ep.get("video_download_url") or ep.get("url")
+            formatted_episodes.append({
+                "part": i + 1,
+                "title": ep.get("title", f"جلسه {i + 1}"),
+                "url": dl_url,
+                "filename": f"{cat_info.get('slug', 'ep')}_{i + 1}.mp3",
+                "cover_url": ep.get("cover_url", "")
+            })
+
+        first_cover = formatted_episodes[0].get("cover_url") if formatted_episodes else ""
+        first_dl = formatted_episodes[0].get("url") if formatted_episodes else cat_info.get("url", "")
+
+        pid = f"cat_{cat_info.get('slug', uuid.uuid4().hex[:6])[:16]}"
+        existing = await StoreService.get_product(pid)
+        if existing:
+            pid = f"{pid}_{uuid.uuid4().hex[:4]}"
+
+        new_prod = await StoreService.create_product(
+            product_id=pid,
+            name=c_name,
+            price=0,
+            description=f"دوره آموزشی برگرفته از دسته‌بندی «{cat_info['title']}» شامل {len(formatted_episodes)} جلسه آموزشی.",
+            photo_url=first_cover,
+            download_link=first_dl,
+            episodes=formatted_episodes,
+            delivery_type="files_package",
+            allow_card=True,
+            allow_bale=True,
+            payment_type="free"
+        )
+
+        return {
+            "ok": True,
+            "product_id": new_prod.product_id,
+            "name": new_prod.name,
+            "episodes_count": len(formatted_episodes),
+            "message": f"دوره «{new_prod.name}» با موفقیت همراه با {len(formatted_episodes)} جلسه ایجاد شد."
+        }
+
+    @staticmethod
     async def create_product(product: Any = None, **kwargs) -> ProductItem:
         if isinstance(product, ProductItem):
             pid = product.product_id or ("prod_" + uuid.uuid4().hex[:6])

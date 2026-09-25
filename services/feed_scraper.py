@@ -38,140 +38,18 @@ BROWSER_HEADERS = {
     "Connection": "keep-alive"
 }
 
+from services.abasmanesh_crawler import (
+    OFFICIAL_17_CATEGORIES,
+    extract_thumbnail_url,
+    build_page_url
+)
+
 BASE_FEED_URL = "https://abasmanesh.com/fa/free-download-list/"
 ARTICLES_BASE_URL = "https://abasmanesh.com/fa/articles/"
 
-# ۱۶ دسته‌بندی رسمی دانلودهای هدیه و مقالات سایت عباس‌منش همراه با ایموجی‌های اختصاصی
-ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = [
-    {
-        "id": 1,
-        "emoji": "🌴",
-        "slug": "the-series-of-focus-on-positive-points",
-        "title": "سریال تمرکز بر نکات مثبت",
-        "url": "https://abasmanesh.com/fa/category/free-download/the-series-of-focus-on-positive-points/",
-        "path": "/fa/category/free-download/the-series-of-focus-on-positive-points/"
-    },
-    {
-        "id": 2,
-        "emoji": "🗽",
-        "slug": "paradise-life-series",
-        "title": "سریال زندگی در بهشت",
-        "url": "https://abasmanesh.com/fa/category/free-download/paradise-life-series/",
-        "path": "/fa/category/free-download/paradise-life-series/"
-    },
-    {
-        "id": 3,
-        "emoji": "🛣️",
-        "slug": "travel-around-the-usa-series",
-        "title": "سریال سفر به دور آمریکا",
-        "url": "https://abasmanesh.com/fa/category/free-download/travel-around-the-usa-series/",
-        "path": "/fa/category/free-download/travel-around-the-usa-series/"
-    },
-    {
-        "id": 4,
-        "emoji": "🎙",
-        "slug": "interview-with-master-abasmanesh",
-        "title": "مصاحبه با استاد عباس‌منش و Liveها",
-        "url": "https://abasmanesh.com/fa/category/free-download/interview-with-master-abasmanesh/",
-        "path": "/fa/category/free-download/interview-with-master-abasmanesh/"
-    },
-    {
-        "id": 5,
-        "emoji": "⚖️",
-        "slug": "unchanging-laws-of-god",
-        "title": "قوانین بدون تغییر خداوند",
-        "url": "https://abasmanesh.com/fa/category/free-download/unchanging-laws-of-god/",
-        "path": "/fa/category/free-download/unchanging-laws-of-god/"
-    },
-    {
-        "id": 6,
-        "emoji": "🕋",
-        "slug": "practicing-monotheism",
-        "title": "اجرای توحید در عمل",
-        "url": "https://abasmanesh.com/fa/category/free-download/practicing-monotheism/",
-        "path": "/fa/category/free-download/practicing-monotheism/"
-    },
-    {
-        "id": 7,
-        "emoji": "🎯",
-        "slug": "distinguishing-essence-from-branches",
-        "title": "توانایی تشخیص اصل از فرع",
-        "url": "https://abasmanesh.com/fa/category/free-download/distinguishing-essence-from-branches/",
-        "path": "/fa/category/free-download/distinguishing-essence-from-branches/"
-    },
-    {
-        "id": 8,
-        "emoji": "⚡️",
-        "slug": "faith-that-leads-to-action",
-        "title": "ایمانی که عمل می‌آورد",
-        "url": "https://abasmanesh.com/fa/category/free-download/faith-that-leads-to-action/",
-        "path": "/fa/category/free-download/faith-that-leads-to-action/"
-    },
-    {
-        "id": 9,
-        "emoji": "🧠",
-        "slug": "ability-to-control-the-mind",
-        "title": "توانایی کنترل ذهن",
-        "url": "https://abasmanesh.com/fa/category/free-download/ability-to-control-the-mind/",
-        "path": "/fa/category/free-download/ability-to-control-the-mind/"
-    },
-    {
-        "id": 10,
-        "emoji": "💰",
-        "slug": "wealth-creating-beliefs",
-        "title": "باورهای ثروت‌ساز",
-        "url": "https://abasmanesh.com/fa/category/free-download/wealth-creating-beliefs/",
-        "path": "/fa/category/free-download/wealth-creating-beliefs/"
-    },
-    {
-        "id": 11,
-        "emoji": "💻",
-        "slug": "be-the-programmer-of-your-life",
-        "title": "برنامه‌نویس زندگی‌ات باش",
-        "url": "https://abasmanesh.com/fa/category/free-download/be-the-programmer-of-your-life/",
-        "path": "/fa/category/free-download/be-the-programmer-of-your-life/"
-    },
-    {
-        "id": 12,
-        "emoji": "🕊",
-        "slug": "being-at-peace-with-ourselves",
-        "title": "در صلح بودن با خودمان",
-        "url": "https://abasmanesh.com/fa/category/free-download/being-at-peace-with-ourselves/",
-        "path": "/fa/category/free-download/being-at-peace-with-ourselves/"
-    },
-    {
-        "id": 13,
-        "emoji": "💎",
-        "slug": "investing-in-yourself",
-        "title": "سرمایه‌گذاری روی خودت",
-        "url": "https://abasmanesh.com/fa/category/free-download/investing-in-yourself/",
-        "path": "/fa/category/free-download/investing-in-yourself/"
-    },
-    {
-        "id": 14,
-        "emoji": "🕯",
-        "slug": "peace-in-light-of-awareness",
-        "title": "آرامش در پرتو آگاهی",
-        "url": "https://abasmanesh.com/fa/category/free-download/peace-in-light-of-awareness/",
-        "path": "/fa/category/free-download/peace-in-light-of-awareness/"
-    },
-    {
-        "id": 15,
-        "emoji": "🪜",
-        "slug": "evolutionary-steps-for-guidance",
-        "title": "قدم‌های تکاملی برای هدایت‌شدن",
-        "url": "https://abasmanesh.com/fa/category/free-download/evolutionary-steps-for-guidance/",
-        "path": "/fa/category/free-download/evolutionary-steps-for-guidance/"
-    },
-    {
-        "id": 16,
-        "emoji": "✨",
-        "slug": "all-articles",
-        "title": "کلیدها و تمام دانلودها",
-        "url": "https://abasmanesh.com/fa/articles/",
-        "path": "/fa/articles/"
-    }
-]
+# ۱۷ دسته‌بندی رسمی و ۱۰۰٪ واقعی استخراج‌شده از ساختار منوی سایت عباس‌منش همراه با ایموجی‌های اختصاصی
+ABASMANESH_PREMIUM_CATEGORIES: List[Dict[str, Any]] = list(OFFICIAL_17_CATEGORIES)
+
 
 # کش حافظه‌ای
 _CACHE: Dict[str, Any] = {
@@ -255,14 +133,20 @@ def save_category_disk_cache(cache_key: str, data: Dict[str, Any]) -> None:
         logger.warning(f"[feed_scraper] Error saving category disk cache: {e}")
 
 def get_custom_categories() -> List[Dict[str, Any]]:
-    """بازیابی دسته‌بندی‌های شخصی‌سازی‌شده توسط ادمین در وب‌پنل."""
+    """بازیابی دسته‌بندی‌های شخصی‌سازی‌شده توسط ادمین در وب‌پنل همراه با خودترمیمی خودکار."""
     try:
         if CUSTOM_CATS_FILE.exists():
             data = json.loads(CUSTOM_CATS_FILE.read_text(encoding="utf-8"))
-            if isinstance(data, list) and len(data) > 0:
-                return data
+            if isinstance(data, list) and len(data) >= 16:
+                # بررسی عدم وجود اسلاگ‌های منسوخ یا موجیباکه
+                has_outdated = any(c.get("slug") in ("unchanging-laws-of-god", "evolutionary-steps-for-guidance", "paradise-life-series") for c in data if isinstance(c, dict))
+                has_mojibake = any("Ø" in c.get("title", "") or "Ù" in c.get("title", "") for c in data if isinstance(c, dict))
+                if not has_outdated and not has_mojibake:
+                    return data
     except Exception as e:
         logger.debug(f"[feed_scraper] Error loading custom categories: {e}")
+    # به‌روزرسانی و همگام‌سازی فایل با ۱۷ دسته‌بندی رسمی و تمیز
+    save_custom_categories(list(ABASMANESH_PREMIUM_CATEGORIES))
     return list(ABASMANESH_PREMIUM_CATEGORIES)
 
 def save_custom_categories(categories: List[Dict[str, Any]]) -> bool:
@@ -455,39 +339,8 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
             if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
                 continue
 
-            # استخراج تصویر شاخص کامل و باکیفیت (اولویت اول با data-src جهت دور زدن لود تنبل و پلیس‌هولدرهای خالی)
-            img = card.find("img")
-            card_cover = ""
-            if img:
-                src = img.get("data-src") or img.get("data-lazy-src") or img.get("data-original") or img.get("src") or ""
-                if not src and img.get("srcset"):
-                    srcset_parts = [p.strip().split(" ")[0] for p in img["srcset"].split(",") if p.strip()]
-                    if srcset_parts:
-                        src = srcset_parts[-1]
-                if src:
-                    if src.startswith("//"):
-                        card_cover = "https:" + src
-                    elif src.startswith("/"):
-                        card_cover = "https://abasmanesh.com" + src
-                    else:
-                        card_cover = src
-
-            if not card_cover:
-                # استخراج تصویر شاخص از استایل background-image المان‌های کارت
-                style_nodes = [card] + card.find_all(attrs={"style": True})
-                for node in style_nodes:
-                    st = node.get("style", "")
-                    bg_match = re.search(r"background(?:-image)?\s*:\s*url\(\s*['\"]?(.*?)['\"]?\s*\)", st, re.IGNORECASE)
-                    if bg_match:
-                        b_src = bg_match.group(1).strip()
-                        if b_src and not b_src.startswith("data:"):
-                            if b_src.startswith("//"):
-                                card_cover = "https:" + b_src
-                            elif b_src.startswith("/"):
-                                card_cover = "https://abasmanesh.com" + b_src
-                            else:
-                                card_cover = b_src
-                            break
+            # استخراج تصویر شاخص با مهار کامل بارگذاری تنبل وردپرس
+            card_cover = extract_thumbnail_url(card)
 
             # استخراج عنوان مقاله
             title = ""
@@ -716,7 +569,7 @@ async def get_latest_free_downloads(
             _CACHE["last_fetched"] = now
             return disk_items[:limit]
 
-    target_url = f"{effective_base}page/{page}/" if page > 1 else effective_base
+    target_url = build_page_url(effective_base, page_number=page)
     timeout = aiohttp.ClientTimeout(total=20)
     try:
         async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
@@ -805,9 +658,7 @@ async def get_category_episodes(
             _CACHE[cache_key] = {"data": disk_data, "last_fetched": now}
             return disk_data
 
-    target_url = cat["url"]
-    if page > 1:
-        target_url = f"{cat['url'].rstrip('/')}/page/{page}/"
+    target_url = build_page_url(cat["url"], page_number=page)
 
     timeout = aiohttp.ClientTimeout(total=20)
     articles_to_fetch = []
