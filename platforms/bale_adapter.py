@@ -435,7 +435,7 @@ class BaleAdapter:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
         url_doc = f"{self.base_url}/sendDocument"
 
-        bale_upload_timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=90)
+        bale_upload_timeout = aiohttp.ClientTimeout(total=600, connect=30, sock_read=300)
         try:
             form = aiohttp.FormData(quote_fields=True)
             form.add_field("chat_id", str(chat_id))
@@ -543,7 +543,7 @@ class BaleAdapter:
 
             file_size_mb = len(file_bytes) / (1024 * 1024)
             url_video = f"{self.base_url}/sendVideo"
-            bale_upload_timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=90)
+            bale_upload_timeout = aiohttp.ClientTimeout(total=600, connect=30, sock_read=300)
 
             form = aiohttp.FormData(quote_fields=True)
             form.add_field("chat_id", str(chat_id))
@@ -889,7 +889,7 @@ class BaleAdapter:
         markup_str = json.dumps(markup) if isinstance(markup, dict) else (str(markup) if markup else None)
 
         url_audio = f"{self.base_url}/sendAudio"
-        bale_upload_timeout = aiohttp.ClientTimeout(total=180, connect=20, sock_read=90)
+        bale_upload_timeout = aiohttp.ClientTimeout(total=600, connect=30, sock_read=300)
 
         try:
             form_audio = aiohttp.FormData(quote_fields=True)

@@ -4006,8 +4006,8 @@ class TelegramAdapter:
                     file_size_mb = (os.path.getsize(actual_path) / (1024 * 1024)) if p_final.exists() else 0.0
 
                     await status_msg.edit_text(
-                        f"🚀 <b>در حال ارسال فایل به بله ({file_size_mb:.1f} مگابایت)...</b>\n"
-                        "⏳ لطفاً حدود ۱ دقیقه شکیبا باشید.",
+                        f"🚀 <b>در حال انتقال پرسرعت فایل به بله ({file_size_mb:.1f} مگابایت)...</b>\n"
+                        "⏳ با توجه به حجم فایل، این فرآیند حدود ۲ دقیقه زمان می‌برد. لطفاً صبور باشید.",
                         parse_mode=enums.ParseMode.HTML
                     )
                     logger.info(f"[TG Callback smeta:send_bale] Direct bytes dispatch to Bale target={target_chat} for '{send_name}' ({file_size_mb:.2f} MB)")
@@ -4054,7 +4054,7 @@ class TelegramAdapter:
                     if res and res.get("ok"):
                         logger.info(f"[TG Callback smeta:send_bale] Dispatch successful to Bale chat_id={target_chat}!")
                         await status_msg.edit_text(
-                            f"✅ <b>فایل با موفقیت به بله ارسال و تحویل داده شد!</b>\n📄 <code>{escape(send_name)}</code>",
+                            f"✅ <b>فایل با موفقیت به بله منتقل شد!</b>\n📁 <b>نام فایل:</b> <code>{escape(send_name)}</code>",
                             parse_mode=enums.ParseMode.HTML
                         )
                     else:
