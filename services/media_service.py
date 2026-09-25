@@ -26,18 +26,33 @@ AUDIO_EXTENSIONS = {".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac", ".wma", ".o
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".m4v", ".ts"}
 
 
+def clean_public_filename(raw_name: str, part_idx: Optional[int] = None, total_parts: Optional[int] = None) -> str:
+    """
+    پاکسازی قطعی نام فایل و حذف هش‌ها و پیشوندهای سیستمی (مانند compressed_، temp_ یا شناسه هش هگز)
+    و قالب‌بندی استاندارد فارسی برای پارت‌ها (مثلاً: نام فایل - پارت ۱ از ۲.mp4).
+    """
+    if not raw_name:
+        return "media_file"
+    import urllib.parse
+    name = urllib.parse.unquote(str(raw_name).strip())
+    # Remove internal tags like 'compressed_', 'lazy_', 'temp_', UUIDs or hex hashes (e.g. 8a4be8db_)
+    name = re.sub(r'^(compressed_|lazy_|temp_|raw_|trimmed_|[a-f0-9]{6,16}_)+', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'(_part\d+of\d+|\.part\d+)', '', name, flags=re.IGNORECASE)
+    p = Path(name)
+    base = p.stem.strip()
+    ext = p.suffix.strip()
+    
+    if part_idx is not None and total_parts is not None and int(total_parts) > 1:
+        return f"{base} - پارت {part_idx} از {total_parts}{ext}"
+    return f"{base}{ext}"
+
+
 def clean_display_filename(filename: str) -> str:
     """
     Strips system prefixes such as drop_id, task_id, or compressed_ from filename
     and unquotes any URL-encoded Persian/Unicode characters.
     """
-    if not filename:
-        return "audio.mp3"
-    import urllib.parse
-    raw = urllib.parse.unquote(str(filename).strip())
-    clean = re.sub(r"^(?:compressed_|raw_|trimmed_|[0-9a-fA-F]{6,12}_)+", "", raw)
-    clean = urllib.parse.unquote(clean).strip()
-    return clean or "audio.mp3"
+    return clean_public_filename(filename)
 
 
 class SequentialBatchQueue:

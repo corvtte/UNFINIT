@@ -30,7 +30,7 @@ from core.formatters import (
 )
 from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService
-from services.media_service import MediaService, clean_display_filename
+from services.media_service import MediaService, clean_display_filename, clean_public_filename
 from services.session_manager import session_manager
 from services.url_service import UrlService
 from services.user_service import UserService, normalize_phone
@@ -569,14 +569,20 @@ class BaleAdapter:
 
         if hasattr(file_path, "read"):
             path_obj = None
-            clean_send_name = clean_display_filename(filename or getattr(file_path, "name", "video.mp4"))
+            clean_send_name = clean_public_filename(filename or getattr(file_path, "name", "video.mp4"))
         else:
             path_obj = Path(str(file_path))
             if not path_obj.exists():
                 return {"ok": False, "error": "Video file not found on disk"}
-            clean_send_name = clean_display_filename(filename or path_obj.name)
+            clean_send_name = clean_public_filename(filename or path_obj.name)
 
-        clean_caption = BaleFormatter.clean_text(urllib.parse.unquote(str(caption))) if caption else None
+        raw_cap = urllib.parse.unquote(str(caption)).strip() if caption else ""
+        if raw_cap and not raw_cap.startswith("🎬"):
+            raw_cap = f"🎬 {raw_cap}"
+        elif not raw_cap:
+            raw_cap = f"🎬 {clean_send_name}"
+        clean_caption = BaleFormatter.clean_text(raw_cap)
+
         url_video = f"{self.base_url}/sendVideo"
         form = aiohttp.FormData(quote_fields=False)
         form.add_field("chat_id", str(chat_id))
@@ -889,14 +895,13 @@ class BaleAdapter:
 
         clean_title = urllib.parse.unquote(str(title)).strip() if title else None
         clean_performer = urllib.parse.unquote(str(performer)).strip() if performer else None
-        clean_caption = BaleFormatter.clean_text(urllib.parse.unquote(str(caption))) if caption else None
 
         markup = kwargs.get("reply_markup") or kwargs.get("markup")
         markup_str = json.dumps(markup) if isinstance(markup, dict) else (str(markup) if markup else None)
 
         if hasattr(actual_path, "read"):
             path_obj = None
-            clean_send_name = clean_display_filename(filename or getattr(actual_path, "name", "audio.mp3"))
+            clean_send_name = clean_public_filename(filename or getattr(actual_path, "name", "audio.mp3"))
         else:
             path_obj = Path(str(actual_path))
             if not path_obj.exists():
@@ -905,7 +910,12 @@ class BaleAdapter:
                 payload = {"chat_id": str(chat_id), "audio": str(actual_path)}
                 if clean_title: payload["title"] = clean_title
                 if clean_performer: payload["performer"] = clean_performer
-                if clean_caption: payload["caption"] = clean_caption
+                raw_cap = urllib.parse.unquote(str(caption)).strip() if caption else ""
+                if raw_cap and not raw_cap.startswith(("🎧", "🎵")):
+                    raw_cap = f"🎧 {raw_cap}"
+                elif not raw_cap:
+                    raw_cap = f"🎧 {clean_title or 'audio'}"
+                payload["caption"] = BaleFormatter.clean_text(raw_cap)
                 if duration: payload["duration"] = int(duration)
                 if markup_str: payload["reply_markup"] = markup_str
                 try:
@@ -914,7 +924,14 @@ class BaleAdapter:
                             return await resp.json()
                 except Exception as e:
                     return {"ok": False, "error": str(e)}
-            clean_send_name = clean_display_filename(filename or path_obj.name)
+            clean_send_name = clean_public_filename(filename or path_obj.name)
+
+        raw_cap = urllib.parse.unquote(str(caption)).strip() if caption else ""
+        if raw_cap and not raw_cap.startswith(("🎧", "🎵")):
+            raw_cap = f"🎧 {raw_cap}"
+        elif not raw_cap:
+            raw_cap = f"🎧 {clean_send_name}"
+        clean_caption = BaleFormatter.clean_text(raw_cap)
 
         url_audio = f"{self.base_url}/sendAudio"
         form = aiohttp.FormData(quote_fields=False)
@@ -926,22 +943,22 @@ class BaleAdapter:
         if markup_str: form.add_field("reply_markup", markup_str)
 
         content_type = "audio/mp4" if (path_obj and path_obj.suffix.lower() == ".m4a") else "audio/mpeg"
-        bale_audio_timeout = aiohttp.ClientTimeout(total=450, connect=30, sock_read=180)
+        bale_audio_timeout = aiohttp.ClientTimeout(total=300, connect=30, sock_read=None)
 
         try:
             if path_obj:
-                with open(path_obj, "rb") as f:
-                    form.add_field("audio", f, filename=clean_send_name, content_type=content_type)
-                    async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session:
-                        async with session.post(url_audio, data=form) as resp:
-                            if resp.status == 200:
-                                res = await resp.json()
-                                if res.get("ok"):
-                                    logger.info(f"Bale sendAudio successful: {res}")
-                                    return res
-                                logger.warning(f"Bale sendAudio returned error: {res}, falling back to sendDocument...")
-                            else:
-                                logger.warning(f"Bale sendAudio HTTP {resp.status}, falling back to sendDocument...")
+                streamer = ThrottledFileStreamer(path_obj, callback=progress_callback, throttle_seconds=3.0)
+                form.add_field("audio", streamer, filename=clean_send_name, content_type=content_type)
+                async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session:
+                    async with session.post(url_audio, data=form) as resp:
+                        if resp.status == 200:
+                            res = await resp.json()
+                            if res.get("ok"):
+                                logger.info(f"Bale sendAudio successful: {res}")
+                                return res
+                            logger.warning(f"Bale sendAudio returned error: {res}, falling back to sendDocument...")
+                        else:
+                            logger.warning(f"Bale sendAudio HTTP {resp.status}, falling back to sendDocument...")
             else:
                 form.add_field("audio", actual_path, filename=clean_send_name, content_type=content_type)
                 async with aiohttp.ClientSession(timeout=bale_audio_timeout) as session:
@@ -958,7 +975,8 @@ class BaleAdapter:
             chat_id=chat_id,
             document=path_obj if path_obj else actual_path,
             caption=clean_caption,
-            filename=clean_send_name
+            filename=clean_send_name,
+            progress_callback=progress_callback
         )
 
     async def download_file(self, file_id: str, destination_path: Path) -> bool:

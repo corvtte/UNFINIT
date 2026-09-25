@@ -43,7 +43,7 @@ from core.formatters import (
 )
 from core.database import get_system_setting, set_system_setting, fix_mojibake, db_get_cached_file_id, db_set_cached_file_id
 from services.store_service import format_course_links_for_card, format_course_photo_for_card, clean_course_access_input, get_tehran_now_str, StoreService, ProductItem
-from services.media_service import MediaService, clean_display_filename
+from services.media_service import MediaService, clean_display_filename, clean_public_filename
 from services.session_manager import session_manager
 from services.url_service import UrlService
 from services.user_service import UserService, normalize_phone
@@ -749,26 +749,26 @@ class TelegramAdapter:
                         part_sz_mb = part_file.stat().st_size / (1024 * 1024)
 
                 # گام ۳: ارسال فوری پارت جاری به بله با استریم مستقیم نیتیو (v0.6.6)
+                orig_fn = drop.get("audio_filename") or part_file.name
+                clean_part_name = clean_public_filename(orig_fn, part_idx=p_idx, total_parts=total_parts)
                 part_tech = inspect_technical_metadata(part_file)
-                caption_part = f"📄 پارت {p_idx} از {total_parts}: <b>{escape(part_file.name)}</b>"
+                caption_part = f"🎬 <b>{escape(clean_part_name)}</b>"
                 status_text = (
                     f"🚀 [پارت {p_idx} از {total_parts}] <b>در حال ارسال پرسرعت فایل به بله...</b>\n\n"
                     "⏳ لطفاً ۱ تا ۲ دقیقه شکیبا باشید (فایل به طور مستقیم و با حداکثر سرعت ارسال می‌شود)"
                 )
                 await _safe_update(status_text)
-                logger.info(f"[TG Split Video] Direct wire-speed dispatch part {p_idx}/{total_parts} to Bale target={target_chat}: '{part_file.name}' ({part_sz_mb:.2f} MB)")
+                logger.info(f"[TG Split Video] Direct wire-speed dispatch part {p_idx}/{total_parts} to Bale target={target_chat}: '{clean_part_name}' ({part_sz_mb:.2f} MB)")
 
                 res = await self.bale_adapter.send_video(
                     target_chat,
                     part_file,
-                    filename=part_file.name,
+                    filename=clean_part_name,
                     caption=caption_part,
                     duration=part_tech.get("duration_sec"),
                     width=part_tech.get("width"),
                     height=part_tech.get("height")
                 )
-
-
 
                 if not res.get("ok"):
                     err_msg = res.get("error") or str(res)
@@ -777,7 +777,8 @@ class TelegramAdapter:
                 if p_idx < total_parts:
                     await _safe_update(f"✅ پارت {p_idx} از {total_parts} با موفقیت به بله تحویل شد!\n⚡️ بلافاصله در حال آماده‌سازی و ارسال پارت {p_idx + 1}...")
                 else:
-                    await _safe_update(f"✅ <b>تمام {total_parts} پارت ویدیو با موفقیت به بله ارسال شدند!</b>\n📄 <code>{escape(drop.get('audio_filename', 'video.mp4'))}</code>")
+                    clean_total_name = clean_public_filename(drop.get('audio_filename', 'video.mp4'))
+                    await _safe_update(f"✅ <b>تمام {total_parts} پارت ویدیو با موفقیت به بله ارسال شدند!</b>\n🎬 <code>{escape(clean_total_name)}</code>")
 
                 await asyncio.sleep(1.0)
 
@@ -4039,31 +4040,48 @@ class TelegramAdapter:
                             except Exception:
                                 pass
 
+                    clean_send_name = clean_public_filename(send_name or p_final.name)
                     is_video = (drop.get("media_type") == "video") or p_final.suffix.lower() in (".mp4", ".mkv", ".mov", ".avi")
+                    is_audio = (drop.get("media_type") == "audio") or p_final.suffix.lower() in (".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac", ".wma", ".opus")
+
                     if is_video:
                         tech = inspect_technical_metadata(p_final)
                         logger.info(f"[TG Callback smeta:send_bale] Native video dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
                         res = await self.bale_adapter.send_video(
                             chat_id=target_chat_id,
                             file_path=p_final,
-                            filename=send_name,
-                            caption=f"🎬 <b>{escape(send_name)}</b>",
+                            filename=clean_send_name,
+                            caption=f"🎬 <b>{escape(clean_send_name)}</b>",
                             duration=tech.get("duration_sec"),
                             width=tech.get("width"),
                             height=tech.get("height"),
                             progress_callback=telegram_progress
                         )
-                        success_text = "🎬 <b>ویدیوی تصویری با موفقیت به بله منتقل شد و آماده پخش است!</b>"
+                        success_text = f"🎬 <b>ویدیوی تصویری با موفقیت به بله منتقل شد و آماده پخش است!</b>\n📁 <b>نام فایل:</b> <code>{escape(clean_send_name)}</code>"
+                    elif is_audio:
+                        tech = inspect_technical_metadata(p_final)
+                        logger.info(f"[TG Callback smeta:send_bale] Native audio dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
+                        res = await self.bale_adapter.send_audio(
+                            chat_id=target_chat_id,
+                            file_path=p_final,
+                            filename=clean_send_name,
+                            caption=f"🎧 <b>{escape(clean_send_name)}</b>",
+                            title=clean_send_name,
+                            performer=drop.get("performer") or "UNFINIT",
+                            duration=tech.get("duration_sec"),
+                            progress_callback=telegram_progress
+                        )
+                        success_text = f"🎧 <b>فایل صوتی با موفقیت در قالب موزیک‌پلیر به بله منتقل شد!</b>\n🎵 <b>نام فایل:</b> <code>{escape(clean_send_name)}</code>"
                     else:
                         logger.info(f"[TG Callback smeta:send_bale] Fast-path document dispatch to Bale target={target_chat_id} for '{p_final}' ({file_size_mb:.2f} MB)")
                         res = await self.bale_adapter.send_document(
                             chat_id=target_chat_id,
                             document=p_final,
-                            filename=send_name,
-                            caption=f"📄 <b>{escape(send_name)}</b>",
+                            filename=clean_send_name,
+                            caption=f"📄 <b>{escape(clean_send_name)}</b>",
                             progress_callback=telegram_progress
                         )
-                        success_text = f"✅ <b>فایل با موفقیت به بله منتقل شد!</b>\n📁 <b>نام فایل:</b> <code>{escape(send_name)}</code>"
+                        success_text = f"✅ <b>فایل با موفقیت به بله منتقل شد!</b>\n📄 <b>نام فایل:</b> <code>{escape(clean_send_name)}</code>"
 
                     if res and res.get("ok"):
                         logger.info(f"[TG Callback smeta:send_bale] Dispatch successful to Bale chat_id={target_chat_id}!")

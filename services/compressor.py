@@ -25,6 +25,32 @@ logger = get_logger("compressor")
 SAFE_BALE_PART_LIMIT_MB: float = 45.0
 
 
+def format_compression_progress(
+    part_idx: Optional[int] = None,
+    total_parts: Optional[int] = None,
+    percent: float = 0.0,
+    speed: float | str = "1.0x",
+    eta_str: str = "00:00",
+    orig_mb: float = 0.0,
+    est_mb: float = 0.0
+) -> str:
+    """
+    قالب‌بندی استاندارد و زیبای پیشرفت فشرده‌سازی هوشمند ویدیو در تلگرام.
+    """
+    bar_length = 10
+    pct = min(100.0, max(0.0, float(percent)))
+    filled = int(bar_length * pct // 100)
+    bar = "█" * filled + "░" * (bar_length - filled)
+    spd_str = f"{float(speed):.1f}x" if (isinstance(speed, (int, float)) or (isinstance(speed, str) and speed.replace('.', '', 1).isdigit())) else str(speed)
+    p_str = f" (بخش {part_idx} از {total_parts})" if (part_idx and total_parts and int(total_parts) > 1) else ""
+    return (
+        f"⚙️ <b>فشرده‌سازی هوشمند ویدیو{p_str}</b>\n\n"
+        f"<code>[{bar}] {pct:.1f}%</code>\n\n"
+        f"⏱ <b>باقیمانده:</b> <code>{eta_str}</code> | ⚡️ <b>سرعت:</b> <code>{spd_str}</code>\n"
+        f"📦 <b>حجم:</b> <code>{orig_mb:.1f} MB</code> ➔ 🎯 <b>تخمین:</b> <code>{est_mb:.1f} MB</code>"
+    )
+
+
 def _format_video_progress_msg(
     pct: int,
     speed: str,
@@ -34,23 +60,27 @@ def _format_video_progress_msg(
     part_info: Optional[str] = None
 ) -> str:
     """
-    فرمت‌بندی پیام گزارش زنده فشرده‌سازی هوشمند ویدیو با نوار پیشرفت بلاکی، سرعت و زمان باقی‌مانده.
-    استفاده از کاراکتر ایزولاسیون LTR جهت ثبات چیدمان درصد و زمان.
+    فرمت‌بندی پیام گزارش زنده فشرده‌سازی هوشمند ویدیو با نوار پیشرفت استاندارد.
     """
-    total_blocks = 12
-    filled = min(total_blocks, max(0, int(round(total_blocks * pct / 100))))
-    bar = f"[{'█' * filled}{'▒' * (total_blocks - filled)}] \u200e{pct}%"
-
+    import re
     m, s = divmod(int(max(0, remaining_sec)), 60)
     h, m = divmod(m, 60)
-    time_rem_str = f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+    eta_str = f"{h:02d}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
 
-    header = f"⚙️ [{part_info}] در حال فشرده‌سازی هوشمند ویدیو..." if part_info else "⚙️ <b>در حال فشرده‌سازی هوشمند ویدیو...</b>"
+    p_idx, total_p = None, None
+    if part_info:
+        m_parts = re.search(r'(\d+)\s*(?:از|of|/)\s*(\d+)', str(part_info))
+        if m_parts:
+            p_idx, total_p = int(m_parts.group(1)), int(m_parts.group(2))
 
-    return (
-        f"{header}\n"
-        f"{bar} (سرعت: {speed} | باقیمانده: {time_rem_str})\n"
-        f"📊 حجم اولیه: {orig_mb:.1f} MB ➔ برآورد نهایی: ~{target_mb:.0f} MB"
+    return format_compression_progress(
+        part_idx=p_idx,
+        total_parts=total_p,
+        percent=float(pct),
+        speed=speed,
+        eta_str=eta_str,
+        orig_mb=orig_mb,
+        est_mb=target_mb
     )
 
 
@@ -487,12 +517,13 @@ class SmartVideoCompressor:
         cmd = [
             "ffmpeg", "-y", "-i", str(src),
             "-c:v", "libx264",
+            "-preset", "faster",
+            "-crf", "23",
+            "-threads", "0",
             "-b:v", f"{target_v_bitrate}k",
             "-maxrate", f"{int(target_v_bitrate * 1.15)}k",
             "-bufsize", f"{int(target_v_bitrate * 2)}k",
-            "-preset", "ultrafast",
-            "-c:a", "aac",
-            "-b:a", f"{audio_kbps}k",
+            "-c:a", "copy",
             "-vf", v_scale,
             "-movflags", "+faststart",
             "-progress", "pipe:1",
@@ -523,12 +554,13 @@ class SmartVideoCompressor:
             cmd_adj = [
                 "ffmpeg", "-y", "-i", str(src),
                 "-c:v", "libx264",
+                "-preset", "faster",
+                "-crf", "23",
+                "-threads", "0",
                 "-b:v", f"{adj_v}k",
                 "-maxrate", f"{int(adj_v * 1.15)}k",
                 "-bufsize", f"{int(adj_v * 2)}k",
-                "-preset", "ultrafast",
-                "-c:a", "aac",
-                "-b:a", f"{audio_kbps}k",
+                "-c:a", "copy",
                 "-vf", v_adj_scale,
                 "-movflags", "+faststart",
                 "-progress", "pipe:1",
@@ -718,9 +750,11 @@ class SmartVideoSplitter:
                 "-t", f"{part_duration:.2f}",
                 "-i", str(src),
                 "-c:v", "libx264",
-                "-preset", "ultrafast",
-                "-c:a", "aac",
-                "-b:a", "96k",
+                "-preset", "faster",
+                "-crf", "23",
+                "-threads", "0",
+                "-c:a", "copy",
+                "-movflags", "+faststart",
                 str(out_p)
             ]
             proc_enc = await asyncio.create_subprocess_exec(
