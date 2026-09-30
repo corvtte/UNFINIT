@@ -16,3 +16,7 @@ Antigravity must conclude every execution report with a structured Markdown Summ
 
 ### 5.28. Modern Non-CMS Scraper Architecture & Session Cookie Injection
 Target sites must not be assumed to run standard CMS frameworks (e.g. WordPress). Crawlers must prioritize direct session cookie injection (FEED_AUTH_COOKIE) to bypass dynamic SPA/Alpine.js authentication friction. Raw HTTP diagnostics must be logged on failure.
+
+
+### 6.0. Modular Architecture & Separation of Concerns Roadmap
+Monolithic 7000+ line Python templates embedding raw JavaScript strings represent a legacy anti-pattern. Going forward, complex UI components and client-side logic must be isolated into dedicated standalone files to guarantee syntax highlighting, native linter support, and prevent global dashboard regressions.

@@ -382,6 +382,7 @@ def render_dashboard_html() -> str:
 
     from services.feed_scraper import get_all_categories
     all_cats = get_all_categories()
+    cfg = settings
     premium_categories_html = ""
     for cat in all_cats:
         cid = cat.get("id", 1)
@@ -2840,7 +2841,7 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <div class="mt-4">
                                     <label class="block text-xs font-bold text-slate-400 mb-1">سشن کوکی مرورگر (FEED_AUTH_COOKIE) - اولویت اول ورود قطعی</label>
-                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-[11px] font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600 transition" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{settings.get('FEED_AUTH_COOKIE', '')}</textarea>
+                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-[11px] font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600 transition" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{cfg.get('FEED_AUTH_COOKIE', '')}</textarea>
                                     <p class="mt-1 text-[10px] text-slate-500">سشن کوکی لاگین‌شده از مرورگر خود را کپی کنید تا بدون نیاز به فرم لاگین، به سادگی و ۱۰۰٪ قطعی وارد شوید.</p>
                                 </div>
                             </div>
@@ -3853,7 +3854,7 @@ def render_dashboard_html() -> str:
                     if (m) m.classList.add('hidden');
                 }};
 
-                                window.saveQuickFeedAuth = async function(btn) {{
+                                                window.saveQuickFeedAuth = async function(btn) {{
                     const orig = btn.innerHTML;
                     btn.innerHTML = 'در حال بررسی...';
                     btn.disabled = true;
@@ -3877,10 +3878,9 @@ def render_dashboard_html() -> str:
                         
                         const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
                         const data = await res.json();
+                        
                         if (data.success) {{
-                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد
-
-' + data.message);
+                            alert('✅ ' + (data.message || 'ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد.'));
                             window.closeFeedAuthModal();
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
@@ -3891,19 +3891,16 @@ def render_dashboard_html() -> str:
                             if (resDiv) {{
                                 resDiv.classList.remove('hidden');
                                 resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300';
-                                resDiv.innerHTML = '<strong>❌ خروج خام خطا:</strong>
-' + data.message;
+                                resDiv.innerHTML = '<strong>❌ خطا:</strong><br>' + (data.message || 'پاسخی دریافت نشد');
                             }} else {{
-                                alert('❌ خطا:
-' + data.message);
+                                alert('❌ خطا: ' + (data.message || 'پاسخی دریافت نشد'));
                             }}
                         }}
                     }} catch (e) {{
                         if (resDiv) {{
                             resDiv.classList.remove('hidden');
                             resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300';
-                            resDiv.innerText = '❌ خطای شبکه:
-' + e.message;
+                            resDiv.innerHTML = '<strong>❌ خطای شبکه:</strong><br>' + e.message;
                         }} else {{
                             alert('❌ خطای شبکه: ' + e.message);
                         }}
@@ -3913,25 +3910,23 @@ def render_dashboard_html() -> str:
                     }}
                 }};
 
-                                window.testCrawlerConnection = async function(btn) {{
+                                                window.testCrawlerConnection = async function(btn) {{
                     const origHtml = btn.innerHTML;
                     btn.disabled = true;
                     btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
                     try {{
                         const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
                         const data = await res.json();
+                        var msg = (data.success ? '✅ ' : '❌ ') + (data.message || 'پاسخی دریافت نشد');
                         if (data.success) {{
-                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد
-
-' + data.message);
+                            alert(msg);
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
                                 b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm';
                                 b.innerText = 'نشست فعال (ONLINE)';
                             }}
                         }} else {{
-                            alert('❌ خطا:
-' + data.message);
+                            alert(msg);
                         }}
                     }} catch (e) {{
                         alert('❌ خطای شبکه: ' + e.message);
