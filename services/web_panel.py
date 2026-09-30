@@ -2127,8 +2127,8 @@ def render_dashboard_html() -> str:
                     <div>
                         <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
                             <span>🎁</span> دانلودها (ویژه مشترکین پریمیوم)
-                            <span class="text-[10px] px-2 py-0.5 rounded-full {health['platforms']['abasmanesh']['badge']} text-white">
-                                { "Active / Authenticated" if health['platforms']['abasmanesh']['status'] == "ONLINE" else "Missing Credentials" }
+                            <span id="crawlerStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full {health['platforms']['abasmanesh']['badge']} text-white">
+                                { "نشست فعال (ONLINE)" if health['platforms']['abasmanesh']['status'] == "ONLINE" else "Missing Credentials" }
                             </span>
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">
@@ -2822,19 +2822,19 @@ def render_dashboard_html() -> str:
                                     <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                                     </svg>
-                                    تنظیمات خزشگر عباس‌منش (Crawler Auth)
+                                    تنظیمات خزشگر منبع رسانه (CRAWLER AUTH)
                                 </h4>
                                 <svg class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">ایمیل اکانت (FEED_AUTH_EMAIL)</label>
-                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none focus:border-orange-500" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (FEED_AUTH_PASSWORD)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none focus:border-orange-500" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_FEED_AUTH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
@@ -3822,6 +3822,88 @@ def render_dashboard_html() -> str:
                     }}
                 }}
                 window.togglePasswordVisibility = togglePasswordVisibility;
+
+                window.openFeedAuthModal = function() {{
+                    const m = document.getElementById('feedAuthModal');
+                    if (m) {{
+                        const em = document.getElementById('quick_FEED_AUTH_EMAIL');
+                        const pw = document.getElementById('quick_FEED_AUTH_PASSWORD');
+                        const ce = document.getElementById('cfg_FEED_AUTH_EMAIL');
+                        const cp = document.getElementById('cfg_FEED_AUTH_PASSWORD');
+                        if (em && ce) em.value = ce.value || '';
+                        if (pw && cp) pw.value = cp.value || '';
+                        m.classList.remove('hidden');
+                    }}
+                }};
+
+                window.closeFeedAuthModal = function() {{
+                    const m = document.getElementById('feedAuthModal');
+                    if (m) m.classList.add('hidden');
+                }};
+
+                window.saveQuickFeedAuth = async function(btn) {{
+                    const orig = btn.innerHTML;
+                    btn.innerHTML = 'در حال بررسی...';
+                    btn.disabled = true;
+                    try {{
+                        const email = document.getElementById('quick_FEED_AUTH_EMAIL').value;
+                        const pass = document.getElementById('quick_FEED_AUTH_PASSWORD').value;
+                        const cfgE = document.getElementById('cfg_FEED_AUTH_EMAIL');
+                        const cfgP = document.getElementById('cfg_FEED_AUTH_PASSWORD');
+                        if (cfgE) cfgE.value = email;
+                        if (cfgP) cfgP.value = pass;
+                        
+                        const btnSave = document.getElementById('btnSaveSettings');
+                        if (btnSave && window.handleSaveSettings) {{
+                            await window.handleSaveSettings();
+                        }}
+                        
+                        const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
+                        const data = await res.json();
+                        if (data.success) {{
+                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد');
+                            window.closeFeedAuthModal();
+                            const b = document.getElementById('crawlerStatusBadge');
+                            if (b) {{
+                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-orange-500 text-white';
+                                b.innerText = 'نشست فعال (ONLINE)';
+                            }}
+                        }} else {{
+                            alert('❌ خطا: نام کاربری یا رمز عبور نامعتبر است');
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطای شبکه');
+                    }} finally {{
+                        btn.innerHTML = orig;
+                        btn.disabled = false;
+                    }}
+                }};
+
+                window.testCrawlerConnection = async function(btn) {{
+                    const origHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
+                    try {{
+                        const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
+                        const data = await res.json();
+                        if (data.success) {{
+                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد');
+                            const b = document.getElementById('crawlerStatusBadge');
+                            if (b) {{
+                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-orange-500 text-white';
+                                b.innerText = 'نشست فعال (ONLINE)';
+                            }}
+                        }} else {{
+                            alert('❌ خطا: نام کاربری یا رمز عبور نامعتبر است');
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطای شبکه: ' + e.message);
+                    }} finally {{
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml;
+                    }}
+                }};
+
 
                 async function handleLoginSubmit() {{
                     const btn = document.getElementById('loginBtn');
@@ -6976,21 +7058,15 @@ def render_dashboard_html() -> str:
                 window.fetchFeedDownloads = fetchFeedDownloads;
                 window.changeFeedPage = changeFeedPage;
                 
-        window.openFeedAuthModal = function() {{
-            const m = document.getElementById('feedAuthModal');
-            if (m) {{
+                    if (m) {{
                 document.getElementById('quick_FEED_AUTH_EMAIL').value = document.getElementById('cfg_FEED_AUTH_EMAIL')?.value || '';
                 document.getElementById('quick_FEED_AUTH_PASSWORD').value = document.getElementById('cfg_FEED_AUTH_PASSWORD')?.value || '';
                 m.classList.remove('hidden');
             }}
         }};
-        window.closeFeedAuthModal = function() {{
-            const m = document.getElementById('feedAuthModal');
-            if (m) m.classList.add('hidden');
+                    if (m) m.classList.add('hidden');
         }};
-        window.saveQuickFeedAuth = async function(btn) {{
-            const orig = btn.innerHTML;
-            btn.innerHTML = 'در حال بررسی...';
+                    btn.innerHTML = 'در حال بررسی...';
             btn.disabled = true;
             try {{
                 const email = document.getElementById('quick_FEED_AUTH_EMAIL').value;
