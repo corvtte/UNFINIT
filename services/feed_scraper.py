@@ -38,7 +38,7 @@ BROWSER_HEADERS = {
     "Connection": "keep-alive"
 }
 
-from services.abasmanesh_crawler import (
+from services.feed_crawler import (
     OFFICIAL_17_CATEGORIES,
     extract_thumbnail_url,
     build_page_url

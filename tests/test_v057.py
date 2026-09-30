@@ -20,11 +20,11 @@ except RuntimeError:
     asyncio.set_event_loop(_loop)
 
 from core.config import config
-from services.abasmanesh_crawler import (
+from services.feed_crawler import (
     OFFICIAL_17_CATEGORIES,
     extract_thumbnail_url,
     build_page_url,
-    AbasmaneshCrawler
+    FeedCrawler
 )
 from services.feed_scraper import feed_scraper, ABASMANESH_PREMIUM_CATEGORIES, get_all_categories
 from media.compressor import SmartVideoCompressor
@@ -85,7 +85,7 @@ class Test17Categories(unittest.TestCase):
             self.assertTrue(bool(c.get("title")), f"دسته {c.get('slug')} فاقد عنوان است.")
 
     def test_crawler_lookup(self):
-        cat = AbasmaneshCrawler.get_category_by_id_or_slug("indisputable-law-of-the-universe")
+        cat = FeedCrawler.get_category_by_id_or_slug("indisputable-law-of-the-universe")
         self.assertIsNotNone(cat)
         self.assertEqual(cat["title"], "قوانین بدون تغییر خداوند")
 

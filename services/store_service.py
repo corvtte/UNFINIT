@@ -323,7 +323,7 @@ class StoreService:
         """
         ساخت خودکار دوره آموزشی ۱-کلیک از جلسات یک دسته‌بندی سایت عباس‌منش.
         """
-        from services.abasmanesh_crawler import crawler
+        from services.feed_crawler import crawler
         cat_info = crawler.get_category_by_id_or_slug(category_id_or_slug)
         if not cat_info:
             return {"ok": False, "error": "دسته‌بندی مورد نظر یافت نشد."}
