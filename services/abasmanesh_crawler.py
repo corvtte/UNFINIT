@@ -11,6 +11,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import aiohttp
+import os
+import random
+from core.database import get_system_setting
 
 try:
     from bs4 import BeautifulSoup
@@ -258,7 +261,120 @@ def build_page_url(base_url: str, page_number: int = 1) -> str:
     return f"{clean_base.rstrip('/')}/?page={page_number}"
 
 
+
+SESSION_FILE = "data/abasmanesh_session.json"
+
+class AbasmaneshAuthManager:
+    _session = None
+    _semaphore = asyncio.Semaphore(1)
+
+    @classmethod
+    def get_semaphore(cls):
+        return cls._semaphore
+
+    @classmethod
+    async def get_session(cls) -> aiohttp.ClientSession:
+        if cls._session is None or cls._session.closed:
+            jar = aiohttp.CookieJar(unsafe=True)
+            if os.path.exists(SESSION_FILE):
+                try:
+                    jar.load(SESSION_FILE)
+                except Exception as e:
+                    logger.error(f"[AbasmaneshAuthManager] Error loading cookies: {e}")
+            cls._session = aiohttp.ClientSession(headers=BROWSER_HEADERS, cookie_jar=jar)
+        return cls._session
+
+    @classmethod
+    async def save_session(cls):
+        if cls._session and cls._session.cookie_jar:
+            try:
+                os.makedirs("data", exist_ok=True)
+                cls._session.cookie_jar.save(SESSION_FILE)
+            except Exception as e:
+                logger.error(f"[AbasmaneshAuthManager] Error saving cookies: {e}")
+
+    @classmethod
+    async def login_if_needed(cls) -> bool:
+        email = await get_system_setting("ABASMANESH_EMAIL", "")
+        password = await get_system_setting("ABASMANESH_PASSWORD", "")
+        if not email or not password:
+            logger.warning("[AbasmaneshAuthManager] Missing ABASMANESH_EMAIL or ABASMANESH_PASSWORD")
+            return False
+
+        session = await cls.get_session()
+        
+        try:
+            async with session.get("https://abasmanesh.com/fa/login/", timeout=15) as resp:
+                html = await resp.text()
+                if BeautifulSoup:
+                    soup = BeautifulSoup(html, "html.parser")
+                    nonce_field = soup.find("input", {"name": "woocommerce-login-nonce"})
+                    nonce = nonce_field["value"] if nonce_field else ""
+                else:
+                    m = re.search(r'name="woocommerce-login-nonce"\s+value="([^"]+)"', html)
+                    nonce = m.group(1) if m else ""
+                
+                if "woocommerce-MyAccount-navigation" in html or "خروج" in html:
+                    logger.info("[AbasmaneshAuthManager] Already logged in.")
+                    return True
+                
+                payload = {
+                    "username": email,
+                    "password": password,
+                    "woocommerce-login-nonce": nonce,
+                    "_wp_http_referer": "/fa/login/",
+                    "login": "ورود"
+                }
+                async with session.post("https://abasmanesh.com/fa/login/", data=payload, timeout=15) as post_resp:
+                    post_html = await post_resp.text()
+                    if "woocommerce-MyAccount-navigation" in post_html or "خروج" in post_html:
+                        logger.info("[AbasmaneshAuthManager] Login successful!")
+                        await cls.save_session()
+                        return True
+                    else:
+                        logger.error("[AbasmaneshAuthManager] Login failed. Check credentials.")
+                        return False
+        except Exception as e:
+            logger.error(f"[AbasmaneshAuthManager] Login exception: {e}")
+            return False
+
+    @classmethod
+    async def invalidate_session(cls):
+        if cls._session and not cls._session.closed:
+            await cls._session.close()
+        cls._session = None
+        if os.path.exists(SESSION_FILE):
+            try:
+                os.remove(SESSION_FILE)
+            except:
+                pass
+
+    @classmethod
+    async def fetch_html_with_auth(cls, url: str, timeout=15) -> tuple[int, str]:
+        async with cls.get_semaphore():
+            await asyncio.sleep(random.uniform(1.5, 3.5))
+            session = await cls.get_session()
+            async with session.get(url, timeout=timeout) as resp:
+                status = resp.status
+                html = await resp.text()
+            
+            if "برای مشاهده این محتوا باید وارد شوید" in html or "login" in str(resp.url):
+                logger.warning(f"[AbasmaneshAuthManager] Auth wall detected at {url}. Auto-healing...")
+                await cls.invalidate_session()
+                logged_in = await cls.login_if_needed()
+                if logged_in:
+                    await asyncio.sleep(random.uniform(1.5, 3.5))
+                    session = await cls.get_session()
+                    async with session.get(url, timeout=timeout) as resp2:
+                        status = resp2.status
+                        html = await resp2.text()
+                else:
+                    return 401, html
+            
+            return status, html
+
 class AbasmaneshCrawler:
+
     """
     کلاس مدیریت خزش، دریافت مقالات و استخراج رسانه‌های آموزشی از سایت عباس‌منش.
     """
@@ -308,9 +424,8 @@ class AbasmaneshCrawler:
         lesson_text = ""
 
         try:
-            async with session.get(clean_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                if resp.status == 200:
-                    html = await resp.text()
+            status, html = await AbasmaneshAuthManager.fetch_html_with_auth(clean_url, timeout=15)
+            if status == 200:
                     if BeautifulSoup:
                         soup = BeautifulSoup(html, "html.parser")
                         og_img = soup.find("meta", property="og:image")
@@ -392,34 +507,35 @@ class AbasmaneshCrawler:
         cat = cls.get_category_by_id_or_slug(cat_id_or_slug) or cls.CATEGORIES[0]
         target_url = build_page_url(cat["url"], page_number=page)
 
-        timeout = aiohttp.ClientTimeout(total=20)
+        timeout = 20
         articles_to_fetch = []
         try:
-            async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
-                async with session.get(target_url) as resp:
-                    if resp.status == 200:
-                        html = await resp.text()
-                        if BeautifulSoup:
-                            soup = BeautifulSoup(html, "html.parser")
-                            cards = soup.select("div.article-grid div.card, div.card.card--media, .card")
-                            for card in cards:
-                                a_link = card.find("a", class_="card__media-link") or card.find("a", href=lambda h: h and "/fa/" in h and not any(x in h for x in ["category", "cart", "account", "login"]))
-                                if not a_link or not a_link.get("href"):
-                                    continue
-                                href = a_link["href"].strip()
-                                full_href = (BASE_SITE_URL + href) if href.startswith("/") else href
-                                card_cover = extract_thumbnail_url(card)
-                                title = ""
-                                body = card.find("div", class_="card__body")
-                                if body:
-                                    t_a = body.find("a")
-                                    if t_a:
-                                        title = t_a.get_text(strip=True)
-                                if not title:
-                                    title = a_link.get_text(strip=True)
-                                articles_to_fetch.append((full_href, title, card_cover, cat.get("title", "")))
-                                if len(articles_to_fetch) >= limit:
-                                    break
+            status, html = await AbasmaneshAuthManager.fetch_html_with_auth(target_url, timeout=timeout)
+            if status == 401:
+                 return {"ok": False, "category": cat, "episodes": [], "page": page, "has_next": False, "error": "LOGIN_REQUIRED"}
+            if status == 200:
+                session = await AbasmaneshAuthManager.get_session()
+                if BeautifulSoup:
+                    soup = BeautifulSoup(html, "html.parser")
+                    cards = soup.select("div.article-grid div.card, div.card.card--media, .card")
+                    for card in cards:
+                        a_link = card.find("a", class_="card__media-link") or card.find("a", href=lambda h: h and "/fa/" in h and not any(x in h for x in ["category", "cart", "account", "login"]))
+                        if not a_link or not a_link.get("href"):
+                            continue
+                        href = a_link["href"].strip()
+                        full_href = (BASE_SITE_URL + href) if href.startswith("/") else href
+                        card_cover = extract_thumbnail_url(card)
+                        title = ""
+                        body = card.find("div", class_="card__body")
+                        if body:
+                            t_a = body.find("a")
+                            if t_a:
+                                title = t_a.get_text(strip=True)
+                        if not title:
+                            title = a_link.get_text(strip=True)
+                        articles_to_fetch.append((full_href, title, card_cover, cat.get("title", "")))
+                        if len(articles_to_fetch) >= limit:
+                            break
 
                 # واکشی همگام مشخصات فایل‌ها
                 tasks = [

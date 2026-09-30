@@ -18,7 +18,7 @@ from pathlib import Path
 
 from core.config import config
 from core.logger import get_logger
-from core.database import db_save_media_session, db_delete_media_session, get_system_setting, set_system_setting
+from core.database import db_save_media_session, db_delete_media_session, get_system_setting, set_system_setting, get_system_setting_sync
 from core.formatters import human_size, format_duration
 from media.inspector import inspect_technical_metadata
 from services.store_service import StoreService
@@ -183,6 +183,11 @@ def get_system_health() -> Dict[str, Any]:
                 "status": "ONLINE" if splus_active else "REQUIRE_AUTH",
                 "masked_phone": splus_phone,
                 "badge": "bg-cyan-600" if splus_active else "bg-amber-600"
+            },
+            "abasmanesh": {
+                "name": "خزشگر عباس‌منش",
+                "status": "ONLINE" if (get_system_setting_sync("ABASMANESH_EMAIL") and get_system_setting_sync("ABASMANESH_PASSWORD")) else "REQUIRE_AUTH",
+                "badge": "bg-orange-500" if (get_system_setting_sync("ABASMANESH_EMAIL") and get_system_setting_sync("ABASMANESH_PASSWORD")) else "bg-amber-600"
             }
         },
         "stats": {
@@ -2122,6 +2127,9 @@ def render_dashboard_html() -> str:
                     <div>
                         <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
                             <span>🎁</span> دانلودها (ویژه مشترکین پریمیوم)
+                            <span class="text-[10px] px-2 py-0.5 rounded-full {health['platforms']['abasmanesh']['badge']} text-white">
+                                { "Active / Authenticated" if health['platforms']['abasmanesh']['status'] == "ONLINE" else "Missing Credentials" }
+                            </span>
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">
                             آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
@@ -2798,6 +2806,32 @@ def render_dashboard_html() -> str:
                                             </div>
                                         </div>
                                         <span id="keyboardSaveNotice" class="text-xs font-semibold text-emerald-400 mt-2 hidden">✅ چیدمان کیبورد با موفقیت ذخیره شد.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Accordion 8: Abasmanesh Crawler Settings -->
+                        <details class="settings-accordion group rounded-xl p-4 space-y-3 border transition duration-200" style="background: var(--glass-bg); border-color: var(--card-border);">
+                            <summary class="flex items-center justify-between cursor-pointer list-none select-none pb-2 border-b border-white/5">
+                                <h4 class="text-xs font-bold text-orange-400 uppercase tracking-wider flex items-center gap-2">
+                                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                    </svg>
+                                    تنظیمات خزشگر عباس‌منش (Crawler Auth)
+                                </h4>
+                                <svg class="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </summary>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                <div>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">ایمیل اکانت (ABASMANESH_EMAIL)</label>
+                                    <input type="text" id="cfg_ABASMANESH_EMAIL" placeholder="user@example.com" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                </div>
+                                <div>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (ABASMANESH_PASSWORD)</label>
+                                    <div class="relative">
+                                        <input type="text" id="cfg_ABASMANESH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_ABASMANESH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs">👁️</button>
                                     </div>
                                 </div>
                             </div>
@@ -8177,7 +8211,7 @@ def render_dashboard_html() -> str:
                     'NARA_API_KEY', 'NARA_MODEL',
                     'GEMINI_API_KEY', 'GEMINI_MODEL',
                     'HF_TOKEN', 'HF_SPACE_ID',
-                    'CASHBACK_PERCENT'
+                    'CASHBACK_PERCENT', 'ABASMANESH_EMAIL', 'ABASMANESH_PASSWORD'
                 ];
                 fields.forEach(f => {{
                     const el = document.getElementById('cfg_' + f);
@@ -8388,12 +8422,12 @@ def render_dashboard_html() -> str:
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID',
-                'CASHBACK_PERCENT'
+                'CASHBACK_PERCENT', 'ABASMANESH_EMAIL', 'ABASMANESH_PASSWORD'
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
                 'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'VYCEAI_API_KEY', 'NARA_API_KEY',
-                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER'
+                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER', 'ABASMANESH_PASSWORD'
             ];
             fields.forEach(f => {{
                 const el = document.getElementById('cfg_' + f);
