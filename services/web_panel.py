@@ -7057,46 +7057,6 @@ def render_dashboard_html() -> str:
                 window.selectFeedCategory = selectFeedCategory;
                 window.fetchFeedDownloads = fetchFeedDownloads;
                 window.changeFeedPage = changeFeedPage;
-                
-                    if (m) {{
-                document.getElementById('quick_FEED_AUTH_EMAIL').value = document.getElementById('cfg_FEED_AUTH_EMAIL')?.value || '';
-                document.getElementById('quick_FEED_AUTH_PASSWORD').value = document.getElementById('cfg_FEED_AUTH_PASSWORD')?.value || '';
-                m.classList.remove('hidden');
-            }}
-        }};
-                    if (m) m.classList.add('hidden');
-        }};
-                    btn.innerHTML = 'در حال بررسی...';
-            btn.disabled = true;
-            try {{
-                const email = document.getElementById('quick_FEED_AUTH_EMAIL').value;
-                const pass = document.getElementById('quick_FEED_AUTH_PASSWORD').value;
-                const cfgE = document.getElementById('cfg_FEED_AUTH_EMAIL');
-                const cfgP = document.getElementById('cfg_FEED_AUTH_PASSWORD');
-                if (cfgE) cfgE.value = email;
-                if (cfgP) cfgP.value = pass;
-                
-                const btnSave = document.getElementById('btnSaveSettings');
-                if (btnSave && window.saveSettings) {{
-                    await window.saveSettings(btnSave);
-                }}
-                
-                const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
-                const data = await res.json();
-                if (data.success) {{
-                    alert('✅ ' + data.message);
-                    window.closeFeedAuthModal();
-                }} else {{
-                    alert('❌ ' + data.message);
-                }}
-            }} catch (e) {{
-                alert('❌ خطای شبکه');
-            }} finally {{
-                btn.innerHTML = orig;
-                btn.disabled = false;
-            }}
-        }};
-
                 window.openFeedDispatchModal = openFeedDispatchModal;
                 window.closeFeedDispatchModal = closeFeedDispatchModal;
                 window.executeFeedDispatch = executeFeedDispatch;

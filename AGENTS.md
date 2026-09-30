@@ -1,5 +1,5 @@
 # UNFINIT Engineering Guidelines
-**نگارش جاری موتور: v0.7.12 (Current Engine Version: v0.7.12)**
+**نگارش جاری موتور: v0.7.13 (Current Engine Version: v0.7.13)**
 
 این سند، قوانین دائمی، خط‌مشی‌های معماری و استانداردهای توسعه پروژه UNFINIT Store Engine را تعیین می‌کند.
 کلیه عامل‌ها و مدل‌های هوش مصنوعی موظفند پیش از هرگونه تحلیل یا تغییر در کدها، این منشور را ملاک قطعی عمل قرار دهند.
@@ -251,4 +251,11 @@
 | v0.7.6 | 1403/07/15 | تفکیک قطعی نام‌گذاری گروهی از اسپلیت (حذف پارت از بچ)، انکودینگ ۶x+ با veryfast، رفع چرخش RTL حجم، پاکسازی خواننده صوتی و ثبت قوانین در AGENTS.md | a35b3d6 |
 | v0.7.8 | 1403/07/15 | تنظیم همزمان سقف بله و درصد بافر در وب‌پنل، اسپلیت خودکار پیش‌پرواز ویدیوهای سنگین در ارسال گروهی و تفکیک قطعی نام‌گذاری | HEAD |
 | v0.7.9 | 1403/07/20 | طراحی سیستم خزشگر هوشمند عباس‌منش (Auth Wall Resiliency)، مدیریت یکپارچه سشن با حفظ CSRF | HEAD |
-| v0.7.12 | 1403/07/20 | طراحی سیستم تست ارتباط خزشگر، بازیابی هوشمند کش دیتابیس و مخفی‌سازی فیلدهای امنیتی در پنل وب | HEAD |
+| v0.7.13 | 1403/07/20 | طراحی سیستم تست ارتباط خزشگر، بازیابی هوشمند کش دیتابیس و مخفی‌سازی فیلدهای امنیتی در پنل وب | HEAD |
+
+
+### 5.26. JavaScript Syntax & DOM Event Integrity in Web Panel
+Embedded JavaScript in Python web panel templates must strictly maintain 100% valid syntax with balanced braces. Ad-hoc string replacements that introduce SyntaxError and freeze dashboard buttons are strictly forbidden.
+
+### 5.27. Reporting Format & BiDi Layout Preservation
+Antigravity must conclude every execution report with a structured Markdown Summary Table (| Row | Module | Changes | Status |). In Persian explanations, all English identifiers and keywords must strictly be enclosed in backticks to prevent RTL/LTR bidirectional rendering corruption.
