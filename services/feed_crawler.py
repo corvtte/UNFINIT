@@ -20,7 +20,7 @@ try:
 except ImportError:
     BeautifulSoup = None
 
-logger = logging.getLogger("abasmanesh_crawler")
+logger = logging.getLogger("feed_crawler")
 
 # هدرهای اختصاصی و استاندارد شبیه‌ساز مرورگر جهت مهار خطاهای ۴۰۳ و ۴۲۹
 BROWSER_HEADERS = {
@@ -264,7 +264,7 @@ def build_page_url(base_url: str, page_number: int = 1) -> str:
 
 SESSION_FILE = "data/abasmanesh_session.json"
 
-class AbasmaneshAuthManager:
+class FeedAuthManager:
     _session = None
     _semaphore = asyncio.Semaphore(1)
 
@@ -280,7 +280,7 @@ class AbasmaneshAuthManager:
                 try:
                     jar.load(SESSION_FILE)
                 except Exception as e:
-                    logger.error(f"[AbasmaneshAuthManager] Error loading cookies: {e}")
+                    logger.error(f"[FeedAuthManager] Error loading cookies: {e}")
             cls._session = aiohttp.ClientSession(headers=BROWSER_HEADERS, cookie_jar=jar)
         return cls._session
 
@@ -291,14 +291,14 @@ class AbasmaneshAuthManager:
                 os.makedirs("data", exist_ok=True)
                 cls._session.cookie_jar.save(SESSION_FILE)
             except Exception as e:
-                logger.error(f"[AbasmaneshAuthManager] Error saving cookies: {e}")
+                logger.error(f"[FeedAuthManager] Error saving cookies: {e}")
 
     @classmethod
     async def login_if_needed(cls) -> bool:
-        email = (os.getenv("ABASMANESH_EMAIL") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
-        password = (os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
+        email = (os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or await get_system_setting("FEED_AUTH_EMAIL", "") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
+        password = (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("FEED_AUTH_PASSWORD", "") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
         if not email or not password:
-            logger.warning("[AbasmaneshAuthManager] Missing ABASMANESH_EMAIL or ABASMANESH_PASSWORD")
+            logger.warning("[FeedAuthManager] Missing FEED_AUTH_EMAIL or FEED_AUTH_PASSWORD")
             return False
 
         session = await cls.get_session()
@@ -308,8 +308,8 @@ class AbasmaneshAuthManager:
         """Lightweight authenticated probe to check connection health and auth status"""
         try:
             await cls.invalidate_session()
-            email = (os.getenv("ABASMANESH_EMAIL") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
-            password = (os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
+            email = (os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or await get_system_setting("FEED_AUTH_EMAIL", "") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
+            password = (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("FEED_AUTH_PASSWORD", "") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
             if not email or not password:
                 return {"success": False, "message": "اعتبارنامه‌های ورود تنظیم نشده‌اند.", "authenticated": False}
 
@@ -333,7 +333,7 @@ class AbasmaneshAuthManager:
                     nonce = m.group(1) if m else ""
                 
                 if "woocommerce-MyAccount-navigation" in html or "خروج" in html:
-                    logger.info("[AbasmaneshAuthManager] Already logged in.")
+                    logger.info("[FeedAuthManager] Already logged in.")
                     return True
                 
                 payload = {
@@ -346,14 +346,14 @@ class AbasmaneshAuthManager:
                 async with session.post("https://abasmanesh.com/fa/login/", data=payload, timeout=15) as post_resp:
                     post_html = await post_resp.text()
                     if "woocommerce-MyAccount-navigation" in post_html or "خروج" in post_html:
-                        logger.info("[AbasmaneshAuthManager] Login successful!")
+                        logger.info("[FeedAuthManager] Login successful!")
                         await cls.save_session()
                         return True
                     else:
-                        logger.error("[AbasmaneshAuthManager] Login failed. Check credentials.")
+                        logger.error("[FeedAuthManager] Login failed. Check credentials.")
                         return False
         except Exception as e:
-            logger.error(f"[AbasmaneshAuthManager] Login exception: {e}")
+            logger.error(f"[FeedAuthManager] Login exception: {e}")
             return False
 
     @classmethod
@@ -377,7 +377,7 @@ class AbasmaneshAuthManager:
                 html = await resp.text()
             
             if "برای مشاهده این محتوا باید وارد شوید" in html or "login" in str(resp.url):
-                logger.warning(f"[AbasmaneshAuthManager] Auth wall detected at {url}. Auto-healing...")
+                logger.warning(f"[FeedAuthManager] Auth wall detected at {url}. Auto-healing...")
                 await cls.invalidate_session()
                 logged_in = await cls.login_if_needed()
                 if logged_in:
@@ -391,7 +391,7 @@ class AbasmaneshAuthManager:
             
             return status, html
 
-class AbasmaneshCrawler:
+class FeedCrawler:
 
     """
     کلاس مدیریت خزش، دریافت مقالات و استخراج رسانه‌های آموزشی از سایت عباس‌منش.
@@ -442,7 +442,7 @@ class AbasmaneshCrawler:
         lesson_text = ""
 
         try:
-            status, html = await AbasmaneshAuthManager.fetch_html_with_auth(clean_url, timeout=15)
+            status, html = await FeedAuthManager.fetch_html_with_auth(clean_url, timeout=15)
             if status == 200:
                     if BeautifulSoup:
                         soup = BeautifulSoup(html, "html.parser")
@@ -489,7 +489,7 @@ class AbasmaneshCrawler:
                     elif video_dl and not audio_dl and ".mp4" in video_dl:
                         audio_dl = video_dl.replace(".mp4", ".mp3")
         except Exception as e:
-            logger.debug(f"[abasmanesh_crawler] Error inspecting article {clean_url}: {e}")
+            logger.debug(f"[feed_crawler] Error inspecting article {clean_url}: {e}")
 
         return {
             "title": title or "جلسه آموزشی",
@@ -528,11 +528,11 @@ class AbasmaneshCrawler:
         timeout = 20
         articles_to_fetch = []
         try:
-            status, html = await AbasmaneshAuthManager.fetch_html_with_auth(target_url, timeout=timeout)
+            status, html = await FeedAuthManager.fetch_html_with_auth(target_url, timeout=timeout)
             if status == 401:
                  return {"ok": False, "category": cat, "episodes": [], "page": page, "has_next": False, "error": "LOGIN_REQUIRED"}
             if status == 200:
-                session = await AbasmaneshAuthManager.get_session()
+                session = await FeedAuthManager.get_session()
                 if BeautifulSoup:
                     soup = BeautifulSoup(html, "html.parser")
                     cards = soup.select("div.article-grid div.card, div.card.card--media, .card")
@@ -571,7 +571,7 @@ class AbasmaneshCrawler:
                     "has_next": len(valid_episodes) >= limit
                 }
         except Exception as e:
-            logger.warning(f"[abasmanesh_crawler] Error crawling category {cat['slug']}: {e}")
+            logger.warning(f"[feed_crawler] Error crawling category {cat['slug']}: {e}")
             return {
                 "ok": False,
                 "category": cat,
@@ -582,5 +582,5 @@ class AbasmaneshCrawler:
             }
 
 
-crawler = AbasmaneshCrawler()
+crawler = FeedCrawler()
 

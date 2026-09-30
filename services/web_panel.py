@@ -186,8 +186,8 @@ def get_system_health() -> Dict[str, Any]:
             },
             "abasmanesh": {
                 "name": "خزشگر عباس‌منش",
-                "status": "ONLINE" if ((os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "REQUIRE_AUTH",
-                "badge": "bg-orange-500" if ((os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "bg-amber-600"
+                "status": "ONLINE" if ((os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("FEED_AUTH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("FEED_AUTH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "REQUIRE_AUTH",
+                "badge": "bg-orange-500" if ((os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("FEED_AUTH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("FEED_AUTH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "bg-amber-600"
             }
         },
         "stats": {
@@ -415,7 +415,7 @@ def render_dashboard_html() -> str:
 
     prod_cards = ""
     if not products:
-        prod_cards = '<div class="col-span-full py-12 text-center text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">هیچ دوره‌ای در سیستم ثبت نشده است. از فرم زیر جهت افزودن دوره استفاده فرمایید.</div>'
+        prod_cards = '<div class="col-span-full py-12 text-center text-slate-500  rounded-2xl border border-slate-800">هیچ دوره‌ای در سیستم ثبت نشده است. از فرم زیر جهت افزودن دوره استفاده فرمایید.</div>'
     else:
         for prod in products:
             status_badge = f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> فعال</span>' if prod.active else f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> غیرفعال</span>'
@@ -454,7 +454,7 @@ def render_dashboard_html() -> str:
                         <span class="text-xs text-slate-400">قیمت دوره:</span>
                         {price_badge}
                     </div>
-                    <p class="text-xs text-slate-300 line-clamp-3 leading-relaxed mb-3 bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/60">{prod.description or 'توضیحاتی برای این دوره ثبت نشده است.'}</p>
+                    <p class="text-xs text-slate-300 line-clamp-3 leading-relaxed mb-3  p-2.5 rounded-xl border border-slate-800/60">{prod.description or 'توضیحاتی برای این دوره ثبت نشده است.'}</p>
                     <div class="flex flex-wrap gap-1.5">
                         {card_badge}
                         {bale_badge}
@@ -480,7 +480,7 @@ def render_dashboard_html() -> str:
     audiobook_cards = ""
     audio_prods = [p for p in products if getattr(p, "delivery_type", "") == "audio" or "صوتی" in p.name or "کتاب" in p.name]
     if not audio_prods:
-        audiobook_cards = '<div class="col-span-full py-12 text-center text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">هیچ کتاب یا پکیج صوتی مستقلی ثبت نشده است. دوره‌های صوتی ثبت‌شده به صورت خودکار در این بخش نمایش می‌یابند.</div>'
+        audiobook_cards = '<div class="col-span-full py-12 text-center text-slate-500  rounded-2xl border border-slate-800">هیچ کتاب یا پکیج صوتی مستقلی ثبت نشده است. دوره‌های صوتی ثبت‌شده به صورت خودکار در این بخش نمایش می‌یابند.</div>'
     else:
         for prod in audio_prods:
             p_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
@@ -577,7 +577,7 @@ def render_dashboard_html() -> str:
             transition: background-color 0.2s ease, color 0.2s ease;
         }}
         /* هدایت کلیه سطوح و کارت‌های تیلویند به متغیر تم فعال */
-        .bg-slate-900, .bg-slate-950, .bg-slate-850, [class*="bg-slate-9"] {{
+        ., .bg-slate-950, .bg-slate-850, [class*="bg-slate-9"] {{
             background-color: var(--bg-main, var(--bg-color, #080e1e)) !important;
         }}
         .bg-slate-800, .card, [class*="bg-slate-8"], [class*="rounded-xl bg-slate-800"] {{
@@ -765,12 +765,12 @@ def render_dashboard_html() -> str:
             <div id="mainLoginContainer" class="space-y-4 text-right">
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">شناسه کاربری / ایمیل</label>
-                    <input type="text" id="loginUsername" value="admin" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition">
+                    <input type="text" id="loginUsername" value="admin" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">رمز عبور مدیریت</label>
                     <div class="relative">
-                        <input type="password" id="adminPasswordInput" autocomplete="current-password" placeholder="رمز عبور مدیریت..." onkeydown="if(event.key==='Enter') executeAdminLogin()" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition pl-10 text-left" dir="ltr">
+                        <input type="password" id="adminPasswordInput" autocomplete="current-password" placeholder="رمز عبور مدیریت..." onkeydown="if(event.key==='Enter') executeAdminLogin()" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition pl-10 text-left" dir="ltr">
                         <button type="button" onclick="toggleAdminLoginPwd()" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-sm" title="نمایش/مخفی‌سازی رمز">
                             👁
                         </button>
@@ -1364,11 +1364,11 @@ def render_dashboard_html() -> str:
                         </div>
                         <div class="flex flex-wrap items-center gap-4">
                             <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition">
-                                <input type="checkbox" id="cfg_studio_auto_artist" onchange="toggleStudioMetaSetting('APPLY_DEFAULT_ARTIST_TAG', this.checked)" class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
+                                <input type="checkbox" id="cfg_studio_auto_artist" onchange="toggleStudioMetaSetting('APPLY_DEFAULT_ARTIST_TAG', this.checked)" class="w-4 h-4 rounded border-slate-700  text-cyan-600 focus:ring-cyan-500 cursor-pointer">
                                 <span>تزریق خودکار نام خواننده</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition">
-                                <input type="checkbox" id="cfg_studio_auto_title" onchange="toggleStudioMetaSetting('AUTO_RENAME_FILE_TO_TITLE', this.checked)" class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
+                                <input type="checkbox" id="cfg_studio_auto_title" onchange="toggleStudioMetaSetting('AUTO_RENAME_FILE_TO_TITLE', this.checked)" class="w-4 h-4 rounded border-slate-700  text-cyan-600 focus:ring-cyan-500 cursor-pointer">
                                 <span>تغییر نام فایل به عنوان آهنگ</span>
                             </label>
                             <span id="studioMetaSyncNotice" class="text-[11px] text-emerald-400 hidden font-mono">ذخیره شد ✓</span>
@@ -1391,7 +1391,7 @@ def render_dashboard_html() -> str:
                     </div>
 
                     <!-- Batch Action Bar -->
-                    <div class="flex flex-wrap justify-between items-center bg-slate-900/80 p-3 rounded-xl border border-slate-800 gap-3">
+                    <div class="flex flex-wrap justify-between items-center  p-3 rounded-xl border border-slate-800 gap-3">
                         <div class="flex flex-wrap items-center gap-3">
                             <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
                                 <input type="checkbox" id="selectAllDrops" onchange="toggleSelectAllDrops(this)" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
@@ -1405,7 +1405,7 @@ def render_dashboard_html() -> str:
                         <div class="flex flex-wrap items-center gap-2">
                             <div class="flex items-center gap-1.5 bg-slate-800/90 px-2.5 py-1 rounded-xl border border-slate-700">
                                 <span class="text-xs text-slate-400">مرتب‌سازی:</span>
-                                <select id="studioSortSelect" onchange="changeStudioSort(this.value)" class="bg-slate-900 border border-slate-700 text-xs text-cyan-300 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 transition cursor-pointer">
+                                <select id="studioSortSelect" onchange="changeStudioSort(this.value)" class=" border border-slate-700 text-xs text-cyan-300 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 transition cursor-pointer">
                                     <option value="newest">جدیدترین</option>
                                     <option value="oldest">قدیمی‌ترین</option>
                                     <option value="size_desc">بزرگترین حجم</option>
@@ -1464,11 +1464,11 @@ def render_dashboard_html() -> str:
                     <form id="dispatchForm" class="grid grid-cols-1 md:grid-cols-4 gap-4" onsubmit="handleDispatch(event)">
                         <div class="md:col-span-2">
                             <label class="block text-xs font-medium text-slate-300 mb-1">آدرس اینترنتی فایل (Direct URL)</label>
-                            <input type="url" id="directUrl" required placeholder="https://example.com/audio.mp3" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+                            <input type="url" id="directUrl" required placeholder="https://example.com/audio.mp3" class="w-full  border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-300 mb-1">پلتفرم مقصد ارسال</label>
-                            <select id="targetPlatform" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
+                            <select id="targetPlatform" class="w-full  border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-500">
                                 <option value="telegram">تلگرام (حساب ادمین)</option>
                                 <option value="rubika_user">روبیکا (پیام‌های ذخیره‌شده)</option>
                                 <option value="bale">بله (با کمپرسور خودکار {config.MAX_SAFE_BALE_SIZE_MB} MB)</option>
@@ -1562,11 +1562,11 @@ def render_dashboard_html() -> str:
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-xs font-medium text-slate-300 mb-1">انتخاب فایل وکتور SVG</label>
-                                        <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" onchange="handleSvgFileSelected(this.files)" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
+                                        <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" onchange="handleSvgFileSelected(this.files)" class="w-full  border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-950 file:text-cyan-300 hover:file:bg-cyan-900 cursor-pointer focus:outline-none focus:border-cyan-500">
                                     </div>
                                     <div>
                                         <label class="block text-xs font-medium text-slate-300 mb-1">فرمت خروجی تبدیل</label>
-                                        <select id="svgOutputFormat" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                                        <select id="svgOutputFormat" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
                                             <option value="png">PNG با شفافیت کامل (Alpha Transparency)</option>
                                             <option value="jpg">JPG با پس‌زمینه سفید (HQ 300 DPI)</option>
                                         </select>
@@ -1574,13 +1574,13 @@ def render_dashboard_html() -> str:
                                 </div>
 
                                 <!-- Color Palette & Smart Recolor -->
-                                <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                <div class="p-3 rounded-xl  border border-slate-800 space-y-2">
                                     <label class="block text-[11px] font-bold text-slate-300">تغییر رنگ هوشمند وکتور (Smart Recolor):</label>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <input type="color" id="svgRecolorPicker" value="#FFFFFF" onchange="syncSvgColorPicker(this.value)" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
                                         <input type="text" id="svgHexInput" value="#FFFFFF" placeholder="#FFFFFF" maxlength="9" onchange="syncSvgHexInput(this.value)" class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-center text-cyan-300 focus:outline-none focus:border-cyan-500" dir="ltr">
                                         <button type="button" onclick="setSvgColor('#FFFFFF')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-medium border border-slate-600 transition">سفید (#FFF)</button>
-                                        <button type="button" onclick="setSvgColor('#000000')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700 transition">مشکی (#000)</button>
+                                        <button type="button" onclick="setSvgColor('#000000')" class="px-2.5 py-1 rounded-lg  hover:bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700 transition">مشکی (#000)</button>
                                         <button type="button" onclick="setSvgColor('#3B82F6')" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 text-sky-300 text-[11px] font-medium border border-sky-800 transition">آبی (#3B82F6)</button>
                                         <button type="button" onclick="setSvgColor('#E11D48')" class="px-2.5 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 text-[11px] font-medium border border-rose-800 transition">قرمز (#E11D48)</button>
                                     </div>
@@ -1595,7 +1595,7 @@ def render_dashboard_html() -> str:
                                 </div>
 
                                 <!-- Typography: Text to SVG -->
-                                <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                <div class="p-3 rounded-xl  border border-slate-800 space-y-2">
                                     <label class="block text-[11px] font-bold text-slate-300">تولید وکتور متنی (Text to SVG Typography):</label>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <input type="text" id="svgTextInput" placeholder="متن جهت تولید لوگوتایپ یا عنوان وکتور..." class="flex-1 min-w-[200px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
@@ -1618,7 +1618,7 @@ def render_dashboard_html() -> str:
                         <div class="lg:col-span-5 flex flex-col">
                             <div class="flex items-center justify-between mb-1">
                                 <label class="text-xs font-medium text-slate-300">پیش‌نمایش زنده وکتور:</label>
-                                <span id="svgDimensionsBadge" class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">-</span>
+                                <span id="svgDimensionsBadge" class="text-[10px] font-mono text-slate-400  px-2 py-0.5 rounded border border-slate-800">-</span>
                             </div>
                             <div id="svgLivePreview" class="flex-1 border border-dashed border-slate-700/80 rounded-xl p-4 bg-slate-950/70 min-h-[200px] flex items-center justify-center overflow-auto">
                                 <span class="text-xs text-slate-500">فایل SVG انتخاب شده در اینجا رسم می‌شود</span>
@@ -1670,7 +1670,7 @@ def render_dashboard_html() -> str:
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <div class="text-right px-4 py-2 rounded-xl bg-slate-900 border border-slate-800">
+                    <div class="text-right px-4 py-2 rounded-xl  border border-slate-800">
                         <span class="text-[11px] text-slate-400 block">دوره‌های فعال / کل:</span>
                         <span class="text-sm font-bold text-cyan-400 font-mono">{active_count} از {len(products)}</span>
                     </div>
@@ -1695,16 +1695,16 @@ def render_dashboard_html() -> str:
                                 <label class="block text-xs text-slate-300">نام دوره *</label>
                                 <span id="counter_newCName" class="text-[11px] font-mono text-slate-400">0 / 32</span>
                             </div>
-                            <input type="text" id="newCName" required maxlength="32" oninput="updateCharCounter('newCName', 'counter_newCName', 32)" placeholder="مثال: آموزش جامع رشد فردی" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="newCName" required maxlength="32" oninput="updateCharCounter('newCName', 'counter_newCName', 32)" placeholder="مثال: آموزش جامع رشد فردی" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">قیمت به تومان (0 برای رایگان) *</label>
-                            <input type="text" inputmode="numeric" id="newCPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <input type="text" inputmode="numeric" id="newCPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">بنر یا عکس دوره</label>
                             <div class="flex gap-2 items-center">
-                                <input type="text" id="newCPhoto" placeholder="آدرس اینترنتی یا با دکمه آپلود کنید..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                                <input type="text" id="newCPhoto" placeholder="آدرس اینترنتی یا با دکمه آپلود کنید..." class="flex-1  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                                 <label class="cursor-pointer px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 font-medium transition flex items-center gap-1 shrink-0">
                                     <span>📷</span> آپلود بنر
                                     <input type="file" accept="image/*" class="hidden" onchange="uploadBannerFile(this, 'newCPhoto')">
@@ -1726,19 +1726,19 @@ def render_dashboard_html() -> str:
                             </div>
                             <span id="counter_newCDesc" class="text-[11px] font-mono text-slate-400">0 / 255</span>
                         </div>
-                        <textarea id="newCDesc" rows="3" oninput="updateCharCounter('newCDesc', 'counter_newCDesc', 255)" placeholder="توضیحات کامل دوره و سرفصل‌ها..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
+                        <textarea id="newCDesc" rows="3" oninput="updateCharCounter('newCDesc', 'counter_newCDesc', 255)" placeholder="توضیحات کامل دوره و سرفصل‌ها..." class="w-full  border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">شیوه تحویل محتوا</label>
-                            <select id="newCDeliveryType" onchange="togglePackageInput('newC')" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <select id="newCDeliveryType" onchange="togglePackageInput('newC')" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                                 <option value="channel">هدایت به کانال / لینک مستقیم</option>
                                 <option value="files_package">بسته چندفایله صوتی/تصویری مستقیم ربات (پکیج)</option>
                             </select>
                         </div>
                         <div id="newCDownloadBox">
                             <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره (تحویل خودکار)</label>
-                            <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                         </div>
                     </div>
                     <div id="newCPackageBox" class="hidden">
@@ -1746,19 +1746,19 @@ def render_dashboard_html() -> str:
                             <label class="block text-xs text-cyan-300 font-medium">لیست فایل‌های پکیج (JSON یا خط‌به‌خط)</label>
                             <span class="text-[10px] text-slate-400">تحویل زنجیره‌ای در تلگرام و بله</span>
                         </div>
-                        <textarea id="newCFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"></textarea>
+                        <textarea id="newCFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full  border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"></textarea>
                     </div>
                     <div class="flex flex-wrap items-center gap-6 pt-2">
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-                            <input type="checkbox" id="newCAllowCard" checked class="w-4 h-4 rounded text-cyan-600 bg-slate-900 border-slate-700 focus:ring-0">
+                            <input type="checkbox" id="newCAllowCard" checked class="w-4 h-4 rounded text-cyan-600  border-slate-700 focus:ring-0">
                             <span>💳 پرداخت کارت به کارت (با ارسال فیش)</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-                            <input type="checkbox" id="newCAllowBale" checked class="w-4 h-4 rounded text-emerald-600 bg-slate-900 border-slate-700 focus:ring-0">
+                            <input type="checkbox" id="newCAllowBale" checked class="w-4 h-4 rounded text-emerald-600  border-slate-700 focus:ring-0">
                             <span>🌐 درگاه پرداخت آنلاین بله (کیف پول / کارت)</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300">
-                            <input type="checkbox" id="newCRequiresReferral" class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700 focus:ring-0">
+                            <input type="checkbox" id="newCRequiresReferral" class="w-4 h-4 rounded text-amber-500  border-slate-700 focus:ring-0">
                             <span>🎁 نیازمند ۱ دعوت موفق (هدیه وایرال)</span>
                         </label>
                     </div>
@@ -1788,7 +1788,7 @@ def render_dashboard_html() -> str:
                     </button>
                 </div>
                 <div>
-                    <textarea id="courseTermsTextarea" rows="4" placeholder="متن تعهدنامه و قوانین استفاده از دوره‌ها..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-sans leading-relaxed">{course_terms_escaped}</textarea>
+                    <textarea id="courseTermsTextarea" rows="4" placeholder="متن تعهدنامه و قوانین استفاده از دوره‌ها..." class="w-full  border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-sans leading-relaxed">{course_terms_escaped}</textarea>
                     <div class="flex justify-between items-center mt-2">
                         <span class="text-[11px] text-slate-500">متن به صورت زنده در تلگرام و بله لود می‌شود.</span>
                         <span id="termsSaveStatus" class="text-xs font-medium"></span>
@@ -1812,22 +1812,22 @@ def render_dashboard_html() -> str:
 
                 <!-- 4 KPI Metrics Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-slate-900/80 p-4 rounded-xl border border-cyan-900/40">
+                    <div class=" p-4 rounded-xl border border-cyan-900/40">
                         <div class="text-[11px] text-slate-400 mb-1">فروش کل (تایید شده)</div>
                         <div id="metricTotalSales" class="text-lg font-bold text-cyan-400 font-mono">۰ تومان</div>
                         <div id="metricTotalOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش موفق</div>
                     </div>
-                    <div class="bg-slate-900/80 p-4 rounded-xl border border-emerald-900/40">
+                    <div class=" p-4 rounded-xl border border-emerald-900/40">
                         <div class="text-[11px] text-slate-400 mb-1">فروش امروز</div>
                         <div id="metricTodaySales" class="text-lg font-bold text-emerald-400 font-mono">۰ تومان</div>
                         <div id="metricTodayOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
-                    <div class="bg-slate-900/80 p-4 rounded-xl border border-sky-900/40">
+                    <div class=" p-4 rounded-xl border border-sky-900/40">
                         <div class="text-[11px] text-slate-400 mb-1">فروش ۷ روز گذشته</div>
                         <div id="metricWeekSales" class="text-lg font-bold text-sky-400 font-mono">۰ تومان</div>
                         <div id="metricWeekOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
-                    <div class="bg-slate-900/80 p-4 rounded-xl border border-purple-900/40">
+                    <div class=" p-4 rounded-xl border border-purple-900/40">
                         <div class="text-[11px] text-slate-400 mb-1">فروش ۳۰ روز گذشته</div>
                         <div id="metricMonthSales" class="text-lg font-bold text-purple-400 font-mono">۰ تومان</div>
                         <div id="metricMonthOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
@@ -2059,7 +2059,7 @@ def render_dashboard_html() -> str:
                 </div>
 
                 <!-- Add Coupon Form (collapsible) -->
-                <div id="addCouponCard" class="hidden bg-slate-900/90 p-5 rounded-2xl border border-slate-700/80 space-y-4">
+                <div id="addCouponCard" class="hidden  p-5 rounded-2xl border border-slate-700/80 space-y-4">
                     <form id="addCouponForm" onsubmit="handleCreateCoupon(event)" class="space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
@@ -2148,6 +2148,10 @@ def render_dashboard_html() -> str:
                             <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                             <span>به‌روزرسانی صفحه</span>
                         </button>
+                        <button type="button" onclick="openFeedAuthModal()" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm text-orange-400 hover:text-orange-300" title="بررسی و تنظیم اتصال منبع جهت واکشی رسانه‌های بسته">
+                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+                            <span>تنظیم و تست نشست</span>
+                        </button>
                         <button type="button" onclick="createCourseFromCurrentCategory()" id="btnCreateCourseFromCat" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm text-emerald-400 hover:text-emerald-300" title="ایجاد ۱-کلیک دوره آموزشی رایگان شامل جلسات این دسته‌بندی">
                             <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             <span>✨ ساخت دوره از این دسته‌بندی</span>
@@ -2235,7 +2239,7 @@ def render_dashboard_html() -> str:
                             <p class="text-xs text-slate-400">اطلاعات کاربران، شماره تلفن‌ها و سابقه عضویت در بات‌های تلگرام و بله</p>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class="bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class=" border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border);">
                             <button type="button" onclick="purgeTestUsers()" class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5" title="پاکسازی کاربران تستی">
                                 <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -2385,21 +2389,21 @@ def render_dashboard_html() -> str:
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات تلگرام (TELEGRAM_BOT_TOKEN)</label>
                                     <div class="relative">
                                         <input type="text" id="cfg_TELEGRAM_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-sky-400 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_TELEGRAM_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-300 transition text-xs">👁</button>
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_TELEGRAM_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات بله (BALE_BOT_TOKEN)</label>
                                     <div class="relative">
                                         <input type="text" id="cfg_BALE_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_BALE_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_BALE_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن درگاه پرداخت بله (BALE_PAYMENT_TOKEN)</label>
                                     <div class="relative">
                                         <input type="text" id="cfg_BALE_PAYMENT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_BALE_PAYMENT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs">👁</button>
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_BALE_PAYMENT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                             </div>
@@ -2488,21 +2492,21 @@ def render_dashboard_html() -> str:
                                         </label>
                                         <div class="relative">
                                             <input type="text" id="cfg_VYCEAI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                            <button type="button" onclick="togglePasswordVisibility('cfg_VYCEAI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_VYCEAI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                         </div>
                                     </div>
                                     <div id="box_nara_key">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید نارا روتر (NARA_API_KEY)</label>
                                         <div class="relative">
                                             <input type="text" id="cfg_NARA_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-nara-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                            <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                         </div>
                                     </div>
                                     <div id="box_gemini_key">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید گوگل جمینای (GEMINI_API_KEY)</label>
                                         <div class="relative">
                                             <input type="text" id="cfg_GEMINI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="AIzaSy..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                            <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                            <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                         </div>
                                     </div>
                                 </div>
@@ -2542,7 +2546,7 @@ def render_dashboard_html() -> str:
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن دسترسی هاگینگ فیس (HF_TOKEN)</label>
                                     <div class="relative">
                                         <input type="text" id="cfg_HF_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="hf_..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_HF_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs">👁</button>
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_HF_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
@@ -2553,14 +2557,14 @@ def render_dashboard_html() -> str:
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور جدید مدیریت</label>
                                     <div class="relative">
                                         <input type="password" id="cfg_NEW_ADMIN_PASSWORD" autocomplete="new-password" placeholder="در صورت تمایل به تغییر رمز عبور وارد کنید" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_NEW_ADMIN_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 transition text-xs">👁</button>
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_NEW_ADMIN_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">تکرار رمز عبور جدید</label>
                                     <div class="relative">
                                         <input type="password" id="cfg_CONFIRM_ADMIN_PASSWORD" autocomplete="new-password" placeholder="تکرار رمز عبور جدید" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_CONFIRM_ADMIN_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 transition text-xs">👁</button>
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_CONFIRM_ADMIN_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                             </div>
@@ -2824,19 +2828,19 @@ def render_dashboard_html() -> str:
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">ایمیل اکانت (ABASMANESH_EMAIL)</label>
-                                    <input type="text" id="cfg_ABASMANESH_EMAIL" placeholder="user@example.com" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">ایمیل اکانت (FEED_AUTH_EMAIL)</label>
+                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
                                 </div>
                                 <div>
-                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (ABASMANESH_PASSWORD)</label>
+                                    <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (FEED_AUTH_PASSWORD)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_ABASMANESH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
-                                        <button type="button" onclick="togglePasswordVisibility('cfg_ABASMANESH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs">👁️</button>
+                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                        <button type="button" onclick="togglePasswordVisibility('cfg_FEED_AUTH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                             </div>
                             <div class="mt-4 flex justify-end">
-                                <button type="button" onclick="testAbasmaneshConnection(this)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-bold transition flex items-center gap-2 border border-slate-700">
+                                <button type="button" onclick="testCrawlerConnection(this)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-bold transition flex items-center gap-2 border border-slate-700">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                     تست اتصال و بررسی وضعیت ورود
                                 </button>
@@ -2884,7 +2888,7 @@ def render_dashboard_html() -> str:
                 </div>
                 <div class="relative group">
                     <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto">
-                        <button type="button" onclick="copyAllLogs()" title="کپی لاگ‌ها" class="px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
+                        <button type="button" onclick="copyAllLogs()" title="کپی لاگ‌ها" class="px-2.5 py-1 rounded-lg  hover:bg-slate-800 text-slate-300 border border-slate-700/80 text-[11px] font-sans flex items-center gap-1 backdrop-blur shadow-sm transition">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             <span>کپی</span>
                         </button>
@@ -3197,7 +3201,7 @@ def render_dashboard_html() -> str:
                     در حال استخراج مشخصات فنی رسانه...
                 </div>
                 <div id="specsBody" class="hidden space-y-3">
-                    <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <div class=" p-3 rounded-xl border border-slate-800 space-y-2">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">نام فایل:</span>
                             <span id="specFilename" class="text-slate-100 font-bold font-mono text-left truncate max-w-[200px]" dir="ltr"></span>
@@ -3252,7 +3256,7 @@ def render_dashboard_html() -> str:
                     <input type="hidden" id="tagCoverB64">
                     
                     <!-- Cover Art Section -->
-                    <div class="flex items-center gap-4 p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-4 p-3  rounded-xl border border-slate-800">
                         <div class="w-20 h-20 rounded-xl overflow-hidden bg-slate-950 border border-slate-700 flex items-center justify-center relative shrink-0">
                             <img id="tagCoverPreview" src="" alt="Cover" class="w-full h-full object-cover">
                         </div>
@@ -3263,7 +3267,7 @@ def render_dashboard_html() -> str:
                             </label>
                             <div>
                                 <label class="flex items-center gap-2 cursor-pointer text-xs text-rose-400">
-                                    <input type="checkbox" id="tagRemoveCover" class="w-4 h-4 rounded text-rose-600 focus:ring-0 bg-slate-900 border-slate-700">
+                                    <input type="checkbox" id="tagRemoveCover" class="w-4 h-4 rounded text-rose-600 focus:ring-0  border-slate-700">
                                     <span>🗑 حذف کامل کاور آرت</span>
                                 </label>
                             </div>
@@ -3272,21 +3276,21 @@ def render_dashboard_html() -> str:
 
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">عنوان ترک (Title)</label>
-                        <input type="text" id="tagTitle" placeholder="مثال: جلسه اول - مقدمه" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                        <input type="text" id="tagTitle" placeholder="مثال: جلسه اول - مقدمه" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">نام هنرمند / مدرس (Artist)</label>
-                            <input type="text" id="tagArtist" placeholder="مثال: مدرس دوره" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="tagArtist" placeholder="مثال: مدرس دوره" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">نام آلبوم / دوره (Album)</label>
-                            <input type="text" id="tagAlbum" placeholder="مثال: دوره تخصصی" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="tagAlbum" placeholder="مثال: دوره تخصصی" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">نام فایل فیزیکی (Physical Filename)</label>
-                        <input type="text" id="tagFilename" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500 text-left" dir="ltr">
+                        <input type="text" id="tagFilename" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500 text-left" dir="ltr">
                     </div>
 
                     <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
@@ -3313,7 +3317,7 @@ def render_dashboard_html() -> str:
                     </div>
 
                     <!-- Batch Cover Art Section -->
-                    <div class="flex items-center gap-4 p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-4 p-3  rounded-xl border border-slate-800">
                         <div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-950 border border-slate-700 flex items-center justify-center relative shrink-0">
                             <img id="batchCoverPreview" src="" alt="Cover" class="w-full h-full object-cover">
                         </div>
@@ -3324,7 +3328,7 @@ def render_dashboard_html() -> str:
                             </label>
                             <div>
                                 <label class="flex items-center gap-2 cursor-pointer text-xs text-rose-400">
-                                    <input type="checkbox" id="batchRemoveCover" class="w-4 h-4 rounded text-rose-600 focus:ring-0 bg-slate-900 border-slate-700">
+                                    <input type="checkbox" id="batchRemoveCover" class="w-4 h-4 rounded text-rose-600 focus:ring-0  border-slate-700">
                                     <span>🗑 حذف کاور تمام فایل‌های انتخابی</span>
                                 </label>
                             </div>
@@ -3334,18 +3338,18 @@ def render_dashboard_html() -> str:
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">نام آلبوم مشترک (Album)</label>
-                            <input type="text" id="batchAlbum" placeholder="نام دوره یا آلبوم" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="batchAlbum" placeholder="نام دوره یا آلبوم" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">نام هنرمند مشترک (Artist)</label>
-                            <input type="text" id="batchArtist" placeholder="نام مدرس یا خواننده" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="batchArtist" placeholder="نام مدرس یا خواننده" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                     </div>
 
                     <!-- Auto Numbering Section -->
-                    <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2">
+                    <div class="p-3  rounded-xl border border-slate-800 space-y-2">
                         <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-300">
-                            <input type="checkbox" id="batchAutoNumber" checked class="w-4 h-4 rounded text-amber-600 focus:ring-0 bg-slate-900 border-slate-700">
+                            <input type="checkbox" id="batchAutoNumber" checked class="w-4 h-4 rounded text-amber-600 focus:ring-0  border-slate-700">
                             <span>🔢 شماره‌گذاری خودکار عنوان‌ها (جلسه ۱، جلسه ۲، ...)</span>
                         </label>
                         <div>
@@ -3388,7 +3392,7 @@ def render_dashboard_html() -> str:
                 </div>
 
                 <!-- Controls Bar -->
-                <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                <div class="flex flex-wrap items-center justify-between gap-3  p-3 rounded-xl border border-slate-800">
                     <div class="flex items-center gap-2">
                         <button type="button" onclick="setStartFromCursor()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs transition flex items-center gap-1">
                             <span>📍</span> شروع از نشانگر
@@ -3406,11 +3410,11 @@ def render_dashboard_html() -> str:
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">زمان شروع (Start Time - ثانیه یا 00:00.0)</label>
-                        <input type="text" id="cutStartTime" value="00:00.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono text-left focus:outline-none focus:border-cyan-500" dir="ltr">
+                        <input type="text" id="cutStartTime" value="00:00.0" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono text-left focus:outline-none focus:border-cyan-500" dir="ltr">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">زمان پایان (End Time - ثانیه یا 00:00.0)</label>
-                        <input type="text" id="cutEndTime" value="00:00.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono text-left focus:outline-none focus:border-cyan-500" dir="ltr">
+                        <input type="text" id="cutEndTime" value="00:00.0" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono text-left focus:outline-none focus:border-cyan-500" dir="ltr">
                     </div>
                 </div>
 
@@ -3448,7 +3452,7 @@ def render_dashboard_html() -> str:
                     <button type="button" onclick="closeFeedDispatchModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
                 </div>
                 <div>
-                    <div id="feedDispatchModalTitle" class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-bold text-cyan-300 line-clamp-2 leading-relaxed">
+                    <div id="feedDispatchModalTitle" class="p-3 rounded-xl  border border-slate-800 text-xs font-bold text-cyan-300 line-clamp-2 leading-relaxed">
                         -
                     </div>
                 </div>
@@ -3472,19 +3476,19 @@ def render_dashboard_html() -> str:
                 <div class="space-y-2 pt-2 border-t border-slate-700/60">
                     <label class="text-[11px] text-slate-400 block font-medium">پلتفرم‌های مقصد را انتخاب فرمایید:</label>
                     <div class="grid grid-cols-2 gap-2 text-xs">
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
                             <input type="checkbox" id="chkDispatchTg" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
                             <span class="text-slate-200">تلگرام</span>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition">
                             <input type="checkbox" id="chkDispatchBale" checked class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
                             <span class="text-slate-200">بله</span>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition">
                             <input type="checkbox" id="chkDispatchRubika" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-0">
                             <span class="text-slate-200">روبیکا کاربری</span>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
                             <input type="checkbox" id="chkDispatchSoroush" class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
                             <span class="text-slate-200">سروش‌پلاس</span>
                         </label>
@@ -3503,7 +3507,7 @@ def render_dashboard_html() -> str:
                         <span>افزودن مستقیم به سرفصل‌های دوره:</span>
                     </label>
                     <div class="flex flex-col gap-2">
-                        <select id="feedCourseSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
+                        <select id="feedCourseSelect" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
                             <!-- Populated dynamically from window.COURSES_CACHE -->
                         </select>
                         <button type="button" onclick="addFeedToCourseEpisodes()" id="btnAddFeedToCourse" class="w-full py-2 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
@@ -3777,7 +3781,7 @@ def render_dashboard_html() -> str:
                 }}
                 window.updateCharCounter = updateCharCounter;
 
-                async function testAbasmaneshConnection(btn) {{
+                async function testCrawlerConnection(btn) {{
                     const origHtml = btn.innerHTML;
                     btn.disabled = true;
                     btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
@@ -3801,10 +3805,12 @@ def render_dashboard_html() -> str:
                     const inp = document.getElementById(inputId);
                     if (!inp) return;
                     const isMasked = (inp.type === 'password' || inp.style.webkitTextSecurity === 'disc');
+                    const iconEye = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+                    const iconEyeOff = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>';
                     if (isMasked) {{
                         inp.type = 'text';
                         inp.style.webkitTextSecurity = 'none';
-                        btn.innerText = '🔓';
+                        btn.innerHTML = iconEyeOff;
                     }} else {{
                         if (inp.hasAttribute('data-token-field')) {{
                             inp.type = 'text';
@@ -3812,7 +3818,7 @@ def render_dashboard_html() -> str:
                         }} else {{
                             inp.type = 'password';
                         }}
-                        btn.innerText = '👁';
+                        btn.innerHTML = iconEye;
                     }}
                 }}
                 window.togglePasswordVisibility = togglePasswordVisibility;
@@ -4875,24 +4881,24 @@ def render_dashboard_html() -> str:
                                         '<div class="text-left">' + vipText + '</div>' +
                                     '</div>' +
                                     '<div class="grid grid-cols-2 gap-3 text-right">' +
-                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                        '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">شماره تماس:</span>' +
                                             '<span class="font-mono text-slate-200" dir="ltr">' + userPhone + '</span>' +
                                         '</div>' +
-                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                        '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">موجودی کیف پول:</span>' +
                                             '<span class="font-mono text-amber-400 font-bold">' + userWallet + '</span>' +
                                         '</div>' +
-                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                        '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">دوره‌های ثبت‌شده:</span>' +
                                             '<span class="font-bold text-emerald-400">' + coursesCount + ' دوره</span>' +
                                         '</div>' +
-                                        '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                        '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">دعوت‌های موفق رفرال:</span>' +
                                             '<span class="font-bold text-cyan-400">' + userInvites + '</span>' +
                                         '</div>' +
                                     '</div>' +
-                                    '<div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800">' +
+                                    '<div class="p-3 rounded-xl  border border-slate-800">' +
                                         '<span class="text-slate-500 block text-[11px] mb-1">دوره‌های خریداری‌شده:</span>' +
                                         '<span class="text-slate-300 font-sans">' + coursesList + '</span>' +
                                     '</div>' +
@@ -5010,7 +5016,7 @@ def render_dashboard_html() -> str:
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.value = currentText;
-                    input.className = 'w-full bg-slate-900 text-white text-xs px-2 py-1 rounded border border-cyan-500 focus:outline-none';
+                    input.className = 'w-full  text-white text-xs px-2 py-1 rounded border border-cyan-500 focus:outline-none';
                     
                     const saveRename = async () => {{
                         const newTitle = input.value.trim();
@@ -6284,7 +6290,7 @@ def render_dashboard_html() -> str:
                                 '<img src="' + item.cover_url + '" alt="' + title + '" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" onerror="this.onerror=null; this.src=\\'/static/default_cover.jpg\\';">' +
                                 fileNum +
                               '</div>'
-                            : '<div class="w-full aspect-video overflow-hidden rounded-t-2xl bg-slate-900 border-b border-white/5 flex items-center justify-center text-3xl">🎧</div>';
+                            : '<div class="w-full aspect-video overflow-hidden rounded-t-2xl  border-b border-white/5 flex items-center justify-center text-3xl">🎧</div>';
 
                         const audioLink = item.audio_url || '';
                         const videoLink = item.video_url || '';
@@ -6969,6 +6975,52 @@ def render_dashboard_html() -> str:
                 window.selectFeedCategory = selectFeedCategory;
                 window.fetchFeedDownloads = fetchFeedDownloads;
                 window.changeFeedPage = changeFeedPage;
+                
+        window.openFeedAuthModal = function() {{
+            const m = document.getElementById('feedAuthModal');
+            if (m) {{
+                document.getElementById('quick_FEED_AUTH_EMAIL').value = document.getElementById('cfg_FEED_AUTH_EMAIL')?.value || '';
+                document.getElementById('quick_FEED_AUTH_PASSWORD').value = document.getElementById('cfg_FEED_AUTH_PASSWORD')?.value || '';
+                m.classList.remove('hidden');
+            }}
+        }};
+        window.closeFeedAuthModal = function() {{
+            const m = document.getElementById('feedAuthModal');
+            if (m) m.classList.add('hidden');
+        }};
+        window.saveQuickFeedAuth = async function(btn) {{
+            const orig = btn.innerHTML;
+            btn.innerHTML = 'در حال بررسی...';
+            btn.disabled = true;
+            try {{
+                const email = document.getElementById('quick_FEED_AUTH_EMAIL').value;
+                const pass = document.getElementById('quick_FEED_AUTH_PASSWORD').value;
+                const cfgE = document.getElementById('cfg_FEED_AUTH_EMAIL');
+                const cfgP = document.getElementById('cfg_FEED_AUTH_PASSWORD');
+                if (cfgE) cfgE.value = email;
+                if (cfgP) cfgP.value = pass;
+                
+                const btnSave = document.getElementById('btnSaveSettings');
+                if (btnSave && window.saveSettings) {{
+                    await window.saveSettings(btnSave);
+                }}
+                
+                const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
+                const data = await res.json();
+                if (data.success) {{
+                    alert('✅ ' + data.message);
+                    window.closeFeedAuthModal();
+                }} else {{
+                    alert('❌ ' + data.message);
+                }}
+            }} catch (e) {{
+                alert('❌ خطای شبکه');
+            }} finally {{
+                btn.innerHTML = orig;
+                btn.disabled = false;
+            }}
+        }};
+
                 window.openFeedDispatchModal = openFeedDispatchModal;
                 window.closeFeedDispatchModal = closeFeedDispatchModal;
                 window.executeFeedDispatch = executeFeedDispatch;
@@ -7966,7 +8018,7 @@ def render_dashboard_html() -> str:
             hermesHistory = [];
             const box = document.getElementById('hermesChatBox');
             box.innerHTML = `
-                <div class="flex gap-2.5 items-center p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
+                <div class="flex gap-2.5 items-center p-3 rounded-xl  border border-slate-800 text-xs text-slate-300">
                     <div class="w-6 h-6 rounded-lg bg-cyan-600/30 text-cyan-300 flex items-center justify-center font-bold text-xs shrink-0">🤖</div>
                     <span>تاریخچه گفتگو پاکسازی شد. دستیار هوش مصنوعی آماده است.</span>
                 </div>
@@ -8263,7 +8315,7 @@ def render_dashboard_html() -> str:
                     'NARA_API_KEY', 'NARA_MODEL',
                     'GEMINI_API_KEY', 'GEMINI_MODEL',
                     'HF_TOKEN', 'HF_SPACE_ID',
-                    'CASHBACK_PERCENT', 'ABASMANESH_EMAIL', 'ABASMANESH_PASSWORD'
+                    'CASHBACK_PERCENT', 'FEED_AUTH_EMAIL', 'FEED_AUTH_PASSWORD'
                 ];
                 fields.forEach(f => {{
                     const el = document.getElementById('cfg_' + f);
@@ -8474,12 +8526,12 @@ def render_dashboard_html() -> str:
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID',
-                'CASHBACK_PERCENT', 'ABASMANESH_EMAIL', 'ABASMANESH_PASSWORD'
+                'CASHBACK_PERCENT', 'FEED_AUTH_EMAIL', 'FEED_AUTH_PASSWORD'
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
                 'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'VYCEAI_API_KEY', 'NARA_API_KEY',
-                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER', 'ABASMANESH_PASSWORD'
+                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER', 'FEED_AUTH_PASSWORD'
             ];
             fields.forEach(f => {{
                 const el = document.getElementById('cfg_' + f);
@@ -10302,8 +10354,8 @@ def handle_store_buy_bale(payload: dict) -> dict:
     return _run_sync(handle_store_buy_bale_async(payload))
 
 async def handle_crawler_test_auth_async(payload: dict) -> dict:
-    from services.abasmanesh_crawler import AbasmaneshAuthManager
-    return await AbasmaneshAuthManager.test_connection()
+    from services.feed_crawler import FeedAuthManager
+    return await FeedAuthManager.test_connection()
 
 def handle_crawler_test_auth(payload: dict) -> dict:
     return _run_sync(handle_crawler_test_auth_async(payload))
@@ -10313,10 +10365,10 @@ async def handle_crawler_rescrap_item_async(payload: dict) -> dict:
     if not url:
         return {"ok": False, "error": "URL not provided"}
     try:
-        from services.abasmanesh_crawler import AbasmaneshCrawler
+        from services.feed_crawler import FeedCrawler
         import aiohttp
         async with aiohttp.ClientSession() as session:
-            details = await AbasmaneshCrawler.fetch_article_details(session, url)
+            details = await FeedCrawler.fetch_article_details(session, url)
         
         # update the db
         from core.database import execute_query
@@ -10346,8 +10398,8 @@ async def handle_system_test_report_async() -> dict:
     tg_status = health["platforms"]["telegram"]["status"]
     bale_status = health["platforms"]["bale"]["status"]
     
-    from services.abasmanesh_crawler import AbasmaneshAuthManager
-    auth_status = await AbasmaneshAuthManager.test_connection()
+    from services.feed_crawler import FeedAuthManager
+    auth_status = await FeedAuthManager.test_connection()
     auth_ok = auth_status.get("success", False)
     
     overall = "HEALTHY" if (tg_status == "ONLINE" and bale_status == "ONLINE" and auth_ok) else "DEGRADED"
@@ -10673,7 +10725,7 @@ def render_storefront_html() -> str:
     cards_html = ""
     if not active_prods:
         cards_html = '''
-        <div class="col-span-full py-16 text-center text-slate-400 bg-slate-900/40 rounded-3xl border border-slate-800">
+        <div class="col-span-full py-16 text-center text-slate-400  rounded-3xl border border-slate-800">
             <div class="text-4xl mb-3">📚</div>
             <h3 class="text-base font-bold text-slate-200">در حال حاضر دوره‌ای برای عرضه فعال نیست.</h3>
             <p class="text-xs text-slate-500 mt-1">لطفاً بعداً مراجعه فرمایید یا با پشتیبانی در ارتباط باشید.</p>
@@ -10724,7 +10776,7 @@ def render_storefront_html() -> str:
                         <span class="text-xs text-slate-400">قیمت دوره:</span>
                         {price_display}
                     </div>
-                    <p class="text-xs text-slate-300 leading-relaxed line-clamp-3 bg-slate-900/40 p-3 rounded-2xl border border-slate-800/60 mb-4">{p.description or 'سرفصل‌ها و توضیحات این دوره در دسترس است.'}</p>
+                    <p class="text-xs text-slate-300 leading-relaxed line-clamp-3  p-3 rounded-2xl border border-slate-800/60 mb-4">{p.description or 'سرفصل‌ها و توضیحات این دوره در دسترس است.'}</p>
                 </div>
                 <div class="space-y-2 pt-2">
                     {free_btn}
@@ -10816,7 +10868,7 @@ def render_storefront_html() -> str:
             </div>
 
             <div class="flex items-center gap-2">
-                <button onclick="openTrackModal()" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-800/60 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                <button onclick="openTrackModal()" class="px-3.5 py-2 rounded-xl  hover:bg-slate-800 text-cyan-300 border border-cyan-800/60 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
                     <span>🔍</span> پیگیری سفارش و دانلود
                 </button>
             </div>
@@ -10866,7 +10918,7 @@ def render_storefront_html() -> str:
                 </div>
             </div>
 
-            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex justify-between items-center text-xs">
+            <div class="p-3.5 rounded-2xl  border border-slate-800 flex justify-between items-center text-xs">
                 <div>
                     <span class="text-slate-400 block text-[11px]">دوره انتخابی:</span>
                     <span id="baleModalCourseName" class="font-bold text-white mt-0.5 block">-</span>
@@ -10881,11 +10933,11 @@ def render_storefront_html() -> str:
             <form id="baleBuyForm" class="space-y-4" onsubmit="handleBalePaymentSubmit(event)">
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">نام و نام خانوادگی خریدار *</label>
-                    <input type="text" id="baleCustomerName" required placeholder="مثال: علی رضایی" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <input type="text" id="baleCustomerName" required placeholder="مثال: علی رضایی" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">شماره همراه (جهت پیگیری و ارسال لینک) *</label>
-                    <input type="tel" id="baleCustomerPhone" required placeholder="مثال: 09123456789" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono" dir="ltr">
+                    <input type="tel" id="baleCustomerPhone" required placeholder="مثال: 09123456789" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono" dir="ltr">
                 </div>
                 <button type="submit" id="btnBalePaySubmit" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
                     <span>⚡️</span> دریافت لینک پرداخت بله
@@ -10937,7 +10989,7 @@ def render_storefront_html() -> str:
         <div class="glass-modal max-w-md w-full rounded-3xl p-6 space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
             <button onclick="closeModal('cardBuyModal')" class="absolute top-4 left-4 text-slate-400 hover:text-white text-lg">✕</button>
             <div class="flex items-center gap-3 pb-3 border-b border-slate-800">
-                <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xl text-cyan-400">
+                <div class="w-10 h-10 rounded-xl  border border-slate-700 flex items-center justify-center text-xl text-cyan-400">
                     🏦
                 </div>
                 <div>
@@ -10971,15 +11023,15 @@ def render_storefront_html() -> str:
             <form id="cardBuyForm" class="space-y-3" onsubmit="handleCardPaymentSubmit(event)">
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">نام و نام خانوادگی خریدار *</label>
-                    <input type="text" id="cardCustomerName" required placeholder="مثال: سجاد محمدی" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <input type="text" id="cardCustomerName" required placeholder="مثال: سجاد محمدی" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">شماره همراه خریدار *</label>
-                    <input type="tel" id="cardCustomerPhone" required placeholder="مثال: 09123456789" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono" dir="ltr">
+                    <input type="tel" id="cardCustomerPhone" required placeholder="مثال: 09123456789" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono" dir="ltr">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">شماره پیگیری واریز یا ۴ رقم آخر کارت *</label>
-                    <textarea id="cardReceiptInfo" required rows="2" placeholder="کد رهگیری تراکنش، تاریخ و زمان واریز یا شماره ارجاع فیش..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
+                    <textarea id="cardReceiptInfo" required rows="2" placeholder="کد رهگیری تراکنش، تاریخ و زمان واریز یا شماره ارجاع فیش..." class="w-full  border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">تصویر فیش واریزی (اختیاری)</label>
@@ -11023,7 +11075,7 @@ def render_storefront_html() -> str:
             </div>
 
             <form class="flex gap-2" onsubmit="handleTrackSubmit(event)">
-                <input type="text" id="trackInput" required placeholder="کد رهگیری (ORD_...) یا شماره همراه..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                <input type="text" id="trackInput" required placeholder="کد رهگیری (ORD_...) یا شماره همراه..." class="flex-1  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                 <button type="submit" id="btnTrackSubmit" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition shrink-0">
                     استعلام
                 </button>
@@ -11051,7 +11103,7 @@ def render_storefront_html() -> str:
             </div>
 
             <!-- Course Info -->
-            <div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex justify-between items-center">
+            <div class="p-4 rounded-2xl  border border-slate-800 flex justify-between items-center">
                 <div>
                     <span class="text-[11px] text-slate-400 block">دوره انتخابی:</span>
                     <h4 id="zarinpalModalCourseTitle" class="text-xs font-bold text-white mt-0.5">-</h4>
@@ -11067,15 +11119,15 @@ def render_storefront_html() -> str:
                 <input type="hidden" id="zarinpalCourseId">
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">نام و نام خانوادگی خریدار</label>
-                    <input type="text" id="zarinpalCustomerName" required placeholder="مثال: علی رضایی" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 transition">
+                    <input type="text" id="zarinpalCustomerName" required placeholder="مثال: علی رضایی" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">شماره تلفن همراه</label>
-                    <input type="tel" id="zarinpalCustomerPhone" required placeholder="09xxxxxxxxx" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono transition text-left" dir="ltr">
+                    <input type="tel" id="zarinpalCustomerPhone" required placeholder="09xxxxxxxxx" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono transition text-left" dir="ltr">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">ایمیل خریدار (اختیاری جهت دریافت فاکتور)</label>
-                    <input type="email" id="zarinpalCustomerEmail" placeholder="user@example.com" class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono transition text-left" dir="ltr">
+                    <input type="email" id="zarinpalCustomerEmail" placeholder="user@example.com" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono transition text-left" dir="ltr">
                 </div>
 
                 <div class="pt-2">
@@ -11440,7 +11492,7 @@ def render_storefront_html() -> str:
                 const res = await fetch('/api/store/order_status?order_id=' + encodeURIComponent(q));
                 const data = await res.json();
                 if (!data.ok || !data.orders || data.orders.length === 0) {{
-                    box.innerHTML = '<div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-center text-xs text-rose-300">هیچ سفارشی با این کد یا شماره همراه یافت نشد.</div>';
+                    box.innerHTML = '<div class="p-4 rounded-2xl  border border-slate-800 text-center text-xs text-rose-300">هیچ سفارشی با این کد یا شماره همراه یافت نشد.</div>';
                     return;
                 }}
 
@@ -11469,7 +11521,7 @@ def render_storefront_html() -> str:
 
                     const dateStr = ord.created_at ? ord.created_at.split('T')[0] : '-';
 
-                    return '<div class="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs">' +
+                    return '<div class="p-4 rounded-2xl  border border-slate-800 space-y-2 text-xs">' +
                         '<div class="flex justify-between items-start gap-2">' +
                             '<div>' +
                                 '<span class="font-mono text-[10px] text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">' + ord.order_id + '</span>' +

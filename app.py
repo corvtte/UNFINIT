@@ -12,7 +12,7 @@ import builtins
 import typing
 from typing import Any, Optional, Dict, List, Union, Tuple, Callable
 
-# تزریق سراسری تایپینگ به Builtins جهت مهار دائمی NameError
+# ØªØ²Ø±ÛŒÙ‚ Ø³Ø±Ø§Ø³Ø±ÛŒ ØªØ§ÛŒÙ¾ÛŒÙ†Ú¯ Ø¨Ù‡ Builtins Ø¬Ù‡Øª Ù…Ù‡Ø§Ø± Ø¯Ø§Ø¦Ù…ÛŒ NameError
 for _t_name in ("Union", "Optional", "List", "Dict", "Any", "Tuple", "Callable"):
     if not hasattr(builtins, _t_name):
         setattr(builtins, _t_name, getattr(typing, _t_name, None))
@@ -101,13 +101,13 @@ def verify_admin_password(pwd: Any) -> bool:
     return pwd_clean in valid
 
 def mask_secret(val: Any, prefix_len: int = 4, suffix_len: int = 4) -> str:
-    """Masks sensitive secret tokens/keys for UI display (e.g. hf_1234••••••••5678)."""
+    """Masks sensitive secret tokens/keys for UI display (e.g. hf_1234â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢5678)."""
     s = str(val or "").strip()
     if not s or s.lower() in ("0", "none", "null", "false"):
         return ""
     if len(s) <= 8:
-        return "••••••••"
-    return f"{s[:prefix_len]}••••••••{s[-suffix_len:]}"
+        return "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+    return f"{s[:prefix_len]}â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢{s[-suffix_len:]}"
 
 def is_masked_or_empty(val: Any) -> bool:
     """Detects if an incoming setting value is untouched/masked or empty."""
@@ -116,7 +116,7 @@ def is_masked_or_empty(val: Any) -> bool:
     s = str(val).strip()
     if not s:
         return True
-    return "••••" in s or "****" in s
+    return "â€¢â€¢â€¢â€¢" in s or "****" in s
 
 def _clean_val(val: Any) -> str:
     s = str(val or "").strip()
@@ -144,7 +144,7 @@ async def get_all_settings_async() -> dict:
     card_num = _first_valid(os.environ.get("CARD_NUMBER"), config.CARD_NUMBER, await get_system_setting("CARD_NUMBER", ""))
     card_holder = _first_valid(os.environ.get("CARD_HOLDER"), config.CARD_HOLDER, await get_system_setting("CARD_HOLDER", ""))
     zarin_mid = _first_valid(os.environ.get("ZARINPAL_MERCHANT_ID"), getattr(config, "ZARINPAL_MERCHANT_ID", ""), await get_system_setting("zarinpal_merchant_id", ""))
-    cd_note = await get_system_setting("COURSE_DELIVERY_NOTE", getattr(config, "COURSE_DELIVERY_NOTE", "امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"))
+    cd_note = await get_system_setting("COURSE_DELIVERY_NOTE", getattr(config, "COURSE_DELIVERY_NOTE", "Ø§Ù…ÛŒØ¯ÙˆØ§Ø±Ù… Ø§ÛŒÙ† Ø¯ÙˆØ±Ù‡ØŒ Ø¨Ø±Ø§ØªÙˆÙ† Ø³Ø±Ø´Ø§Ø± Ø§Ø² Ø¢Ú¯Ø§Ù‡ÛŒØŒ Ø±Ø´Ø¯ Ùˆ Ù†ØªØ§ÛŒØ¬ Ø§Ø±Ø²Ø´Ù…Ù†Ø¯ Ø¨Ø§Ø´Ù‡. âœ¨"))
     ai_prov = _first_valid(os.environ.get("AI_PROVIDER"), getattr(config, "AI_PROVIDER", "gemini"), await get_system_setting("ai_provider", "gemini"))
     ai_base_url = _first_valid(os.environ.get("AI_BASE_URL"), getattr(config, "AI_BASE_URL", "https://api.vyceai.com/v1"), await get_system_setting("AI_BASE_URL", "https://api.vyceai.com/v1"))
     ai_api_key = _first_valid(os.environ.get("AI_API_KEY"), getattr(config, "AI_API_KEY", ""), await get_system_setting("AI_API_KEY", ""))
@@ -181,7 +181,7 @@ async def get_all_settings_async() -> dict:
         "MAX_SAFE_BALE_SIZE_MB": str(await get_system_setting("max_safe_bale_size_mb", str(getattr(config, "MAX_SAFE_BALE_SIZE_MB", 49.99)))),
         "HF_TOKEN": mask_secret(hf_tok),
         "HF_SPACE_ID": str(hf_sp or "Foadian/UNFINIT").strip(),
-        "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="امیدوارم این دوره، براتون سرشار از آگاهی، رشد و نتایج ارزشمند باشه. ✨"),
+        "COURSE_DELIVERY_NOTE": fix_mojibake(cd_note, default="Ø§Ù…ÛŒØ¯ÙˆØ§Ø±Ù… Ø§ÛŒÙ† Ø¯ÙˆØ±Ù‡ØŒ Ø¨Ø±Ø§ØªÙˆÙ† Ø³Ø±Ø´Ø§Ø± Ø§Ø² Ø¢Ú¯Ø§Ù‡ÛŒØŒ Ø±Ø´Ø¯ Ùˆ Ù†ØªØ§ÛŒØ¬ Ø§Ø±Ø²Ø´Ù…Ù†Ø¯ Ø¨Ø§Ø´Ù‡. âœ¨"),
         "APPLY_DEFAULT_ARTIST_TAG": (await get_system_setting("apply_default_artist_tag", str(getattr(config, "APPLY_DEFAULT_ARTIST_TAG", False)))).lower() in ("true", "1", "yes"),
         "AUTO_RENAME_FILE_TO_TITLE": (await get_system_setting("auto_rename_file_to_title", str(getattr(config, "AUTO_RENAME_FILE_TO_TITLE", False)))).lower() in ("true", "1", "yes"),
         "CASHBACK_PERCENT": float(await get_system_setting("cashback_percent", str(getattr(config, "CASHBACK_PERCENT", 0.0))) or 0.0),
@@ -488,7 +488,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.send_header("Content-Type", "text/plain; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(f"نشست فایل رسانه با شناسه {drop_id} یافت نشد یا منقضی شده است.".encode("utf-8"))
+                self.wfile.write(f"Ù†Ø´Ø³Øª ÙØ§ÛŒÙ„ Ø±Ø³Ø§Ù†Ù‡ Ø¨Ø§ Ø´Ù†Ø§Ø³Ù‡ {drop_id} ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…Ù†Ù‚Ø¶ÛŒ Ø´Ø¯Ù‡ Ø§Ø³Øª.".encode("utf-8"))
                 return
 
             local_path = session.get("working_path") or session.get("compressed_path") or session.get("local_path")
@@ -501,7 +501,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.send_response(404)
                     self.send_header("Content-Type", "text/plain; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write("فایل باینری روی دیسک سرور یافت نشد و امکان دانلود خودکار از مبدا میسر نگردید.".encode("utf-8"))
+                    self.wfile.write("ÙØ§ÛŒÙ„ Ø¨Ø§ÛŒÙ†Ø±ÛŒ Ø±ÙˆÛŒ Ø¯ÛŒØ³Ú© Ø³Ø±ÙˆØ± ÛŒØ§ÙØª Ù†Ø´Ø¯ Ùˆ Ø§Ù…Ú©Ø§Ù† Ø¯Ø§Ù†Ù„ÙˆØ¯ Ø®ÙˆØ¯Ú©Ø§Ø± Ø§Ø² Ù…Ø¨Ø¯Ø§ Ù…ÛŒØ³Ø± Ù†Ú¯Ø±Ø¯ÛŒØ¯.".encode("utf-8"))
                     return
 
             p = Path(local_path)
@@ -644,7 +644,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(401)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": "رمز عبور مدیریت سیستم نادرست است یا سکرت ADMIN_PANEL_PASSWORD تنظیم نشده است."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÛŒØ³ØªÙ… Ù†Ø§Ø¯Ø±Ø³Øª Ø§Ø³Øª ÛŒØ§ Ø³Ú©Ø±Øª ADMIN_PANEL_PASSWORD ØªÙ†Ø¸ÛŒÙ… Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª."}, ensure_ascii=False).encode("utf-8"))
                 return
 
             try:
@@ -665,7 +665,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(401)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": "رمز عبور مدیریت سیستم نادرست است یا سکرت ADMIN_PANEL_PASSWORD تنظیم نشده است."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÛŒØ³ØªÙ… Ù†Ø§Ø¯Ø±Ø³Øª Ø§Ø³Øª ÛŒØ§ Ø³Ú©Ø±Øª ADMIN_PANEL_PASSWORD ØªÙ†Ø¸ÛŒÙ… Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª."}, ensure_ascii=False).encode("utf-8"))
                 return
 
             try:
@@ -1034,7 +1034,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": True, "disconnected": ok, "message": f"اتصال سشن {platform} قطع و فایل‌های نشست پاکسازی شدند."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": True, "disconnected": ok, "message": f"Ø§ØªØµØ§Ù„ Ø³Ø´Ù† {platform} Ù‚Ø·Ø¹ Ùˆ ÙØ§ÛŒÙ„â€ŒÙ‡Ø§ÛŒ Ù†Ø´Ø³Øª Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ Ø´Ø¯Ù†Ø¯."}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1044,7 +1044,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
                 if not user_id:
-                    raise ValueError("شناسه کاربر الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ú©Ø§Ø±Ø¨Ø± Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 from services.user_service import UserService
                 from core.database import execute_query
                 del_user = UserService.delete_user(user_id)
@@ -1055,7 +1055,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": True, "deleted": True, "message": f"کاربر {user_id} با موفقیت حذف شد."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": True, "deleted": True, "message": f"Ú©Ø§Ø±Ø¨Ø± {user_id} Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯."}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1069,12 +1069,12 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 cnt = UserService.purge_test_users()
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                loop.run_until_complete(execute_query("DELETE FROM customers WHERE user_id LIKE '%test%' OR customer_name LIKE '%تست%' OR phone LIKE '0900%' OR phone LIKE '09999%'"))
+                loop.run_until_complete(execute_query("DELETE FROM customers WHERE user_id LIKE '%test%' OR customer_name LIKE '%ØªØ³Øª%' OR phone LIKE '0900%' OR phone LIKE '09999%'"))
                 loop.close()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": True, "purged_count": cnt, "message": f"تعداد {cnt} کاربر تستی با موفقیت پاکسازی شدند."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": True, "purged_count": cnt, "message": f"ØªØ¹Ø¯Ø§Ø¯ {cnt} Ú©Ø§Ø±Ø¨Ø± ØªØ³ØªÛŒ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ Ø´Ø¯Ù†Ø¯."}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1083,7 +1083,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path == "/api/users/toggle_vip":
             """
-            فعال‌سازی، تمدید یا لغو اشتراک ویژه (VIP) کاربر به صورت ایجکس نرم و بدون رفرش صفحه.
+            ÙØ¹Ø§Ù„â€ŒØ³Ø§Ø²ÛŒØŒ ØªÙ…Ø¯ÛŒØ¯ ÛŒØ§ Ù„ØºÙˆ Ø§Ø´ØªØ±Ø§Ú© ÙˆÛŒÚ˜Ù‡ (VIP) Ú©Ø§Ø±Ø¨Ø± Ø¨Ù‡ ØµÙˆØ±Øª Ø§ÛŒØ¬Ú©Ø³ Ù†Ø±Ù… Ùˆ Ø¨Ø¯ÙˆÙ† Ø±ÙØ±Ø´ ØµÙØ­Ù‡.
             """
             try:
                 user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
@@ -1097,24 +1097,24 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     action = "grant"
 
                 if not user_id:
-                    raise ValueError("شناسه کاربر الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ú©Ø§Ø±Ø¨Ø± Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 from services.user_service import UserService
                 if action == "revoke":
                     u = UserService.revoke_vip(user_id)
-                    msg = f"اشتراک پریمیوم کاربر {user_id} با موفقیت لغو شد."
+                    msg = f"Ø§Ø´ØªØ±Ø§Ú© Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… Ú©Ø§Ø±Ø¨Ø± {user_id} Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ù„ØºÙˆ Ø´Ø¯."
                 else:
                     u = UserService.grant_vip(user_id, days=days)
-                    msg = f"اشتراک پریمیوم کاربر {user_id} با موفقیت به مدت {days} روز فعال/تمدید شد."
+                    msg = f"Ø§Ø´ØªØ±Ø§Ú© Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… Ú©Ø§Ø±Ø¨Ø± {user_id} Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ù‡ Ù…Ø¯Øª {days} Ø±ÙˆØ² ÙØ¹Ø§Ù„/ØªÙ…Ø¯ÛŒØ¯ Ø´Ø¯."
                     
-                    # مستندسازی فارسی: ارسال آنی نوتیفیکیشن تبریک در بله و تلگرام به کاربر
+                    # Ù…Ø³ØªÙ†Ø¯Ø³Ø§Ø²ÛŒ ÙØ§Ø±Ø³ÛŒ: Ø§Ø±Ø³Ø§Ù„ Ø¢Ù†ÛŒ Ù†ÙˆØªÛŒÙÛŒÚ©ÛŒØ´Ù† ØªØ¨Ø±ÛŒÚ© Ø¯Ø± Ø¨Ù„Ù‡ Ùˆ ØªÙ„Ú¯Ø±Ø§Ù… Ø¨Ù‡ Ú©Ø§Ø±Ø¨Ø±
                     try:
                         from services.web_panel import ACTIVE_TG_ADAPTER, ACTIVE_BALE_ADAPTER
                         from platforms.bale_adapter import get_bale_customer_keyboard
                         vip_show_str = u.get_vip_until_jalali() if u else ""
                         notify_txt = (
-                            f"🎉 <b>تبریک! اشتراک پریمیوم {days} روزه شما با موفقیت فعال شد.</b>\n\n"
-                            f"📅 اعتبار اشتراک تا: <b>{vip_show_str}</b>\n"
-                            "هم‌اکنون به ۱۶ دسته‌بندی و فرکانس فراوانی دسترسی دارید. ✨"
+                            f"ðŸŽ‰ <b>ØªØ¨Ø±ÛŒÚ©! Ø§Ø´ØªØ±Ø§Ú© Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… {days} Ø±ÙˆØ²Ù‡ Ø´Ù…Ø§ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª ÙØ¹Ø§Ù„ Ø´Ø¯.</b>\n\n"
+                            f"ðŸ“… Ø§Ø¹ØªØ¨Ø§Ø± Ø§Ø´ØªØ±Ø§Ú© ØªØ§: <b>{vip_show_str}</b>\n"
+                            "Ù‡Ù…â€ŒØ§Ú©Ù†ÙˆÙ† Ø¨Ù‡ Û±Û¶ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ùˆ ÙØ±Ú©Ø§Ù†Ø³ ÙØ±Ø§ÙˆØ§Ù†ÛŒ Ø¯Ø³ØªØ±Ø³ÛŒ Ø¯Ø§Ø±ÛŒØ¯. âœ¨"
                         )
                         bale_dest = getattr(u, "bale_id", None) or (user_id if u and u.platform == "bale" else None)
                         tg_dest = getattr(u, "telegram_id", None) or (user_id if u and u.platform == "telegram" else None)
@@ -1157,7 +1157,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         logger.warning(f"[toggle_vip] Notification dispatch exception: {ex_notif}")
                 
                 if not u:
-                    raise ValueError(f"کاربر با شناسه {user_id} یافت نشد.")
+                    raise ValueError(f"Ú©Ø§Ø±Ø¨Ø± Ø¨Ø§ Ø´Ù†Ø§Ø³Ù‡ {user_id} ÛŒØ§ÙØª Ù†Ø´Ø¯.")
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1178,22 +1178,22 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path == "/api/categories/update":
             """
-            ذخیره و ویرایش درجا ۱۶ دسته‌بندی پریمیوم، ایموجی‌ها و عناوین.
+            Ø°Ø®ÛŒØ±Ù‡ Ùˆ ÙˆÛŒØ±Ø§ÛŒØ´ Ø¯Ø±Ø¬Ø§ Û±Û¶ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ…ØŒ Ø§ÛŒÙ…ÙˆØ¬ÛŒâ€ŒÙ‡Ø§ Ùˆ Ø¹Ù†Ø§ÙˆÛŒÙ†.
             """
             try:
                 from services.feed_scraper import save_custom_categories
                 cats = payload.get("categories") or payload.get("items")
                 if not isinstance(cats, list) or len(cats) == 0:
-                    raise ValueError("لیست دسته‌بندی‌ها نامعتبر است.")
+                    raise ValueError("Ù„ÛŒØ³Øª Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒâ€ŒÙ‡Ø§ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª.")
                 ok = save_custom_categories(cats)
                 if not ok:
-                    raise ValueError("خطا در ذخیره دسته‌بندی‌ها روی دیسک.")
+                    raise ValueError("Ø®Ø·Ø§ Ø¯Ø± Ø°Ø®ÛŒØ±Ù‡ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒâ€ŒÙ‡Ø§ Ø±ÙˆÛŒ Ø¯ÛŒØ³Ú©.")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "ok": True,
-                    "message": "دسته‌بندی‌های پریمیوم با موفقیت ذخیره و به‌روزرسانی شدند.",
+                    "message": "Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒâ€ŒÙ‡Ø§ÛŒ Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ùˆ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯Ù†Ø¯.",
                     "count": len(cats)
                 }, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
@@ -1204,7 +1204,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path == "/api/feed/refresh":
             """
-            به‌روزرسانی غیرمسدودکننده و در پس‌زمینه کش دانلودها بدون قفل کردن فرانت‌اند.
+            Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ ØºÛŒØ±Ù…Ø³Ø¯ÙˆØ¯Ú©Ù†Ù†Ø¯Ù‡ Ùˆ Ø¯Ø± Ù¾Ø³â€ŒØ²Ù…ÛŒÙ†Ù‡ Ú©Ø´ Ø¯Ø§Ù†Ù„ÙˆØ¯Ù‡Ø§ Ø¨Ø¯ÙˆÙ† Ù‚ÙÙ„ Ú©Ø±Ø¯Ù† ÙØ±Ø§Ù†Øªâ€ŒØ§Ù†Ø¯.
             """
             try:
                 from services.feed_scraper import get_latest_free_downloads
@@ -1224,7 +1224,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "ok": True,
-                    "message": "به‌روزرسانی کش دانلودها در پس‌زمینه آغاز شد."
+                    "message": "Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ú©Ø´ Ø¯Ø§Ù†Ù„ÙˆØ¯Ù‡Ø§ Ø¯Ø± Ù¾Ø³â€ŒØ²Ù…ÛŒÙ†Ù‡ Ø¢ØºØ§Ø² Ø´Ø¯."
                 }, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
@@ -1234,16 +1234,16 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path == "/api/users/profile":
             """
-            دریافت اطلاعات جامع پروفایل کاربر، سفارشات و تاریخچه برای نمایش در مودال مدیریت.
+            Ø¯Ø±ÛŒØ§ÙØª Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø¬Ø§Ù…Ø¹ Ù¾Ø±ÙˆÙØ§ÛŒÙ„ Ú©Ø§Ø±Ø¨Ø±ØŒ Ø³ÙØ§Ø±Ø´Ø§Øª Ùˆ ØªØ§Ø±ÛŒØ®Ú†Ù‡ Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø± Ù…ÙˆØ¯Ø§Ù„ Ù…Ø¯ÛŒØ±ÛŒØª.
             """
             try:
                 user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
                 if not user_id:
-                    raise ValueError("شناسه کاربر الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ú©Ø§Ø±Ø¨Ø± Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 from services.user_service import UserService
                 u = UserService.get_user_by_any_id(user_id)
                 if not u:
-                    raise ValueError(f"کاربر با شناسه {user_id} یافت نشد.")
+                    raise ValueError(f"Ú©Ø§Ø±Ø¨Ø± Ø¨Ø§ Ø´Ù†Ø§Ø³Ù‡ {user_id} ÛŒØ§ÙØª Ù†Ø´Ø¯.")
                 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -1267,13 +1267,13 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             return
         elif path == "/api/settings/rename":
             """
-            ذخیره نام سفارشی‌سازی شده عناوین تب‌ها و دکمه‌ها با دابل‌کلیک در data/settings.json.
+            Ø°Ø®ÛŒØ±Ù‡ Ù†Ø§Ù… Ø³ÙØ§Ø±Ø´ÛŒâ€ŒØ³Ø§Ø²ÛŒ Ø´Ø¯Ù‡ Ø¹Ù†Ø§ÙˆÛŒÙ† ØªØ¨â€ŒÙ‡Ø§ Ùˆ Ø¯Ú©Ù…Ù‡â€ŒÙ‡Ø§ Ø¨Ø§ Ø¯Ø§Ø¨Ù„â€ŒÚ©Ù„ÛŒÚ© Ø¯Ø± data/settings.json.
             """
             try:
                 tab_id = str(payload.get("tab_id") or "").strip()
                 new_title = str(payload.get("title") or "").strip()
                 if not tab_id or not new_title:
-                    raise ValueError("شناسه تب و عنوان جدید الزامی هستند.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ ØªØ¨ Ùˆ Ø¹Ù†ÙˆØ§Ù† Ø¬Ø¯ÛŒØ¯ Ø§Ù„Ø²Ø§Ù…ÛŒ Ù‡Ø³ØªÙ†Ø¯.")
                 
                 settings_file = config.DATA_DIR / "settings.json"
                 settings_data = {}
@@ -1298,7 +1298,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     "ok": True,
                     "tab_id": tab_id,
                     "title": new_title,
-                    "message": f"عنوان تب {tab_id} با موفقیت به روزرسانی شد."
+                    "message": f"Ø¹Ù†ÙˆØ§Ù† ØªØ¨ {tab_id} Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ù‡ Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯."
                 }, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
@@ -1351,7 +1351,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 token = payload.get("token", "").strip()
                 phone = payload.get("phone", "").strip()
                 if not token:
-                    raise ValueError("توکن نشست سروش‌پلاس الزامی است.")
+                    raise ValueError("ØªÙˆÚ©Ù† Ù†Ø´Ø³Øª Ø³Ø±ÙˆØ´â€ŒÙ¾Ù„Ø§Ø³ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 from platforms.soroush_worker import soroush_worker
                 ok = soroush_worker.save_manual_token(token, phone)
                 self.send_response(200 if ok else 400)
@@ -1359,7 +1359,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "ok": ok,
-                    "message": "نشست سروش‌پلاس با توکن دستی با موفقیت ذخیره و فعال شد." if ok else "خطا در ذخیره‌سازی نشست"
+                    "message": "Ù†Ø´Ø³Øª Ø³Ø±ÙˆØ´â€ŒÙ¾Ù„Ø§Ø³ Ø¨Ø§ ØªÙˆÚ©Ù† Ø¯Ø³ØªÛŒ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ùˆ ÙØ¹Ø§Ù„ Ø´Ø¯." if ok else "Ø®Ø·Ø§ Ø¯Ø± Ø°Ø®ÛŒØ±Ù‡â€ŒØ³Ø§Ø²ÛŒ Ù†Ø´Ø³Øª"
                 }, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
@@ -1373,7 +1373,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 text = payload.get("text", "").strip()
                 category = payload.get("category", "MORNING").strip()
                 if not title or not text:
-                    raise ValueError("عنوان و متن عبارت الزامی است.")
+                    raise ValueError("Ø¹Ù†ÙˆØ§Ù† Ùˆ Ù…ØªÙ† Ø¹Ø¨Ø§Ø±Øª Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 from core.frequency_service import FrequencyService
                 new_item = FrequencyService.add_item(title, text, category)
                 self.send_response(200)
@@ -1390,7 +1390,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 freq_id = payload.get("id", "").strip()
                 if not freq_id:
-                    raise ValueError("شناسه عبارت الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¹Ø¨Ø§Ø±Øª Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 from core.frequency_service import FrequencyService
                 ok = FrequencyService.delete_item(freq_id)
                 self.send_response(200 if ok else 404)
@@ -1404,13 +1404,13 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
             return
         elif path in ("/api/frequencies/edit", "/api/frequencies/update"):
-            # اندپوینت ویرایش مشخصات عبارت فرکانس فراوانی
-            # ورودی‌ها: شناسه عبارت (id)، عنوان (title)، متن (text) و دسته‌بندی (category)
-            # خروجی: شیء به‌روزرسانی‌شده عبارت فرکانس به صورت JSON
+            # Ø§Ù†Ø¯Ù¾ÙˆÛŒÙ†Øª ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø´Ø®ØµØ§Øª Ø¹Ø¨Ø§Ø±Øª ÙØ±Ú©Ø§Ù†Ø³ ÙØ±Ø§ÙˆØ§Ù†ÛŒ
+            # ÙˆØ±ÙˆØ¯ÛŒâ€ŒÙ‡Ø§: Ø´Ù†Ø§Ø³Ù‡ Ø¹Ø¨Ø§Ø±Øª (id)ØŒ Ø¹Ù†ÙˆØ§Ù† (title)ØŒ Ù…ØªÙ† (text) Ùˆ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ (category)
+            # Ø®Ø±ÙˆØ¬ÛŒ: Ø´ÛŒØ¡ Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒâ€ŒØ´Ø¯Ù‡ Ø¹Ø¨Ø§Ø±Øª ÙØ±Ú©Ø§Ù†Ø³ Ø¨Ù‡ ØµÙˆØ±Øª JSON
             try:
                 freq_id = str(payload.get("id", "")).strip()
                 if not freq_id:
-                    raise ValueError("شناسه عبارت جهت ویرایش الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¹Ø¨Ø§Ø±Øª Ø¬Ù‡Øª ÙˆÛŒØ±Ø§ÛŒØ´ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 title = payload.get("title")
                 text = payload.get("text")
                 category = payload.get("category")
@@ -1420,7 +1420,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.send_response(404)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(json.dumps({"ok": False, "error": "عبارت فرکانس فراوانی مورد نظر یافت نشد."}, ensure_ascii=False).encode("utf-8"))
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ø¹Ø¨Ø§Ø±Øª ÙØ±Ú©Ø§Ù†Ø³ ÙØ±Ø§ÙˆØ§Ù†ÛŒ Ù…ÙˆØ±Ø¯ Ù†Ø¸Ø± ÛŒØ§ÙØª Ù†Ø´Ø¯."}, ensure_ascii=False).encode("utf-8"))
                     return
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1455,7 +1455,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": True, "message": "تنظیمات اشتراک پریمیوم و نشانه با موفقیت ذخیره شد."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": True, "message": "ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ø§Ø´ØªØ±Ø§Ú© Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… Ùˆ Ù†Ø´Ø§Ù†Ù‡ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯."}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -1469,7 +1469,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     raw_items = payload
                 mode = payload.get("mode", "replace") if isinstance(payload, dict) else "replace"
                 if not isinstance(raw_items, list):
-                    raise ValueError("داده‌های ورودی باید شامل لیستی از باورها (آرایه JSON) باشند.")
+                    raise ValueError("Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§ÛŒ ÙˆØ±ÙˆØ¯ÛŒ Ø¨Ø§ÛŒØ¯ Ø´Ø§Ù…Ù„ Ù„ÛŒØ³ØªÛŒ Ø§Ø² Ø¨Ø§ÙˆØ±Ù‡Ø§ (Ø¢Ø±Ø§ÛŒÙ‡ JSON) Ø¨Ø§Ø´Ù†Ø¯.")
                 from core.frequency_service import FrequencyService
                 ok, count, msg = FrequencyService.import_items(raw_items, mode=mode)
                 self.send_response(200 if ok else 400)
@@ -1702,7 +1702,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
         elif path in ("/api/courses/add", "/api/products"):
             try:
                 name = payload.get("name", "").strip()
-                raw_price = str(payload.get("price", 0)).replace(",", "").replace("،", "").strip()
+                raw_price = str(payload.get("price", 0)).replace(",", "").replace("ØŒ", "").strip()
                 price = int(raw_price or 0)
                 desc = payload.get("description", "").strip()
                 dl_link = payload.get("download_link", "").strip()
@@ -1713,7 +1713,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 delivery_type = str(payload.get("delivery_type") or "channel").strip()
                 files_package = payload.get("files_package") or []
                 if not name:
-                    raise ValueError("نام دوره الزامی است.")
+                    raise ValueError("Ù†Ø§Ù… Ø¯ÙˆØ±Ù‡ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 p_obj = loop.run_until_complete(StoreService.add_product(
@@ -1771,7 +1771,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 prod_id = payload.get("prod_id", "").strip()
                 data_b64 = payload.get("data", "").strip()
                 if not data_b64:
-                    raise ValueError("داده تصویر ارسال نشده است.")
+                    raise ValueError("Ø¯Ø§Ø¯Ù‡ ØªØµÙˆÛŒØ± Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
 
                 if "," in data_b64:
                     data_b64 = data_b64.split(",", 1)[1]
@@ -1834,7 +1834,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 data_b64 = payload.get("data", "").strip()
                 if not data_b64:
-                    raise ValueError("داده تصویر لوگو ارسال نشده است.")
+                    raise ValueError("Ø¯Ø§Ø¯Ù‡ ØªØµÙˆÛŒØ± Ù„ÙˆÚ¯Ùˆ Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
 
                 if "," in data_b64:
                     data_b64 = data_b64.split(",", 1)[1]
@@ -1879,7 +1879,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(401)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": "رمز عبور مدیریت نادرست است یا سکرت ADMIN_PANEL_PASSWORD تنظیم نشده است."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ù…Ø¯ÛŒØ±ÛŒØª Ù†Ø§Ø¯Ø±Ø³Øª Ø§Ø³Øª ÛŒØ§ Ø³Ú©Ø±Øª ADMIN_PANEL_PASSWORD ØªÙ†Ø¸ÛŒÙ… Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª."}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/hermes/chat":
             msg = (payload.get("message") or "").strip()
             history = payload.get("history") or []
@@ -1888,7 +1888,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": "پیام ارسال نشده است."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": "Ù¾ÛŒØ§Ù… Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª."}, ensure_ascii=False).encode("utf-8"))
                 return
             try:
                 from services.hermes_agent import hermes_agent
@@ -1916,7 +1916,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 stem = Path(fname).stem or "image"
                 
                 if not raw_data:
-                    raise ValueError("داده فایل SVG ارسال نشده است.")
+                    raise ValueError("Ø¯Ø§Ø¯Ù‡ ÙØ§ÛŒÙ„ SVG Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
                 
                 if "," in raw_data and "base64," in raw_data:
                     raw_data = raw_data.split("base64,", 1)[1]
@@ -1964,7 +1964,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 color = str(payload.get("color") or payload.get("hex") or "#FFFFFF").strip()
                 fname = str(payload.get("filename") or "recolored.svg").strip()
                 if not raw_data:
-                    raise ValueError("داده فایل SVG ارسال نشده است.")
+                    raise ValueError("Ø¯Ø§Ø¯Ù‡ ÙØ§ÛŒÙ„ SVG Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
 
                 if "," in raw_data and "base64," in raw_data:
                     raw_data = raw_data.split("base64,", 1)[1]
@@ -2005,7 +2005,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 font_size = int(payload.get("font_size") or 48)
                 fill = str(payload.get("fill") or payload.get("color") or "#FFFFFF").strip()
                 if not text:
-                    raise ValueError("متن برای تولید وکتور وارد نشده است.")
+                    raise ValueError("Ù…ØªÙ† Ø¨Ø±Ø§ÛŒ ØªÙˆÙ„ÛŒØ¯ ÙˆÚ©ØªÙˆØ± ÙˆØ§Ø±Ø¯ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
 
                 svg_content = image_service.text_to_svg(text, font_size=font_size, fill=fill)
                 out_b64 = base64.b64encode(svg_content.encode("utf-8")).decode("ascii")
@@ -2036,9 +2036,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 filename = str(payload.get("filename") or "").strip()
 
                 if not product_id:
-                    raise ValueError("شناسه دوره انتخاب نشده است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¯ÙˆØ±Ù‡ Ø§Ù†ØªØ®Ø§Ø¨ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
                 if not url:
-                    raise ValueError("آدرس دانلود یا فایل ارسال نشده است.")
+                    raise ValueError("Ø¢Ø¯Ø±Ø³ Ø¯Ø§Ù†Ù„ÙˆØ¯ ÛŒØ§ ÙØ§ÛŒÙ„ Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -2068,9 +2068,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 part = payload.get("part") if payload.get("part") is not None else payload.get("index")
 
                 if not product_id:
-                    raise ValueError("شناسه دوره الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¯ÙˆØ±Ù‡ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 if part is None:
-                    raise ValueError("شماره یا اندیس جلسه الزامی است.")
+                    raise ValueError("Ø´Ù…Ø§Ø±Ù‡ ÛŒØ§ Ø§Ù†Ø¯ÛŒØ³ Ø¬Ù„Ø³Ù‡ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -2096,7 +2096,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 cat_id = payload.get("category_id") or payload.get("cat_id") or payload.get("slug")
                 course_name = payload.get("course_name") or payload.get("name")
                 if not cat_id:
-                    raise ValueError("شناسه یا اسلاگ دسته‌بندی الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ ÛŒØ§ Ø§Ø³Ù„Ø§Ú¯ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -2135,7 +2135,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.send_response(401)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(json.dumps({"ok": False, "error": "احراز هویت مدیریت سیستم ناموفق بود. لطفاً مجدداً وارد شوید."}, ensure_ascii=False).encode("utf-8"))
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ø§Ø­Ø±Ø§Ø² Ù‡ÙˆÛŒØª Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÛŒØ³ØªÙ… Ù†Ø§Ù…ÙˆÙÙ‚ Ø¨ÙˆØ¯. Ù„Ø·ÙØ§Ù‹ Ù…Ø¬Ø¯Ø¯Ø§Ù‹ ÙˆØ§Ø±Ø¯ Ø´ÙˆÛŒØ¯."}, ensure_ascii=False).encode("utf-8"))
                     return
 
                 new_settings = payload.get("settings") or {}
@@ -2169,6 +2169,8 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     "ZARINPAL_MERCHANT_ID": "ZARINPAL_MERCHANT_ID",
                     "HF_TOKEN": "HF_TOKEN",
                     "HF_SPACE_ID": "HF_SPACE_ID",
+                    "FEED_AUTH_EMAIL": "FEED_AUTH_EMAIL",
+                    "FEED_AUTH_PASSWORD": "FEED_AUTH_PASSWORD",
                 }
 
                 async def _save_all():
@@ -2206,6 +2208,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "bale_safety_buffer_percent": "bale_safety_buffer_percent",
                         "HF_TOKEN": "HF_TOKEN",
                         "HF_SPACE_ID": "HF_SPACE_ID",
+                        "CASHBACK_PERCENT": "CASHBACK_PERCENT",
+                        "FEED_AUTH_EMAIL": "FEED_AUTH_EMAIL",
+                        "FEED_AUTH_PASSWORD": "FEED_AUTH_PASSWORD",
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",
                         "NAV_TABS_ORDER": "NAV_TABS_ORDER",
                         "CUSTOM_KEYBOARD_LAYOUT": "CUSTOM_KEYBOARD_LAYOUT",
@@ -2242,7 +2247,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 except Exception as err:
                                     logger.warning(f"Error persisting CUSTOM_KEYBOARD_LAYOUT to settings.json: {err}")
                             elif k == "NAV_TABS_ORDER":
-                                # تثبیت قطعی جایگاه داشبورد در رتبه اول تب‌ها (index: 0)
+                                # ØªØ«Ø¨ÛŒØª Ù‚Ø·Ø¹ÛŒ Ø¬Ø§ÛŒÚ¯Ø§Ù‡ Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯ Ø¯Ø± Ø±ØªØ¨Ù‡ Ø§ÙˆÙ„ ØªØ¨â€ŒÙ‡Ø§ (index: 0)
                                 raw_order = val if isinstance(val, list) else []
                                 if not raw_order and isinstance(val, str) and val.strip().startswith("["):
                                     try:
@@ -2349,7 +2354,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                             if k in CLOUD_SECRET_MAPPING and val_str and not is_masked_or_empty(val_str):
                                 secrets_to_cloud[CLOUD_SECRET_MAPPING[k]] = val_str
 
-                            val_disp = "••••••••" if k in SENSITIVE_KEYS else val_str
+                            val_disp = "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" if k in SENSITIVE_KEYS else val_str
                             logger.info(f"[settings] Setting updated: {k} = {val_disp}")
 
                     # Check for changing admin password
@@ -2417,7 +2422,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": True, "message": "تنظیمات با موفقیت در دیتابیس پایدار و سکرت‌های ابری هاگینگ‌فیس ذخیره و همگام‌سازی شدند."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": True, "message": "ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¯Ø± Ø¯ÛŒØªØ§Ø¨ÛŒØ³ Ù¾Ø§ÛŒØ¯Ø§Ø± Ùˆ Ø³Ú©Ø±Øªâ€ŒÙ‡Ø§ÛŒ Ø§Ø¨Ø±ÛŒ Ù‡Ø§Ú¯ÛŒÙ†Ú¯â€ŒÙÛŒØ³ Ø°Ø®ÛŒØ±Ù‡ Ùˆ Ù‡Ù…Ú¯Ø§Ù…â€ŒØ³Ø§Ø²ÛŒ Ø´Ø¯Ù†Ø¯."}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -2454,12 +2459,12 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.send_response(401)
                     self.send_header("Content-Type", "application/json; charset=utf-8")
                     self.end_headers()
-                    self.wfile.write(json.dumps({"ok": False, "error": "رمز عبور مدیریت سیستم نادرست است یا سکرت ADMIN_PANEL_PASSWORD تنظیم نشده است."}, ensure_ascii=False).encode("utf-8"))
+                    self.wfile.write(json.dumps({"ok": False, "error": "Ø±Ù…Ø² Ø¹Ø¨ÙˆØ± Ù…Ø¯ÛŒØ±ÛŒØª Ø³ÛŒØ³ØªÙ… Ù†Ø§Ø¯Ø±Ø³Øª Ø§Ø³Øª ÛŒØ§ Ø³Ú©Ø±Øª ADMIN_PANEL_PASSWORD ØªÙ†Ø¸ÛŒÙ… Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª."}, ensure_ascii=False).encode("utf-8"))
                     return
 
                 imported = payload.get("settings") if isinstance(payload.get("settings"), dict) else payload
                 if not isinstance(imported, dict) or not imported:
-                    raise ValueError("فایل یا داده معتبری از تنظیمات ارسال نشده است.")
+                    raise ValueError("ÙØ§ÛŒÙ„ ÛŒØ§ Ø¯Ø§Ø¯Ù‡ Ù…Ø¹ØªØ¨Ø±ÛŒ Ø§Ø² ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ø§Ø±Ø³Ø§Ù„ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.")
 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -2535,7 +2540,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": True, "count": saved_count, "message": f"{saved_count} تنظیم با موفقیت بازیابی شد."}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": True, "count": saved_count, "message": f"{saved_count} ØªÙ†Ø¸ÛŒÙ… Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ø§Ø²ÛŒØ§Ø¨ÛŒ Ø´Ø¯."}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -2545,13 +2550,13 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 p_id = payload.get("product_id")
                 if not p_id:
-                    raise ValueError("شناسه دوره الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¯ÙˆØ±Ù‡ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 for field in ("name", "price", "description", "download_link", "photo_url", "allow_card", "allow_bale", "requires_referral", "delivery_type", "files_package"):
                     if field in payload:
                         if field == "price":
-                            val = int(str(payload[field]).replace(",", "").replace("،", "").strip() or 0)
+                            val = int(str(payload[field]).replace(",", "").replace("ØŒ", "").strip() or 0)
                         elif field in ("allow_card", "allow_bale", "requires_referral"):
                             val = 1 if payload[field] else 0
                         elif field == "files_package":
@@ -2590,7 +2595,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 terms = (payload.get("terms_text") or payload.get("COURSE_TERMS_TEXT") or "").strip()
                 if not terms:
-                    raise ValueError("متن تعهدنامه نمی‌تواند خالی باشد.")
+                    raise ValueError("Ù…ØªÙ† ØªØ¹Ù‡Ø¯Ù†Ø§Ù…Ù‡ Ù†Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ø¯ Ø®Ø§Ù„ÛŒ Ø¨Ø§Ø´Ø¯.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(set_system_setting("COURSE_TERMS_TEXT", terms))
@@ -2610,12 +2615,12 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 p_id = (payload.get("product_id") or payload.get("id") or "").strip()
                 if not p_id:
-                    raise ValueError("شناسه دوره الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¯ÙˆØ±Ù‡ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 prod = loop.run_until_complete(StoreService.get_product(p_id))
                 if not prod:
-                    raise ValueError("دوره یافت نشد.")
+                    raise ValueError("Ø¯ÙˆØ±Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯.")
                 new_state = 0 if prod.active else 1
                 loop.run_until_complete(StoreService.update_product_field(p_id, "active", new_state))
                 loop.close()
@@ -2632,7 +2637,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             try:
                 p_id = (payload.get("product_id") or payload.get("id") or "").strip()
                 if not p_id:
-                    raise ValueError("شناسه دوره الزامی است.")
+                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ Ø¯ÙˆØ±Ù‡ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 loop.run_until_complete(StoreService.delete_product(p_id))
