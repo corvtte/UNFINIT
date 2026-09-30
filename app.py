@@ -54,7 +54,8 @@ from services.web_panel import (
     handle_store_clear_all_orders,
     handle_store_get_order_status,
     handle_crawler_test_auth,
-    handle_crawler_rescrap_item
+    handle_crawler_rescrap_item,
+    handle_system_test_report
 )
 from services.store_service import StoreService
 from services.session_manager import session_manager
@@ -240,6 +241,19 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             except Exception:
                 self.send_response(404)
                 self.end_headers()
+            return
+        elif path == "/api/system/test-report":
+            try:
+                res = handle_system_test_report()
+                self.send_response(200 if res.get("overall_status") == "HEALTHY" else 503)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"overall_status": "DEGRADED", "error": str(e)}).encode("utf-8"))
             return
         elif path == "/api/store/orders":
             try:

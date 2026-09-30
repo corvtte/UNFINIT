@@ -10332,6 +10332,38 @@ async def handle_crawler_rescrap_item_async(payload: dict) -> dict:
 def handle_crawler_rescrap_item(payload: dict) -> dict:
     return _run_sync(handle_crawler_rescrap_item_async(payload))
 
+async def handle_system_test_report_async() -> dict:
+    health = get_system_health()
+    db_count = 0
+    try:
+        from core.database import get_system_setting
+        all_s = await get_system_setting("dummy")
+        # Just getting something to show DB is alive
+        db_count = 1
+    except:
+        pass
+    
+    tg_status = health["platforms"]["telegram"]["status"]
+    bale_status = health["platforms"]["bale"]["status"]
+    
+    from services.abasmanesh_crawler import AbasmaneshAuthManager
+    auth_status = await AbasmaneshAuthManager.test_connection()
+    auth_ok = auth_status.get("success", False)
+    
+    overall = "HEALTHY" if (tg_status == "ONLINE" and bale_status == "ONLINE" and auth_ok) else "DEGRADED"
+    
+    return {
+        "overall_status": overall,
+        "database_settings_loaded": db_count,
+        "telegram_status": tg_status,
+        "bale_status": bale_status,
+        "abasmanesh_auth_status": auth_ok,
+        "abasmanesh_auth_message": auth_status.get("message", "")
+    }
+
+def handle_system_test_report() -> dict:
+    return _run_sync(handle_system_test_report_async())
+
 
 async def handle_store_buy_card_async(payload: dict) -> dict:
     course_id = (payload.get("course_id") or "").strip()
