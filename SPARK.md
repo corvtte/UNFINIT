@@ -12,3 +12,7 @@ Embedded JavaScript in Python web panel templates must strictly maintain 100% va
 
 ### 5.27. Reporting Format & BiDi Layout Preservation
 Antigravity must conclude every execution report with a structured Markdown Summary Table (| Row | Module | Changes | Status |). In Persian explanations, all English identifiers and keywords must strictly be enclosed in backticks to prevent RTL/LTR bidirectional rendering corruption.
+
+
+### 5.28. Modern Non-CMS Scraper Architecture & Session Cookie Injection
+Target sites must not be assumed to run standard CMS frameworks (e.g. WordPress). Crawlers must prioritize direct session cookie injection (FEED_AUTH_COOKIE) to bypass dynamic SPA/Alpine.js authentication friction. Raw HTTP diagnostics must be logged on failure.

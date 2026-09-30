@@ -2838,6 +2838,11 @@ def render_dashboard_html() -> str:
                                         <button type="button" onclick="togglePasswordVisibility('cfg_FEED_AUTH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
+                                <div class="mt-4">
+                                    <label class="block text-xs font-bold text-slate-400 mb-1">سشن کوکی مرورگر (FEED_AUTH_COOKIE) - اولویت اول ورود قطعی</label>
+                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-[11px] font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600 transition" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{settings.get('FEED_AUTH_COOKIE', '')}</textarea>
+                                    <p class="mt-1 text-[10px] text-slate-500">سشن کوکی لاگین‌شده از مرورگر خود را کپی کنید تا بدون نیاز به فرم لاگین، به سادگی و ۱۰۰٪ قطعی وارد شوید.</p>
+                                </div>
                             </div>
                             <div class="mt-4 flex justify-end">
                                 <button type="button" onclick="testCrawlerConnection(this)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-bold transition flex items-center gap-2 border border-slate-700">
@@ -3823,15 +3828,22 @@ def render_dashboard_html() -> str:
                 }}
                 window.togglePasswordVisibility = togglePasswordVisibility;
 
-                window.openFeedAuthModal = function() {{
+                                window.openFeedAuthModal = function() {{
                     const m = document.getElementById('feedAuthModal');
                     if (m) {{
+                        const ck = document.getElementById('quick_FEED_AUTH_COOKIE');
                         const em = document.getElementById('quick_FEED_AUTH_EMAIL');
                         const pw = document.getElementById('quick_FEED_AUTH_PASSWORD');
+                        const cc = document.getElementById('cfg_FEED_AUTH_COOKIE');
                         const ce = document.getElementById('cfg_FEED_AUTH_EMAIL');
                         const cp = document.getElementById('cfg_FEED_AUTH_PASSWORD');
+                        if (ck && cc) ck.value = cc.value || '';
                         if (em && ce) em.value = ce.value || '';
                         if (pw && cp) pw.value = cp.value || '';
+                        
+                        const resDiv = document.getElementById('quickFeedAuthResult');
+                        if (resDiv) resDiv.classList.add('hidden');
+                        
                         m.classList.remove('hidden');
                     }}
                 }};
@@ -3841,15 +3853,20 @@ def render_dashboard_html() -> str:
                     if (m) m.classList.add('hidden');
                 }};
 
-                window.saveQuickFeedAuth = async function(btn) {{
+                                window.saveQuickFeedAuth = async function(btn) {{
                     const orig = btn.innerHTML;
                     btn.innerHTML = 'در حال بررسی...';
                     btn.disabled = true;
+                    const resDiv = document.getElementById('quickFeedAuthResult');
+                    if (resDiv) resDiv.classList.add('hidden');
                     try {{
+                        const cookie = document.getElementById('quick_FEED_AUTH_COOKIE').value;
                         const email = document.getElementById('quick_FEED_AUTH_EMAIL').value;
                         const pass = document.getElementById('quick_FEED_AUTH_PASSWORD').value;
+                        const cfgC = document.getElementById('cfg_FEED_AUTH_COOKIE');
                         const cfgE = document.getElementById('cfg_FEED_AUTH_EMAIL');
                         const cfgP = document.getElementById('cfg_FEED_AUTH_PASSWORD');
+                        if (cfgC) cfgC.value = cookie;
                         if (cfgE) cfgE.value = email;
                         if (cfgP) cfgP.value = pass;
                         
@@ -3861,25 +3878,42 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
                         const data = await res.json();
                         if (data.success) {{
-                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد');
+                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد
+
+' + data.message);
                             window.closeFeedAuthModal();
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
-                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-orange-500 text-white';
+                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm';
                                 b.innerText = 'نشست فعال (ONLINE)';
                             }}
                         }} else {{
-                            alert('❌ خطا: نام کاربری یا رمز عبور نامعتبر است');
+                            if (resDiv) {{
+                                resDiv.classList.remove('hidden');
+                                resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300';
+                                resDiv.innerHTML = '<strong>❌ خروج خام خطا:</strong>
+' + data.message;
+                            }} else {{
+                                alert('❌ خطا:
+' + data.message);
+                            }}
                         }}
                     }} catch (e) {{
-                        alert('❌ خطای شبکه');
+                        if (resDiv) {{
+                            resDiv.classList.remove('hidden');
+                            resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300';
+                            resDiv.innerText = '❌ خطای شبکه:
+' + e.message;
+                        }} else {{
+                            alert('❌ خطای شبکه: ' + e.message);
+                        }}
                     }} finally {{
                         btn.innerHTML = orig;
                         btn.disabled = false;
                     }}
                 }};
 
-                window.testCrawlerConnection = async function(btn) {{
+                                window.testCrawlerConnection = async function(btn) {{
                     const origHtml = btn.innerHTML;
                     btn.disabled = true;
                     btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
@@ -3887,14 +3921,17 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
                         const data = await res.json();
                         if (data.success) {{
-                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد');
+                            alert('✅ ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد
+
+' + data.message);
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
-                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-orange-500 text-white';
+                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm';
                                 b.innerText = 'نشست فعال (ONLINE)';
                             }}
                         }} else {{
-                            alert('❌ خطا: نام کاربری یا رمز عبور نامعتبر است');
+                            alert('❌ خطا:
+' + data.message);
                         }}
                     }} catch (e) {{
                         alert('❌ خطای شبکه: ' + e.message);
@@ -9437,6 +9474,47 @@ def render_dashboard_html() -> str:
             }}
         }})();
     </script>
+
+        <!-- Feed Auth Quick Connect Modal -->
+        <div id="feedAuthModal" class="fixed inset-0 z-[60] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+            <div class="rounded-2xl border w-11/12 max-w-sm overflow-hidden shadow-2xl" style="background: var(--panel-bg); border-color: var(--card-border);">
+                <div class="p-4 flex items-center justify-between border-b" style="border-color: var(--card-border); background: var(--table-head-bg);">
+                    <h3 class="text-sm font-bold text-orange-400 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                        تنظیم و تست اتصال منبع
+                    </h3>
+                    <button type="button" onclick="closeFeedAuthModal()" class="text-slate-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                        جهت عبور از محدودیت‌های لاگین فرم‌های SPA (مانند Alpine.js)، <strong>تزریق مستقیم سشن کوکی</strong> مرورگر سریع‌ترین و قطعی‌ترین روش است.
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
+                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                    </div>
+                    <div class="relative">
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">کلمه عبور (FEED_AUTH_PASSWORD)</label>
+                        <div class="relative">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none pr-10" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="saveQuickFeedAuth(this)" class="w-full mt-2 py-2.5 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-2">
+                        <span>ذخیره و تست اتصال</span>
+                    </button>
+                    <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
+                </div>
+            </div>
+        </div>
 </body>
 </html>
 """
@@ -11599,6 +11677,47 @@ def render_storefront_html() -> str:
         window.openTrackModal = openTrackModal;
         window.closeModal = closeModal;
     </script>
+
+        <!-- Feed Auth Quick Connect Modal -->
+        <div id="feedAuthModal" class="fixed inset-0 z-[60] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+            <div class="rounded-2xl border w-11/12 max-w-sm overflow-hidden shadow-2xl" style="background: var(--panel-bg); border-color: var(--card-border);">
+                <div class="p-4 flex items-center justify-between border-b" style="border-color: var(--card-border); background: var(--table-head-bg);">
+                    <h3 class="text-sm font-bold text-orange-400 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                        تنظیم و تست اتصال منبع
+                    </h3>
+                    <button type="button" onclick="closeFeedAuthModal()" class="text-slate-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                        جهت عبور از محدودیت‌های لاگین فرم‌های SPA (مانند Alpine.js)، <strong>تزریق مستقیم سشن کوکی</strong> مرورگر سریع‌ترین و قطعی‌ترین روش است.
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
+                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                    </div>
+                    <div class="relative">
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">کلمه عبور (FEED_AUTH_PASSWORD)</label>
+                        <div class="relative">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none pr-10" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="saveQuickFeedAuth(this)" class="w-full mt-2 py-2.5 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-2">
+                        <span>ذخیره و تست اتصال</span>
+                    </button>
+                    <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
+                </div>
+            </div>
+        </div>
 </body>
 </html>"""
 

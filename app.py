@@ -2171,6 +2171,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     "HF_SPACE_ID": "HF_SPACE_ID",
                     "FEED_AUTH_EMAIL": "FEED_AUTH_EMAIL",
                     "FEED_AUTH_PASSWORD": "FEED_AUTH_PASSWORD",
+                    "FEED_AUTH_COOKIE": "FEED_AUTH_COOKIE",
                 }
 
                 async def _save_all():
@@ -2211,6 +2212,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         "CASHBACK_PERCENT": "CASHBACK_PERCENT",
                         "FEED_AUTH_EMAIL": "FEED_AUTH_EMAIL",
                         "FEED_AUTH_PASSWORD": "FEED_AUTH_PASSWORD",
+                    "FEED_AUTH_COOKIE": "FEED_AUTH_COOKIE",
                         "COURSE_DELIVERY_NOTE": "COURSE_DELIVERY_NOTE",
                         "NAV_TABS_ORDER": "NAV_TABS_ORDER",
                         "CUSTOM_KEYBOARD_LAYOUT": "CUSTOM_KEYBOARD_LAYOUT",
