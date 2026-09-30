@@ -295,13 +295,31 @@ class AbasmaneshAuthManager:
 
     @classmethod
     async def login_if_needed(cls) -> bool:
-        email = await get_system_setting("ABASMANESH_EMAIL", "")
-        password = await get_system_setting("ABASMANESH_PASSWORD", "")
+        email = (os.getenv("ABASMANESH_EMAIL") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
+        password = (os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
         if not email or not password:
             logger.warning("[AbasmaneshAuthManager] Missing ABASMANESH_EMAIL or ABASMANESH_PASSWORD")
             return False
 
         session = await cls.get_session()
+
+    @classmethod
+    async def test_connection(cls) -> dict:
+        """Lightweight authenticated probe to check connection health and auth status"""
+        try:
+            await cls.invalidate_session()
+            email = (os.getenv("ABASMANESH_EMAIL") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
+            password = (os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
+            if not email or not password:
+                return {"success": False, "message": "اعتبارنامه‌های ورود تنظیم نشده‌اند.", "authenticated": False}
+
+            logged_in = await cls.login_if_needed()
+            if logged_in:
+                return {"success": True, "message": "اتصال و نشست با موفقیت تأیید شد.", "authenticated": True}
+            else:
+                return {"success": False, "message": "خطا در احراز هویت: اطلاعات ورود نامعتبر است یا مشکلی پیش آمده.", "authenticated": False}
+        except Exception as e:
+            return {"success": False, "message": f"خطای ارتباطی: {str(e)}", "authenticated": False}
         
         try:
             async with session.get("https://abasmanesh.com/fa/login/", timeout=15) as resp:

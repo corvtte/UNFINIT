@@ -52,7 +52,9 @@ from services.web_panel import (
     handle_store_cleanup_rejected_orders,
     handle_store_bulk_delete_orders,
     handle_store_clear_all_orders,
-    handle_store_get_order_status
+    handle_store_get_order_status,
+    handle_crawler_test_auth,
+    handle_crawler_rescrap_item
 )
 from services.store_service import StoreService
 from services.session_manager import session_manager
@@ -938,6 +940,32 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
         elif path == "/api/store/buy_card":
             try:
                 res = handle_store_buy_card(payload)
+                self.send_response(200 if res.get("ok") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+            return
+        elif path == "/api/crawler/test-auth":
+            try:
+                res = handle_crawler_test_auth(payload)
+                self.send_response(200 if res.get("success") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": str(e), "authenticated": False}).encode("utf-8"))
+            return
+        elif path == "/api/crawler/rescrap-item":
+            try:
+                res = handle_crawler_rescrap_item(payload)
                 self.send_response(200 if res.get("ok") else 400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

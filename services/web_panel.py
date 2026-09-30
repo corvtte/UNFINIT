@@ -186,8 +186,8 @@ def get_system_health() -> Dict[str, Any]:
             },
             "abasmanesh": {
                 "name": "خزشگر عباس‌منش",
-                "status": "ONLINE" if (get_system_setting_sync("ABASMANESH_EMAIL") and get_system_setting_sync("ABASMANESH_PASSWORD")) else "REQUIRE_AUTH",
-                "badge": "bg-orange-500" if (get_system_setting_sync("ABASMANESH_EMAIL") and get_system_setting_sync("ABASMANESH_PASSWORD")) else "bg-amber-600"
+                "status": "ONLINE" if ((os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "REQUIRE_AUTH",
+                "badge": "bg-orange-500" if ((os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "bg-amber-600"
             }
         },
         "stats": {
@@ -2830,10 +2830,16 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (ABASMANESH_PASSWORD)</label>
                                     <div class="relative">
-                                        <input type="text" id="cfg_ABASMANESH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
+                                        <input type="password" id="cfg_ABASMANESH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-orange-500 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_ABASMANESH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs">👁️</button>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="mt-4 flex justify-end">
+                                <button type="button" onclick="testAbasmaneshConnection(this)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-bold transition flex items-center gap-2 border border-slate-700">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    تست اتصال و بررسی وضعیت ورود
+                                </button>
                             </div>
                         </details>
                     </div>
@@ -3770,6 +3776,26 @@ def render_dashboard_html() -> str:
                     }}
                 }}
                 window.updateCharCounter = updateCharCounter;
+
+                async function testAbasmaneshConnection(btn) {{
+                    const origHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
+                    try {{
+                        const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
+                        const data = await res.json();
+                        if (data.success) {{
+                            alert('✅ ' + data.message);
+                        }} else {{
+                            alert('❌ ' + data.message);
+                        }}
+                    }} catch (e) {{
+                        alert('❌ خطای شبکه: ' + e.message);
+                    }} finally {{
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml;
+                    }}
+                }}
 
                 function togglePasswordVisibility(inputId, btn) {{
                     const inp = document.getElementById(inputId);
@@ -6267,6 +6293,7 @@ def render_dashboard_html() -> str:
                         const safeTitle = title.replace(/'/g, "\\\\'");
                         const safeAudio = (audioLink || '').replace(/'/g, "\\\\'");
                         const safeVideo = (videoLink || '').replace(/'/g, "\\\\'");
+                        const safeSource = (item.source_url || '').replace(/'/g, "\\\\'");
                         
                         let audioBtn = '';
                         if (audioLink) {{
@@ -6285,7 +6312,7 @@ def render_dashboard_html() -> str:
 
                         const linksGrid = (audioBtn || videoBtn)
                             ? '<div class="grid grid-cols-2 gap-2">' + (audioBtn || '<div></div>') + (videoBtn || '<div></div>') + '</div>'
-                            : '';
+                            : '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\', \\'' + safeSource + '\\')" class="w-full theme-card-btn py-1.5 px-2.5 rounded-lg text-orange-300 flex items-center justify-center gap-1.5 transition text-xs font-medium border border-orange-500/30 hover:border-orange-500/50"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span>بروزرسانی لینک‌ها</span></button>';
 
                         return '<div class="glass rounded-2xl border border-slate-800/80 hover:border-cyan-500/40 transition-all flex flex-col justify-between overflow-hidden shadow-lg hover:shadow-cyan-950/20 group" style="background: var(--card-bg); border-color: var(--card-border);">' +
                             cover +
@@ -6301,7 +6328,7 @@ def render_dashboard_html() -> str:
                                 '</div>' +
                                 '<div class="flex flex-col gap-2 pt-3 border-t border-white/5">' +
                                     linksGrid +
-                                    '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\')" class="w-full theme-accent-btn py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer">' +
+                                    '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\', \\'' + safeSource + '\\')" class="w-full theme-accent-btn py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer">' +
                                         '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>' +
                                         '<span>انتقال به ربات جهت دانلود و نشر</span>' +
                                     '</button>' +
@@ -6372,10 +6399,35 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function openFeedDispatchModal(url, title, audioUrl, videoUrl) {{
+        async function openFeedDispatchModal(url, title, audioUrl, videoUrl, sourceUrl) {{
             if (!url && !audioUrl && !videoUrl) {{
-                alert('❌ آدرس دانلودی برای این آیتم یافت نشد.');
-                return;
+                if (sourceUrl) {{
+                    try {{
+                        const loadingToast = document.createElement('div');
+                        loadingToast.id = 'rescrapToast';
+                        loadingToast.className = 'fixed bottom-4 right-4 bg-slate-800 border border-orange-500 text-white px-4 py-2 rounded-xl text-xs z-50';
+                        loadingToast.innerText = '⏳ در حال دریافت لینک‌های دانلود از سایت اصلی...';
+                        document.body.appendChild(loadingToast);
+
+                        const res = await fetch('/api/crawler/rescrap-item', {{ method: 'POST', body: JSON.stringify({{ url: sourceUrl }}) }});
+                        const data = await res.json();
+                        document.body.removeChild(loadingToast);
+                        if (data.ok && (data.audio_url || data.video_url || data.url)) {{
+                            return openFeedDispatchModal(data.url || data.audio_url || data.video_url, title, data.audio_url, data.video_url, sourceUrl);
+                        }} else {{
+                            alert('❌ آدرس دانلودی برای این آیتم در سرور یافت نشد.');
+                            return;
+                        }}
+                    }} catch (e) {{
+                        const tb = document.getElementById('rescrapToast');
+                        if (tb) tb.remove();
+                        alert('❌ خطای ارتباط با سرور: ' + e.message);
+                        return;
+                    }}
+                }} else {{
+                    alert('❌ آدرس دانلودی برای این آیتم یافت نشد.');
+                    return;
+                }}
             }}
             pendingFeedAudioUrl = audioUrl || (url && url.toLowerCase().endsWith('.mp3') ? url : '');
             pendingFeedVideoUrl = videoUrl || (url && url.toLowerCase().endsWith('.mp4') ? url : '');
@@ -6589,8 +6641,8 @@ def render_dashboard_html() -> str:
             }}
         }}
 
-        function transferFeedDownload(url, title, audioUrl, videoUrl) {{
-            openFeedDispatchModal(url, title, audioUrl, videoUrl);
+        function transferFeedDownload(url, title, audioUrl, videoUrl, sourceUrl) {{
+            openFeedDispatchModal(url, title, audioUrl, videoUrl, sourceUrl);
         }}
 
         // Initialize Studio Sort Select and Feed from localStorage / API
@@ -10248,6 +10300,37 @@ async def handle_store_buy_bale_async(payload: dict) -> dict:
 
 def handle_store_buy_bale(payload: dict) -> dict:
     return _run_sync(handle_store_buy_bale_async(payload))
+
+async def handle_crawler_test_auth_async(payload: dict) -> dict:
+    from services.abasmanesh_crawler import AbasmaneshAuthManager
+    return await AbasmaneshAuthManager.test_connection()
+
+def handle_crawler_test_auth(payload: dict) -> dict:
+    return _run_sync(handle_crawler_test_auth_async(payload))
+
+async def handle_crawler_rescrap_item_async(payload: dict) -> dict:
+    url = (payload.get("url") or "").strip()
+    if not url:
+        return {"ok": False, "error": "URL not provided"}
+    try:
+        from services.abasmanesh_crawler import AbasmaneshCrawler
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            details = await AbasmaneshCrawler.fetch_article_details(session, url)
+        
+        # update the db
+        from core.database import execute_query
+        audio_url = details.get("audio_url", "")
+        video_url = details.get("video_url", "")
+        if audio_url or video_url:
+            await execute_query("UPDATE abasmanesh_feed SET audio_url = ?, video_url = ? WHERE source_url = ?", (audio_url, video_url, url))
+        
+        return {"ok": True, "audio_url": audio_url, "video_url": video_url, "url": audio_url or video_url}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+def handle_crawler_rescrap_item(payload: dict) -> dict:
+    return _run_sync(handle_crawler_rescrap_item_async(payload))
 
 
 async def handle_store_buy_card_async(payload: dict) -> dict:
