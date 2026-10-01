@@ -795,7 +795,7 @@ def render_dashboard_html() -> str:
 
             <!-- Dedicated Isolated Login Script -->
             <script>
-        window.showToast = function(msg, type='info') {{
+                window.showToast = function(msg, type='info') {{
             const container = document.getElementById('toast-container') || (function() {{
                 const c = document.createElement('div');
                 c.id = 'toast-container';
@@ -803,21 +803,34 @@ def render_dashboard_html() -> str:
                 document.body.appendChild(c);
                 return c;
             }})();
+            
+            const cleanMsg = msg.replace(/^[❌✅]/, '').trim();
+            for (const el of container.children) {{
+                if (el.dataset.msg === cleanMsg) {{
+                    clearTimeout(el.toastTimer);
+                    el.toastTimer = setTimeout(() => {{
+                        el.classList.add('translate-x-full', 'opacity-0');
+                        setTimeout(() => el.remove(), 300);
+                    }}, 3500);
+                    return;
+                }}
+            }}
+            
             const t = document.createElement('div');
+            t.dataset.msg = cleanMsg;
             const isErr = type === 'error' || msg.includes('❌') || msg.includes('خطا');
             const isOk = type === 'success' || msg.includes('✅') || msg.includes('موفق');
             const bg = isErr ? 'bg-rose-950/90 border-rose-800 text-rose-200' : (isOk ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-800/90 border-slate-700 text-slate-200');
             const icon = isErr ? '<svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : 
                          (isOk ? '<svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : 
                          '<svg class="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>');
-            msg = msg.replace(/^[❌✅]/, '').trim();
             t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${{bg}}`;
-            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans">${{msg}}</span>`;
+            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans" style="font-family: 'IRANSans', 'Vazirmatn', sans-serif;">${{cleanMsg}}</span>`;
             container.appendChild(t);
             requestAnimationFrame(() => {{
                 t.classList.remove('translate-x-full', 'opacity-0');
             }});
-            setTimeout(() => {{
+            t.toastTimer = setTimeout(() => {{
                 t.classList.add('translate-x-full', 'opacity-0');
                 setTimeout(() => t.remove(), 300);
             }}, 3500);
@@ -3792,7 +3805,7 @@ def render_dashboard_html() -> str:
 
 
     <script>
-        window.showToast = function(msg, type='info') {{
+                window.showToast = function(msg, type='info') {{
             const container = document.getElementById('toast-container') || (function() {{
                 const c = document.createElement('div');
                 c.id = 'toast-container';
@@ -3800,21 +3813,34 @@ def render_dashboard_html() -> str:
                 document.body.appendChild(c);
                 return c;
             }})();
+            
+            const cleanMsg = msg.replace(/^[❌✅]/, '').trim();
+            for (const el of container.children) {{
+                if (el.dataset.msg === cleanMsg) {{
+                    clearTimeout(el.toastTimer);
+                    el.toastTimer = setTimeout(() => {{
+                        el.classList.add('translate-x-full', 'opacity-0');
+                        setTimeout(() => el.remove(), 300);
+                    }}, 3500);
+                    return;
+                }}
+            }}
+            
             const t = document.createElement('div');
+            t.dataset.msg = cleanMsg;
             const isErr = type === 'error' || msg.includes('❌') || msg.includes('خطا');
             const isOk = type === 'success' || msg.includes('✅') || msg.includes('موفق');
             const bg = isErr ? 'bg-rose-950/90 border-rose-800 text-rose-200' : (isOk ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-800/90 border-slate-700 text-slate-200');
             const icon = isErr ? '<svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : 
                          (isOk ? '<svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : 
                          '<svg class="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>');
-            msg = msg.replace(/^[❌✅]/, '').trim();
             t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${{bg}}`;
-            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans">${{msg}}</span>`;
+            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans" style="font-family: 'IRANSans', 'Vazirmatn', sans-serif;">${{cleanMsg}}</span>`;
             container.appendChild(t);
             requestAnimationFrame(() => {{
                 t.classList.remove('translate-x-full', 'opacity-0');
             }});
-            setTimeout(() => {{
+            t.toastTimer = setTimeout(() => {{
                 t.classList.add('translate-x-full', 'opacity-0');
                 setTimeout(() => t.remove(), 300);
             }}, 3500);
@@ -3920,7 +3946,7 @@ def render_dashboard_html() -> str:
                     if (m) m.classList.add('hidden');
                 }};
 
-                                                window.saveQuickFeedAuth = async function(btn) {{
+                                                                                                window.saveQuickFeedAuth = async function(btn) {{
                     const orig = btn.innerHTML;
                     btn.innerHTML = 'در حال بررسی...';
                     btn.disabled = true;
@@ -3930,46 +3956,39 @@ def render_dashboard_html() -> str:
                         const cookie = document.getElementById('quick_FEED_AUTH_COOKIE').value;
                         const email = document.getElementById('quick_FEED_AUTH_EMAIL').value;
                         const pass = document.getElementById('quick_FEED_AUTH_PASSWORD').value;
-                        const cfgC = document.getElementById('cfg_FEED_AUTH_COOKIE');
-                        const cfgE = document.getElementById('cfg_FEED_AUTH_EMAIL');
-                        const cfgP = document.getElementById('cfg_FEED_AUTH_PASSWORD');
-                        if (cfgC) cfgC.value = cookie;
-                        if (cfgE) cfgE.value = email;
-                        if (cfgP) cfgP.value = pass;
                         
-                        const btnSave = document.getElementById('btnSaveSettings');
-                        if (btnSave && window.handleSaveSettings) {{
-                            await window.handleSaveSettings();
-                        }}
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         
-                        const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
+                        const res = await fetch('/api/crawler/save-auth', {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + pwd,
+                                'X-Admin-Password': pwd
+                            }},
+                            body: JSON.stringify({{ cookie: cookie, email: email, password: pass }})
+                        }});
+                        
                         const data = await res.json();
                         
                         if (data.success) {{
-                            showToast('✅ ' + (data.message || 'ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد.'));
-                            window.closeFeedAuthModal();
+                            showToast('✅ ' + (data.message || 'ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد.'), 'success');
+                            if (window.closeFeedAuthModal) window.closeFeedAuthModal();
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
-                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm';
-                                b.innerText = 'نشست فعال (ONLINE)';
+                                b.className = 'px-2 py-1 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1.5 shadow-sm';
+                                b.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> نشست فعال (ONLINE)';
                             }}
                         }} else {{
                             if (resDiv) {{
                                 resDiv.classList.remove('hidden');
-                                resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300'; resDiv.style.fontFamily = "'IRANSans', 'Vazirmatn', sans-serif";
-                                resDiv.innerHTML = '<strong>❌ خطا:</strong><br>' + (data.message || 'پاسخی دریافت نشد');
-                            }} else {{
-                                showToast('❌ خطا: ' + (data.message || 'پاسخی دریافت نشد'));
+                                resDiv.innerHTML = '<span class="text-rose-500 font-bold">❌ خطا:</span> ' + (data.message || 'مشکلی رخ داد.');
                             }}
+                            showToast('خطا در ذخیره نشست', 'error');
                         }}
-                    }} catch (e) {{
-                        if (resDiv) {{
-                            resDiv.classList.remove('hidden');
-                            resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300'; resDiv.style.fontFamily = "'IRANSans', 'Vazirmatn', sans-serif";
-                            resDiv.innerHTML = '<strong>❌ خطای شبکه:</strong><br>' + e.message;
-                        }} else {{
-                            showToast('❌ خطای شبکه: ' + e.message);
-                        }}
+                    }} catch (err) {{
+                        console.error(err);
+                        showToast('خطای شبکه در ارتباط با سرور', 'error');
                     }} finally {{
                         btn.innerHTML = orig;
                         btn.disabled = false;
@@ -9554,7 +9573,12 @@ def render_dashboard_html() -> str:
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
-                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <div class="relative">
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 pr-10 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <button type="button" onclick="document.getElementById('quick_FEED_AUTH_COOKIE').value=''" class="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-rose-400 transition" title="پاک کردن کوکی">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
                     </div>
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
@@ -9595,10 +9619,15 @@ async def handle_api_dispatch_url(data: dict) -> dict:
         details = await FeedCrawler.scrape_single_item(url)
         if details:
             dl_links = json.dumps(details.get("download_links", []), ensure_ascii=False)
-            execute_query(
+            await execute_query(
                 "UPDATE crawler_cache SET download_links = ?, last_scraped = CURRENT_TIMESTAMP WHERE link = ?",
                 (dl_links, url)
             )
+            audio_url = details.get("audio_url", "")
+            video_url = details.get("video_url", "")
+            thumbnail = details.get("cover_url", "")
+            await execute_query("UPDATE abasmanesh_feed SET audio_url = ?, video_url = ?, thumbnail_url = ? WHERE source_url = ?", (audio_url, video_url, thumbnail, url))
+            
             links = details.get("download_links", [])
             if not links:
                 return {"ok": False, "error": "پس از اسکراپ زنده، هیچ لینک رسانه‌ای در این مقاله یافت نشد."}
@@ -10559,27 +10588,63 @@ async def handle_crawler_test_auth_async(payload: dict) -> dict:
 def handle_crawler_test_auth(payload: dict) -> dict:
     return _run_sync(handle_crawler_test_auth_async(payload))
 
+async def handle_crawler_save_auth_async(payload: dict) -> dict:
+    from pathlib import Path
+    import json
+    
+    email = payload.get("email", "").strip()
+    password = payload.get("password", "").strip()
+    cookie = payload.get("cookie", "").strip()
+    
+    settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
+    settings = {}
+    if settings_file.exists():
+        try:
+            with open(settings_file, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+        except:
+            pass
+            
+    settings["FEED_AUTH_EMAIL"] = email
+    settings["FEED_AUTH_PASSWORD"] = password
+    settings["FEED_AUTH_COOKIE"] = cookie
+    
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(settings_file, "w", encoding="utf-8") as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+        
+    from services.feed_crawler import FeedAuthManager
+    await FeedAuthManager.invalidate_session()
+    
+    res = await FeedAuthManager.test_connection()
+    if res.get("success"):
+        return {"success": True, "message": "نشست با موفقیت ذخیره و فعال شد!"}
+    else:
+        return {"success": False, "message": res.get("message", "خطا در تأیید نشست.")}
+
+def handle_crawler_save_auth(payload: dict) -> dict:
+    return _run_sync(handle_crawler_save_auth_async(payload))
+
+
 async def handle_crawler_rescrap_item_async(payload: dict) -> dict:
     url = (payload.get("url") or "").strip()
     if not url:
         return {"ok": False, "error": "URL not provided"}
     try:
-        from services.feed_crawler import FeedCrawler
-        import aiohttp
-        async with aiohttp.ClientSession() as session:
-            details = await FeedCrawler.fetch_article_details(session, url)
+        from services.feed_crawler import FeedCrawler, FeedAuthManager
+        session = await FeedAuthManager.get_session()
+        details = await FeedCrawler.fetch_article_details(session, url)
         
-        # update the db
         from core.database import execute_query
         audio_url = details.get("audio_url", "")
         video_url = details.get("video_url", "")
-        if audio_url or video_url:
-            await execute_query("UPDATE abasmanesh_feed SET audio_url = ?, video_url = ? WHERE source_url = ?", (audio_url, video_url, url))
+        thumbnail = details.get("cover_url", "")
+        if audio_url or video_url or thumbnail:
+            await execute_query("UPDATE abasmanesh_feed SET audio_url = ?, video_url = ?, thumbnail_url = ? WHERE source_url = ?", (audio_url, video_url, thumbnail, url))
         
-        return {"ok": True, "audio_url": audio_url, "video_url": video_url, "url": audio_url or video_url}
+        return {"ok": True, "audio_url": audio_url, "video_url": video_url, "url": audio_url or video_url, "thumbnail_url": thumbnail}
     except Exception as e:
         return {"ok": False, "error": str(e)}
-
 def handle_crawler_rescrap_item(payload: dict) -> dict:
     return _run_sync(handle_crawler_rescrap_item_async(payload))
 
@@ -11370,7 +11435,7 @@ def render_storefront_html() -> str:
 
 <!-- Store JavaScript Logic -->
     <script>
-        window.showToast = function(msg, type='info') {{
+                window.showToast = function(msg, type='info') {{
             const container = document.getElementById('toast-container') || (function() {{
                 const c = document.createElement('div');
                 c.id = 'toast-container';
@@ -11378,21 +11443,34 @@ def render_storefront_html() -> str:
                 document.body.appendChild(c);
                 return c;
             }})();
+            
+            const cleanMsg = msg.replace(/^[❌✅]/, '').trim();
+            for (const el of container.children) {{
+                if (el.dataset.msg === cleanMsg) {{
+                    clearTimeout(el.toastTimer);
+                    el.toastTimer = setTimeout(() => {{
+                        el.classList.add('translate-x-full', 'opacity-0');
+                        setTimeout(() => el.remove(), 300);
+                    }}, 3500);
+                    return;
+                }}
+            }}
+            
             const t = document.createElement('div');
+            t.dataset.msg = cleanMsg;
             const isErr = type === 'error' || msg.includes('❌') || msg.includes('خطا');
             const isOk = type === 'success' || msg.includes('✅') || msg.includes('موفق');
             const bg = isErr ? 'bg-rose-950/90 border-rose-800 text-rose-200' : (isOk ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-800/90 border-slate-700 text-slate-200');
             const icon = isErr ? '<svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : 
                          (isOk ? '<svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : 
                          '<svg class="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>');
-            msg = msg.replace(/^[❌✅]/, '').trim();
             t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${{bg}}`;
-            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans">${{msg}}</span>`;
+            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans" style="font-family: 'IRANSans', 'Vazirmatn', sans-serif;">${{cleanMsg}}</span>`;
             container.appendChild(t);
             requestAnimationFrame(() => {{
                 t.classList.remove('translate-x-full', 'opacity-0');
             }});
-            setTimeout(() => {{
+            t.toastTimer = setTimeout(() => {{
                 t.classList.add('translate-x-full', 'opacity-0');
                 setTimeout(() => t.remove(), 300);
             }}, 3500);
@@ -11839,7 +11917,12 @@ def render_storefront_html() -> str:
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
-                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <div class="relative">
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 pr-10 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <button type="button" onclick="document.getElementById('quick_FEED_AUTH_COOKIE').value=''" class="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-rose-400 transition" title="پاک کردن کوکی">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
                     </div>
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
