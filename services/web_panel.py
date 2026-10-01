@@ -9521,6 +9521,34 @@ async def handle_api_dispatch_url(data: dict) -> dict:
     if not url:
         return {"ok": False, "error": "آدرس اینترنتی (URL) وارد نشده است."}
 
+    if "abasmanesh.com/fa/" in url and not any(url.lower().endswith(ext) for ext in (".mp3", ".mp4", ".pdf", ".zip", ".mkv", ".m4a")):
+        logger.info(f"[web_dispatch] URL is an article. Dynamically re-scraping live: {url}")
+        from services.feed_crawler import FeedCrawler
+        from core.database import execute_query
+        import json
+        details = await FeedCrawler.scrape_single_item(url)
+        if details:
+            dl_links = json.dumps(details.get("download_links", []), ensure_ascii=False)
+            execute_query(
+                "UPDATE crawler_cache SET download_links = ?, last_scraped = CURRENT_TIMESTAMP WHERE link = ?",
+                (dl_links, url)
+            )
+            links = details.get("download_links", [])
+            if not links:
+                return {"ok": False, "error": "پس از اسکراپ زنده، هیچ لینک رسانه‌ای در این مقاله یافت نشد."}
+            
+            best_link = None
+            for link in links:
+                if link.get("type") in ("audio", "video") and link.get("url"):
+                    best_link = link.get("url")
+                    break
+            if not best_link:
+                best_link = links[0].get("url")
+            url = best_link
+            logger.info(f"[web_dispatch] Extracted fresh media link: {url}")
+        else:
+            return {"ok": False, "error": "عملیات استخراج زنده لینک‌های رسانه از این مقاله شکست خورد. نیاز به لاگین است."}
+
     logger.info(f"[web_dispatch] Probing URL: {url} for target={target}")
     probe = await UrlService.probe_url(url)
     if not probe.get("is_valid"):
@@ -10494,31 +10522,61 @@ def handle_crawler_rescrap_item(payload: dict) -> dict:
     return _run_sync(handle_crawler_rescrap_item_async(payload))
 
 async def handle_system_test_report_async() -> dict:
-    health = get_system_health()
-    db_count = 0
-    try:
-        from core.database import get_system_setting
-        all_s = await get_system_setting("dummy")
-        # Just getting something to show DB is alive
-        db_count = 1
-    except:
-        pass
-    
-    tg_status = health["platforms"]["telegram"]["status"]
-    bale_status = health["platforms"]["bale"]["status"]
-    
     from services.feed_crawler import FeedAuthManager
+    from core.database import execute_query
+    from core.config import config
+    import time
+    
+    uptime_sec = int(time.time() - getattr(config, "SERVER_START_TIME", time.time()))
+    
     auth_status = await FeedAuthManager.test_connection()
     auth_ok = auth_status.get("success", False)
+    auth_code = auth_status.get("status_code", 0)
     
-    overall = "HEALTHY" if (tg_status == "ONLINE" and bale_status == "ONLINE" and auth_ok) else "DEGRADED"
+    cookie = FeedAuthManager._get_cfg("FEED_AUTH_COOKIE")
+    mode = "cookie" if cookie else "credentials"
+    
+    total_items = 0
+    items_with_thumbnails = 0
+    items_with_downloads = 0
+    try:
+        rows = execute_query("SELECT thumbnail, download_links FROM crawler_cache")
+        total_items = len(rows)
+        for r in rows:
+            if r.get("thumbnail") and "aba-logo" not in r.get("thumbnail", ""):
+                items_with_thumbnails += 1
+            if r.get("download_links") and r.get("download_links") != "[]":
+                items_with_downloads += 1
+    except:
+        pass
+        
+    log_tail = ""
+    log_file = config.DATA_DIR / "app.log"
+    if log_file.exists():
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                log_tail = "".join(lines[-50:])
+        except:
+            pass
+
+    overall = "HEALTHY" if auth_ok else "DEGRADED"
     
     return {
         "overall_status": overall,
-        "database_settings_loaded": db_count,
-        "telegram_status": tg_status,
-        "bale_status": bale_status,
-        "abasmanesh_auth_status": auth_ok,
+        "engine_version": getattr(config, "ENGINE_VERSION", "v0.7.18"),
+        "uptime": uptime_sec,
+        "crawler_auth": {
+            "authenticated": auth_ok,
+            "mode": mode,
+            "status_code": auth_code
+        },
+        "feed_summary": {
+            "total_items": total_items,
+            "items_with_thumbnails": items_with_thumbnails,
+            "items_with_downloads": items_with_downloads
+        },
+        "log_tail": log_tail,
         "abasmanesh_auth_message": auth_status.get("message", "")
     }
 

@@ -181,32 +181,33 @@ OFFICIAL_17_CATEGORIES: List[Dict[str, Any]] = [
 def extract_thumbnail_url(tag_or_soup: Any) -> str:
     """
     استخراج هوشمند و ضدگلوله آدرس تصویر بندانگشتی (کاور) با مهار کامل لود تنبل (Lazy Loading).
-    
-    این تابع صفات متعدد وردپرس و افزونه‌های کش مانند data-src، data-lazy-src، data-original،
-    srcset و حتی ویژگی background-image را بررسی کرده و از بازگرداندن پلیس‌هولدرهای خالی
-    (نظیر داده‌های data:image/svg+xml یا 1x1 gif) جلوگیری به عمل می‌آورد.
-    
-    ورودی:
-        tag_or_soup: تگ img، کارت BeautifulSoup یا هر المان HTML
-    خروجی:
-        str: آدرس کامل و معتبر اینترنتی تصویر شاخص
     """
     if not tag_or_soup:
         return ""
 
-    img = tag_or_soup if getattr(tag_or_soup, "name", None) == "img" else getattr(tag_or_soup, "find", lambda x: None)("img")
-
     candidate_url = ""
 
-    if img:
-        # ۱. بررسی صفات متداول بارگذاری تنبل
+    if hasattr(tag_or_soup, "find"):
+        meta_og = tag_or_soup.find("meta", property="og:image")
+        if meta_og and meta_og.get("content"):
+            candidate_url = meta_og.get("content").strip()
+
+    if not candidate_url and hasattr(tag_or_soup, "find_all"):
+        for img_tag in tag_or_soup.find_all("img"):
+            src = img_tag.get("src", "") or img_tag.get("data-src", "")
+            if "/storage/media/" in src and not src.startswith("data:"):
+                candidate_url = src.strip()
+                break
+
+    img = tag_or_soup if getattr(tag_or_soup, "name", None) == "img" else getattr(tag_or_soup, "find", lambda x: None)("img")
+
+    if not candidate_url and img:
         for attr in ("data-src", "data-lazy-src", "data-original", "data-lazy", "data-url"):
             val = img.get(attr, "").strip()
             if val and not val.startswith("data:"):
                 candidate_url = val
                 break
 
-        # ۲. بررسی صفت srcset جهت استخراج بالاترین کیفیت
         if not candidate_url and img.get("srcset"):
             raw_srcset = img["srcset"].strip()
             parts = [p.strip().split(" ")[0] for p in raw_srcset.split(",") if p.strip()]
@@ -214,17 +215,16 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
             if valid_parts:
                 candidate_url = valid_parts[-1]
 
-        # ۳. بررسی صفت src معمولی (به شرطی که پلیس‌هولدر data: نباشد)
         if not candidate_url and img.get("src"):
             raw_src = img["src"].strip()
             if raw_src and not raw_src.startswith("data:"):
                 candidate_url = raw_src
 
-    # ۴. بررسی استایل background-image در کل المان در صورت نبود تگ img یا خالی بودن آن
     if not candidate_url and hasattr(tag_or_soup, "find_all"):
         nodes = [tag_or_soup] + list(tag_or_soup.find_all(attrs={"style": True}))
         for node in nodes:
             style_str = node.get("style", "")
+            import re
             m = re.search(r"background(?:-image)?\s*:\s*url\(\s*['\"]?(.*?)['\"]?\s*\)", style_str, re.IGNORECASE)
             if m:
                 bg_val = m.group(1).strip()
@@ -232,12 +232,11 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
                     candidate_url = bg_val
                     break
 
-    # ۵. نرمال‌سازی آدرس (پروتکل‌های نسبی // و مسیرهای نسبی /)
     if candidate_url:
         if candidate_url.startswith("//"):
             candidate_url = "https:" + candidate_url
         elif candidate_url.startswith("/"):
-            candidate_url = BASE_SITE_URL + candidate_url
+            candidate_url = "https://abasmanesh.com" + candidate_url
 
     return candidate_url
 
@@ -321,10 +320,10 @@ class FeedAuthManager:
             # Verify cookie validity against a protected URL
             try:
                 # Probe a known gated URL
-                async with session.get("https://abasmanesh.com/fa/living-in-paradise/", timeout=15) as resp:
+                async with session.get("https://abasmanesh.com/fa/", timeout=15) as resp:
                     html = await resp.text()
                     # Check if ungated or user profile is present
-                    if "برای مشاهده این محتوا باید وارد شوید" not in html or "خروج" in html or "پروفایل" in html:
+                    if ("ورود / عضویت" not in html) and ("خروج" in html or "پروفایل" in html):
                         logger.info("[FeedAuthManager] Priority Cookie Injection successful!")
                         await cls.save_session()
                         return True
@@ -428,16 +427,16 @@ class FeedAuthManager:
             await cls.invalidate_session()
             await cls.login_if_needed()
             session = await cls.get_session()
-            async with session.get("https://abasmanesh.com/fa/living-in-paradise/", timeout=15) as resp:
+            async with session.get("https://abasmanesh.com/fa/", timeout=15) as resp:
                 html = await resp.text()
                 status = resp.status
                 redirect_url = str(resp.url)
                 body_preview = html[:250].strip()
                 
-                is_ok = ("برای مشاهده این محتوا باید وارد شوید" not in html) and ("خروج" in html or "پروفایل" in html)
+                is_ok = ("ورود / عضویت" not in html) and ("خروج" in html or "پروفایل" in html)
                 
                 if is_ok:
-                    msg = f"اتصال و نشست با موفقیت تأیید شد.\nآدرس نهایی: {redirect_url}\nوضعیت: {status}"
+                    msg = "نشست فعال با هویت معتبر کاربر تأیید شد."
                     logger.info(f"[FeedAuthManager] Test Connection Success - Status: {status}")
                     return {"success": True, "status_code": status, "message": msg, "authenticated": True}
                 else:

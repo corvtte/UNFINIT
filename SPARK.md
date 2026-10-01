@@ -24,3 +24,7 @@ Monolithic 7000+ line Python templates embedding raw JavaScript strings represen
 
 ### 6.1. Incremental Component Modularization (Strangler Fig Pattern)
 Whenever modifying legacy monolithic sections in web_panel.py, agents must iteratively isolate components into dedicated sub-modules. Theme styles must strictly rely on CSS variables across the 5 approved core themes.
+
+
+### 6.3. Universal Resilience & Prohibition of Static Slug Probes
+Hardcoding arbitrary content slugs or temporary URL workarounds to evaluate system health is strictly forbidden. Authentication and content crawlers must use universal domain-level root checks and dynamic runtime discovery. All web panel edits must prioritize modular component isolation.
