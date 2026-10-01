@@ -570,47 +570,45 @@ async def get_latest_free_downloads(
             return disk_items[:limit]
 
     target_url = build_page_url(effective_base, page_number=page)
-    timeout = aiohttp.ClientTimeout(total=20)
     try:
-        async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
-            async with session.get(target_url) as resp:
-                if resp.status != 200:
-                    logger.warning(f"[feed_scraper] Status {resp.status} fetching {target_url}")
-                    return FALLBACK_ITEMS[:limit] if page == 1 else []
+        from services.feed_crawler import FeedAuthManager
+        status, html = await FeedAuthManager.fetch_html_with_auth(target_url, timeout=20)
+        
+        if status != 200:
+            logger.warning(f"[feed_scraper] Status {status} fetching {target_url}")
+            return FALLBACK_ITEMS[:limit] if page == 1 else []
+            
+        articles_to_fetch = _extract_articles_from_html(html, limit=limit)
+        
+        if not articles_to_fetch:
+            return FALLBACK_ITEMS[:limit] if page == 1 else []
+            
+        # واکشی همزمان صفحات مقالات جهت استخراج مدیا
+        session = await FeedAuthManager.get_session()
+        tasks = [
+            _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
+            for url, title, cover, tag in articles_to_fetch[:limit]
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                html = await resp.text()
+        final_items = []
+        for idx, r in enumerate(results):
+            if isinstance(r, dict) and r.get("title"):
+                r["file_number"] = f"فایل شماره {((page - 1) * 25) + idx + 1}"
+                final_items.append(r)
+            else:
+                if page == 1 and idx < len(FALLBACK_ITEMS):
+                    fb = dict(FALLBACK_ITEMS[idx])
+                    fb["file_number"] = f"فایل شماره {idx + 1}"
+                    final_items.append(fb)
 
-            # استخراج ساختاریافته مقالات از صفحه جاری
-            articles_to_fetch = _extract_articles_from_html(html, limit=limit)
-
-            if not articles_to_fetch:
-                return FALLBACK_ITEMS[:limit] if page == 1 else []
-
-            # واکشی همزمان صفحات مقالات جهت استخراج مدیا
-            tasks = [
-                _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
-                for url, title, cover, tag in articles_to_fetch[:limit]
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            final_items = []
-            for idx, r in enumerate(results):
-                if isinstance(r, dict) and r.get("title"):
-                    r["file_number"] = f"فایل شماره {((page - 1) * 25) + idx + 1}"
-                    final_items.append(r)
-                else:
-                    if page == 1 and idx < len(FALLBACK_ITEMS):
-                        fb = dict(FALLBACK_ITEMS[idx])
-                        fb["file_number"] = f"فایل شماره {idx + 1}"
-                        final_items.append(fb)
-
-            if final_items:
-                _CACHE[cache_key] = {"items": final_items, "last_fetched": now}
-                if page == 1:
-                    _CACHE["items"] = final_items
-                    _CACHE["last_fetched"] = now
-                    save_feed_disk_cache(final_items)
-                return final_items[:limit]
+        if final_items:
+            _CACHE[cache_key] = {"items": final_items, "last_fetched": now}
+            if page == 1:
+                _CACHE["items"] = final_items
+                _CACHE["last_fetched"] = now
+                save_feed_disk_cache(final_items)
+        return final_items[:limit]
 
     except Exception as e:
         logger.warning(f"[feed_scraper] Failed to scrape live feed: {e}")
@@ -755,4 +753,3 @@ class FeedScraper:
 
 
 feed_scraper = FeedScraper()
-

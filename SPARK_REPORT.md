@@ -124,3 +124,8 @@ function gtag(){dataLayer.push(
 client_session: <aiohttp.client.ClientSession object at 0x000002057D1C30E0>
 
 ```
+
+### Release v0.7.23: True live web thumbnail sync and DOM card refresh
+- **Live Scrape Synchronization**: Overhauled `/api/feed/sync-thumbnails` to perform an active live scrape of the target site using `FeedAuthManager`.
+- **Instant DOM Refresh**: Ensured the client-side `syncFeedThumbnails` function seamlessly purges stale cache memory and triggers `window.fetchFeedDownloads(false)` to visually update the UI instantly without blocking.
+- **Silent DB Error Handling**: Guarded the initial `products` table query with a `sqlite3.OperationalError` catch to completely eliminate console warning logs.

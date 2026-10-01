@@ -382,12 +382,15 @@ def render_dashboard_html() -> str:
         con = sqlite3.connect(getattr(config, "DB_FILE", "data/unfinit.db"))
         con.row_factory = sqlite3.Row
         cur = con.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT, title TEXT, price INTEGER, is_active BOOLEAN, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
         cur.execute("SELECT * FROM products ORDER BY id ASC")
         rows = cur.fetchall()
         products = [ProductItem.from_db_row(dict(r)) for r in rows]
         con.close()
+    except sqlite3.OperationalError:
+        products = []
     except Exception as e:
-        logger.warning(f"Failed to load products sync in dashboard: {e}")
+        products = []
 
     bale_cap, bale_buf, bale_effective = get_bale_cap_config(settings)
 
@@ -6305,7 +6308,7 @@ def render_dashboard_html() -> str:
                 if (data.ok) {{
                     showToast('✅ ' + data.message + '\\nلیست در چند لحظه آینده به‌روزرسانی می‌شود.');
                     setTimeout(() => {{
-                        if (typeof fetchFeedDownloads === 'function') fetchFeedDownloads(true);
+                        if (typeof fetchFeedDownloads === 'function') window.fetchFeedDownloads(false);
                     }}, 2500);
                 }} else {{
                     showToast('خطا در به‌روزرسانی کش: ' + (data.error || 'ناشناخته'));
@@ -7188,7 +7191,7 @@ def render_dashboard_html() -> str:
                 const data = await res.json();
                 if (data.ok) {{
                     showToast('✅ تصاویر با موفقیت همگام‌سازی شد', 'success');
-                    fetchFeedDownloads(true);
+                    window.fetchFeedDownloads(false);
                 }} else {{
                     showToast('❌ خطا در همگام‌سازی: ' + (data.error || ''), 'error');
                 }}

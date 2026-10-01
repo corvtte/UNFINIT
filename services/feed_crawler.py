@@ -522,7 +522,7 @@ class FeedCrawler:
                                     video_dl = clean_h
                                     
                         # Persist directly to abasmanesh_feed if it's the specific file or generally
-                        from core.database import execute_query
+                        from core.database import execute_query, fetch_all
                         try:
                             # Use sync logic or fire-and-forget for db if in async context? execute_query is async
                             await execute_query(
@@ -597,8 +597,7 @@ class FeedCrawler:
         به روزرسانی کش دیسک و جدول دیتابیس abasmanesh_feed.
         """
         try:
-            from core.database import execute_query
-            # Ensure table exists
+            from core.database import execute_query, fetch_all
             await execute_query('''
                 CREATE TABLE IF NOT EXISTS abasmanesh_feed (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -618,11 +617,14 @@ class FeedCrawler:
                 
             from bs4 import BeautifulSoup
             import json
+            import time
             from pathlib import Path
             from core.config import config
             
             soup = BeautifulSoup(html, "html.parser")
             items = soup.find_all("div", class_=lambda c: c and "card" in c)[:30]
+            
+            live_scraped_items = []
             
             # Update SQLite table
             for item in items:
@@ -643,6 +645,8 @@ class FeedCrawler:
                         await execute_query("UPDATE abasmanesh_feed SET thumbnail_url = ?, title = ? WHERE source_url = ?", (thumb, title, url))
                     else:
                         await execute_query("INSERT INTO abasmanesh_feed (source_url, thumbnail_url, title) VALUES (?, ?, ?)", (url, thumb, title))
+                        
+                    live_scraped_items.append({"title": title, "url": url, "cover_url": thumb})
 
             # Update File 1 specifically
             file1_url = "https://abasmanesh.com/fa/articles/take-it-easy-so-that-become-easy/"
@@ -659,7 +663,7 @@ class FeedCrawler:
                 cached_items = data.get("items", [])
                 
                 # Fetch fresh from sqlite
-                db_rows = await execute_query("SELECT source_url, thumbnail_url, title, audio_url, video_url FROM abasmanesh_feed")
+                db_rows = await fetch_all("SELECT source_url, thumbnail_url, title, audio_url, video_url FROM abasmanesh_feed")
                 if db_rows:
                     url_to_thumb = {r["source_url"]: r["thumbnail_url"] for r in db_rows if r["thumbnail_url"]}
                     url_to_audio = {r["source_url"]: r["audio_url"] for r in db_rows if r["audio_url"]}
@@ -674,7 +678,23 @@ class FeedCrawler:
                             if url_to_audio.get(match_url): ci["audio_url"] = url_to_audio[match_url]
                             if url_to_video.get(match_url): ci["video_url"] = url_to_video[match_url]
                             
+# Update live scraped items into cache directly if not present
+                    for li in live_scraped_items:
+                        match = next((c for c in cached_items if c.get("url", "").strip("/") == li["url"].strip("/")), None)
+                        if match:
+                            match["cover_url"] = li["cover_url"]
+                            match["title"] = li["title"]
+                        else:
+                            cached_items.insert(0, li)
+                            
                 cache_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                
+            # Clear RAM cache in feed_scraper so it reads the fresh disk cache
+            try:
+                from services.feed_scraper import _CACHE
+                _CACHE.clear()
+            except Exception:
+                pass
                 
             return {"ok": True}
         except Exception as e:
