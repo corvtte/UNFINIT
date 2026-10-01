@@ -1,5 +1,5 @@
 # UNFINIT Engineering Guidelines
-**نگارش جاری موتور: v0.7.18 (Current Engine Version: v0.7.18)**
+**نگارش جاری موتور: v0.7.19 (Current Engine Version: v0.7.19)**
 
 این سند، قوانین دائمی، خط‌مشی‌های معماری و استانداردهای توسعه پروژه UNFINIT Store Engine را تعیین می‌کند.
 کلیه عامل‌ها و مدل‌های هوش مصنوعی موظفند پیش از هرگونه تحلیل یا تغییر در کدها، این منشور را ملاک قطعی عمل قرار دهند.
@@ -251,7 +251,7 @@
 | v0.7.6 | 1403/07/15 | تفکیک قطعی نام‌گذاری گروهی از اسپلیت (حذف پارت از بچ)، انکودینگ ۶x+ با veryfast، رفع چرخش RTL حجم، پاکسازی خواننده صوتی و ثبت قوانین در AGENTS.md | a35b3d6 |
 | v0.7.8 | 1403/07/15 | تنظیم همزمان سقف بله و درصد بافر در وب‌پنل، اسپلیت خودکار پیش‌پرواز ویدیوهای سنگین در ارسال گروهی و تفکیک قطعی نام‌گذاری | HEAD |
 | v0.7.9 | 1403/07/20 | طراحی سیستم خزشگر هوشمند عباس‌منش (Auth Wall Resiliency)، مدیریت یکپارچه سشن با حفظ CSRF | HEAD |
-| v0.7.18 | 1403/07/20 | طراحی سیستم تست ارتباط خزشگر، بازیابی هوشمند کش دیتابیس و مخفی‌سازی فیلدهای امنیتی در پنل وب | HEAD |
+| v0.7.19 | 1403/07/20 | طراحی سیستم تست ارتباط خزشگر، بازیابی هوشمند کش دیتابیس و مخفی‌سازی فیلدهای امنیتی در پنل وب | HEAD |
 
 
 ### 5.26. JavaScript Syntax & DOM Event Integrity in Web Panel
@@ -275,3 +275,7 @@ Whenever modifying legacy monolithic sections in web_panel.py, agents must itera
 
 ### 6.3. Universal Resilience & Prohibition of Static Slug Probes
 Hardcoding arbitrary content slugs or temporary URL workarounds to evaluate system health is strictly forbidden. Authentication and content crawlers must use universal domain-level root checks and dynamic runtime discovery. All web panel edits must prioritize modular component isolation.
+
+
+### 6.4. Autonomous Progress Documentation (SPARK_REPORT.md)
+Agents must append every completed release summary, active endpoints, and diagnostic metrics to SPARK_REPORT.md. Ad-hoc patch scripts must be cleaned up prior to git commit.

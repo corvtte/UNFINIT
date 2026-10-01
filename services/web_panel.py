@@ -15,6 +15,12 @@ import uuid
 import urllib.parse
 import html
 from pathlib import Path
+from platforms.rubika_adapter import RubikaUserClient
+from platforms.soroush_worker import soroush_worker
+from services.store_service import ProductItem
+from services.feed_scraper import get_all_categories
+import sqlite3
+
 
 from core.config import config
 from core.logger import get_logger
@@ -128,8 +134,18 @@ def get_bale_cap_config(settings_dict: Optional[Dict[str, Any]] = None) -> Tuple
     return cap, buf, effective
 
 
-def get_system_health() -> Dict[str, Any]:
-    uptime_sec = int(time.time() - SERVER_START_TIME)
+def get_system_health(settings: dict = None) -> Dict[str, Any]:
+    if settings is None:
+        settings = {}
+        try:
+            settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
+            if settings_file.exists():
+                import json
+                with open(settings_file, "r", encoding="utf-8") as sf:
+                    settings = json.load(sf)
+        except:
+            pass
+    uptime_sec = int(time.time() - getattr(config, "SERVER_START_TIME", time.time()))
     h = uptime_sec // 3600
     m = (uptime_sec % 3600) // 60
     s = uptime_sec % 60
@@ -142,22 +158,23 @@ def get_system_health() -> Dict[str, Any]:
     rub_phone = ""
     if rub_user_active:
         try:
-            from platforms.rubika_adapter import RubikaUserClient
+            
             rub_phone = RubikaUserClient().get_masked_phone()
-        except Exception:
-            rub_phone = ""
+        except:
+            pass
 
     splus_active = False
     splus_phone = ""
     try:
-        from platforms.soroush_worker import soroush_worker
         splus_active = soroush_worker.is_connected()
         splus_phone = soroush_worker.get_masked_phone()
-    except Exception:
+    except:
         pass
+        
+    auth_online = bool(settings.get("FEED_AUTH_COOKIE")) or bool((settings.get("FEED_AUTH_EMAIL") or settings.get("ABASMANESH_EMAIL")) and (settings.get("FEED_AUTH_PASSWORD") or settings.get("ABASMANESH_PASSWORD")))
 
     return {
-        "engine_version": EngineVersionStr(f"UNFINIT Engine {config.ENGINE_VERSION}"),
+        "engine_version": EngineVersionStr(f"UNFINIT Engine {getattr(config, 'ENGINE_VERSION', 'v0.7.19')}"),
         "uptime": uptime_str,
         "platforms": {
             "telegram": {
@@ -186,8 +203,8 @@ def get_system_health() -> Dict[str, Any]:
             },
             "abasmanesh": {
                 "name": "خزشگر عباس‌منش",
-                "status": "ONLINE" if ((os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("FEED_AUTH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("FEED_AUTH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "REQUIRE_AUTH",
-                "badge": "bg-orange-500" if ((os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or get_system_setting_sync("FEED_AUTH_EMAIL") or get_system_setting_sync("ABASMANESH_EMAIL")) and (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or get_system_setting_sync("FEED_AUTH_PASSWORD") or get_system_setting_sync("ABASMANESH_PASSWORD"))) else "bg-amber-600"
+                "status": "ONLINE" if auth_online else "REQUIRE_AUTH",
+                "badge": "bg-orange-500" if auth_online else "bg-amber-600"
             }
         },
         "stats": {
@@ -337,50 +354,43 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
 
 
 def render_dashboard_html() -> str:
-    health = get_system_health()
-    p = health["platforms"]
-    s = health["stats"]
-    connected_platforms_count = sum(1 for p_val in p.values() if p_val.get("status") == "ONLINE")
-
-    # Gather products safely
-    products = []
-    saved_theme = "default-dark"
-    try:
-        try:
-            running_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            running_loop = None
-
-        from core.database import get_system_setting
-        if running_loop and running_loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                products = pool.submit(lambda: asyncio.run(StoreService.get_all_products())).result()
-                saved_theme = pool.submit(lambda: asyncio.run(get_system_setting("THEME", "default-dark"))).result()
-        else:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            products = loop.run_until_complete(StoreService.get_all_products())
-            saved_theme = loop.run_until_complete(get_system_setting("THEME", "default-dark"))
-        all_themes = get_all_themes()
-        if not saved_theme or saved_theme not in all_themes:
-            saved_theme = "default-dark"
-    except Exception as e:
-        all_themes = get_all_themes()
-        saved_theme = "default-dark"
-
+    from pathlib import Path
+    import json
+    
     settings = {}
     try:
         settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
         if settings_file.exists():
             with open(settings_file, "r", encoding="utf-8") as sf:
                 settings = json.load(sf)
-    except Exception as se:
-        logger.warning(f"Failed to load settings in render_dashboard_html: {se}")
+    except:
+        pass
+
+    health = get_system_health(settings)
+    p = health["platforms"]
+    s = health["stats"]
+    connected_platforms_count = sum(1 for p_val in p.values() if p_val.get("status") == "ONLINE")
+
+    products = []
+    saved_theme = settings.get("THEME", "default-dark")
+    all_themes = get_all_themes()
+    if not saved_theme or saved_theme not in all_themes:
+        saved_theme = "default-dark"
+
+    try:
+        import sqlite3
+        con = sqlite3.connect(getattr(config, "DB_FILE", "data/unfinit.db"))
+        con.row_factory = sqlite3.Row
+        cur = con.cursor()
+        cur.execute("SELECT * FROM products ORDER BY id ASC")
+        rows = cur.fetchall()
+        products = [ProductItem.from_db_row(dict(r)) for r in rows]
+        con.close()
+    except Exception as e:
+        logger.warning(f"Failed to load products sync in dashboard: {e}")
 
     bale_cap, bale_buf, bale_effective = get_bale_cap_config(settings)
 
-    from services.feed_scraper import get_all_categories
     all_cats = get_all_categories()
     cfg = settings
     premium_categories_html = ""
@@ -785,6 +795,34 @@ def render_dashboard_html() -> str:
 
             <!-- Dedicated Isolated Login Script -->
             <script>
+        window.showToast = function(msg, type='info') {{
+            const container = document.getElementById('toast-container') || (function() {{
+                const c = document.createElement('div');
+                c.id = 'toast-container';
+                c.className = 'fixed bottom-4 right-4 z-[9999] flex flex-col gap-2';
+                document.body.appendChild(c);
+                return c;
+            }})();
+            const t = document.createElement('div');
+            const isErr = type === 'error' || msg.includes('❌') || msg.includes('خطا');
+            const isOk = type === 'success' || msg.includes('✅') || msg.includes('موفق');
+            const bg = isErr ? 'bg-rose-950/90 border-rose-800 text-rose-200' : (isOk ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-800/90 border-slate-700 text-slate-200');
+            const icon = isErr ? '<svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : 
+                         (isOk ? '<svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : 
+                         '<svg class="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>');
+            msg = msg.replace(/^[❌✅]/, '').trim();
+            t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${{bg}}`;
+            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans">${{msg}}</span>`;
+            container.appendChild(t);
+            requestAnimationFrame(() => {{
+                t.classList.remove('translate-x-full', 'opacity-0');
+            }});
+            setTimeout(() => {{
+                t.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => t.remove(), 300);
+            }}, 3500);
+        }};
+
                 function toggleAdminLoginPwd() {{
                     var inp = document.getElementById('adminPasswordInput');
                     if (inp) {{
@@ -3754,6 +3792,34 @@ def render_dashboard_html() -> str:
 
 
     <script>
+        window.showToast = function(msg, type='info') {{
+            const container = document.getElementById('toast-container') || (function() {{
+                const c = document.createElement('div');
+                c.id = 'toast-container';
+                c.className = 'fixed bottom-4 right-4 z-[9999] flex flex-col gap-2';
+                document.body.appendChild(c);
+                return c;
+            }})();
+            const t = document.createElement('div');
+            const isErr = type === 'error' || msg.includes('❌') || msg.includes('خطا');
+            const isOk = type === 'success' || msg.includes('✅') || msg.includes('موفق');
+            const bg = isErr ? 'bg-rose-950/90 border-rose-800 text-rose-200' : (isOk ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-800/90 border-slate-700 text-slate-200');
+            const icon = isErr ? '<svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : 
+                         (isOk ? '<svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : 
+                         '<svg class="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>');
+            msg = msg.replace(/^[❌✅]/, '').trim();
+            t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${{bg}}`;
+            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans">${{msg}}</span>`;
+            container.appendChild(t);
+            requestAnimationFrame(() => {{
+                t.classList.remove('translate-x-full', 'opacity-0');
+            }});
+            setTimeout(() => {{
+                t.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => t.remove(), 300);
+            }}, 3500);
+        }};
+
         window.COURSES_CACHE = {courses_data_json};
         window.coursesData = window.COURSES_CACHE;
 
@@ -3795,12 +3861,12 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
                         const data = await res.json();
                         if (data.success) {{
-                            alert('✅ ' + data.message);
+                            showToast('✅ ' + data.message);
                         }} else {{
-                            alert('❌ ' + data.message);
+                            showToast('❌ ' + data.message);
                         }}
                     }} catch (e) {{
-                        alert('❌ خطای شبکه: ' + e.message);
+                        showToast('❌ خطای شبکه: ' + e.message);
                     }} finally {{
                         btn.disabled = false;
                         btn.innerHTML = origHtml;
@@ -3880,7 +3946,7 @@ def render_dashboard_html() -> str:
                         const data = await res.json();
                         
                         if (data.success) {{
-                            alert('✅ ' + (data.message || 'ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد.'));
+                            showToast('✅ ' + (data.message || 'ورود موفقیت‌آمیز بود و نشست معتبر دریافت شد.'));
                             window.closeFeedAuthModal();
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
@@ -3893,7 +3959,7 @@ def render_dashboard_html() -> str:
                                 resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300'; resDiv.style.fontFamily = "'IRANSans', 'Vazirmatn', sans-serif";
                                 resDiv.innerHTML = '<strong>❌ خطا:</strong><br>' + (data.message || 'پاسخی دریافت نشد');
                             }} else {{
-                                alert('❌ خطا: ' + (data.message || 'پاسخی دریافت نشد'));
+                                showToast('❌ خطا: ' + (data.message || 'پاسخی دریافت نشد'));
                             }}
                         }}
                     }} catch (e) {{
@@ -3902,7 +3968,7 @@ def render_dashboard_html() -> str:
                             resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300'; resDiv.style.fontFamily = "'IRANSans', 'Vazirmatn', sans-serif";
                             resDiv.innerHTML = '<strong>❌ خطای شبکه:</strong><br>' + e.message;
                         }} else {{
-                            alert('❌ خطای شبکه: ' + e.message);
+                            showToast('❌ خطای شبکه: ' + e.message);
                         }}
                     }} finally {{
                         btn.innerHTML = orig;
@@ -3919,17 +3985,17 @@ def render_dashboard_html() -> str:
                         const data = await res.json();
                         var msg = (data.success ? '✅ ' : '❌ ') + (data.message || 'پاسخی دریافت نشد');
                         if (data.success) {{
-                            alert(msg);
+                            showToast(msg);
                             const b = document.getElementById('crawlerStatusBadge');
                             if (b) {{
                                 b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm';
                                 b.innerText = 'نشست فعال (ONLINE)';
                             }}
                         }} else {{
-                            alert(msg);
+                            showToast(msg);
                         }}
                     }} catch (e) {{
-                        alert('❌ خطای شبکه: ' + e.message);
+                        showToast('❌ خطای شبکه: ' + e.message);
                     }} finally {{
                         btn.disabled = false;
                         btn.innerHTML = origHtml;
@@ -4253,7 +4319,7 @@ def render_dashboard_html() -> str:
                             setTimeout(() => {{ btn.innerHTML = orig; }}, 2000);
                         }}
                     }} catch (e) {{
-                        alert('خطا در کپی لاگ‌ها: ' + e.message);
+                        showToast('خطا در کپی لاگ‌ها: ' + e.message);
                     }}
                 }}
                 window.copyDrawerLogs = copyDrawerLogs;
@@ -4344,11 +4410,11 @@ def render_dashboard_html() -> str:
                     const c = parseFloat(cInput ? cInput.value : 50.0);
                     const b = parseFloat(bInput ? bInput.value : 3.0);
                     if (isNaN(c) || c <= 0 || c > 50) {{
-                        alert('سقف مجاز باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
+                        showToast('سقف مجاز باید عددی بین ۱ تا ۵۰ مگابایت باشد.');
                         return;
                     }}
                     if (isNaN(b) || b < 0 || b > 15) {{
-                        alert('بافر امنیتی باید بین ۰ تا ۱۵ درصد باشد.');
+                        showToast('بافر امنیتی باید بین ۰ تا ۱۵ درصد باشد.');
                         return;
                     }}
                     const eff = (c * (1.0 - (b / 100.0))).toFixed(2);
@@ -4390,10 +4456,10 @@ def render_dashboard_html() -> str:
                             if (d4) d4.textContent = c.toFixed(1) + ' MB';
                             closeBaleCapModal();
                         }} else {{
-                            alert('خطا در ذخیره تنظیمات: ' + (data.error || 'عملیات ناموفق بود'));
+                            showToast('خطا در ذخیره تنظیمات: ' + (data.error || 'عملیات ناموفق بود'));
                         }}
                     }} catch (err) {{
-                        alert('خطا در برقراری ارتباط: ' + err.message);
+                        showToast('خطا در برقراری ارتباط: ' + err.message);
                     }} finally {{
                         if (btn) {{
                             btn.disabled = false;
@@ -4450,12 +4516,12 @@ def render_dashboard_html() -> str:
                                     btnBox.innerHTML = '<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>';
                                 }}
                             }}
-                            alert('✅ سشن ' + platName + ' با موفقیت قطع و از سرور پاکسازی شد.');
+                            showToast('✅ سشن ' + platName + ' با موفقیت قطع و از سرور پاکسازی شد.');
                         }} else {{
-                            alert('❌ خطا: ' + (data.error || 'عملیات ناموفق بود'));
+                            showToast('❌ خطا: ' + (data.error || 'عملیات ناموفق بود'));
                         }}
                     }} catch (e) {{
-                        alert('❌ خطای ارتباط با سرور: ' + e.message);
+                        showToast('❌ خطای ارتباط با سرور: ' + e.message);
                     }}
                 }}
                 window.disconnectSession = disconnectSession;
@@ -4539,7 +4605,7 @@ def render_dashboard_html() -> str:
                     const phoneInput = document.getElementById('soroushPhoneInput');
                     const phone = phoneInput ? phoneInput.value.trim() : '';
                     if (!phone || phone.length < 10) {{
-                        alert('شماره تلفن نامعتبر است.');
+                        showToast('شماره تلفن نامعتبر است.');
                         return;
                     }}
                     const btn = document.getElementById('btnSoroushSendCode');
@@ -4571,11 +4637,11 @@ def render_dashboard_html() -> str:
                                 errBox.textContent = data.error || 'خطا در ارسال کد';
                                 errBox.classList.remove('hidden');
                             }} else {{
-                                alert(data.error || 'خطا در ارسال کد');
+                                showToast(data.error || 'خطا در ارسال کد');
                             }}
                         }}
                     }} catch (e) {{
-                        alert('خطا: ' + e.message);
+                        showToast('خطا: ' + e.message);
                     }} finally {{
                         if (btn) {{ btn.disabled = false; btn.textContent = 'دریافت کد تایید پیامکی'; }}
                     }}
@@ -4588,7 +4654,7 @@ def render_dashboard_html() -> str:
                     const codeInput = document.getElementById('soroushCodeInput');
                     const code = codeInput ? codeInput.value.trim() : '';
                     if (!code) {{
-                        alert('لطفاً کد تایید را وارد نمایید.');
+                        showToast('لطفاً کد تایید را وارد نمایید.');
                         return;
                     }}
                     const btn = document.getElementById('btnSoroushVerifyCode');
@@ -4625,18 +4691,18 @@ def render_dashboard_html() -> str:
                                 btnBox.innerHTML = '';
                                 btnBox.appendChild(dcBtn);
                             }}
-                            alert('ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
+                            showToast('ورود با موفقیت انجام شد و سشن سروش‌پلاس با استاندارد AES-256 رمزنگاری و فعال گردید.');
                             closeSoroushLoginModal();
                         }} else {{
                             if (errBox) {{
                                 errBox.textContent = data.error || 'کد تایید اشتباه است.';
                                 errBox.classList.remove('hidden');
                             }} else {{
-                                alert(data.error || 'کد تایید اشتباه است.');
+                                showToast(data.error || 'کد تایید اشتباه است.');
                             }}
                         }}
                     }} catch (e) {{
-                        alert('خطا: ' + e.message);
+                        showToast('خطا: ' + e.message);
                     }} finally {{
                         if (btn) {{ btn.disabled = false; btn.textContent = 'تایید و فعال‌سازی سشن امن'; }}
                     }}
@@ -4652,7 +4718,7 @@ def render_dashboard_html() -> str:
                     const token = tokInput ? tokInput.value.trim() : '';
                     const phone = phInput ? phInput.value.trim() : '';
                     if (!token) {{
-                        alert('توکن نشست الزامی است.');
+                        showToast('توکن نشست الزامی است.');
                         return;
                     }}
                     const btn = document.getElementById('btnSoroushManualSubmit');
@@ -4689,18 +4755,18 @@ def render_dashboard_html() -> str:
                                 btnBox.innerHTML = '';
                                 btnBox.appendChild(dcBtn);
                             }}
-                            alert('سشن سروش‌پلاس با موفقیت ثبت و فعال شد.');
+                            showToast('سشن سروش‌پلاس با موفقیت ثبت و فعال شد.');
                             closeSoroushLoginModal();
                         }} else {{
                             if (errBox) {{
                                 errBox.textContent = data.error || 'خطا در ثبت توکن';
                                 errBox.classList.remove('hidden');
                             }} else {{
-                                alert(data.error || 'خطا در ثبت توکن');
+                                showToast(data.error || 'خطا در ثبت توکن');
                             }}
                         }}
                     }} catch (e) {{
-                        alert('خطا: ' + e.message);
+                        showToast('خطا: ' + e.message);
                     }} finally {{
                         if (btn) {{ btn.disabled = false; btn.textContent = 'ذخیره مستقیم توکن و فعال‌سازی سشن'; }}
                     }}
@@ -4799,12 +4865,12 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            alert('تنظیمات پلن پریمیوم با موفقیت ذخیره شد.');
+                            showToast('تنظیمات پلن پریمیوم با موفقیت ذخیره شد.');
                         }} else {{
-                            alert('خطا در ذخیره تنظیمات: ' + (data.error || 'نامشخص'));
+                            showToast('خطا در ذخیره تنظیمات: ' + (data.error || 'نامشخص'));
                         }}
                     }} catch (e) {{
-                        alert('خطای ارتباط: ' + e.message);
+                        showToast('خطای ارتباط: ' + e.message);
                     }} finally {{
                         if (btn) btn.innerHTML = '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>ذخیره فوری تنظیمات پریمیوم</span>';
                     }}
@@ -4942,10 +5008,10 @@ def render_dashboard_html() -> str:
                             }}
                             renderUsersTable(allLoadedUsers);
                         }} else {{
-                            alert('خطا: ' + (data.error || 'عملیات ناموفق بود'));
+                            showToast('خطا: ' + (data.error || 'عملیات ناموفق بود'));
                         }}
                     }} catch (e) {{
-                        alert('خطای ارتباط: ' + e.message);
+                        showToast('خطای ارتباط: ' + e.message);
                     }}
                 }}
                 window.toggleUserVip = toggleUserVip;
@@ -5203,10 +5269,10 @@ def render_dashboard_html() -> str:
                             const statTotal = document.getElementById('statTotalUsers');
                             if (statTotal) statTotal.innerText = allLoadedUsers.length;
                         }} else {{
-                            alert('خطا در حذف کاربر: ' + (data.error || 'نامشخص'));
+                            showToast('خطا در حذف کاربر: ' + (data.error || 'نامشخص'));
                         }}
                     }} catch (e) {{
-                        alert('خطای ارتباط: ' + e.message);
+                        showToast('خطای ارتباط: ' + e.message);
                     }}
                 }}
                 window.deleteUserRow = deleteUserRow;
@@ -5222,13 +5288,13 @@ def render_dashboard_html() -> str:
                         }});
                         const data = await res.json();
                         if (data.ok) {{
-                            alert(`پاکسازی انجام شد. ${{data.deleted_count || 0}} کاربر آزمایشی حذف شدند.`);
+                            showToast(`پاکسازی انجام شد. ${{data.deleted_count || 0}} کاربر آزمایشی حذف شدند.`);
                             loadUsersData();
                         }} else {{
-                            alert('خطا در پاکسازی: ' + (data.error || 'نامشخص'));
+                            showToast('خطا در پاکسازی: ' + (data.error || 'نامشخص'));
                         }}
                     }} catch (e) {{
-                        alert('خطای ارتباط: ' + e.message);
+                        showToast('خطای ارتباط: ' + e.message);
                     }}
                 }}
                 window.purgeTestUsers = purgeTestUsers;
@@ -5252,7 +5318,7 @@ def render_dashboard_html() -> str:
 
                 function exportUsersCsv() {{
                     if (!allLoadedUsers || allLoadedUsers.length === 0) {{
-                        alert('کاربری برای خروجی موجود نیست.');
+                        showToast('کاربری برای خروجی موجود نیست.');
                         return;
                     }}
                     const header = ['پلتفرم', 'شناسه', 'نام', 'شماره تماس', 'معرف', 'کیف پول', 'تعهدنامه'];
@@ -5669,11 +5735,11 @@ def render_dashboard_html() -> str:
                     loading.classList.add('hidden');
                     body.classList.remove('hidden');
                 }} else {{
-                    alert('❌ خطا در دریافت مشخصات فنی: ' + (data.error || ''));
+                    showToast('❌ خطا در دریافت مشخصات فنی: ' + (data.error || ''));
                     closeSpecsModal();
                 }}
             }} catch (err) {{
-                alert('❌ خطای شبکه: ' + err.message);
+                showToast('❌ خطای شبکه: ' + err.message);
                 closeSpecsModal();
             }}
         }}
@@ -5736,15 +5802,15 @@ def render_dashboard_html() -> str:
                 clearTimeout(timeoutId);
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'متادیتا با موفقیت ذخیره شد!'));
+                    showToast('✅ ' + (data.message || 'متادیتا با موفقیت ذخیره شد!'));
                     closeTagModal();
                     refreshStudioList();
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'ذخیره متادیتا ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'ذخیره متادیتا ناموفق بود'));
                 }}
             }} catch (err) {{
                 clearTimeout(timeoutId);
-                alert('❌ خطای ارتباط یا زمان‌بندی: ' + err.message);
+                showToast('❌ خطای ارتباط یا زمان‌بندی: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -5773,7 +5839,7 @@ def render_dashboard_html() -> str:
         function openBatchTagModal() {{
             const ids = getSelectedDropIds();
             if (ids.length === 0) {{
-                alert('⚠️ لطفاً حداقل یک فایل را برای ویرایش گروهی انتخاب فرمایید.');
+                showToast('⚠️ لطفاً حداقل یک فایل را برای ویرایش گروهی انتخاب فرمایید.');
                 return;
             }}
             document.getElementById('batchCountBadge').innerText = ids.length;
@@ -5814,14 +5880,14 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'ویرایش گروهی با موفقیت اعمال گردید!'));
+                    showToast('✅ ' + (data.message || 'ویرایش گروهی با موفقیت اعمال گردید!'));
                     closeBatchTagModal();
                     refreshStudioList();
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'عملیات گروهی ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'عملیات گروهی ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }} finally {{
                 btn.disabled = false;
                 btn.innerText = '🚀 اعمال روی تمام فایل‌ها';
@@ -5845,12 +5911,12 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || `فایل با موفقیت به ${{targetName}} ارسال شد!`));
+                    showToast('✅ ' + (data.message || `فایل با موفقیت به ${{targetName}} ارسال شد!`));
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'ارسال فایل ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'ارسال فایل ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }}
         }}
 
@@ -5999,7 +6065,7 @@ def render_dashboard_html() -> str:
             const endSec = parseTimeToSec(endStr);
 
             if (endSec > 0 && endSec <= startSec) {{
-                alert('❌ زمان پایان باید بعد از زمان شروع باشد.');
+                showToast('❌ زمان پایان باید بعد از زمان شروع باشد.');
                 return;
             }}
 
@@ -6019,14 +6085,14 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'فایل با موفقیت برش یافت و به استودیو اضافه شد!'));
+                    showToast('✅ ' + (data.message || 'فایل با موفقیت برش یافت و به استودیو اضافه شد!'));
                     closeCutterModal();
                     refreshStudioList();
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'عملیات برش ناموفق بود.'));
+                    showToast('❌ خطا: ' + (data.error || 'عملیات برش ناموفق بود.'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 btn.disabled = false;
                 btn.innerHTML = '<span>✂️</span> برش و ایجاد فایل جدید';
@@ -6053,17 +6119,17 @@ def render_dashboard_html() -> str:
                         refreshStudioList();
                     }}
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'حذف سشن ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'حذف سشن ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای شبکه: ' + err.message);
+                showToast('❌ خطای شبکه: ' + err.message);
             }}
         }}
 
         async function batchDeleteStudioDrops() {{
             const ids = getSelectedDropIds();
             if (ids.length === 0) {{
-                alert('⚠️ لطفاً حداقل یک فایل را برای حذف انتخاب فرمایید.');
+                showToast('⚠️ لطفاً حداقل یک فایل را برای حذف انتخاب فرمایید.');
                 return;
             }}
             if (!confirm(`آیا از حذف دائم ${{ids.length}} فایل انتخاب‌شده از حافظه و دیسک سرور مطمئن هستید؟`)) return;
@@ -6089,10 +6155,10 @@ def render_dashboard_html() -> str:
                     if (chkAll) chkAll.checked = false;
                     setTimeout(() => {{ refreshStudioList(); }}, 450);
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'حذف گروهی ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'حذف گروهی ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای شبکه: ' + err.message);
+                showToast('❌ خطای شبکه: ' + err.message);
             }}
         }}
 
@@ -6146,13 +6212,13 @@ def render_dashboard_html() -> str:
                 const res = await fetch('/api/studio/cleanup', {{ method: 'POST' }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'سشن‌های تکراری با موفقیت پاکسازی شدند!'));
+                    showToast('✅ ' + (data.message || 'سشن‌های تکراری با موفقیت پاکسازی شدند!'));
                     refreshStudioList();
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'پاکسازی ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'پاکسازی ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -6185,16 +6251,16 @@ def render_dashboard_html() -> str:
                 const data = await res.json();
                 if (data.ok && data.sign) {{
                     const s = data.sign;
-                    alert('🔮 نشانه تصادفی تست ادمین:\\n\\n' +
+                    showToast('🔮 نشانه تصادفی تست ادمین:\\n\\n' +
                           'عنوان: ' + (s.title || 'نشانه امروز') + '\\n' +
                           'شماره صفحه: ' + toPersianDigits(s.page || 1) + '\\n' +
                           'لینک فایل صوتی: ' + (s.audio_url || 'ندارد') + '\\n' +
                           'لینک مستقیم: ' + (s.link || 'ندارد'));
                 }} else {{
-                    alert('خطا در دریافت نشانه: ' + (data.error || 'پاسخ نامعتبر'));
+                    showToast('خطا در دریافت نشانه: ' + (data.error || 'پاسخ نامعتبر'));
                 }}
             }} catch (err) {{
-                alert('خطای ارتباط با سرور: ' + err.message);
+                showToast('خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -6214,15 +6280,15 @@ def render_dashboard_html() -> str:
                 const res = await fetch('/api/feed/refresh', {{ method: 'POST' }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + data.message + '\\nلیست در چند لحظه آینده به‌روزرسانی می‌شود.');
+                    showToast('✅ ' + data.message + '\\nلیست در چند لحظه آینده به‌روزرسانی می‌شود.');
                     setTimeout(() => {{
                         if (typeof fetchFeedDownloads === 'function') fetchFeedDownloads(true);
                     }}, 2500);
                 }} else {{
-                    alert('خطا در به‌روزرسانی کش: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در به‌روزرسانی کش: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (e) {{
-                alert('خطای ارتباط با سرور: ' + e.message);
+                showToast('خطای ارتباط با سرور: ' + e.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -6259,12 +6325,12 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + data.message);
+                    showToast('✅ ' + data.message);
                 }} else {{
-                    alert('خطا در ذخیره دسته‌بندی‌ها: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در ذخیره دسته‌بندی‌ها: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (e) {{
-                alert('خطای ارتباط با سرور: ' + e.message);
+                showToast('خطای ارتباط با سرور: ' + e.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -6347,13 +6413,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'دوره با موفقیت ساخته شد!'));
+                    showToast('✅ ' + (data.message || 'دوره با موفقیت ساخته شد!'));
                     switchTab('courses');
                 }} else {{
-                    alert('❌ خطا در ساخت دوره: ' + (data.error || 'ناشناخته'));
+                    showToast('❌ خطا در ساخت دوره: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch(err) {{
-                alert('❌ خطای ارتباطی: ' + err.message);
+                showToast('❌ خطای ارتباطی: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -6535,17 +6601,17 @@ def render_dashboard_html() -> str:
                         if (data.ok && (data.audio_url || data.video_url || data.url)) {{
                             return openFeedDispatchModal(data.url || data.audio_url || data.video_url, title, data.audio_url, data.video_url, sourceUrl);
                         }} else {{
-                            alert('❌ آدرس دانلودی برای این آیتم در سرور یافت نشد.');
+                            showToast('❌ آدرس دانلودی برای این آیتم در سرور یافت نشد.');
                             return;
                         }}
                     }} catch (e) {{
                         const tb = document.getElementById('rescrapToast');
                         if (tb) tb.remove();
-                        alert('❌ خطای ارتباط با سرور: ' + e.message);
+                        showToast('❌ خطای ارتباط با سرور: ' + e.message);
                         return;
                     }}
                 }} else {{
-                    alert('❌ آدرس دانلودی برای این آیتم یافت نشد.');
+                    showToast('❌ آدرس دانلودی برای این آیتم یافت نشد.');
                     return;
                 }}
             }}
@@ -6606,11 +6672,11 @@ def render_dashboard_html() -> str:
             const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
             const title = pendingFeedDispatchTitle;
             if (!pid) {{
-                alert('لطفاً یک دوره را انتخاب فرمایید.');
+                showToast('لطفاً یک دوره را انتخاب فرمایید.');
                 return;
             }}
             if (!url) {{
-                alert('آدرس فایل معتبر نیست.');
+                showToast('آدرس فایل معتبر نیست.');
                 return;
             }}
             const btn = document.getElementById('btnAddFeedToCourse');
@@ -6636,13 +6702,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'فایل با موفقیت به سرفصل‌های دوره افزوده شد!'));
+                    showToast('✅ ' + (data.message || 'فایل با موفقیت به سرفصل‌های دوره افزوده شد!'));
                     closeFeedDispatchModal();
                 }} else {{
-                    alert('❌ خطا در افزودن به سرفصل‌ها: ' + (data.error || 'ناموفق'));
+                    showToast('❌ خطا در افزودن به سرفصل‌ها: ' + (data.error || 'ناموفق'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -6659,7 +6725,7 @@ def render_dashboard_html() -> str:
             if (document.getElementById('chkDispatchSoroush')?.checked) targets.push('soroush');
 
             if (targets.length === 0) {{
-                alert('❌ لطفاً حداقل یک پلتفرم مقصد را انتخاب فرمایید.');
+                showToast('❌ لطفاً حداقل یک پلتفرم مقصد را انتخاب فرمایید.');
                 return;
             }}
 
@@ -6703,16 +6769,16 @@ def render_dashboard_html() -> str:
                     if (!data.ok) allSuccess = false;
                 }}
                 if (allSuccess) {{
-                    alert('✅ ارسال با موفقیت به ' + targets.join(' و ') + ' انجام شد!');
+                    showToast('✅ ارسال با موفقیت به ' + targets.join(' و ') + ' انجام شد!');
                     if (resBox) {{
                         resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
                         resBox.innerText = '✅ نسخه(های) انتخابی فایل هدیه با موفقیت ارسال شد!';
                     }}
                 }} else {{
-                    alert('⚠️ ارسال فایل‌ها به برخی مقاصد انجام شد.');
+                    showToast('⚠️ ارسال فایل‌ها به برخی مقاصد انجام شد.');
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }}
         }}
 
@@ -6744,20 +6810,20 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ فایل هدیه با موفقیت دانلود و به ' + (data.target || 'پیام‌رسان‌ها') + ' منتقل شد!');
+                    showToast('✅ فایل هدیه با موفقیت دانلود و به ' + (data.target || 'پیام‌رسان‌ها') + ' منتقل شد!');
                     if (resBox) {{
                         resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
                         resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت دانلود و ارسال شد!');
                     }}
                 }} else {{
-                    alert('❌ خطا در دانلود و ارسال: ' + (data.error || 'عملیات ناموفق بود'));
+                    showToast('❌ خطا در دانلود و ارسال: ' + (data.error || 'عملیات ناموفق بود'));
                     if (resBox) {{
                         resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
                         resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
                     }}
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }}
         }}
 
@@ -6848,7 +6914,7 @@ def render_dashboard_html() -> str:
 
                 async function handleSvgRecolor() {{
                     if (!currentSvgContent) {{
-                        alert('لطفاً ابتدا یک فایل وکتور SVG انتخاب نموده یا متنی وارد نمایید.');
+                        showToast('لطفاً ابتدا یک فایل وکتور SVG انتخاب نموده یا متنی وارد نمایید.');
                         return;
                     }}
                     const hexInput = document.getElementById('svgHexInput');
@@ -6874,12 +6940,12 @@ def render_dashboard_html() -> str:
                         const data = await res.json();
                         if (data.ok && data.svg) {{
                             renderSvgInPreview(data.svg);
-                            alert('✅ رنگ اجزای وکتور با موفقیت به ' + color + ' تغییر یافت.');
+                            showToast('✅ رنگ اجزای وکتور با موفقیت به ' + color + ' تغییر یافت.');
                         }} else {{
-                            alert('❌ خطا در تغییر رنگ وکتور: ' + (data.error || 'ناموفق'));
+                            showToast('❌ خطا در تغییر رنگ وکتور: ' + (data.error || 'ناموفق'));
                         }}
                     }} catch (err) {{
-                        alert('❌ خطای ارتباط با سرور: ' + err.message);
+                        showToast('❌ خطای ارتباط با سرور: ' + err.message);
                     }} finally {{
                         if (btn) {{
                             btn.disabled = false;
@@ -6890,7 +6956,7 @@ def render_dashboard_html() -> str:
 
                 function downloadCurrentSvg() {{
                     if (!currentSvgContent) {{
-                        alert('فایل SVG فعالی برای دانلود وجود ندارد.');
+                        showToast('فایل SVG فعالی برای دانلود وجود ندارد.');
                         return;
                     }}
                     const blob = new Blob([currentSvgContent], {{ type: 'image/svg+xml;charset=utf-8' }});
@@ -6913,7 +6979,7 @@ def render_dashboard_html() -> str:
                     const fill = (hexInput ? hexInput.value : '#FFFFFF') || '#FFFFFF';
 
                     if (!text) {{
-                        alert('لطفاً ابتدا متن مورد نظر را وارد نمایید.');
+                        showToast('لطفاً ابتدا متن مورد نظر را وارد نمایید.');
                         return;
                     }}
 
@@ -6934,12 +7000,12 @@ def render_dashboard_html() -> str:
                         if (data.ok && data.svg) {{
                             currentSvgFilename = (text.replace(/[^\\w\\s\\-\\.\\u0600-\\u06FF]/gi, '').slice(0, 20) || 'typography') + '.svg';
                             renderSvgInPreview(data.svg);
-                            alert('✅ وکتور متنی با موفقیت ایجاد شد.');
+                            showToast('✅ وکتور متنی با موفقیت ایجاد شد.');
                         }} else {{
-                            alert('❌ خطا در تولید وکتور متنی: ' + (data.error || 'ناموفق'));
+                            showToast('❌ خطا در تولید وکتور متنی: ' + (data.error || 'ناموفق'));
                         }}
                     }} catch (err) {{
-                        alert('❌ خطای ارتباط با سرور: ' + err.message);
+                        showToast('❌ خطای ارتباط با سرور: ' + err.message);
                     }}
                 }}
 
@@ -6952,7 +7018,7 @@ def render_dashboard_html() -> str:
 
                     const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
                     if (!hasFile && !currentSvgContent) {{
-                        alert('لطفاً ابتدا یک فایل وکتور SVG انتخاب فرمایید یا از بخش ساخت وکتور استفاده نمایید.');
+                        showToast('لطفاً ابتدا یک فایل وکتور SVG انتخاب فرمایید یا از بخش ساخت وکتور استفاده نمایید.');
                         return;
                     }}
 
@@ -7173,13 +7239,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ دوره جدید با موفقیت ثبت شد!');
+                    showToast('✅ دوره جدید با موفقیت ثبت شد!');
                     location.reload();
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'ثبت دوره ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'ثبت دوره ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 btn.disabled = false;
                 btn.innerText = 'ثبت دوره در دیتابیس';
@@ -7289,7 +7355,7 @@ def render_dashboard_html() -> str:
             const title = titleInp ? titleInp.value.trim() : '';
             const file_name = fileInp ? fileInp.value.trim() : '';
             if (!file_name) {{
-                alert('لطفاً شناسه فایل یا نام فایل جلسه را وارد نمایید.');
+                showToast('لطفاً شناسه فایل یا نام فایل جلسه را وارد نمایید.');
                 return;
             }}
             const lessons = window._currentPackageLessons || [];
@@ -7411,7 +7477,7 @@ def render_dashboard_html() -> str:
                 course = window.COURSES_CACHE[pid] || Object.values(window.COURSES_CACHE).find(c => c && (c.product_id == pid || String(c.product_id) === String(pid)));
             }}
             if (!course) {{
-                alert('اطلاعات دوره یافت نشد (' + pid + ').');
+                showToast('اطلاعات دوره یافت نشد (' + pid + ').');
                 return;
             }}
             openEditModal(
@@ -7496,12 +7562,12 @@ def render_dashboard_html() -> str:
                         if (descEl) descEl.textContent = description || 'توضیحاتی برای این دوره ثبت نشده است.';
                     }}
                     closeEditModal();
-                    alert('✅ تغییرات دوره با موفقیت ذخیره شد!');
+                    showToast('✅ تغییرات دوره با موفقیت ذخیره شد!');
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || 'ویرایش ناموفق بود'));
+                    showToast('❌ خطا: ' + (data.error || 'ویرایش ناموفق بود'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7552,7 +7618,7 @@ def render_dashboard_html() -> str:
             if (!textarea) return;
             const text = textarea.value.trim();
             if (!text) {{
-                alert('لطفاً ابتدا متنی در بخش توضیحات بنویسید تا هوش مصنوعی آن را خلاصه کند.');
+                showToast('لطفاً ابتدا متنی در بخش توضیحات بنویسید تا هوش مصنوعی آن را خلاصه کند.');
                 return;
             }}
             const prevPlaceholder = textarea.placeholder;
@@ -7571,10 +7637,10 @@ def render_dashboard_html() -> str:
                         updateCharCounter(textareaId, counterId, 255);
                     }}
                 }} else {{
-                    alert('❌ خطا در خلاصه‌سازی: ' + (data.error || 'پاسخی دریافت نشد'));
+                    showToast('❌ خطا در خلاصه‌سازی: ' + (data.error || 'پاسخی دریافت نشد'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با هوش مصنوعی: ' + err.message);
+                showToast('❌ خطای ارتباط با هوش مصنوعی: ' + err.message);
             }} finally {{
                 textarea.disabled = false;
                 textarea.placeholder = prevPlaceholder;
@@ -7613,10 +7679,10 @@ def render_dashboard_html() -> str:
                         window.coursesData[pid].is_active = isActive ? 1 : 0;
                     }}
                 }} else {{
-                    alert('❌ خطا در تغییر وضعیت: ' + (data.error || ''));
+                    showToast('❌ خطا در تغییر وضعیت: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطا: ' + err.message);
+                showToast('❌ خطا: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -7642,10 +7708,10 @@ def render_dashboard_html() -> str:
                         setTimeout(() => {{ card.remove(); }}, 400);
                     }}
                 }} else {{
-                    alert('❌ خطا: ' + (data.error || ''));
+                    showToast('❌ خطا: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطا: ' + err.message);
+                showToast('❌ خطا: ' + err.message);
             }}
         }}
 
@@ -7680,7 +7746,7 @@ def render_dashboard_html() -> str:
         async function deleteSelectedOrders() {{
             const checked = Array.from(document.querySelectorAll('.order-chk:checked')).map(c => c.value);
             if (!checked || checked.length === 0) {{
-                alert('لطفاً حداقل یک سفارش را برای حذف انتخاب کنید.');
+                showToast('لطفاً حداقل یک سفارش را برای حذف انتخاب کنید.');
                 return;
             }}
             if (!confirm('آیا از حذف دسته‌جمعی ' + checked.length + ' سفارش انتخاب‌شده اطمینان دارید؟ این عملیات غیرقابل بازگشت است.')) return;
@@ -7692,13 +7758,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || (checked.length + ' سفارش با موفقیت حذف شدند.')));
+                    showToast('✅ ' + (data.message || (checked.length + ' سفارش با موفقیت حذف شدند.')));
                     loadStoreOrders();
                 }} else {{
-                    alert('❌ خطا در حذف سفارش‌ها: ' + (data.error || ''));
+                    showToast('❌ خطا در حذف سفارش‌ها: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7711,13 +7777,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'تمامی سفارشات با موفقیت پاکسازی شدند.'));
+                    showToast('✅ ' + (data.message || 'تمامی سفارشات با موفقیت پاکسازی شدند.'));
                     loadStoreOrders();
                 }} else {{
-                    alert('❌ خطا در پاکسازی سفارشات: ' + (data.error || ''));
+                    showToast('❌ خطا در پاکسازی سفارشات: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7813,13 +7879,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ سفارش ' + orderId + ' با موفقیت تایید شد!');
+                    showToast('✅ سفارش ' + orderId + ' با موفقیت تایید شد!');
                     loadStoreOrders();
                 }} else {{
-                    alert('❌ خطا در تایید سفارش: ' + (data.error || ''));
+                    showToast('❌ خطا در تایید سفارش: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7833,13 +7899,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('❌ سفارش ' + orderId + ' با موفقیت رد شد.');
+                    showToast('❌ سفارش ' + orderId + ' با موفقیت رد شد.');
                     loadStoreOrders();
                 }} else {{
-                    alert('❌ خطا در رد سفارش: ' + (data.error || ''));
+                    showToast('❌ خطا در رد سفارش: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7855,10 +7921,10 @@ def render_dashboard_html() -> str:
                 if (data.ok) {{
                     loadStoreOrders();
                 }} else {{
-                    alert('❌ خطا در حذف سفارش: ' + (data.error || ''));
+                    showToast('❌ خطا در حذف سفارش: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7871,13 +7937,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ ' + (data.message || 'سفارش‌های رد شده با موفقیت پاکسازی شدند.'));
+                    showToast('✅ ' + (data.message || 'سفارش‌های رد شده با موفقیت پاکسازی شدند.'));
                     loadStoreOrders();
                 }} else {{
-                    alert('❌ خطا در پاکسازی سفارش‌ها: ' + (data.error || ''));
+                    showToast('❌ خطا در پاکسازی سفارش‌ها: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }}
         }}
 
@@ -7984,15 +8050,15 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert('✅ کد تخفیف ' + code + ' با موفقیت ایجاد شد!');
+                    showToast('✅ کد تخفیف ' + code + ' با موفقیت ایجاد شد!');
                     document.getElementById('addCouponForm').reset();
                     toggleAddCouponForm();
                     loadStoreCoupons();
                 }} else {{
-                    alert('❌ خطا در ثبت کد تخفیف: ' + (data.error || ''));
+                    showToast('❌ خطا در ثبت کد تخفیف: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }} finally {{
                 if (btn) {{ btn.disabled = false; btn.innerText = 'ثبت کوپن تخفیف'; }}
             }}
@@ -8000,7 +8066,7 @@ def render_dashboard_html() -> str:
 
         function copyText(txt) {{
             navigator.clipboard.writeText(txt);
-            alert('✅ لینک با موفقیت کپی شد!');
+            showToast('✅ لینک با موفقیت کپی شد!');
         }}
 
         async function handleDispatch(e) {{
@@ -8537,13 +8603,13 @@ def render_dashboard_html() -> str:
                     }});
                     const data = await res.json();
                     if (data.ok) {{
-                        alert('✅ ' + (data.message || 'تنظیمات با موفقیت بازیابی شدند.'));
+                        showToast('✅ ' + (data.message || 'تنظیمات با موفقیت بازیابی شدند.'));
                         loadSettings();
                     }} else {{
-                        alert('❌ خطا در درون‌ریزی تنظیمات: ' + (data.error || ''));
+                        showToast('❌ خطا در درون‌ریزی تنظیمات: ' + (data.error || ''));
                     }}
                 }} catch (err) {{
-                    alert('❌ خطا در خواندن یا تحلیل فایل JSON: ' + err.message);
+                    showToast('❌ خطا در خواندن یا تحلیل فایل JSON: ' + err.message);
                 }} finally {{
                     input.value = '';
                 }}
@@ -8571,7 +8637,7 @@ def render_dashboard_html() -> str:
             const p2 = (document.getElementById('cfg_CONFIRM_ADMIN_PASSWORD')?.value || '').trim();
             if (p1) {{
                 if (p1 !== p2) {{
-                    alert('❌ خطای تغییر رمز: تکرار رمز عبور جدید با رمز وارد شده همخوانی ندارد.');
+                    showToast('❌ خطای تغییر رمز: تکرار رمز عبور جدید با رمز وارد شده همخوانی ندارد.');
                     if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
                     if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
                     return;
@@ -8654,7 +8720,7 @@ def render_dashboard_html() -> str:
             if (!pwdToSend) {{
                 pwdToSend = prompt('جهت تایید و ذخیره تنظیمات، لطفاً رمز عبور مدیریت را وارد کنید:') || '';
                 if (!pwdToSend) {{
-                    alert('❌ ذخیره تنظیمات لغو شد: رمز عبور مدیریت وارد نشد.');
+                    showToast('❌ ذخیره تنظیمات لغو شد: رمز عبور مدیریت وارد نشد.');
                     if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
                     if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
                     return;
@@ -8691,10 +8757,10 @@ def render_dashboard_html() -> str:
                         if (status2) status2.innerText = '';
                     }}, 5000);
                 }} else {{
-                    alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || ''));
+                    showToast('❌ خطا در ذخیره تنظیمات: ' + (data.error || ''));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
             }} finally {{
                 if (btn1) {{ btn1.disabled = false; btn1.innerText = orig1; }}
                 if (btn2) {{ btn2.disabled = false; btn2.innerText = orig2; }}
@@ -8908,10 +8974,10 @@ def render_dashboard_html() -> str:
                         setTimeout(() => {{ toast.classList.add('hidden'); }}, 4000);
                     }}
                 }} else {{
-                    alert('❌ خطا در ذخیره تنظیمات: ' + (data.error || 'ناموفق'));
+                    showToast('❌ خطا در ذخیره تنظیمات: ' + (data.error || 'ناموفق'));
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -8980,7 +9046,7 @@ def render_dashboard_html() -> str:
             const items = window.UNFINIT_FREQUENCIES || [];
             const item = items.find(x => String(x.id) === String(id));
             if (!item) {{
-                alert('عبارت مورد نظر در حافظه یافت نشد.');
+                showToast('عبارت مورد نظر در حافظه یافت نشد.');
                 return;
             }}
             const idInput = document.getElementById('freqEditId');
@@ -9016,7 +9082,7 @@ def render_dashboard_html() -> str:
             const title = (document.getElementById('freqEditTitle')?.value || '').trim();
             const text = (document.getElementById('freqEditText')?.value || '').trim();
             if (!id || !title || !text) {{
-                alert('لطفاً عنوان و متن عبارت را وارد نمایید.');
+                showToast('لطفاً عنوان و متن عبارت را وارد نمایید.');
                 return;
             }}
             const btn = document.getElementById('btnSubmitEditFrequency');
@@ -9032,10 +9098,10 @@ def render_dashboard_html() -> str:
                     closeEditFrequencyModal();
                     loadFrequenciesTable();
                 }} else {{
-                    alert('خطا در ویرایش عبارت: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در ویرایش عبارت: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (err) {{
-                alert('خطای ارتباط با سرور: ' + err.message);
+                showToast('خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 if (btn) btn.disabled = false;
             }}
@@ -9047,7 +9113,7 @@ def render_dashboard_html() -> str:
             const title = (document.getElementById('freqNewTitle')?.value || '').trim();
             const text = (document.getElementById('freqNewText')?.value || '').trim();
             if (!title || !text) {{
-                alert('لطفاً عنوان و متن عبارت را وارد نمایید.');
+                showToast('لطفاً عنوان و متن عبارت را وارد نمایید.');
                 return;
             }}
             const btn = document.getElementById('btnSubmitFrequency');
@@ -9064,10 +9130,10 @@ def render_dashboard_html() -> str:
                     document.getElementById('freqNewText').value = '';
                     loadFrequenciesTable();
                 }} else {{
-                    alert('خطا در ثبت عبارت: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در ثبت عبارت: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (err) {{
-                alert('خطای ارتباط با سرور: ' + err.message);
+                showToast('خطای ارتباط با سرور: ' + err.message);
             }} finally {{
                 if (btn) btn.disabled = false;
             }}
@@ -9086,10 +9152,10 @@ def render_dashboard_html() -> str:
                 if (data.ok) {{
                     loadFrequenciesTable();
                 }} else {{
-                    alert('خطا در حذف عبارت: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در حذف عبارت: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (err) {{
-                alert('خطای ارتباط با سرور: ' + err.message);
+                showToast('خطای ارتباط با سرور: ' + err.message);
             }}
         }}
 
@@ -9111,12 +9177,12 @@ def render_dashboard_html() -> str:
                 try {{
                     parsed = JSON.parse(text);
                 }} catch (e) {{
-                    alert('خطا در تحلیل ساختار فایل JSON: ' + e.message);
+                    showToast('خطا در تحلیل ساختار فایل JSON: ' + e.message);
                     input.value = '';
                     return;
                 }}
                 if (!Array.isArray(parsed)) {{
-                    alert('قالب فایل نامعتبر است. فایل JSON باید شامل آرایه‌ای از اشیاء کارت‌های فرکانس باشد.');
+                    showToast('قالب فایل نامعتبر است. فایل JSON باید شامل آرایه‌ای از اشیاء کارت‌های فرکانس باشد.');
                     input.value = '';
                     return;
                 }}
@@ -9131,13 +9197,13 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    alert(`بانک فرکانس فراوانی با موفقیت به‌روزرسانی شد (${{data.count}} عبارت فعال).`);
+                    showToast(`بانک فرکانس فراوانی با موفقیت به‌روزرسانی شد (${{data.count}} عبارت فعال).`);
                     loadFrequenciesTable();
                 }} else {{
-                    alert('خطا در بارگذاری فایل: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در بارگذاری فایل: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (err) {{
-                alert('خطا در پردازش فایل: ' + err.message);
+                showToast('خطا در پردازش فایل: ' + err.message);
             }} finally {{
                 input.value = '';
             }}
@@ -9408,10 +9474,10 @@ def render_dashboard_html() -> str:
                         setTimeout(function() {{ notice.classList.add('hidden'); }}, 3500);
                     }}
                 }} else {{
-                    alert('خطا در ذخیره کیبورد: ' + (data.error || 'ناشناخته'));
+                    showToast('خطا در ذخیره کیبورد: ' + (data.error || 'ناشناخته'));
                 }}
             }} catch (err) {{
-                alert('خطا در ارتباط با سرور: ' + err.message);
+                showToast('خطا در ارتباط با سرور: ' + err.message);
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
@@ -9648,7 +9714,6 @@ async def handle_api_dispatch_url(data: dict) -> dict:
                 )
 
         elif plat == "rubika_user":
-            from platforms.rubika_adapter import RubikaUserClient
             client = RubikaUserClient()
             if not client.has_session():
                 return {"ok": False, "error": "سشن کاربری روبیکا فعال یا لاگین نیست."}
@@ -9663,7 +9728,6 @@ async def handle_api_dispatch_url(data: dict) -> dict:
             return await bot.send_document(target_guid, final_path, caption=caption)
 
         elif plat == "soroush":
-            from platforms.soroush_worker import soroush_worker
             if not soroush_worker.is_connected():
                 return {"ok": False, "error": "سشن کاربری سروش‌پلاس متصل نیست. لطفاً ابتدا در پنل وب لاگین کنید."}
             return await soroush_worker.send_file_to_saved_messages(final_path, caption=caption)
@@ -10185,7 +10249,6 @@ async def handle_studio_dispatch(payload: dict) -> dict:
             return {"ok": False, "error": f"خطا در ارسال به بله: {res.get('error') or res}"}
 
         elif target in ("rubika", "rubika_user"):
-            from platforms.rubika_adapter import RubikaUserClient
             client = RubikaUserClient()
             if client.has_session():
                 res = await client.upload_and_send(final_path, target="me", caption=caption)
@@ -10206,7 +10269,6 @@ async def handle_studio_dispatch(payload: dict) -> dict:
             return {"ok": False, "error": f"خطا در ارسال به روبیکا: {res.get('error') or res}"}
 
         elif target in ("soroush", "splus"):
-            from platforms.soroush_worker import soroush_worker
             if not soroush_worker.is_connected():
                 return {"ok": False, "error": "سشن کاربری سروش‌پلاس متصل نیست. لطفاً ابتدا در پنل وب لاگین کنید."}
             res = await soroush_worker.send_file_to_saved_messages(final_path, caption=caption)
@@ -11308,6 +11370,34 @@ def render_storefront_html() -> str:
 
 <!-- Store JavaScript Logic -->
     <script>
+        window.showToast = function(msg, type='info') {{
+            const container = document.getElementById('toast-container') || (function() {{
+                const c = document.createElement('div');
+                c.id = 'toast-container';
+                c.className = 'fixed bottom-4 right-4 z-[9999] flex flex-col gap-2';
+                document.body.appendChild(c);
+                return c;
+            }})();
+            const t = document.createElement('div');
+            const isErr = type === 'error' || msg.includes('❌') || msg.includes('خطا');
+            const isOk = type === 'success' || msg.includes('✅') || msg.includes('موفق');
+            const bg = isErr ? 'bg-rose-950/90 border-rose-800 text-rose-200' : (isOk ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-800/90 border-slate-700 text-slate-200');
+            const icon = isErr ? '<svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' : 
+                         (isOk ? '<svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : 
+                         '<svg class="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>');
+            msg = msg.replace(/^[❌✅]/, '').trim();
+            t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${{bg}}`;
+            t.innerHTML = `${{icon}} <span class="text-sm font-bold font-sans">${{msg}}</span>`;
+            container.appendChild(t);
+            requestAnimationFrame(() => {{
+                t.classList.remove('translate-x-full', 'opacity-0');
+            }});
+            setTimeout(() => {{
+                t.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => t.remove(), 300);
+            }}, 3500);
+        }};
+
         let currentBaleOrderId = '';
         let currentBaleInvoiceUrl = '';
         let currentBaleDlLink = '';
@@ -11319,7 +11409,7 @@ def render_storefront_html() -> str:
         function copyText(txt) {{
             if (!txt) return;
             navigator.clipboard.writeText(txt).then(() => {{
-                alert('✅ با موفقیت کپی شد:\\n' + txt);
+                showToast('✅ با موفقیت کپی شد:\\n' + txt);
             }}).catch(() => {{
                 prompt('لینک جهت کپی:', txt);
             }});
@@ -11329,7 +11419,7 @@ def render_storefront_html() -> str:
             if (currentBaleInvoiceUrl) {{
                 copyText(currentBaleInvoiceUrl);
             }} else {{
-                alert('لینکی جهت پرداخت وجود ندارد.');
+                showToast('لینکی جهت پرداخت وجود ندارد.');
             }}
         }}
 
@@ -11435,12 +11525,12 @@ def render_storefront_html() -> str:
                 if (data.ok && data.payment_url) {{
                     window.location.href = data.payment_url;
                 }} else {{
-                    alert('❌ خطا در اتصال به درگاه: ' + (data.error || 'پاسخ نامعتبر از سرور'));
+                    showToast('❌ خطا در اتصال به درگاه: ' + (data.error || 'پاسخ نامعتبر از سرور'));
                     btn.disabled = false;
                     btn.innerHTML = '<span>⚡️</span> ورود به درگاه شاپرک و پرداخت';
                 }}
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
                 btn.disabled = false;
                 btn.innerHTML = '<span>⚡️</span> ورود به درگاه شاپرک و پرداخت';
             }}
@@ -11490,7 +11580,7 @@ def render_storefront_html() -> str:
             if (dlLink) {{
                 window.open(dlLink, '_blank');
             }} else {{
-                alert('فایل‌های این دوره رایگان در حال آماده‌سازی می‌باشد.');
+                showToast('فایل‌های این دوره رایگان در حال آماده‌سازی می‌باشد.');
             }}
         }}
 
@@ -11515,7 +11605,7 @@ def render_storefront_html() -> str:
                 }});
                 const data = await res.json();
                 if (!data.ok) {{
-                    alert('❌ خطا در ایجاد فاکتور پرداخت: ' + (data.error || ''));
+                    showToast('❌ خطا در ایجاد فاکتور پرداخت: ' + (data.error || ''));
                     btn.disabled = false;
                     btn.innerText = '⚡️ دریافت لینک پرداخت بله';
                     return;
@@ -11561,7 +11651,7 @@ def render_storefront_html() -> str:
                 }}, 3000);
 
             }} catch (err) {{
-                alert('❌ خطای ارتباط با سرور: ' + err.message);
+                showToast('❌ خطای ارتباط با سرور: ' + err.message);
                 btn.disabled = false;
                 btn.innerText = '⚡️ دریافت لینک پرداخت بله';
             }}
@@ -11586,7 +11676,7 @@ def render_storefront_html() -> str:
             if (currentBaleDlLink) {{
                 copyText(currentBaleDlLink);
             }} else {{
-                alert('لینکی جهت کپی موجود نیست.');
+                showToast('لینکی جهت کپی موجود نیست.');
             }}
         }}
 
@@ -11630,7 +11720,7 @@ def render_storefront_html() -> str:
                 }});
                 const data = await res.json();
                 if (!data.ok) {{
-                    alert('❌ خطا: ' + (data.error || 'ثبت سفارش ناموفق بود.'));
+                    showToast('❌ خطا: ' + (data.error || 'ثبت سفارش ناموفق بود.'));
                     btn.disabled = false;
                     btn.innerText = '📤 ثبت سفارش و ارسال رسید';
                     return;
@@ -11641,7 +11731,7 @@ def render_storefront_html() -> str:
                 document.getElementById('cardSuccessSection').classList.remove('hidden');
 
             }} catch (err) {{
-                alert('❌ خطای ارتباط: ' + err.message);
+                showToast('❌ خطای ارتباط: ' + err.message);
                 btn.disabled = false;
                 btn.innerText = '📤 ثبت سفارش و ارسال رسید';
             }}
@@ -11717,9 +11807,9 @@ def render_storefront_html() -> str:
                 const orderId = urlParams.get('order_id');
                 const dlLink = urlParams.get('dl');
                 if (status === 'success') {{
-                    alert('🎉 پرداخت شما با موفقیت انجام شد!\\nشناسه سفارش: ' + (orderId || '') + (dlLink ? '\\nلینک دانلود: ' + dlLink : ''));
+                    showToast('🎉 پرداخت شما با موفقیت انجام شد!\\nشناسه سفارش: ' + (orderId || '') + (dlLink ? '\\nلینک دانلود: ' + dlLink : ''));
                 }} else if (status === 'failed') {{
-                    alert('❌ پرداخت زرین‌پال ناموفق بود یا لغو گردید.');
+                    showToast('❌ پرداخت زرین‌پال ناموفق بود یا لغو گردید.');
                 }}
             }} catch(e) {{}}
         }})();

@@ -28,3 +28,7 @@ Whenever modifying legacy monolithic sections in web_panel.py, agents must itera
 
 ### 6.3. Universal Resilience & Prohibition of Static Slug Probes
 Hardcoding arbitrary content slugs or temporary URL workarounds to evaluate system health is strictly forbidden. Authentication and content crawlers must use universal domain-level root checks and dynamic runtime discovery. All web panel edits must prioritize modular component isolation.
+
+
+### 6.4. Autonomous Progress Documentation (SPARK_REPORT.md)
+Agents must append every completed release summary, active endpoints, and diagnostic metrics to SPARK_REPORT.md. Ad-hoc patch scripts must be cleaned up prior to git commit.
