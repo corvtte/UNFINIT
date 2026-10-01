@@ -300,21 +300,31 @@ class FeedAuthManager:
         # Priority 1: Direct Session Cookie Injection
         auth_cookie = (os.getenv("FEED_AUTH_COOKIE") or await get_system_setting("FEED_AUTH_COOKIE", "")).strip()
         if auth_cookie:
-            session.cookie_jar.update_cookies({"session_cookie": auth_cookie}) # Simplified injection, actually aiohttp requires Cookie dict format but we can just set headers.
-            # Wait, best to just put it in headers, but aiohttp cookie_jar needs SimpleCookie.
-            # Let's just set the Cookie header manually on the session if provided, or parse it.
-            from http.cookies import SimpleCookie
-            cookie = SimpleCookie()
-            cookie.load(auth_cookie)
-            for key, morsel in cookie.items():
-                session.cookie_jar.update_cookies({key: morsel.value})
+            # Smart Laravel Cookie Sanitizer
+            directives = {"expires", "max-age", "path", "domain", "samesite", "secure", "httponly"}
+            parts = re.split(r'[;\\n]', auth_cookie)
+            extracted_cookies = {}
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    k = k.strip()
+                    v = v.strip()
+                    if k.lower() not in directives:
+                        extracted_cookies[k] = v
+            
+            if extracted_cookies:
+                session.cookie_jar.update_cookies(extracted_cookies)
                 
-            # Verify cookie validity
+            # Verify cookie validity against a protected URL
             try:
-                async with session.get("https://abasmanesh.com/fa/login/", timeout=15) as resp:
+                # Probe a known gated URL
+                async with session.get("https://abasmanesh.com/fa/living-in-paradise/", timeout=15) as resp:
                     html = await resp.text()
                     # Check if ungated or user profile is present
-                    if "خروج" in html or "پروفایل" in html or "برای مشاهده این محتوا" not in html:
+                    if "برای مشاهده این محتوا باید وارد شوید" not in html or "خروج" in html or "پروفایل" in html:
                         logger.info("[FeedAuthManager] Priority Cookie Injection successful!")
                         await cls.save_session()
                         return True

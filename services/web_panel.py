@@ -819,7 +819,7 @@ def render_dashboard_html() -> str:
                     try {{
                         var res = await fetch('/api/login', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json' }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                             body: JSON.stringify({{ password: pwd }})
                         }});
                         var data = await res.json();
@@ -927,7 +927,7 @@ def render_dashboard_html() -> str:
                 try {{
                     fetch('/api/settings/theme', {{
                         method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
+                        headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                         body: JSON.stringify({{ theme: themeKey }})
                     }}).catch(function(e) {{}});
                 }} catch(e) {{}}
@@ -1814,22 +1814,22 @@ def render_dashboard_html() -> str:
                 <!-- 4 KPI Metrics Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class=" p-4 rounded-xl border border-cyan-900/40">
-                        <div class="text-[11px] text-slate-400 mb-1">فروش کل (تایید شده)</div>
+                        <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش کل (تایید شده)</div>
                         <div id="metricTotalSales" class="text-lg font-bold text-cyan-400 font-mono">۰ تومان</div>
                         <div id="metricTotalOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش موفق</div>
                     </div>
                     <div class=" p-4 rounded-xl border border-emerald-900/40">
-                        <div class="text-[11px] text-slate-400 mb-1">فروش امروز</div>
+                        <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش امروز</div>
                         <div id="metricTodaySales" class="text-lg font-bold text-emerald-400 font-mono">۰ تومان</div>
                         <div id="metricTodayOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
                     <div class=" p-4 rounded-xl border border-sky-900/40">
-                        <div class="text-[11px] text-slate-400 mb-1">فروش ۷ روز گذشته</div>
+                        <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش ۷ روز گذشته</div>
                         <div id="metricWeekSales" class="text-lg font-bold text-sky-400 font-mono">۰ تومان</div>
                         <div id="metricWeekOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
                     <div class=" p-4 rounded-xl border border-purple-900/40">
-                        <div class="text-[11px] text-slate-400 mb-1">فروش ۳۰ روز گذشته</div>
+                        <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش ۳۰ روز گذشته</div>
                         <div id="metricMonthSales" class="text-lg font-bold text-purple-400 font-mono">۰ تومان</div>
                         <div id="metricMonthOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
@@ -1931,15 +1931,15 @@ def render_dashboard_html() -> str:
                         </h3>
                         <div class="space-y-3 text-xs">
                             <div>
-                                <label class="block text-slate-400 mb-1">قیمت اشتراک ۳۰ روزه (تومان):</label>
+                                <label class="block mb-1" style="color: var(--text-muted);">قیمت اشتراک ۳۰ روزه (تومان):</label>
                                 <input type="text" id="viphub_price" value="{settings.get('VIP_MONTHLY_PRICE', '111000')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
                             <div>
-                                <label class="block text-slate-400 mb-1">مدت اعتبار (روز):</label>
+                                <label class="block mb-1" style="color: var(--text-muted);">مدت اعتبار (روز):</label>
                                 <input type="number" id="viphub_days" value="{settings.get('VIP_DURATION_DAYS', '30')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
                             <div>
-                                <label class="block text-slate-400 mb-1">شماره کارت اختصاصی جهت واریز دستی:</label>
+                                <label class="block mb-1" style="color: var(--text-muted);">شماره کارت اختصاصی جهت واریز دستی:</label>
                                 <input type="text" id="viphub_card" value="{settings.get('VIP_CARD_NUMBER', '')}" placeholder="۶۰۳۷..." class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
                             <div class="pt-2">
@@ -2337,7 +2337,7 @@ def render_dashboard_html() -> str:
                         <span class="text-xl">🌐</span>
                         <h4 class="text-sm font-bold text-slate-100">شبکه بازاریابی رفرال ویروسی (Identical Twin Referral Engine)</h4>
                     </div>
-                    <p class="text-xs text-slate-300 leading-relaxed">
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
                         سامانه رفرال با مکانیزم یکپارچه دوگانه عمل می‌کند: هر کاربر در تلگرام و بله با شناسه عددی یکسان به عنوان معرف ثبت شده و با دعوت هر کاربر جدید، پاداش رفرال به صورت خودکار به کیف پول افزوده شده و سوابق در دیتابیس رمزنگاری‌شده ثبت می‌گردد.
                     </p>
                 </div>
@@ -2830,23 +2830,23 @@ def render_dashboard_html() -> str:
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">ایمیل اکانت (FEED_AUTH_EMAIL)</label>
-                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none focus:border-orange-500" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
+                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (FEED_AUTH_PASSWORD)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none focus:border-orange-500" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
+                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_FEED_AUTH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div class="mt-4">
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">سشن کوکی مرورگر (FEED_AUTH_COOKIE) - اولویت اول ورود قطعی</label>
-                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-[11px] font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600 transition" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{cfg.get('FEED_AUTH_COOKIE', '')}</textarea>
+                                    <label class="block text-xs font-bold mb-1" style="color: var(--text-muted);">سشن کوکی مرورگر (FEED_AUTH_COOKIE) - اولویت اول ورود قطعی</label>
+                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{cfg.get('FEED_AUTH_COOKIE', '')}</textarea>
                                     <p class="mt-1 text-[10px] text-slate-500">سشن کوکی لاگین‌شده از مرورگر خود را کپی کنید تا بدون نیاز به فرم لاگین، به سادگی و ۱۰۰٪ قطعی وارد شوید.</p>
                                 </div>
                             </div>
                             <div class="mt-4 flex justify-end">
-                                <button type="button" onclick="testCrawlerConnection(this)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-bold transition flex items-center gap-2 border border-slate-700">
+                                <button type="button" onclick="testCrawlerConnection(this)" class="px-4 py-2 text-xs rounded-xl font-bold transition flex items-center gap-2 border" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                     تست اتصال و بررسی وضعیت ورود
                                 </button>
@@ -3359,7 +3359,7 @@ def render_dashboard_html() -> str:
                             <span>🔢 شماره‌گذاری خودکار عنوان‌ها (جلسه ۱، جلسه ۲، ...)</span>
                         </label>
                         <div>
-                            <label class="block text-[11px] text-slate-400 mb-1">الگوی عنوان (Title Pattern - متغیر {{n}} شماره است):</label>
+                            <label class="block text-[11px] mb-1" style="color: var(--text-muted);">الگوی عنوان (Title Pattern - متغیر {{n}} شماره است):</label>
                             <input type="text" id="batchTitlePattern" value="جلسه {{n}}" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
                         </div>
                     </div>
@@ -3555,7 +3555,7 @@ def render_dashboard_html() -> str:
 
                 <!-- SMS Mode: Step 1 Phone -->
                 <div id="soroushStepPhone" class="space-y-3">
-                    <p class="text-xs text-slate-300 leading-relaxed">
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
                         شماره موبایل حساب سروش‌پلاس خود را جهت دریافت پیامک تایید وارد نمایید:
                     </p>
                     <input type="text" id="soroushPhoneInput" placeholder="09121234567" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
@@ -3567,7 +3567,7 @@ def render_dashboard_html() -> str:
 
                 <!-- SMS Mode: Step 2 Code -->
                 <div id="soroushStepCode" class="hidden space-y-3">
-                    <p class="text-xs text-slate-300 leading-relaxed">
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
                         کد تایید ارسال‌شده به شماره <b id="soroushTargetPhoneDisplay" class="text-cyan-300 font-mono"></b> را وارد نمایید:
                     </p>
                     <input type="text" id="soroushCodeInput" placeholder="12345" maxlength="6" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-center text-lg" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
@@ -3582,15 +3582,15 @@ def render_dashboard_html() -> str:
 
                 <!-- Manual Token Mode -->
                 <div id="soroushStepManual" class="hidden space-y-3">
-                    <p class="text-xs text-slate-300 leading-relaxed">
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
                         کلید نشست یا آبجکت کامل <code class="text-cyan-400">account1</code> از لوکال استوریج وب سروش‌پلاس را وارد نمایید (شامل <code class="text-cyan-400">userId, phone, firstName, dcId, dc2_auth_key</code>):
                     </p>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">کلید سشن یا آبجکت JSON کامل account1 نسخه وب GramJS</label>
+                        <label class="block text-[11px] mb-1" style="color: var(--text-muted);">کلید سشن یا آبجکت JSON کامل account1 نسخه وب GramJS</label>
                         <textarea id="soroushManualTokenInput" rows="4" placeholder='{{"dcId":2,"dc2_auth_key":"...","userId":"...","phone":"0912...","firstName":"..."}}' class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr"></textarea>
                     </div>
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">شماره موبایل یا برچسب سشن (اختیاری - در صورت وجود در JSON خودکار استخراج می‌شود)</label>
+                        <label class="block text-[11px] mb-1" style="color: var(--text-muted);">شماره موبایل یا برچسب سشن (اختیاری - در صورت وجود در JSON خودکار استخراج می‌شود)</label>
                         <input type="text" id="soroushManualPhoneInput" placeholder="09121234567 یا سشن دستی وب" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     </div>
                     <button type="button" onclick="submitSoroushManualToken()" id="btnSoroushManualSubmit" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
@@ -3963,7 +3963,7 @@ def render_dashboard_html() -> str:
                     try {{
                         const res = await fetch('/api/login', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json' }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                             body: JSON.stringify({{ password: pwd }})
                         }});
                         const data = await res.json();
@@ -4363,7 +4363,7 @@ def render_dashboard_html() -> str:
                             method: 'POST',
                             credentials: 'same-origin',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'Authorization': 'Bearer ' + pwd,
                                 'X-Admin-Password': pwd
                             }},
@@ -4417,7 +4417,7 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/sessions/disconnect', {{
                             method: 'POST',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'Authorization': 'Bearer ' + pwd,
                                 'X-Admin-Password': pwd
                             }},
@@ -4551,7 +4551,7 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/soroush/login/request', {{
                             method: 'POST',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'Authorization': 'Bearer ' + pwd,
                                 'X-Admin-Password': pwd
                             }},
@@ -4600,7 +4600,7 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/soroush/login/verify', {{
                             method: 'POST',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'Authorization': 'Bearer ' + pwd,
                                 'X-Admin-Password': pwd
                             }},
@@ -4664,7 +4664,7 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/soroush/login/manual', {{
                             method: 'POST',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'Authorization': 'Bearer ' + pwd,
                                 'X-Admin-Password': pwd
                             }},
@@ -4789,7 +4789,7 @@ def render_dashboard_html() -> str:
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/settings/save', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                             body: JSON.stringify({{
                                 vip_monthly_price: parseInt(price) || 111000,
                                 vip_duration_days: parseInt(days) || 30,
@@ -4929,7 +4929,7 @@ def render_dashboard_html() -> str:
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users/toggle_vip', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                             body: JSON.stringify({{ user_id: userId, action: action, days: reqDays, admin_password: pwd }})
                         }});
                         const data = await res.json();
@@ -4961,7 +4961,7 @@ def render_dashboard_html() -> str:
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users/profile', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                             body: JSON.stringify({{ user_id: userId, admin_password: pwd }})
                         }});
                         const data = await res.json();
@@ -5145,7 +5145,7 @@ def render_dashboard_html() -> str:
                                 const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                                 await fetch('/api/settings/rename', {{
                                     method: 'POST',
-                                    headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                                    headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                                     body: JSON.stringify({{ tab_id: tabId, title: newTitle, admin_password: pwd }})
                                 }});
                             }} catch (e) {{
@@ -5193,7 +5193,7 @@ def render_dashboard_html() -> str:
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users/delete', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                             body: JSON.stringify({{ user_id: userId, admin_password: pwd }})
                         }});
                         const data = await res.json();
@@ -5217,7 +5217,7 @@ def render_dashboard_html() -> str:
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                         const res = await fetch('/api/users/purge_test', {{
                             method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                            headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                             body: JSON.stringify({{ admin_password: pwd }})
                         }});
                         const data = await res.json();
@@ -5368,7 +5368,7 @@ def render_dashboard_html() -> str:
                         if (pwd) {{
                             fetch('/api/settings/save', {{
                                 method: 'POST',
-                                headers: {{ 'Content-Type': 'application/json' }},
+                                headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                                 body: JSON.stringify({{
                                     password: pwd,
                                     settings: {{ NAV_TABS_ORDER: currentOrder }}
@@ -5601,7 +5601,7 @@ def render_dashboard_html() -> str:
                     const b64 = await readFileAsBase64(file);
                     const res = await fetch('/api/studio/upload', {{
                         method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
+                        headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                         body: JSON.stringify({{ filename: file.name, data: b64 }})
                     }});
                     const data = await res.json();
@@ -5729,7 +5729,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/studio/edit_tags', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify(payload),
                     signal: controller.signal
                 }});
@@ -5809,7 +5809,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/studio/batch_edit', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify(payload)
                 }});
                 const data = await res.json();
@@ -5840,7 +5840,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/studio/dispatch', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ drop_id: dropId, target: target }})
                 }});
                 const data = await res.json();
@@ -6010,7 +6010,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/studio/cut', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         drop_id: dropId,
                         start_sec: startSec,
@@ -6038,7 +6038,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/studio/delete', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ drop_id: dropId }})
                 }});
                 const data = await res.json();
@@ -6071,7 +6071,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/studio/delete_batch', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ drop_ids: ids }})
                 }});
                 const data = await res.json();
@@ -6254,7 +6254,7 @@ def render_dashboard_html() -> str:
                 const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
                 const res = await fetch('/api/categories/update', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8', 'Authorization': 'Bearer ' + pwd, 'X-Admin-Password': pwd }},
                     body: JSON.stringify({{ categories: updated, admin_password: pwd }})
                 }});
                 const data = await res.json();
@@ -6342,7 +6342,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/courses/create-from-category', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ category_id: slug, course_name: catName }})
                 }});
                 const data = await res.json();
@@ -6623,7 +6623,7 @@ def render_dashboard_html() -> str:
                 const res = await fetch('/api/courses/episodes/add', {{
                     method: 'POST',
                     headers: {{
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json; charset=utf-8',
                         'Authorization': 'Bearer ' + pwd,
                         'X-Admin-Password': pwd
                     }},
@@ -6693,7 +6693,7 @@ def render_dashboard_html() -> str:
                     const res = await fetch('/api/dispatch_url', {{
                         method: 'POST',
                         headers: {{
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'application/json; charset=utf-8',
                             'Authorization': 'Bearer ' + pwd,
                             'X-Admin-Password': pwd
                         }},
@@ -6736,7 +6736,7 @@ def render_dashboard_html() -> str:
                 const res = await fetch('/api/dispatch_url', {{
                     method: 'POST',
                     headers: {{
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json; charset=utf-8',
                         'Authorization': 'Bearer ' + pwd,
                         'X-Admin-Password': pwd
                     }},
@@ -6862,7 +6862,7 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/media/recolor-svg', {{
                             method: 'POST',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'X-Admin-Password': window.currentAdminPassword || ''
                             }},
                             body: JSON.stringify({{
@@ -6921,7 +6921,7 @@ def render_dashboard_html() -> str:
                         const res = await fetch('/api/media/text-to-svg', {{
                             method: 'POST',
                             headers: {{
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json; charset=utf-8',
                                 'X-Admin-Password': window.currentAdminPassword || ''
                             }},
                             body: JSON.stringify({{
@@ -6974,7 +6974,7 @@ def render_dashboard_html() -> str:
                             const res = await fetch('/api/media/convert-svg', {{
                                 method: 'POST',
                                 headers: {{
-                                    'Content-Type': 'application/json',
+                                    'Content-Type': 'application/json; charset=utf-8',
                                     'X-Admin-Password': window.currentAdminPassword || ''
                                 }},
                                 body: JSON.stringify({{
@@ -7168,7 +7168,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/courses/add', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral, delivery_type, files_package }})
                 }});
                 const data = await res.json();
@@ -7467,7 +7467,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/courses/update', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ product_id, name, price, description, download_link, photo_url, allow_card, allow_bale, requires_referral, delivery_type, files_package }})
                 }});
                 const data = await res.json();
@@ -7518,7 +7518,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/courses/terms', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ terms: terms }})
                 }});
                 const data = await res.json();
@@ -7561,7 +7561,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/ai/summarize-course', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ text: text }})
                 }});
                 const data = await res.json();
@@ -7591,7 +7591,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/products/toggle_active', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ product_id: pid }})
                 }});
                 const data = await res.json();
@@ -7629,7 +7629,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/products/delete', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ product_id: pid }})
                 }});
                 const data = await res.json();
@@ -7687,7 +7687,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/store/orders/bulk_delete', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ order_ids: checked }})
                 }});
                 const data = await res.json();
@@ -7707,7 +7707,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/store/orders/clear_all', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }}
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }}
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -7808,7 +7808,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/store/orders/approve', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ order_id: orderId }})
                 }});
                 const data = await res.json();
@@ -7828,7 +7828,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/store/orders/reject', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ order_id: orderId }})
                 }});
                 const data = await res.json();
@@ -7848,7 +7848,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/store/orders/delete', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ order_id: orderId }})
                 }});
                 const data = await res.json();
@@ -7867,7 +7867,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/store/orders/cleanup_rejected', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }}
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }}
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -7979,7 +7979,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/coupons/create', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ code, discount_type, discount_value, max_uses, min_order_amount, expire_date }})
                 }});
                 const data = await res.json();
@@ -8018,7 +8018,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/dispatch_url', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ url, target }})
                 }});
                 const data = await res.json();
@@ -8141,7 +8141,7 @@ def render_dashboard_html() -> str:
                 const selModel = document.getElementById('hermesModelSelect')?.value || '';
                 const res = await fetch('/api/hermes/chat', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ message: prompt, history: hermesHistory, model: selModel }})
                 }});
                 const data = await res.json();
@@ -8211,7 +8211,7 @@ def render_dashboard_html() -> str:
                 try {{
                     const res = await fetch('/api/upload/banner', {{
                         method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
+                        headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                         body: JSON.stringify({{
                             filename: file.name,
                             prod_id: prodId,
@@ -8383,7 +8383,7 @@ def render_dashboard_html() -> str:
                     'NARA_API_KEY', 'NARA_MODEL',
                     'GEMINI_API_KEY', 'GEMINI_MODEL',
                     'HF_TOKEN', 'HF_SPACE_ID',
-                    'CASHBACK_PERCENT', 'FEED_AUTH_EMAIL', 'FEED_AUTH_PASSWORD'
+                    'CASHBACK_PERCENT', 'FEED_AUTH_EMAIL', 'FEED_AUTH_PASSWORD', 'FEED_AUTH_COOKIE'
                 ];
                 fields.forEach(f => {{
                     const el = document.getElementById('cfg_' + f);
@@ -8435,7 +8435,7 @@ def render_dashboard_html() -> str:
                 let pwd = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
                 await fetch('/api/settings/save', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         password: pwd,
                         settings: payload
@@ -8529,7 +8529,7 @@ def render_dashboard_html() -> str:
                     }}
                     const res = await fetch('/api/settings/import', {{
                         method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
+                        headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                         body: JSON.stringify({{
                             password: pwd,
                             settings: importedObj
@@ -8594,12 +8594,12 @@ def render_dashboard_html() -> str:
                 'NARA_API_KEY', 'NARA_MODEL',
                 'GEMINI_API_KEY', 'GEMINI_MODEL',
                 'HF_TOKEN', 'HF_SPACE_ID',
-                'CASHBACK_PERCENT', 'FEED_AUTH_EMAIL', 'FEED_AUTH_PASSWORD'
+                'CASHBACK_PERCENT', 'FEED_AUTH_EMAIL', 'FEED_AUTH_PASSWORD', 'FEED_AUTH_COOKIE'
             ];
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
                 'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'VYCEAI_API_KEY', 'NARA_API_KEY',
-                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER', 'FEED_AUTH_PASSWORD'
+                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER', 'FEED_AUTH_PASSWORD', 'FEED_AUTH_COOKIE'
             ];
             fields.forEach(f => {{
                 const el = document.getElementById('cfg_' + f);
@@ -8666,7 +8666,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/settings', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         password: pwdToSend,
                         settings: settings
@@ -8783,7 +8783,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/upload/logo', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         password: pwd,
                         image: selectedLogoBase64
@@ -8894,7 +8894,7 @@ def render_dashboard_html() -> str:
                 const res = await fetch('/api/vip/settings', {{
                     method: 'POST',
                     headers: {{
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json; charset=utf-8',
                         'Authorization': 'Bearer ' + pwd,
                         'X-Admin-Password': pwd
                     }},
@@ -8947,7 +8947,7 @@ def render_dashboard_html() -> str:
                             <td class="py-3 px-4 text-center font-mono text-slate-400">${{idx + 1}}</td>
                             <td class="py-3 px-4 font-bold text-slate-100">${{escapeHtml(item.title || '')}}</td>
                             <td class="py-3 px-4 text-center">${{catBadge}}</td>
-                            <td class="py-3 px-4 text-slate-300 leading-relaxed">${{escapeHtml(item.text || '')}}</td>
+                            <td class="py-3 px-4 leading-relaxed" style="color: var(--text-muted);">${{escapeHtml(item.text || '')}}</td>
                             <td class="py-3 px-4 text-center">
                                 <div class="flex items-center justify-center gap-1.5">
                                     <button type="button" onclick="openEditFrequencyModal('${{escapeHtml(item.id)}}')" title="ویرایش عبارت" class="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 transition inline-flex items-center justify-center">
@@ -9024,7 +9024,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/frequencies/edit', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ id: id, category: cat, title: title, text: text }})
                 }});
                 const data = await res.json();
@@ -9055,7 +9055,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/frequencies/add', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ category: cat, title: title, text: text }})
                 }});
                 const data = await res.json();
@@ -9079,7 +9079,7 @@ def render_dashboard_html() -> str:
             try {{
                 const res = await fetch('/api/frequencies/delete', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{ id: id }})
                 }});
                 const data = await res.json();
@@ -9126,7 +9126,7 @@ def render_dashboard_html() -> str:
                 }}
                 const res = await fetch('/api/frequencies/import', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify(parsed)
                 }});
                 const data = await res.json();
@@ -9392,7 +9392,7 @@ def render_dashboard_html() -> str:
                 let pwd = window.currentAdminPassword || sessionStorage.getItem('unfinit_admin_pwd') || '';
                 const res = await fetch('/api/settings/save', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         password: pwd,
                         settings: {{
@@ -9483,21 +9483,21 @@ def render_dashboard_html() -> str:
                     </button>
                 </div>
                 <div class="p-5 space-y-4">
-                    <div class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                    <div class="text-[11px] leading-relaxed" style="color: var(--text-muted); mb-2">
                         جهت عبور از محدودیت‌های لاگین فرم‌های SPA (مانند Alpine.js)، <strong>تزریق مستقیم سشن کوکی</strong> مرورگر سریع‌ترین و قطعی‌ترین روش است.
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
-                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
                     </div>
                     <div class="relative">
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
-                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                        <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
+                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                     </div>
                     <div class="relative">
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1">کلمه عبور (FEED_AUTH_PASSWORD)</label>
+                        <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">کلمه عبور (FEED_AUTH_PASSWORD)</label>
                         <div class="relative">
-                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none pr-10" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                             <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>
@@ -10885,7 +10885,7 @@ def render_storefront_html() -> str:
                         <span class="text-xs text-slate-400">قیمت دوره:</span>
                         {price_display}
                     </div>
-                    <p class="text-xs text-slate-300 leading-relaxed line-clamp-3  p-3 rounded-2xl border border-slate-800/60 mb-4">{p.description or 'سرفصل‌ها و توضیحات این دوره در دسترس است.'}</p>
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted); line-clamp-3  p-3 rounded-2xl border border-slate-800/60 mb-4">{p.description or 'سرفصل‌ها و توضیحات این دوره در دسترس است.'}</p>
                 </div>
                 <div class="space-y-2 pt-2">
                     {free_btn}
@@ -11155,7 +11155,7 @@ def render_storefront_html() -> str:
                 <div class="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/80 space-y-2">
                     <span class="text-3xl">✅</span>
                     <h4 class="text-sm font-bold text-emerald-300">سفارش شما با موفقیت ثبت شد!</h4>
-                    <p class="text-xs text-slate-300 leading-relaxed">
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
                         کد رهگیری شما: <span id="cardOrderIdBadge" class="font-mono text-cyan-400 font-bold"></span>
                     </p>
                     <p class="text-[11px] text-slate-400 mt-2">
@@ -11365,7 +11365,7 @@ def render_storefront_html() -> str:
             try {{
                 const res = await fetch('/api/payment/zarinpal/request', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         course_id: courseId,
                         customer_name: name,
@@ -11448,7 +11448,7 @@ def render_storefront_html() -> str:
             try {{
                 const res = await fetch('/api/store/buy_bale', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         course_id: selectedCourseId,
                         customer_name: name,
@@ -11561,7 +11561,7 @@ def render_storefront_html() -> str:
             try {{
                 const res = await fetch('/api/store/buy_card', {{
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: {{ 'Content-Type': 'application/json; charset=utf-8' }},
                     body: JSON.stringify({{
                         course_id: selectedCourseId,
                         customer_name: name,
@@ -11686,21 +11686,21 @@ def render_storefront_html() -> str:
                     </button>
                 </div>
                 <div class="p-5 space-y-4">
-                    <div class="text-[11px] text-slate-300 leading-relaxed mb-2">
+                    <div class="text-[11px] leading-relaxed" style="color: var(--text-muted); mb-2">
                         جهت عبور از محدودیت‌های لاگین فرم‌های SPA (مانند Alpine.js)، <strong>تزریق مستقیم سشن کوکی</strong> مرورگر سریع‌ترین و قطعی‌ترین روش است.
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
-                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none placeholder-slate-600" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
                     </div>
                     <div class="relative">
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
-                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                        <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
+                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                     </div>
                     <div class="relative">
-                        <label class="block text-[11px] font-bold text-slate-400 mb-1">کلمه عبور (FEED_AUTH_PASSWORD)</label>
+                        <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">کلمه عبور (FEED_AUTH_PASSWORD)</label>
                         <div class="relative">
-                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full px-3 py-2 rounded-xl text-xs font-mono border text-left focus:ring-1 focus:ring-orange-500 outline-none pr-10" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                             <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>
