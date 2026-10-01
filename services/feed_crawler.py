@@ -35,7 +35,7 @@ BROWSER_HEADERS = {
 }
 
 BASE_SITE_URL = "https://abasmanesh.com"
-FREE_DOWNLOAD_BASE_URL = "https://abasmanesh.com/fa/category/free-download/"
+FREE_DOWNLOAD_BASE_URL = "https://abasmanesh.com/fa/articles/"
 
 # فهرست رسمی ۱۷ دسته‌بندی استخراج‌شده زنده از ساختار واقعی سایت عباس‌منش
 OFFICIAL_17_CATEGORIES: List[Dict[str, Any]] = [
@@ -44,8 +44,8 @@ OFFICIAL_17_CATEGORIES: List[Dict[str, Any]] = [
         "emoji": "🎁",
         "slug": "free-download",
         "title": "تمام دانلودها (آرشیو هدایا)",
-        "url": "https://abasmanesh.com/fa/category/free-download/",
-        "path": "/fa/category/free-download/"
+        "url": "https://abasmanesh.com/fa/articles/",
+        "path": "/fa/articles/"
     },
     {
         "id": 2,
@@ -507,7 +507,7 @@ class FeedCrawler:
                             final_cover = og_img["content"].strip()
 
                         # جستجو در تگ‌های ویدیو و سورس
-                        for v in soup.find_all(["video", "source"]):
+                        for v in soup.find_all(["video", "audio", "source"]):
                             v_src = (v.get("src") or v.get("data-src") or "").strip()
                             if v_src and ".mp4" in v_src and not video_dl:
                                 video_dl = re.sub(r"^rhttp", "http", v_src)
@@ -560,6 +560,23 @@ class FeedCrawler:
             "lesson_text": lesson_text,
             "tag": tag or "آموزش"
         }
+
+
+    @classmethod
+    async def scrape_single_item(cls, url: str) -> Optional[Dict[str, Any]]:
+        sess = await FeedAuthManager.get_session()
+        res = await cls.fetch_article_details(sess, url)
+        if res:
+            dl_links = []
+            if res.get("audio_url"):
+                dl_links.append({"type": "audio", "url": res["audio_url"]})
+            if res.get("video_url"):
+                dl_links.append({"type": "video", "url": res["video_url"]})
+            if res.get("direct_download_url"):
+                dl_links.append({"type": "file", "url": res["direct_download_url"]})
+            res["download_links"] = dl_links
+            return res
+        return None
 
     @classmethod
     async def crawl_category(
