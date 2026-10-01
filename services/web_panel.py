@@ -2835,7 +2835,7 @@ def render_dashboard_html() -> str:
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (FEED_AUTH_PASSWORD)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
+                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_FEED_AUTH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
@@ -3890,7 +3890,7 @@ def render_dashboard_html() -> str:
                         }} else {{
                             if (resDiv) {{
                                 resDiv.classList.remove('hidden');
-                                resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300';
+                                resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300'; resDiv.style.fontFamily = "'IRANSans', 'Vazirmatn', sans-serif";
                                 resDiv.innerHTML = '<strong>❌ خطا:</strong><br>' + (data.message || 'پاسخی دریافت نشد');
                             }} else {{
                                 alert('❌ خطا: ' + (data.message || 'پاسخی دریافت نشد'));
@@ -3899,7 +3899,7 @@ def render_dashboard_html() -> str:
                     }} catch (e) {{
                         if (resDiv) {{
                             resDiv.classList.remove('hidden');
-                            resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300';
+                            resDiv.className = 'mt-3 p-3 rounded-xl text-[10px] border text-left whitespace-pre-wrap break-all bg-rose-950/40 border-rose-900/50 text-rose-300'; resDiv.style.fontFamily = "'IRANSans', 'Vazirmatn', sans-serif";
                             resDiv.innerHTML = '<strong>❌ خطای شبکه:</strong><br>' + e.message;
                         }} else {{
                             alert('❌ خطای شبکه: ' + e.message);
@@ -9471,7 +9471,7 @@ def render_dashboard_html() -> str:
     </script>
 
         <!-- Feed Auth Quick Connect Modal -->
-        <div id="feedAuthModal" class="fixed inset-0 z-[60] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+        <div id="feedAuthModal" style="font-family: 'IRANSans', 'Vazirmatn', sans-serif;" class="fixed inset-0 z-[60] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
             <div class="rounded-2xl border w-11/12 max-w-sm overflow-hidden shadow-2xl" style="background: var(--panel-bg); border-color: var(--card-border);">
                 <div class="p-4 flex items-center justify-between border-b" style="border-color: var(--card-border); background: var(--table-head-bg);">
                     <h3 class="text-sm font-bold text-orange-400 flex items-center gap-2">
@@ -9497,7 +9497,7 @@ def render_dashboard_html() -> str:
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">کلمه عبور (FEED_AUTH_PASSWORD)</label>
                         <div class="relative">
-                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                             <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>
@@ -11674,7 +11674,7 @@ def render_storefront_html() -> str:
     </script>
 
         <!-- Feed Auth Quick Connect Modal -->
-        <div id="feedAuthModal" class="fixed inset-0 z-[60] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+        <div id="feedAuthModal" style="font-family: 'IRANSans', 'Vazirmatn', sans-serif;" class="fixed inset-0 z-[60] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
             <div class="rounded-2xl border w-11/12 max-w-sm overflow-hidden shadow-2xl" style="background: var(--panel-bg); border-color: var(--card-border);">
                 <div class="p-4 flex items-center justify-between border-b" style="border-color: var(--card-border); background: var(--table-head-bg);">
                     <h3 class="text-sm font-bold text-orange-400 flex items-center gap-2">
@@ -11700,7 +11700,7 @@ def render_storefront_html() -> str:
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">کلمه عبور (FEED_AUTH_PASSWORD)</label>
                         <div class="relative">
-                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 pl-9 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                             <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>

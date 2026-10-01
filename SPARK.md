@@ -20,3 +20,7 @@ Target sites must not be assumed to run standard CMS frameworks (e.g. WordPress)
 
 ### 6.0. Modular Architecture & Separation of Concerns Roadmap
 Monolithic 7000+ line Python templates embedding raw JavaScript strings represent a legacy anti-pattern. Going forward, complex UI components and client-side logic must be isolated into dedicated standalone files to guarantee syntax highlighting, native linter support, and prevent global dashboard regressions.
+
+
+### 6.1. Incremental Component Modularization (Strangler Fig Pattern)
+Whenever modifying legacy monolithic sections in web_panel.py, agents must iteratively isolate components into dedicated sub-modules. Theme styles must strictly rely on CSS variables across the 5 approved core themes.
