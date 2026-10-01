@@ -457,7 +457,6 @@ class FeedCrawler:
     @classmethod
     async def fetch_article_details(
         cls,
-        session: aiohttp.ClientSession,
         url: str,
         title: str = "",
         cover_url: str = "",
@@ -575,8 +574,7 @@ class FeedCrawler:
 
     @classmethod
     async def scrape_single_item(cls, url: str) -> Optional[Dict[str, Any]]:
-        sess = await FeedAuthManager.get_session()
-        res = await cls.fetch_article_details(sess, url)
+        res = await cls.fetch_article_details(url)
         if res:
             dl_links = []
             if res.get("audio_url"):
@@ -610,7 +608,6 @@ class FeedCrawler:
                 )
             ''')
             
-            sess = await FeedAuthManager.get_session()
             status, html = await FeedAuthManager.fetch_html_with_auth("https://abasmanesh.com/fa/articles/", timeout=20)
             if status != 200:
                 return {"ok": False, "error": f"HTTP {status}"}
@@ -729,7 +726,6 @@ class FeedCrawler:
             if status == 401:
                  return {"ok": False, "category": cat, "episodes": [], "page": page, "has_next": False, "error": "LOGIN_REQUIRED"}
             if status == 200:
-                session = await FeedAuthManager.get_session()
                 if BeautifulSoup:
                     soup = BeautifulSoup(html, "html.parser")
                     cards = soup.select("div.article-grid div.card, div.card.card--media, .card")
@@ -754,7 +750,7 @@ class FeedCrawler:
 
                 # واکشی همگام مشخصات فایل‌ها
                 tasks = [
-                    cls.fetch_article_details(session, u, t, c, tg)
+                    cls.fetch_article_details(u, t, c, tg)
                     for u, t, c, tg in articles_to_fetch[:limit]
                 ]
                 episodes = await asyncio.gather(*tasks, return_exceptions=True)

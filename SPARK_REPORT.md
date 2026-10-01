@@ -7,13 +7,6 @@
 - In-App UX: Modern Glassmorphic Toasts implemented natively (no blocking alerts).
 
 
-### Release v0.7.20: Auth Direct Persistence & Live Scraper Updates
-- **Direct Auth API**: Deployed POST /api/crawler/save-auth for immediate credential persistence (settings.json) and live session validation.
-- **Smart UI Toasts**: Replaced all native alert() calls with beautiful, non-blocking Tailwind glassmorphic toasts with deduplication logic.
-- **Enhanced Laravel Media Extraction**: Live dispatch and rescrape commands now extract og:image and populate database basmanesh_feed.thumbnail_url, udio_url, and ideo_url directly.
-- **Theme Polish**: Feed auth modal stripped of hardcoded white borders, fully respecting --border-color.
-
-
 ### Release v0.7.21: Hotlink bypass, live test verification, and transparent diagnostics
 - **Thumbnail Engine & Hotlink Bypass**: Rewrote \extract_thumbnail_url\ to enforce absolute URLs and updated \<img>\ tags with eferrerpolicy='no-referrer'\ to bypass Cloudflare hotlink protection.
 - **Live Terminal Verification**: Implemented \	est_live_crawler.py\ to perform true HEAD checks and live media extractions with robust error diagnostics.
@@ -129,3 +122,8 @@ client_session: <aiohttp.client.ClientSession object at 0x000002057D1C30E0>
 - **Live Scrape Synchronization**: Overhauled `/api/feed/sync-thumbnails` to perform an active live scrape of the target site using `FeedAuthManager`.
 - **Instant DOM Refresh**: Ensured the client-side `syncFeedThumbnails` function seamlessly purges stale cache memory and triggers `window.fetchFeedDownloads(false)` to visually update the UI instantly without blocking.
 - **Silent DB Error Handling**: Guarded the initial `products` table query with a `sqlite3.OperationalError` catch to completely eliminate console warning logs.
+
+### Release v0.7.24: Fix closed event loop and restore thumbnail scraping
+- **Eradicate Reused Sessions**: Completely removed class-level `_session` from `FeedAuthManager` to fix `RuntimeError: Event loop is closed`.
+- **Ephemeral Sessions**: Enforced `async with aiohttp.ClientSession()` locally inside every network method (`fetch_html_with_auth`, `test_connection`, `login_if_needed`, `_fetch_single_article`).
+- **Atomic Credential Save**: Verified `POST /api/crawler/save-auth` correctly writes `FEED_AUTH_EMAIL`, `FEED_AUTH_PASSWORD`, and `FEED_AUTH_COOKIE` to `data/settings.json` and syncs with Hugging Face Space secrets before testing the connection.

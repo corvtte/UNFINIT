@@ -584,9 +584,8 @@ async def get_latest_free_downloads(
             return FALLBACK_ITEMS[:limit] if page == 1 else []
             
         # واکشی همزمان صفحات مقالات جهت استخراج مدیا
-        session = await FeedAuthManager.get_session()
         tasks = [
-            _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
+            _fetch_single_article(url, title, card_cover=cover, card_tag=tag)
             for url, title, cover, tag in articles_to_fetch[:limit]
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
