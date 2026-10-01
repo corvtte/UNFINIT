@@ -215,31 +215,15 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
             if valid_parts:
                 candidate_url = valid_parts[-1]
 
-        if not candidate_url and img.get("src"):
-            raw_src = img["src"].strip()
-            if raw_src and not raw_src.startswith("data:"):
-                candidate_url = raw_src
-
-    if not candidate_url and hasattr(tag_or_soup, "find_all"):
-        nodes = [tag_or_soup] + list(tag_or_soup.find_all(attrs={"style": True}))
-        for node in nodes:
-            style_str = node.get("style", "")
-            import re
-            m = re.search(r"background(?:-image)?\s*:\s*url\(\s*['\"]?(.*?)['\"]?\s*\)", style_str, re.IGNORECASE)
-            if m:
-                bg_val = m.group(1).strip()
-                if bg_val and not bg_val.startswith("data:"):
-                    candidate_url = bg_val
-                    break
-
-    if candidate_url:
-        if candidate_url.startswith("//"):
-            candidate_url = "https:" + candidate_url
-        elif candidate_url.startswith("/"):
-            candidate_url = "https://abasmanesh.com" + candidate_url
+        if not candidate_url:
+            val = img.get("src", "").strip()
+            if val and not val.startswith("data:"):
+                candidate_url = val
+                
+    if candidate_url and candidate_url.startswith("/"):
+        candidate_url = "https://abasmanesh.com" + candidate_url
 
     return candidate_url
-
 
 def build_page_url(base_url: str, page_number: int = 1) -> str:
     """
@@ -577,6 +561,39 @@ class FeedCrawler:
             res["download_links"] = dl_links
             return res
         return None
+
+
+    @classmethod
+    async def sync_page_1_cache(cls):
+        """Update SQLite rows for the latest 15 items in abasmanesh_feed with verified thumbnail_url and article URLs."""
+        try:
+            from core.database import execute_query
+            sess = await FeedAuthManager.get_session()
+            status, html = await FeedAuthManager.fetch_html_with_auth("https://abasmanesh.com/fa/articles/", timeout=20)
+            if status == 200:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html, "html.parser")
+                items = soup.find_all("div", class_=lambda c: c and "card" in c)[:15]
+                for item in items:
+                    link_tag = item.find("a", href=True)
+                    if not link_tag:
+                        continue
+                    url = link_tag.get("href")
+                    thumb = extract_thumbnail_url(item)
+                    if url and thumb:
+                        # Find by similar title or just update by URL if it exists
+                        title = link_tag.get_text(strip=True) or link_tag.get("title") or ""
+                        title_tag = item.find("a", style=lambda s: s and "font-weight" in s)
+                        if title_tag:
+                            title = title_tag.get_text(strip=True)
+                        
+                        await execute_query(
+                            "UPDATE abasmanesh_feed SET thumbnail_url = ?, source_url = ? WHERE title LIKE ?",
+                            (thumb, url, f"%{title}%")
+                        )
+        except Exception as e:
+            import logging
+            logging.getLogger().debug(f"sync_page_1_cache error: {e}")
 
     @classmethod
     async def crawl_category(

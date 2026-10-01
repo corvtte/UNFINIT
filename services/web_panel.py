@@ -6486,7 +6486,7 @@ def render_dashboard_html() -> str:
                         
                         const cover = item.cover_url
                             ? '<div class="relative w-full aspect-video overflow-hidden rounded-t-2xl bg-slate-950/70 border-b border-white/5">' +
-                                '<img src="' + item.cover_url + '" alt="' + title + '" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" onerror="this.onerror=null; this.src=\\'/static/default_cover.jpg\\';">' +
+                                '<img src="' + item.cover_url + '" alt="' + title + '" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" onerror="this.onerror=null; this.src=\\'https://abasmanesh.com/assets/images/logo.png\\';">' +
                                 fileNum +
                               '</div>'
                             : '<div class="w-full aspect-video overflow-hidden rounded-t-2xl  border-b border-white/5 flex items-center justify-center text-3xl">🎧</div>';
@@ -10632,6 +10632,10 @@ async def handle_crawler_rescrap_item_async(payload: dict) -> dict:
         return {"ok": False, "error": "URL not provided"}
     try:
         from services.feed_crawler import FeedCrawler, FeedAuthManager
+        
+        # Call sync cache as requested
+        await FeedCrawler.sync_page_1_cache()
+        
         session = await FeedAuthManager.get_session()
         details = await FeedCrawler.fetch_article_details(session, url)
         
