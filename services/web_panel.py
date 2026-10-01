@@ -2221,7 +2221,7 @@ def render_dashboard_html() -> str:
                 <!-- Live Categories Selector Filter Bar (16 Categories) -->
                 <div class="flex items-center gap-2 p-2 rounded-xl border overflow-x-auto no-scrollbar" style="background: var(--glass-bg); border-color: var(--card-border);" id="feedCategoriesBar">
                     <button type="button" onclick="selectFeedCategory('')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap active theme-accent-btn" data-cat="">
-                        <span>🌐 همه دانلودها (آرشیو)</span>
+                        <span>🌐 تمام دانلودها</span>
                     </button>
                     <span class="text-xs text-slate-400 font-mono py-1 px-2" id="feedCategoriesLoading">در حال واکشی ۱۶ دسته‌بندی زنده...</span>
                 </div>
@@ -6383,7 +6383,7 @@ def render_dashboard_html() -> str:
                     if (loadingEl) loadingEl.remove();
 
                     const allBtn = '<button type="button" onclick="selectFeedCategory(\\'\\')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ' + (!currentFeedCategory ? 'theme-accent-btn active' : 'theme-card-btn') + '" data-cat="">' +
-                        '<span>🌐 همه دانلودها (آرشیو)</span>' +
+                        '<span>🌐 تمام دانلودها</span>' +
                     '</button>';
 
                     const catBtns = data.categories.map(function(c) {{
@@ -6490,10 +6490,14 @@ def render_dashboard_html() -> str:
                     container.innerHTML = data.items.map(function(item) {{
                         const title = (item.title || 'هدیه دانلودی سایت').replace(/"/g, '&quot;');
                         const fileNum = item.file_number ? '<span class="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-lg bg-black/80 backdrop-blur-md text-cyan-300 border border-white/10 text-[10px] font-mono font-bold shadow-md">' + item.file_number + '</span>' : '';
+                        let c_url = item.cover_url || '';
+                        if (c_url && c_url.startsWith('/')) {{
+                            c_url = 'https://abasmanesh.com' + c_url;
+                        }}
                         
-                        const cover = item.cover_url
+                        const cover = c_url
                             ? '<div class="relative w-full aspect-video overflow-hidden rounded-t-2xl bg-slate-950/70 border-b border-white/5">' +
-                                '<img src="' + item.cover_url + '" alt="' + title + '" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" onerror="this.onerror=null; this.src=\\'https://abasmanesh.com/assets/images/logo.png\\';">' +
+                                '<img src="' + c_url + '" alt="' + title + '" referrerpolicy="no-referrer" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" onerror="this.onerror=null; this.src=&apos;https://abasmanesh.com/assets/images/logo.png&apos;;">' +
                                 fileNum +
                               '</div>'
                             : '<div class="w-full aspect-video overflow-hidden rounded-t-2xl  border-b border-white/5 flex items-center justify-center text-3xl">🎧</div>';

@@ -40,14 +40,6 @@ FREE_DOWNLOAD_BASE_URL = "https://abasmanesh.com/fa/articles/"
 # فهرست رسمی ۱۷ دسته‌بندی استخراج‌شده زنده از ساختار واقعی سایت عباس‌منش
 OFFICIAL_17_CATEGORIES: List[Dict[str, Any]] = [
     {
-        "id": 1,
-        "emoji": "🎁",
-        "slug": "free-download",
-        "title": "تمام دانلودها (آرشیو هدایا)",
-        "url": "https://abasmanesh.com/fa/articles/",
-        "path": "/fa/articles/"
-    },
-    {
         "id": 2,
         "emoji": "🎙️",
         "slug": "interview-with-master-abasmanesh",
@@ -208,18 +200,11 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
                 candidate_url = val
                 break
 
-        if not candidate_url and img.get("srcset"):
-            raw_srcset = img["srcset"].strip()
-            parts = [p.strip().split(" ")[0] for p in raw_srcset.split(",") if p.strip()]
-            valid_parts = [p for p in parts if not p.startswith("data:")]
-            if valid_parts:
-                candidate_url = valid_parts[-1]
+    if not candidate_url and img:
+        val = img.get("src", "").strip()
+        if val and not val.startswith("data:") and not "data:image/svg+xml" in val:
+            candidate_url = val
 
-        if not candidate_url:
-            val = img.get("src", "").strip()
-            if val and not val.startswith("data:"):
-                candidate_url = val
-                
     if candidate_url and candidate_url.startswith("/"):
         candidate_url = "https://abasmanesh.com" + candidate_url
 
@@ -506,9 +491,9 @@ class FeedCrawler:
                                     mp4_matches = re.findall(r'(https?://[^"\' ]+\.mp4)', script.string)
                                     mp3_matches = re.findall(r'(https?://[^"\' ]+\.(?:mp3|m4a))', script.string)
                                     if mp4_matches and not video_dl:
-                                        video_dl = mp4_matches[0].replace(r"\/", "/")
+                                        video_dl = mp4_matches[0].replace("\\/", "/")
                                     if mp3_matches and not audio_dl:
-                                        audio_dl = mp3_matches[0].replace(r"\/", "/")
+                                        audio_dl = mp3_matches[0].replace("\\/", "/")
 
                         # جستجو در لینک‌های دانلود مستقیم
                         for a in soup.find_all("a", href=True):
@@ -528,6 +513,28 @@ class FeedCrawler:
                                 "UPDATE abasmanesh_feed SET audio_url = ?, video_url = ?, thumbnail_url = ? WHERE source_url = ?", 
                                 (audio_dl, video_dl, final_cover, clean_url)
                             )
+                            # Update crawler_cache.json
+                            import json
+                            from pathlib import Path
+                            from core.config import config
+                            cache_file = getattr(config, "DATA_DIR", Path("data")) / "crawler_cache.json"
+                            if getattr(config, "FEED_CACHE_FILE", None):
+                                cache_file = getattr(config, "FEED_CACHE_FILE")
+                            if cache_file.exists():
+                                data = json.loads(cache_file.read_text(encoding="utf-8"))
+                                cached_items = data.get("items", [])
+                                for ci in cached_items:
+                                    if ci.get("url", "").strip("/") == clean_url.strip("/"):
+                                        ci["audio_url"] = audio_dl
+                                        ci["video_url"] = video_dl
+                                        ci["cover_url"] = final_cover
+                                cache_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+                                
+                            try:
+                                from services.feed_scraper import _CACHE
+                                _CACHE.clear()
+                            except:
+                                pass
                         except Exception as ex:
                             import logging
                             logging.getLogger().debug(f"SQLite update error in fetch_article_details: {ex}")
