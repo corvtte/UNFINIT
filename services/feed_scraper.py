@@ -451,7 +451,10 @@ async def _fetch_single_article(
                     soup = BeautifulSoup(html, "html.parser")
                     og_img = soup.find("meta", property="og:image")
                     if og_img and og_img.get("content"):
-                        cover_url = og_img["content"].strip()
+                        og_content = og_img["content"].strip()
+                        # اولویت با کاور اصلی مقاله است مگر اینکه عکس پیش‌فرض سایت (og-default) باشد
+                        if not cover_url or "og-default" not in og_content:
+                            cover_url = og_content
 
                     # ۱. جستجو در تگ‌های ویدیو و سورس
                     for v in soup.find_all(["video", "source"]):

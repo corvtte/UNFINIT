@@ -3973,7 +3973,7 @@ def render_dashboard_html() -> str:
                         }} else {{
                             if (resDiv) {{
                                 resDiv.classList.remove('hidden');
-                                resDiv.innerHTML = '<span class="text-rose-500 font-bold">❌ خطا:</span> ' + (data.message || 'مشکلی رخ داد.');
+                                resDiv.innerHTML = '<span class="text-rose-500 font-bold">❌ خطا:</span> ' + (data.message || data.error || 'مشکلی رخ داد.');
                             }}
                             showToast('خطا در ذخیره نشست', 'error');
                         }}

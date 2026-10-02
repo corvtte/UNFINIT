@@ -832,7 +832,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e), "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/crawler/test-auth":
             try:

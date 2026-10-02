@@ -226,6 +226,7 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
 
     if candidate_url:
         candidate_url = urllib.parse.urljoin("https://abasmanesh.com", candidate_url)
+        candidate_url = candidate_url.replace("/storage//storage/", "/storage/")
 
     return candidate_url
 
@@ -421,7 +422,7 @@ class FeedAuthManager:
                 redirect_url = str(resp.url)
                 body_preview = html[:250].strip()
                 
-                is_ok = ("ورود / عضویت" not in html) and ("خروج" in html or "پروفایل" in html)
+                is_ok = ("ورود/عضویت" not in html.replace(" ", "")) and ("خروج" in html or "پروفایل" in html)
                 
                 if is_ok:
                     msg = "نشست فعال با هویت معتبر کاربر تأیید شد."
