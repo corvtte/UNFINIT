@@ -583,13 +583,13 @@ def render_dashboard_html() -> str:
             background-color: var(--table-head-bg) !important;
             color: var(--fg-color) !important;
         }}
-        html, body {
+        html, body {{
             box-sizing: border-box;
             overflow-x: hidden;
-        }
-        *, *:before, *:after {
+        }}
+        *, *:before, *:after {{
             box-sizing: inherit;
-        }
+        }}
         body {{
             font-family: 'Vazirmatn', 'Roboto', sans-serif !important;
             background-color: var(--bg-main, var(--bg-color, #080e1e)) !important;
@@ -744,6 +744,39 @@ def render_dashboard_html() -> str:
             caret-color: #f1f5f9 !important;
             border-color: var(--card-border) !important;
             transition: background-color 5000s ease-in-out 0s !important;
+        }}
+
+        @media (max-width: 768px) {{
+            .article-grid, .grid, .grid-cols-1, .md\\:grid-cols-2, .lg\\:grid-cols-3, .xl\\:grid-cols-4 {{
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+            }}
+            .card, .post, .article-card {{
+                width: 100% !important;
+                margin-bottom: 16px !important;
+            }}
+            .card img, .post img, .article-card img, .card-cover {{
+                width: 100% !important;
+                height: 190px !important;
+                object-fit: cover !important;
+                border-radius: 8px !important;
+            }}
+            button, .btn, .chip {{
+                width: 100% !important;
+                min-height: 44px !important;
+                margin-bottom: 8px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }}
+        }}
+        @media (min-width: 769px) {{
+            .article-grid, .card-grid {{
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+                gap: 16px !important;
+            }}
         }}
     </style>
     <style>
@@ -11159,13 +11192,13 @@ def render_storefront_html() -> str:
             scrollbar-color: #3b82f6 transparent !important;
         }}
         * {{ box-sizing: border-box; font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; }}
-        html, body {
+        html, body {{
             box-sizing: border-box;
             overflow-x: hidden;
-        }
-        *, *:before, *:after {
+        }}
+        *, *:before, *:after {{
             box-sizing: inherit;
-        }
+        }}
         body {{
             background-color: #0b1120 !important;
             color: #f8fafc !important;
