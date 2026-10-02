@@ -286,7 +286,7 @@ class FeedAuthManager:
         session = await cls.get_session()
         
         # Priority 1: Direct Session Cookie Injection
-        auth_cookie = (os.getenv("FEED_AUTH_COOKIE") or await get_system_setting("FEED_AUTH_COOKIE", "")).strip()
+        auth_cookie = (os.getenv("AUTH_SESSION_COOKIES") or await get_system_setting("AUTH_SESSION_COOKIES", "") or os.getenv("FEED_AUTH_COOKIE") or await get_system_setting("FEED_AUTH_COOKIE", "")).strip()
         if auth_cookie:
             # Smart Laravel Cookie Sanitizer
             directives = {"expires", "max-age", "path", "domain", "samesite", "secure", "httponly"}
@@ -416,24 +416,30 @@ class FeedAuthManager:
             await cls.invalidate_session()
             await cls.login_if_needed()
             session = await cls.get_session()
-            async with session.get("https://abasmanesh.com/fa/", timeout=25) as resp:
-                html = await resp.text()
+            async with session.get("https://abasmanesh.com/fa/profile/", timeout=25, allow_redirects=False) as resp:
                 status = resp.status
-                redirect_url = str(resp.url)
+                redirect_url = resp.headers.get("Location", "")
+                html = await resp.text()
                 body_preview = html[:250].strip()
                 
-                is_ok = ("ورود/عضویت" not in html.replace(" ", "")) and ("خروج" in html or "پروفایل" in html)
+                from core.logger import get_logger
+                logger = get_logger("feed_crawler")
                 
-                if is_ok:
-                    msg = "نشست فعال با هویت معتبر کاربر تأیید شد."
-                    from core.logger import get_logger
-                    logger = get_logger("feed_crawler")
+                if status == 200:
+                    username = "کاربر تایید شده"
+                    # Try to extract username
+                    m = re.search(r'سلام[\s\n]*<strong[^>]*>([^<]+)</strong>', html)
+                    if m: username = m.group(1).strip()
+                    
+                    msg = f"نشست فعال با هویت معتبر ({username}) تأیید شد."
                     logger.info(f"[FeedAuthManager] Test Connection Success - Status: {status}")
                     return {"success": True, "status_code": status, "message": msg, "authenticated": True}
+                elif status in (301, 302):
+                    msg = f"ردیف دسترسی مسدود است (کد {status}). کوکی‌ها منقضی شده و سیستم به صفحه ورود ریدایرکت شد."
+                    logger.warning(f"[FeedAuthManager] Test Connection Redirect - Status: {status}, Location: {redirect_url}")
+                    return {"success": False, "status_code": status, "message": msg, "authenticated": False}
                 else:
-                    msg = f"پاسخ خام (کد {status}):\n{body_preview}..."
-                    from core.logger import get_logger
-                    logger = get_logger("feed_crawler")
+                    msg = f"خطای ناشناخته از سرور مرجع (کد {status}):\n{body_preview}..."
                     logger.error(f"[FeedAuthManager] Test Connection Failed - Status: {status}, Body Preview: {body_preview}")
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
         except Exception as e:

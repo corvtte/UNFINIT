@@ -476,8 +476,10 @@ async def _fetch_single_article(
                                 video_dl = clean_h
                 else:
                     img_m = re.search(r'property="og:image"\s+content="([^"]+)"', html)
-                    if img_m and not cover_url:
-                        cover_url = img_m.group(1).strip()
+                    if img_m:
+                        og_content = img_m.group(1).strip()
+                        if not cover_url or "og-default" not in og_content:
+                            cover_url = og_content
                     for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
                         h = re.sub(r"^rhttp", "http", m.group(1).strip())
                         if "cdneu.abasmanesh.com" in h:
@@ -547,7 +549,7 @@ async def _fetch_single_article(
         "category": tag,
         "page_url": clean_url,
         "url": primary_url,
-        "cover_url": cover_url or "https://abasmanesh.com/fa/wp-content/uploads/2026/09/neveshteh-80x80.webp",
+        "cover_url": cover_url,
         "audio_download_url": audio_dl,
         "audio_url": audio_dl,
         "video_download_url": video_dl,
@@ -629,7 +631,7 @@ async def get_latest_free_downloads(
                 _CACHE["items"] = final_items
                 _CACHE["last_fetched"] = now
                 save_feed_disk_cache(final_items)
-        return final_items[:limit]
+        return final_items[:limit], total_pages
 
     except Exception as e:
         logger.warning(f"[feed_scraper] Failed to scrape live feed: {e}")
@@ -755,7 +757,7 @@ class FeedScraper:
         return await get_category_episodes(category_id_or_slug, page=page, limit=limit, force_refresh=force_refresh)
 
     @staticmethod
-    async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1, base_url: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1, base_url: Optional[str] = None) -> tuple[List[Dict[str, Any]], int]:
         return await get_latest_free_downloads(limit=limit, force_refresh=force_refresh, page=page, base_url=base_url)
 
     @staticmethod
