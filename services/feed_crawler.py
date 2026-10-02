@@ -174,29 +174,30 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
     """
     استخراج هوشمند و ضدگلوله آدرس تصویر بندانگشتی (کاور) با مهار کامل لود تنبل (Lazy Loading).
     """
+    import urllib.parse
     if not tag_or_soup:
         return ""
 
     candidate_url = ""
 
+    # اولویت اول: متاتگ og:image در صورت وجود
     if hasattr(tag_or_soup, "find"):
         meta_og = tag_or_soup.find("meta", property="og:image")
         if meta_og and meta_og.get("content"):
             candidate_url = meta_og.get("content").strip()
 
-    if not candidate_url and hasattr(tag_or_soup, "find_all"):
-        for img_tag in tag_or_soup.find_all("img"):
-            val = ""
-            for attr in ("data-src", "data-lazy-src", "data-original", "data-lazy", "data-url", "src"):
+    # اولویت دوم: استخراج ایزوله از تگ img داخل همین کارت
+    if not candidate_url and hasattr(tag_or_soup, "find"):
+        img_tag = tag_or_soup.find("img")
+        if img_tag:
+            for attr in ("data-src", "data-original", "src", "data-lazy-src", "data-lazy", "data-url"):
                 val = img_tag.get(attr, "").strip()
                 if val and not val.startswith("data:") and not "data:image/svg+xml" in val:
                     candidate_url = val
                     break
-            if candidate_url:
-                break
 
-    if candidate_url and candidate_url.startswith("/"):
-        candidate_url = "https://abasmanesh.com" + candidate_url
+    if candidate_url:
+        candidate_url = urllib.parse.urljoin("https://abasmanesh.com", candidate_url)
 
     return candidate_url
 

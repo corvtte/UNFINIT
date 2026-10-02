@@ -1053,8 +1053,8 @@ def render_dashboard_html() -> str:
                     <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
-                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">دانلودها (ویژه مشترکین پریمیوم)</span>
-                    <span class="group/badge px-2 py-0.5 rounded-full text-[10px] bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-mono transition-all duration-300 cursor-default" title="۳۹ صفحه شامل بیش از ۹۵۰ فایل دانلودی رایگان"><span class="inline group-hover/badge:hidden">۹۵۸ فایل</span><span class="hidden group-hover/badge:inline">۳۹ صفحه</span></span>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'downloads')">دانلودها</span>
+                    
                 </button>
 
                 <!-- 3. Studio -->
@@ -2181,7 +2181,7 @@ def render_dashboard_html() -> str:
                 <div class="flex flex-wrap justify-between items-center gap-3 pb-3 border-b border-white/5">
                     <div>
                         <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
-                            <span>🎁</span> دانلودها (ویژه مشترکین پریمیوم)
+                            <span>🎁</span> دانلودها
                             <span id="crawlerStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full {health['platforms']['abasmanesh']['badge']} text-white">
                                 { "نشست فعال (ONLINE)" if health['platforms']['abasmanesh']['status'] == "ONLINE" else "Missing Credentials" }
                             </span>
@@ -2190,30 +2190,9 @@ def render_dashboard_html() -> str:
                             آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
                         </p>
                     </div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <button type="button" onclick="testTodaySign()" id="btnTestTodaySign" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>
-                            <span>دریافت نشانه تصادفی (تست ادمین)</span>
-                        </button>
-                        <button type="button" onclick="refreshFeedDiskCache()" id="btnRefreshFeedCache" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);" title="به‌روزرسانی کش دانلودها روی دیسک بدون مسدود شدن پنل">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" /></svg>
-                            <span>به‌روزرسانی کش دیسک</span>
-                        </button>
+                                        <div class="flex items-center gap-2 flex-wrap">
                         <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-                            <span>به‌روزرسانی صفحه</span>
-                        </button>
-                        <button type="button" onclick="syncFeedThumbnails(this)" class="px-3 py-1.5 rounded-xl border border-slate-700 hover:border-orange-500 text-xs text-slate-200 transition flex items-center gap-1.5">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>
-                            <span>همگامسازی تصاویر</span>
-                        </button>
-                        <button type="button" onclick="openFeedAuthModal()" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm text-orange-400 hover:text-orange-300" title="بررسی و تنظیم اتصال منبع جهت واکشی رسانه‌های بسته">
-                            <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
-                            <span>تنظیم و تست نشست</span>
-                        </button>
-                        <button type="button" onclick="createCourseFromCurrentCategory()" id="btnCreateCourseFromCat" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm text-emerald-400 hover:text-emerald-300" title="ایجاد ۱-کلیک دوره آموزشی رایگان شامل جلسات این دسته‌بندی">
-                            <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                            <span>✨ ساخت دوره از این دسته‌بندی</span>
+                            <span>🔄 به‌روزرسانی زنده از سایت</span>
                         </button>
                     </div>
                 </div>
@@ -4175,7 +4154,7 @@ def render_dashboard_html() -> str:
                     }},
                     'downloads': {{
                         title: 'فایل‌های دانلودی رایگان سایت',
-                        desc: 'پایش خودکار ۳۹ صفحه سایت مرجع و پکیج‌بندی سرفصل‌های دوره‌ها'
+                        desc: 'پایش خودکار صفحات سایت مرجع و پکیج‌بندی سرفصل‌های دوره‌ها'
                     }},
                     'studio': {{
                         title: 'استودیوی پیشرفته رسانه و متادیتا',
@@ -9270,13 +9249,13 @@ def render_dashboard_html() -> str:
         const DEFAULT_KEYBOARD_LAYOUT = [
             ["🛍️ دوره‌ها و محصولات"],
             ["✨ نشانه امروز من", "💎 اشتراک پریمیوم"],
-            ["📁 دانلودها (ویژه مشترکین پریمیوم)", "👤 حساب کاربری"]
+            ["📁 دانلودها", "👤 حساب کاربری"]
         ];
 
         const CANONICAL_KEYBOARD_ACTIONS = [
             {{ text: "✨ نشانه امروز من", desc: "دریافت آیه و نشانه تصادفی روز" }},
             {{ text: "💎 اشتراک پریمیوم", desc: "خرید و تمدید اشتراک پریمیوم ماهانه" }},
-            {{ text: "📁 دانلودها (ویژه مشترکین پریمیوم)", desc: "آرشیو دانلودهای هدایای سایت" }},
+            {{ text: "📁 دانلودها", desc: "آرشیو دانلودهای هدایای سایت" }},
             {{ text: "🛍️ دوره‌ها و محصولات", desc: "فروشگاه دوره‌ها و فایل‌های دانلودی" }},
             {{ text: "🌊 فرکانس فراوانی", desc: "ورق‌زن عبارات تاکیدی و فرکانس روز" }},
             {{ text: "👤 حساب کاربری", desc: "مشاهده امتیازات، پلن پریمیوم و وضعیت حساب" }},

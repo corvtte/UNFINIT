@@ -74,8 +74,8 @@ def package_project():
         print("Will attempt to save in local directory first.")
         target_dir = os.getcwd()
         
-    zip_path = os.path.join(target_dir, "unfinit_v25.8.0.zip")
-    local_temp_zip = "unfinit_v25.8.0.zip"
+    zip_path = os.path.join(target_dir, "unfinit_v0.7.26.zip")
+    local_temp_zip = "unfinit_v0.7.26.zip"
     
     print(f"Packaging project to {zip_path}...")
     
@@ -88,7 +88,7 @@ def package_project():
             
             for f in files:
                 full_path = os.path.join(root, f)
-                if not should_ignore(full_path) and f != "unfinit_v25.8.0.zip":
+                if not should_ignore(full_path) and f != "unfinit_v0.7.26.zip":
                     arcname = os.path.relpath(full_path, base_path)
                     zf.write(full_path, arcname)
                     

@@ -857,23 +857,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
             return
-        elif path == "/api/feed/sync-thumbnails":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedCrawler
-                res = loop.run_until_complete(FeedCrawler.sync_thumbnails())
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
         elif path == "/api/vip/settings":
             try:
                 loop = asyncio.new_event_loop()
@@ -982,32 +965,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        elif path == "/api/crawler/save-auth":
-            try:
-                res = handle_crawler_save_auth(payload)
-                self.send_response(200 if res.get("success") else 400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        elif path == "/api/crawler/test-auth":
-            try:
-                res = handle_crawler_test_auth(payload)
-                self.send_response(200 if res.get("success") else 400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e), "authenticated": False}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/crawler/rescrap-item":
             try:
@@ -1460,23 +1417,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"ok": True, "item": updated}, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        elif path == "/api/feed/sync-thumbnails":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedCrawler
-                res = loop.run_until_complete(FeedCrawler.sync_thumbnails())
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
@@ -2135,32 +2075,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
             except Exception as e:
                 logger.error(f"[delete-episode] error: {e}")
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        elif path in ("/api/courses/create-from-category", "/api/courses/from-category"):
-            try:
-                cat_id = payload.get("category_id") or payload.get("cat_id") or payload.get("slug")
-                course_name = payload.get("course_name") or payload.get("name")
-                if not cat_id:
-                    raise ValueError("Ø´Ù†Ø§Ø³Ù‡ ÛŒØ§ Ø§Ø³Ù„Ø§Ú¯ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.")
-
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                res = loop.run_until_complete(StoreService.create_course_from_category(
-                    category_id_or_slug=cat_id,
-                    course_name=course_name
-                ))
-                loop.close()
-
-                self.send_response(200 if res.get("ok") else 400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                logger.error(f"[create-from-category] error: {e}")
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
