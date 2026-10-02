@@ -186,24 +186,14 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
 
     if not candidate_url and hasattr(tag_or_soup, "find_all"):
         for img_tag in tag_or_soup.find_all("img"):
-            src = img_tag.get("src", "") or img_tag.get("data-src", "")
-            if "/storage/media/" in src and not src.startswith("data:"):
-                candidate_url = src.strip()
+            val = ""
+            for attr in ("data-src", "data-lazy-src", "data-original", "data-lazy", "data-url", "src"):
+                val = img_tag.get(attr, "").strip()
+                if val and not val.startswith("data:") and not "data:image/svg+xml" in val:
+                    candidate_url = val
+                    break
+            if candidate_url:
                 break
-
-    img = tag_or_soup if getattr(tag_or_soup, "name", None) == "img" else getattr(tag_or_soup, "find", lambda x: None)("img")
-
-    if not candidate_url and img:
-        for attr in ("data-src", "data-lazy-src", "data-original", "data-lazy", "data-url"):
-            val = img.get(attr, "").strip()
-            if val and not val.startswith("data:"):
-                candidate_url = val
-                break
-
-    if not candidate_url and img:
-        val = img.get("src", "").strip()
-        if val and not val.startswith("data:") and not "data:image/svg+xml" in val:
-            candidate_url = val
 
     if candidate_url and candidate_url.startswith("/"):
         candidate_url = "https://abasmanesh.com" + candidate_url

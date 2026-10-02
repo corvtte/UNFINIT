@@ -840,10 +840,11 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     cat_res = loop.run_until_complete(get_category_episodes(cat, page=page, limit=limit, force_refresh=force))
                     items = cat_res.get("episodes", [])
                     has_next = cat_res.get("has_next", False)
-                    res = {"ok": True, "items": items, "count": len(items), "page": page, "category": cat_res.get("category"), "has_next": has_next}
+                    total_pages = cat_res.get("total_pages", 1)
+                    res = {"ok": True, "items": items, "count": len(items), "page": page, "category": cat_res.get("category"), "has_next": has_next, "total_pages": total_pages}
                 else:
-                    items = loop.run_until_complete(get_latest_free_downloads(limit=limit, force_refresh=force, page=page))
-                    res = {"ok": True, "items": items, "count": len(items), "page": page, "total_pages": 39}
+                    items, total_pages = loop.run_until_complete(get_latest_free_downloads(limit=limit, force_refresh=force, page=page))
+                    res = {"ok": True, "items": items, "count": len(items), "page": page, "total_pages": total_pages}
 
                 loop.close()
                 self.send_response(200)

@@ -315,19 +315,34 @@ def _clean_title(raw: str) -> str:
 # ورودی: html (رشته HTML خام صفحه) و limit (حداکثر تعداد جلسات)
 # خروجی: لیستی از تاپل‌های (url, title, cover_url, tag)
 # ==============================================================================
-def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
+def _extract_articles_from_html(html: str, limit: int = 25) -> tuple[List[tuple], int]:
     """
     استخراج ساختاریافته لینک مقالات، عناوین، تصاویر شاخص و تگ‌ها از ساختار جدید سایت عباس‌منش.
-    از سلکتورهای div.article-grid و div.card استفاده کرده و لینک‌های نوار ناوبری و منوها را نادیده می‌گیرد.
+    از سلکتورهای article و card استفاده کرده و باگ نشت متغیر را رفع می‌کند.
+    همچنین تعداد کل صفحات را پویا محاسبه می‌کند.
     """
     articles_found = []
     seen_urls = set()
     skip_keywords = ["فهرست", "برو به", "ثبت‌نام", "ورود", "سبد", "دیدگاه", "نظرات", "عقل‌کل", "قوانین", "پاسخ به سؤالات", "از کجا شروع"]
+    total_pages = 1
 
     if BeautifulSoup:
         soup = BeautifulSoup(html, "html.parser")
+        
+        # استخراج داینامیک تعداد صفحات از pagination
+        page_numbers = []
+        for p in soup.select(".pagination a.page-numbers, .nav-links a.page-numbers"):
+            try:
+                num_text = p.get_text(strip=True)
+                if num_text.isdigit():
+                    page_numbers.append(int(num_text))
+            except:
+                pass
+        if page_numbers:
+            total_pages = max(page_numbers)
+            
         # 1. تلاش برای استخراج مستقیم از ساختار کارت‌های مقالات
-        cards = soup.select("div.article-grid div.card, div.card.card--media, .card")
+        cards = soup.select("article, div.article-grid > div, div.card, .post")
         for card in cards:
             a_link = card.find("a", class_="card__media-link") or card.find("a", href=lambda h: h and "/fa/" in h and not any(x in h for x in ["category", "cart", "account", "login", "aghlekol", "terms"]))
             if not a_link or not a_link.get("href"):
@@ -339,16 +354,18 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
             if clean_href in seen_urls or clean_href == "https://abasmanesh.com/fa/":
                 continue
 
-            # استخراج تصویر شاخص با مهار کامل بارگذاری تنبل وردپرس
+            # استخراج تصویر شاخص ایزوله فقط از همین کارت
             card_cover = extract_thumbnail_url(card)
 
-            # استخراج عنوان مقاله
+            # استخراج عنوان مقاله ایزوله
             title = ""
-            body = card.find("div", class_="card__body")
+            body = card.find("div", class_="card__body") or card.find("div", class_="entry-content")
             if body:
                 t_a = body.find("a", href=lambda h: h and clean_href in h) or body.find("a")
                 if t_a:
                     title = t_a.get_text(strip=True)
+                    
+            img = card.find("img")
             if not title and img and img.get("alt"):
                 title = img["alt"].strip()
             if not title:
@@ -357,14 +374,15 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
             if len(title) < 3 or any(k in title for k in skip_keywords):
                 continue
 
-            # استخراج برچسب یا دسته‌بندی
-            chip = card.find("a", class_="chip")
+            # استخراج برچسب یا دسته‌بندی ایزوله
+            chip = card.find("a", class_="chip") or card.find("span", class_="cat-links")
             tag = chip.get_text(strip=True) if chip else "هدیه دانلودی"
 
             seen_urls.add(clean_href)
             articles_found.append((clean_href, title, card_cover, tag))
             if len(articles_found) >= limit:
-                return articles_found
+                return articles_found, total_pages
+
 
         # 2. در صورت نیافتن کارت، فال‌بک تمیز روی تگ‌های a بدون کلاس‌های هدر/ناوبری
         if not articles_found:
@@ -402,7 +420,7 @@ def _extract_articles_from_html(html: str, limit: int = 25) -> List[tuple]:
             if len(articles_found) >= limit:
                 break
 
-    return articles_found
+    return articles_found, total_pages
 
 
 # ==============================================================================
@@ -547,7 +565,7 @@ async def get_latest_free_downloads(
     force_refresh: bool = False,
     page: int = 1,
     base_url: Optional[str] = None
-) -> List[Dict[str, Any]]:
+) -> tuple[List[Dict[str, Any]], int]:
     """
     استخراج داینامیک آرشیو مقالات و دانلودهای سایت عباس‌منش با صفحه‌بندی و کش دیسکی فوق‌سریع.
     """
@@ -557,9 +575,9 @@ async def get_latest_free_downloads(
 
     # ۱. بررسی کش حافظه رم
     if not force_refresh and cache_key in _CACHE and (now - _CACHE[cache_key]["last_fetched"] < CACHE_TTL_SEC):
-        return _CACHE[cache_key]["items"][:limit]
+        return _CACHE[cache_key]["items"][:limit], _CACHE.get("total_pages", 1)
     if page == 1 and not force_refresh and _CACHE.get("items") and (now - _CACHE.get("last_fetched", 0) < CACHE_TTL_SEC):
-        return _CACHE["items"][:limit]
+        return _CACHE["items"][:limit], _CACHE.get("total_pages", 1)
 
     # ۲. بررسی کش فوق‌سریع دیسک برای صفحه اول جهت پاسخگویی زیر ۱۰ms به پنل
     if page == 1 and not force_refresh:
@@ -567,7 +585,7 @@ async def get_latest_free_downloads(
         if disk_items:
             _CACHE["items"] = disk_items
             _CACHE["last_fetched"] = now
-            return disk_items[:limit]
+            return disk_items[:limit], _CACHE.get("total_pages", 1)
 
     target_url = build_page_url(effective_base, page_number=page)
     try:
@@ -576,12 +594,12 @@ async def get_latest_free_downloads(
         
         if status != 200:
             logger.warning(f"[feed_scraper] Status {status} fetching {target_url}")
-            return FALLBACK_ITEMS[:limit] if page == 1 else []
+            return (FALLBACK_ITEMS[:limit] if page == 1 else []), 1
             
-        articles_to_fetch = _extract_articles_from_html(html, limit=limit)
+        articles_to_fetch, total_pages = _extract_articles_from_html(html, limit=limit)
         
         if not articles_to_fetch:
-            return FALLBACK_ITEMS[:limit] if page == 1 else []
+            return (FALLBACK_ITEMS[:limit] if page == 1 else []), 1
             
         # واکشی همزمان صفحات مقالات جهت استخراج مدیا
         tasks = [
@@ -616,9 +634,9 @@ async def get_latest_free_downloads(
     if page == 1:
         disk_items = load_feed_disk_cache()
         if disk_items:
-            return disk_items[:limit]
+            return disk_items[:limit], _CACHE.get("total_pages", 1)
 
-    return FALLBACK_ITEMS[:limit] if page == 1 else []
+    return (FALLBACK_ITEMS[:limit] if page == 1 else []), 1
 
 
 async def get_category_episodes(
@@ -664,7 +682,7 @@ async def get_category_episodes(
             async with session.get(target_url) as resp:
                 if resp.status == 200:
                     html = await resp.text()
-                    articles_to_fetch = _extract_articles_from_html(html, limit=limit)
+                    articles_to_fetch, total_pages = _extract_articles_from_html(html, limit=limit)
 
             episodes = []
             if articles_to_fetch:
@@ -684,7 +702,8 @@ async def get_category_episodes(
                 "category": cat,
                 "episodes": episodes,
                 "page": page,
-                "has_next": len(episodes) >= limit
+                "has_next": len(episodes) >= limit,
+                "total_pages": total_pages
             }
             if episodes:
                 _CACHE[cache_key] = {"data": result_obj, "last_fetched": now}
@@ -703,7 +722,8 @@ async def get_category_episodes(
         "category": cat,
         "episodes": FALLBACK_ITEMS[:limit],
         "page": page,
-        "has_next": False
+        "has_next": False,
+        "total_pages": 1
     }
 
 
