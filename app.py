@@ -254,7 +254,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"overall_status": "DEGRADED", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"overall_status": "DEGRADED", "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/orders":
             try:
@@ -267,7 +267,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/order_status":
             try:
@@ -298,7 +298,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/coupons":
             try:
@@ -315,7 +315,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/contacts/export_csv":
             try:
@@ -355,7 +355,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/users":
             try:
@@ -385,7 +385,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/", "/dashboard"):
             try:
@@ -481,7 +481,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path.startswith("/dl/"):
             drop_id = path[4:].strip()
             session = session_manager.get_session(drop_id)
@@ -658,7 +658,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/settings/export":
             query_params = urllib.parse.parse_qs(parsed.query)
             pwd = (query_params.get("password", [""])[0]).strip()
@@ -755,7 +755,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/frequencies/export":
             try:
@@ -770,7 +770,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/sign/today", "/api/sign/test"):
             try:
@@ -792,7 +792,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/feed/categories":
             try:
@@ -815,7 +815,41 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path == "/api/crawler/save-auth":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                from services.web_panel import handle_crawler_save_auth_async
+                res = loop.run_until_complete(handle_crawler_save_auth_async(payload))
+                loop.close()
+                self.send_response(200 if res.get("success") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path == "/api/crawler/test-auth":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                from services.web_panel import handle_crawler_test_auth_async
+                res = loop.run_until_complete(handle_crawler_test_auth_async(payload))
+                loop.close()
+                self.send_response(200 if res.get("success") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e), "authenticated": False}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/feed/sync":
             try:
@@ -832,7 +866,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/feed/latest":
             try:
@@ -872,7 +906,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/vip/settings":
             try:
@@ -904,7 +938,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/payment/zarinpal/callback":
             query_params = urllib.parse.parse_qs(parsed.query)
@@ -937,7 +971,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.end_headers()
             except Exception as e:
                 self.send_response(302)
-                self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={urllib.parse.quote(str(e))}")
+                self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={urllib.parse.quote(str(e) or repr(e))}")
                 self.end_headers()
             return
         else:
@@ -968,7 +1002,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/buy_card":
             try:
@@ -981,7 +1015,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/crawler/rescrap-item":
             try:
@@ -994,7 +1028,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/orders/approve":
             try:
@@ -1008,7 +1042,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/orders/reject":
             try:
@@ -1023,7 +1057,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/sessions/disconnect", "/api/soroush/logout", "/api/soroush/disconnect"):
             try:
@@ -1045,7 +1079,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/users/delete":
             try:
                 user_id = str(payload.get("user_id") or payload.get("phone") or "").strip()
@@ -1066,7 +1100,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/users/purge_test":
             try:
@@ -1085,7 +1119,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/users/toggle_vip":
             """
@@ -1180,7 +1214,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/categories/update":
             """
@@ -1206,7 +1240,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/feed/refresh":
             """
@@ -1236,7 +1270,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/users/profile":
             """
@@ -1269,7 +1303,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/settings/rename":
             """
@@ -1310,7 +1344,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/soroush/login/request":
             try:
@@ -1329,7 +1363,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/soroush/login/verify":
             try:
@@ -1350,7 +1384,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/soroush/login/manual":
             try:
@@ -1371,7 +1405,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/frequencies/add":
             try:
@@ -1390,7 +1424,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/frequencies/delete":
             try:
@@ -1407,7 +1441,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/frequencies/edit", "/api/frequencies/update"):
             # Ø§Ù†Ø¯Ù¾ÙˆÛŒÙ†Øª ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ø´Ø®ØµØ§Øª Ø¹Ø¨Ø§Ø±Øª ÙØ±Ú©Ø§Ù†Ø³ ÙØ±Ø§ÙˆØ§Ù†ÛŒ
@@ -1436,7 +1470,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/vip/settings":
             try:
@@ -1466,7 +1500,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/frequencies/import":
             try:
@@ -1486,7 +1520,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/orders/delete":
             try:
@@ -1500,7 +1534,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/store/orders/cleanup_rejected":
             try:
@@ -1513,7 +1547,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/store/orders/bulk_delete", "/api/orders/bulk-delete"):
             try:
@@ -1527,7 +1561,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/store/orders/clear_all", "/api/orders/clear-all"):
             try:
@@ -1540,7 +1574,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/coupons/validate", "/api/store/coupon/validate"):
             try:
@@ -1558,7 +1592,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/coupons/create":
             try:
@@ -1581,7 +1615,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/dispatch_url":
             try:
@@ -1597,7 +1631,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/upload":
             try:
                 from services.web_panel import handle_studio_upload
@@ -1610,7 +1644,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/studio/edit_tags", "/api/studio/tags"):
             try:
                 from services.web_panel import handle_studio_edit_tags
@@ -1623,7 +1657,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/batch_edit":
             try:
                 from services.web_panel import handle_studio_batch_edit
@@ -1636,7 +1670,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/dispatch":
             try:
                 from services.web_panel import handle_studio_dispatch
@@ -1652,7 +1686,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/cut":
             try:
                 from services.web_panel import handle_studio_cut
@@ -1665,7 +1699,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/delete":
             try:
                 from services.web_panel import handle_studio_delete
@@ -1678,7 +1712,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/delete_batch":
             try:
                 from services.web_panel import handle_studio_delete_batch
@@ -1691,7 +1725,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/studio/cleanup":
             try:
                 from services.web_panel import handle_studio_cleanup
@@ -1704,7 +1738,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/courses/add", "/api/products"):
             try:
                 name = payload.get("name", "").strip()
@@ -1739,7 +1773,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/payment/zarinpal/request":
             course_id = (payload.get("course_id") or "").strip()
             name = (payload.get("customer_name") or "").strip()
@@ -1769,7 +1803,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/upload/banner":
             try:
@@ -1834,7 +1868,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/upload/logo", "/api/upload-logo"):
             try:
@@ -1872,7 +1906,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path == "/api/login":
             pwd = (payload.get("password") or "").strip()
@@ -1910,7 +1944,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/media/convert-svg", "/api/convert-svg"):
             try:
                 import base64
@@ -1959,7 +1993,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/media/recolor-svg", "/api/recolor-svg"):
             try:
@@ -2000,7 +2034,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/media/text-to-svg", "/api/text-to-svg"):
             try:
@@ -2031,7 +2065,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/courses/episodes/add", "/api/courses/add-episode"):
             try:
@@ -2066,7 +2100,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/courses/episodes/delete", "/api/courses/delete-episode"):
             try:
@@ -2095,7 +2129,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
         elif path in ("/api/settings", "/api/settings/save"):
             try:
@@ -2409,7 +2443,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/settings/theme", "/api/theme"):
             try:
                 theme_val = str(payload.get("theme") or "default-dark").strip().lower()
@@ -2433,7 +2467,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(500)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/settings/import":
             try:
                 pwd = (payload.get("password") or "").strip()
@@ -2527,7 +2561,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/courses/update":
             try:
                 p_id = payload.get("product_id")
@@ -2555,7 +2589,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/courses/summarize", "/api/ai/summarize-course"):
             try:
                 text = (payload.get("text") or "").strip()
@@ -2572,7 +2606,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/courses/terms", "/api/store/terms"):
             try:
                 terms = (payload.get("terms_text") or payload.get("COURSE_TERMS_TEXT") or "").strip()
@@ -2592,7 +2626,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/courses/toggle", "/api/products/toggle_active"):
             try:
                 p_id = (payload.get("product_id") or payload.get("id") or "").strip()
@@ -2614,7 +2648,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path in ("/api/courses/delete", "/api/products/delete"):
             try:
                 p_id = (payload.get("product_id") or payload.get("id") or "").strip()
@@ -2632,7 +2666,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
         elif path == "/api/payment/zarinpal/callback":
             query_params = urllib.parse.parse_qs(parsed.query)
             order_id = (query_params.get("order_id", [""])[0]).strip()
@@ -2664,7 +2698,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.end_headers()
             except Exception as e:
                 self.send_response(302)
-                self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={urllib.parse.quote(str(e))}")
+                self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={urllib.parse.quote(str(e) or repr(e))}")
                 self.end_headers()
             return
         else:
@@ -2798,7 +2832,7 @@ async def main():
                     logger.warning(f"Telegram MTProto FloodWait: waiting {wait_sec}s before auto-reconnecting...")
                     await asyncio.sleep(wait_sec + 2)
                 except Exception as e:
-                    err_str = str(e)
+                    err_str = str(e) or repr(e)
                     if "FLOOD_WAIT" in err_str:
                         m = re.search(r"(\d+)\s*seconds", err_str)
                         wait_sec = int(m.group(1)) if m else 60

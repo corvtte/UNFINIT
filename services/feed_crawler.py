@@ -415,7 +415,7 @@ class FeedAuthManager:
             await cls.invalidate_session()
             await cls.login_if_needed()
             session = await cls.get_session()
-            async with session.get("https://abasmanesh.com/fa/", timeout=15) as resp:
+            async with session.get("https://abasmanesh.com/fa/", timeout=25) as resp:
                 html = await resp.text()
                 status = resp.status
                 redirect_url = str(resp.url)
@@ -425,15 +425,22 @@ class FeedAuthManager:
                 
                 if is_ok:
                     msg = "نشست فعال با هویت معتبر کاربر تأیید شد."
+                    from core.logger import get_logger
+                    logger = get_logger("feed_crawler")
                     logger.info(f"[FeedAuthManager] Test Connection Success - Status: {status}")
                     return {"success": True, "status_code": status, "message": msg, "authenticated": True}
                 else:
                     msg = f"پاسخ خام (کد {status}):\n{body_preview}..."
+                    from core.logger import get_logger
+                    logger = get_logger("feed_crawler")
                     logger.error(f"[FeedAuthManager] Test Connection Failed - Status: {status}, Body Preview: {body_preview}")
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
         except Exception as e:
-            logger.error(f"[FeedAuthManager] Test Connection Network Error: {e}")
-            return {"success": False, "status_code": 500, "message": f"خطای ارتباطی: {str(e)}", "authenticated": False}
+            from core.logger import get_logger
+            logger = get_logger("feed_crawler")
+            logger.error(f"[FeedAuthManager] Test Connection Network Error: {repr(e)}")
+            return {"success": False, "status_code": 500, "message": f"خطای ارتباطی: {str(e) or repr(e)}", "authenticated": False}
+
 
 class FeedCrawler:
 
@@ -634,8 +641,9 @@ class FeedCrawler:
                 
             # واکشی همزمان صفحات مقالات جهت استخراج مدیا
             import aiohttp, asyncio
+            session = await FeedAuthManager.get_session()
             tasks = [
-                _fetch_single_article(url, title, card_cover=cover, card_tag=tag)
+                _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
                 for url, title, cover, tag in articles_to_fetch[:25]
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -651,6 +659,19 @@ class FeedCrawler:
                 
             # 1. Update SQLite
             import sqlite3
+            await execute_query('''
+                CREATE TABLE IF NOT EXISTS abasmanesh_feed (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_url TEXT UNIQUE,
+                    title TEXT,
+                    thumbnail_url TEXT,
+                    audio_url TEXT,
+                    video_url TEXT,
+                    tags TEXT,
+                    is_free BOOLEAN DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
             for item in final_items:
                 await execute_query(
                     '''
@@ -686,10 +707,10 @@ class FeedCrawler:
             _CACHE["last_fetched"] = time.time()
             
             # 4. Clear crawler_cache.json
-            from core.config import DATA_DIR
+            from core.config import config
             try:
                 import json
-                cc_path = DATA_DIR / "crawler_cache.json"
+                cc_path = config.DATA_DIR / "crawler_cache.json"
                 if cc_path.exists():
                     cc_path.unlink()
             except: pass
