@@ -315,7 +315,7 @@ def _clean_title(raw: str) -> str:
 # ورودی: html (رشته HTML خام صفحه) و limit (حداکثر تعداد جلسات)
 # خروجی: لیستی از تاپل‌های (url, title, cover_url, tag)
 # ==============================================================================
-def _extract_articles_from_html(html: str, limit: int = 25) -> tuple[List[tuple], int]:
+def _extract_articles_from_html(html: str, limit: int = 100) -> tuple[List[tuple], int]:
     """
     استخراج ساختاریافته لینک مقالات، عناوین، تصاویر شاخص و تگ‌ها از ساختار جدید سایت عباس‌منش.
     از سلکتورهای article و card استفاده کرده و باگ نشت متغیر را رفع می‌کند.
@@ -566,7 +566,7 @@ async def _fetch_single_article(
 # تابع واکشی جدیدترین هدایای دانلودی و مقالات با صفحه‌بندی و کش فوق‌سریع دیسک
 # ==============================================================================
 async def get_latest_free_downloads(
-    limit: int = 25,
+    limit: int = 100,
     force_refresh: bool = False,
     page: int = 1,
     base_url: Optional[str] = None
@@ -648,7 +648,7 @@ async def get_latest_free_downloads(
 async def get_category_episodes(
     category_id_or_slug: str | int,
     page: int = 1,
-    limit: int = 15,
+    limit: int = 100,
     force_refresh: bool = False
 ) -> Dict[str, Any]:
     """
@@ -753,11 +753,11 @@ class FeedScraper:
         return get_category_by_id(cat_id_or_slug)
 
     @staticmethod
-    async def get_category_episodes(category_id_or_slug: Union[str, int], page: int = 1, limit: int = 15, force_refresh: bool = False) -> Dict[str, Any]:
+    async def get_category_episodes(category_id_or_slug: Union[str, int], page: int = 1, limit: int = 100, force_refresh: bool = False) -> Dict[str, Any]:
         return await get_category_episodes(category_id_or_slug, page=page, limit=limit, force_refresh=force_refresh)
 
     @staticmethod
-    async def get_latest_free_downloads(limit: int = 25, force_refresh: bool = False, page: int = 1, base_url: Optional[str] = None) -> tuple[List[Dict[str, Any]], int]:
+    async def get_latest_free_downloads(limit: int = 100, force_refresh: bool = False, page: int = 1, base_url: Optional[str] = None) -> tuple[List[Dict[str, Any]], int]:
         return await get_latest_free_downloads(limit=limit, force_refresh=force_refresh, page=page, base_url=base_url)
 
     @staticmethod

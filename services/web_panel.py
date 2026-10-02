@@ -7175,10 +7175,10 @@ def render_dashboard_html() -> str:
             btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>در حال همگام‌سازی...</span>';
             btn.disabled = true;
             try {{
-                const res = await fetch('/api/feed/sync-thumbnails', {{ method: 'POST' }});
+                const res = await fetch('/api/feed/sync', {{ method: 'POST' }});
                 const data = await res.json();
                 if (data.ok) {{
-                    showToast('✅ تصاویر با موفقیت همگام‌سازی شد', 'success');
+                    showToast('✅ اطلاعات با موفقیت همگام‌سازی شد', 'success');
                     window.fetchFeedDownloads(false);
                 }} else {{
                     showToast('❌ خطا در همگام‌سازی: ' + (data.error || ''), 'error');

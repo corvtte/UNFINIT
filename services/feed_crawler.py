@@ -435,7 +435,7 @@ class FeedAuthManager:
                     logger.info(f"[FeedAuthManager] Test Connection Success - Status: {status}")
                     return {"success": True, "status_code": status, "message": msg, "authenticated": True}
                 elif status in (301, 302):
-                    msg = f"ردیف دسترسی مسدود است (کد {status}). کوکی‌ها منقضی شده و سیستم به صفحه ورود ریدایرکت شد."
+                    msg = f"سشن نامعتبر است؛ لطفاً کوکی جدید مرورگر را وارد کنید (کد {status}). کوکی‌ها منقضی شده و سیستم به صفحه ورود ریدایرکت شد."
                     logger.warning(f"[FeedAuthManager] Test Connection Redirect - Status: {status}, Location: {redirect_url}")
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
                 else:
@@ -637,21 +637,35 @@ class FeedCrawler:
             from services.feed_scraper import _CACHE, _extract_articles_from_html, _fetch_single_article, save_feed_disk_cache
             from core.database import execute_query
             
-            target_url = "https://abasmanesh.com/fa/articles/"
-            status, html = await FeedAuthManager.fetch_html_with_auth(target_url, timeout=20)
-            if status != 200:
-                return {"ok": False, "error": f"HTTP {status}"}
-                
-            articles_to_fetch, total_pages = _extract_articles_from_html(html, limit=25)
-            if not articles_to_fetch:
-                return {"ok": False, "error": "No articles found"}
-                
-            # واکشی همزمان صفحات مقالات جهت استخراج مدیا
             import aiohttp, asyncio
+            from core.logger import get_logger
+            logger = get_logger("feed_crawler")
+            
+            target_urls = [
+                "https://abasmanesh.com/fa/articles/",
+                "https://abasmanesh.com/fa/category/free-download/practical-monotheism/",
+                "https://abasmanesh.com/fa/category/free-download/recognition-of-essential-from-nonessential/"
+            ]
+            
+            articles_to_fetch = []
+            seen_urls = set()
+            
+            for url in target_urls:
+                status, html = await FeedAuthManager.fetch_html_with_auth(url, timeout=20)
+                if status == 200:
+                    arts, _ = _extract_articles_from_html(html, limit=100)
+                    for a_url, a_title, a_cover, a_tag in arts:
+                        if a_url not in seen_urls:
+                            seen_urls.add(a_url)
+                            articles_to_fetch.append((a_url, a_title, a_cover, a_tag))
+            
+            if not articles_to_fetch:
+                return {"ok": False, "error": "هیچ مقاله‌ای یافت نشد"}
+                
             session = await FeedAuthManager.get_session()
             tasks = [
-                _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
-                for url, title, cover, tag in articles_to_fetch[:25]
+                _fetch_single_article(session, a_url, a_title, card_cover=a_cover, card_tag=a_tag)
+                for a_url, a_title, a_cover, a_tag in articles_to_fetch[:60]  # Increased limit for full sync
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
