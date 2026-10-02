@@ -2840,19 +2840,27 @@ async def main():
     #     threading.Thread(target=run_ig_thread, daemon=True).start()
     #     logger.info("Instagram listener engine started.")
 
-    # 8. Start Telegram MTProto Client
+    # 8. Start Telegram MTProto Client (Supervisor Loop)
     if tg_adapter and config.TELEGRAM_BOT_TOKEN and config.API_ID:
-        async def start_telegram_with_retry():
+        async def run_telegram_supervisor():
             from pyrogram.errors import FloodWait
+            import re
             while True:
                 try:
-                    logger.info("Starting Telegram MTProto Client (enforcing PID Lock)...")
-                    if hasattr(tg_adapter, "start_client"):
-                        await tg_adapter.start_client()
-                    else:
-                        await tg_adapter.app.start()
-                    logger.info("Telegram MTProto Client is ONLINE and listening!")
-                    break
+                    is_conn = False
+                    if hasattr(tg_adapter.app, "is_connected"):
+                        if callable(tg_adapter.app.is_connected):
+                            is_conn = tg_adapter.app.is_connected()
+                        else:
+                            is_conn = getattr(tg_adapter.app, "is_connected", False)
+                            
+                    if not is_conn:
+                        logger.info("Starting/Reconnecting Telegram MTProto Client (Supervisor)...")
+                        if hasattr(tg_adapter, "start_client"):
+                            await tg_adapter.start_client()
+                        else:
+                            await tg_adapter.app.start()
+                        logger.info("Telegram MTProto Client is ONLINE and listening!")
                 except FloodWait as fw:
                     wait_sec = int(fw.value)
                     logger.warning(f"Telegram MTProto FloodWait: waiting {wait_sec}s before auto-reconnecting...")
@@ -2876,11 +2884,20 @@ async def main():
                             except Exception as del_err:
                                 logger.warning(f"[TG] Could not delete session file: {del_err}")
                             await asyncio.sleep(2)
+                        elif "connection error" in err_str_lower or "already started" in err_str_lower:
+                            # It might be in an inconsistent state, let's try to stop it first
+                            try:
+                                await tg_adapter.app.stop()
+                            except:
+                                pass
+                            await asyncio.sleep(2)
                         else:
-                            logger.error(f"Telegram client start error: {e}")
-                            break
+                            logger.error(f"Telegram client start error: {e}. Retrying in 5s...")
+                            await asyncio.sleep(5)
+                
+                await asyncio.sleep(5) # Supervisor check interval
 
-        asyncio.create_task(start_telegram_with_retry())
+        asyncio.create_task(run_telegram_supervisor())
 
     logger.info(f"UNFINIT Engine {config.ENGINE_VERSION} is fully operational across Telegram, Bale & Rubika!")
 
