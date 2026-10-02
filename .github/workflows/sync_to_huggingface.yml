@@ -17,7 +17,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           if [ -n "$HF_TOKEN" ]; then
-            git push --force https://Foadian:$HF_TOKEN@huggingface.co/spaces/Foadian/UNFINIT main
+            git push --force https://Foadian:$HF_TOKEN@huggingface.co/spaces/Foadian/UNFINIT main:main
           else
             echo "HF_TOKEN secret not configured yet in GitHub repository secrets. Skipping sync."
           fi

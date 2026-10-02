@@ -19,4 +19,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://Foadian:$HF_TOKEN@huggingface.co/spaces/Foadian/UNFINIT main
+          git push --force https://Foadian:$HF_TOKEN@huggingface.co/spaces/Foadian/UNFINIT main:main

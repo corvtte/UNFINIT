@@ -583,6 +583,13 @@ def render_dashboard_html() -> str:
             background-color: var(--table-head-bg) !important;
             color: var(--fg-color) !important;
         }}
+        html, body {
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
         body {{
             font-family: 'Vazirmatn', 'Roboto', sans-serif !important;
             background-color: var(--bg-main, var(--bg-color, #080e1e)) !important;
@@ -11122,7 +11129,7 @@ def render_storefront_html() -> str:
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%2306b6d4'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 26h12v32c0 6.6 5.4 12 12 12s12-5.4 12-12V26h12v32c0 13.3-10.7 24-24 24s-24-10.7-24-24V26z' fill='%23ffffff'/%3E%3Cpolygon points='62,18 42,46 54,46 44,72 68,40 56,40' fill='%23facc15' opacity='0.9'/%3E%3C/svg%3E">
     <title>ویترین فروشگاه دوره‌های آموزشی | UNFINIT Store</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
@@ -11152,6 +11159,13 @@ def render_storefront_html() -> str:
             scrollbar-color: #3b82f6 transparent !important;
         }}
         * {{ box-sizing: border-box; font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important; }}
+        html, body {
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
         body {{
             background-color: #0b1120 !important;
             color: #f8fafc !important;
