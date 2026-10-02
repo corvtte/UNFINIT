@@ -2190,9 +2190,10 @@ def render_dashboard_html() -> str:
                             آرشیو کامل هدایای دانلودی سایت با تفکیک و صفحه‌بندی، امکان انتقال مستقیم به ربات جهت دانلود، متادیتاگذاری و انتشار
                         </p>
                     </div>
-                                        <div class="flex items-center gap-2 flex-wrap">
-                        <button type="button" onclick="fetchFeedDownloads(true)" id="btnRefreshFeed" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" style="color: var(--accent-color);">
-                            <span>🔄 به‌روزرسانی زنده از سایت</span>
+                                                            <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="syncFeedFromSource(this)" id="btnSyncFeed" class="theme-card-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm hover:scale-105" style="color: var(--accent-color);">
+                            <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                            <span>به‌روزرسانی از سایت مرجع</span>
                         </button>
                     </div>
                 </div>

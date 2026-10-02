@@ -180,21 +180,49 @@ def extract_thumbnail_url(tag_or_soup: Any) -> str:
 
     candidate_url = ""
 
-    # اولویت اول: متاتگ og:image در صورت وجود
+    def get_highest_res_from_srcset(srcset_str):
+        if not srcset_str: return ""
+        parts = [p.strip() for p in srcset_str.split(',') if p.strip()]
+        best_url = ""
+        max_w = -1
+        for p in parts:
+            pieces = p.split()
+            if pieces:
+                url = pieces[0]
+                w = 0
+                if len(pieces) > 1 and pieces[1].endswith('w'):
+                    try:
+                        w = int(pieces[1][:-1])
+                    except:
+                        pass
+                if w > max_w and not "80x80" in url and not ".svg" in url:
+                    max_w = w
+                    best_url = url
+        return best_url
+
     if hasattr(tag_or_soup, "find"):
         meta_og = tag_or_soup.find("meta", property="og:image")
         if meta_og and meta_og.get("content"):
             candidate_url = meta_og.get("content").strip()
 
-    # اولویت دوم: استخراج ایزوله از تگ img داخل همین کارت
     if not candidate_url and hasattr(tag_or_soup, "find"):
         img_tag = tag_or_soup.find("img")
         if img_tag:
-            for attr in ("data-src", "data-original", "src", "data-lazy-src", "data-lazy", "data-url"):
+            # 1. srcset
+            for attr in ("data-srcset", "srcset"):
                 val = img_tag.get(attr, "").strip()
-                if val and not val.startswith("data:") and not "data:image/svg+xml" in val:
-                    candidate_url = val
-                    break
+                if val:
+                    best = get_highest_res_from_srcset(val)
+                    if best:
+                        candidate_url = best
+                        break
+            # 2. lazy attributes
+            if not candidate_url:
+                for attr in ("data-large-file", "data-src", "data-lazy-src", "data-original", "data-lazy", "data-url", "src"):
+                    val = img_tag.get(attr, "").strip()
+                    if val and not val.startswith("data:") and not "data:image/svg+xml" in val and not "80x80" in val:
+                        candidate_url = val
+                        break
 
     if candidate_url:
         candidate_url = urllib.parse.urljoin("https://abasmanesh.com", candidate_url)
@@ -587,111 +615,89 @@ class FeedCrawler:
 
 
     @classmethod
-    async def sync_thumbnails(cls) -> Dict[str, Any]:
+    async def sync_feed(cls) -> dict:
         """
-        همگام‌سازی تصاویر بندانگشتی و رسانه‌های ۳۰ آیتم برتر.
-        به روزرسانی کش دیسک و جدول دیتابیس abasmanesh_feed.
+        به‌روزرسانی بلادرنگ فید (پایش هوشمند صفحه اول) و پاکسازی تمامی کش‌ها
         """
         try:
-            from core.database import execute_query, fetch_all
-            await execute_query('''
-                CREATE TABLE IF NOT EXISTS abasmanesh_feed (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT,
-                    source_url TEXT,
-                    thumbnail_url TEXT,
-                    audio_url TEXT,
-                    video_url TEXT,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+            from services.feed_scraper import _CACHE, _extract_articles_from_html, _fetch_single_article, save_feed_disk_cache
+            from core.database import execute_query
             
-            status, html = await FeedAuthManager.fetch_html_with_auth("https://abasmanesh.com/fa/articles/", timeout=20)
+            target_url = "https://abasmanesh.com/fa/articles/"
+            status, html = await FeedAuthManager.fetch_html_with_auth(target_url, timeout=20)
             if status != 200:
                 return {"ok": False, "error": f"HTTP {status}"}
                 
-            from bs4 import BeautifulSoup
-            import json
+            articles_to_fetch, total_pages = _extract_articles_from_html(html, limit=25)
+            if not articles_to_fetch:
+                return {"ok": False, "error": "No articles found"}
+                
+            # واکشی همزمان صفحات مقالات جهت استخراج مدیا
+            import aiohttp, asyncio
+            tasks = [
+                _fetch_single_article(url, title, card_cover=cover, card_tag=tag)
+                for url, title, cover, tag in articles_to_fetch[:25]
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            final_items = []
+            for idx, r in enumerate(results):
+                if isinstance(r, dict) and r.get("title"):
+                    r["file_number"] = f"فایل شماره {idx + 1}"
+                    final_items.append(r)
+                    
+            if not final_items:
+                return {"ok": False, "error": "Could not parse media for any article"}
+                
+            # 1. Update SQLite
+            import sqlite3
+            for item in final_items:
+                await execute_query(
+                    '''
+                    INSERT INTO abasmanesh_feed 
+                    (source_url, title, thumbnail_url, audio_url, video_url, tags, is_free)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)
+                    ON CONFLICT(source_url) DO UPDATE SET
+                    title=excluded.title,
+                    thumbnail_url=excluded.thumbnail_url,
+                    audio_url=excluded.audio_url,
+                    video_url=excluded.video_url,
+                    tags=excluded.tags
+                    ''',
+                    (
+                        item["url"],
+                        item["title"],
+                        item.get("cover_url", ""),
+                        item.get("audio_url", ""),
+                        item.get("video_url", ""),
+                        item.get("category", "")
+                    )
+                )
+                
+            # 2. Update Disk Cache
+            save_feed_disk_cache(final_items)
+            
+            # 3. Clear RAM Cache
+            _CACHE.clear()
+            _CACHE["items"] = final_items
+            _CACHE["total_pages"] = total_pages
+            
             import time
-            from pathlib import Path
-            from core.config import config
+            _CACHE["last_fetched"] = time.time()
             
-            soup = BeautifulSoup(html, "html.parser")
-            items = soup.find_all("div", class_=lambda c: c and "card" in c)[:30]
-            
-            live_scraped_items = []
-            
-            # Update SQLite table
-            for item in items:
-                link_tag = item.find("a", href=True)
-                if not link_tag:
-                    continue
-                url = link_tag.get("href")
-                thumb = extract_thumbnail_url(item)
-                if url and thumb:
-                    title = link_tag.get_text(strip=True) or link_tag.get("title") or ""
-                    title_tag = item.find("a", style=lambda s: s and "font-weight" in s)
-                    if title_tag:
-                        title = title_tag.get_text(strip=True)
-                    
-                    # Update or insert
-                    res = await execute_query("SELECT id FROM abasmanesh_feed WHERE source_url = ?", (url,))
-                    if res:
-                        await execute_query("UPDATE abasmanesh_feed SET thumbnail_url = ?, title = ? WHERE source_url = ?", (thumb, title, url))
-                    else:
-                        await execute_query("INSERT INTO abasmanesh_feed (source_url, thumbnail_url, title) VALUES (?, ?, ?)", (url, thumb, title))
-                        
-                    live_scraped_items.append({"title": title, "url": url, "cover_url": thumb})
-
-            # Update File 1 specifically
-            file1_url = "https://abasmanesh.com/fa/articles/take-it-easy-so-that-become-easy/"
-            file1_thumb = "https://abasmanesh.com/storage/media/variants/2026/09/2cd91271-17d1-4d89-ac00-fe23dcce6eb1-card.jpg"
-            await execute_query("UPDATE abasmanesh_feed SET source_url = ?, thumbnail_url = ? WHERE source_url LIKE '%take-it-easy-so-that-become-easy%'", (file1_url, file1_thumb))
-
-            # Update JSON Disk Cache so dashboard updates immediately
-            cache_file = getattr(config, "DATA_DIR", Path("data")) / "crawler_cache.json"
-            if getattr(config, "FEED_CACHE_FILE", None):
-                cache_file = getattr(config, "FEED_CACHE_FILE")
-                
-            if cache_file.exists():
-                data = json.loads(cache_file.read_text(encoding="utf-8"))
-                cached_items = data.get("items", [])
-                
-                # Fetch fresh from sqlite
-                db_rows = await fetch_all("SELECT source_url, thumbnail_url, title, audio_url, video_url FROM abasmanesh_feed")
-                if db_rows:
-                    url_to_thumb = {r["source_url"]: r["thumbnail_url"] for r in db_rows if r["thumbnail_url"]}
-                    url_to_audio = {r["source_url"]: r["audio_url"] for r in db_rows if r["audio_url"]}
-                    url_to_video = {r["source_url"]: r["video_url"] for r in db_rows if r["video_url"]}
-                    
-                    for ci in cached_items:
-                        curl = ci.get("url", "")
-                        # Try exact match or base match
-                        match_url = next((u for u in url_to_thumb.keys() if curl.strip("/") == u.strip("/")), None)
-                        if match_url:
-                            ci["cover_url"] = url_to_thumb[match_url]
-                            if url_to_audio.get(match_url): ci["audio_url"] = url_to_audio[match_url]
-                            if url_to_video.get(match_url): ci["video_url"] = url_to_video[match_url]
-                            
-# Update live scraped items into cache directly if not present
-                    for li in live_scraped_items:
-                        match = next((c for c in cached_items if c.get("url", "").strip("/") == li["url"].strip("/")), None)
-                        if match:
-                            match["cover_url"] = li["cover_url"]
-                            match["title"] = li["title"]
-                        else:
-                            cached_items.insert(0, li)
-                            
-                cache_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-                
-            # Clear RAM cache in feed_scraper so it reads the fresh disk cache
+            # 4. Clear crawler_cache.json
+            from core.config import DATA_DIR
             try:
-                from services.feed_scraper import _CACHE
-                _CACHE.clear()
-            except Exception:
-                pass
-                
-            return {"ok": True}
+                import json
+                cc_path = DATA_DIR / "crawler_cache.json"
+                if cc_path.exists():
+                    cc_path.unlink()
+            except: pass
+            
+            return {"ok": True, "count": len(final_items)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+            
         except Exception as e:
             import logging
             logging.getLogger().error(f"sync_thumbnails error: {e}")
