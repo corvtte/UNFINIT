@@ -608,8 +608,13 @@ async def get_latest_free_downloads(
             
         # واکشی همزمان صفحات مقالات جهت استخراج مدیا
         session = await FeedAuthManager.get_session()
+        sem = asyncio.Semaphore(5)
+        async def fetch_with_sem(u, t, c, g):
+            async with sem:
+                return await _fetch_single_article(session, u, t, card_cover=c, card_tag=g)
+
         tasks = [
-            _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag)
+            fetch_with_sem(url, title, cover, tag)
             for url, title, cover, tag in articles_to_fetch[:limit]
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -692,8 +697,13 @@ async def get_category_episodes(
 
             episodes = []
             if articles_to_fetch:
+                sem = asyncio.Semaphore(5)
+                async def fetch_with_sem_cat(u, t, c, tg):
+                    async with sem:
+                        return await _fetch_single_article(session, u, t, card_cover=c, card_tag=tg or cat.get("title", ""))
+
                 tasks = [
-                    _fetch_single_article(session, url, title, card_cover=cover, card_tag=tag or cat.get("title", ""))
+                    fetch_with_sem_cat(url, title, cover, tag)
                     for url, title, cover, tag in articles_to_fetch[:limit]
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)

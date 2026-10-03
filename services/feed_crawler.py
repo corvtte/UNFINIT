@@ -253,33 +253,48 @@ def build_page_url(base_url: str, page_number: int = 1) -> str:
 SESSION_FILE = "data/abasmanesh_session.json"
 
 class FeedAuthManager:
-    _session = None
-    _semaphore = asyncio.Semaphore(1)
+    _sessions = {}
+    _semaphores = {}
 
     @classmethod
     def get_semaphore(cls):
-        return cls._semaphore
+        try:
+            loop = asyncio.get_running_loop()
+        except:
+            return asyncio.Semaphore(1)
+        if loop not in cls._semaphores:
+            cls._semaphores[loop] = asyncio.Semaphore(1)
+        return cls._semaphores[loop]
 
     @classmethod
     async def get_session(cls) -> aiohttp.ClientSession:
-        if cls._session is None or cls._session.closed:
+        try:
+            loop = asyncio.get_running_loop()
+        except:
+            loop = None
+            
+        sess = cls._sessions.get(loop) if loop else None
+        if sess is None or sess.closed:
             jar = aiohttp.CookieJar(unsafe=True)
             if os.path.exists(SESSION_FILE):
                 try:
                     jar.load(SESSION_FILE)
                 except Exception as e:
-                    logger.error(f"[FeedAuthManager] Error loading cookies: {e}")
-            cls._session = aiohttp.ClientSession(headers=BROWSER_HEADERS, cookie_jar=jar)
-        return cls._session
+                    pass
+            sess = aiohttp.ClientSession(headers=BROWSER_HEADERS, cookie_jar=jar)
+            if loop:
+                cls._sessions[loop] = sess
+        return sess
 
     @classmethod
     async def save_session(cls):
-        if cls._session and cls._session.cookie_jar:
+        sess = await cls.get_session()
+        if sess and sess.cookie_jar:
             try:
                 os.makedirs("data", exist_ok=True)
-                cls._session.cookie_jar.save(SESSION_FILE)
+                sess.cookie_jar.save(SESSION_FILE)
             except Exception as e:
-                logger.error(f"[FeedAuthManager] Error saving cookies: {e}")
+                pass
 
     @classmethod
     async def login_if_needed(cls) -> bool:
@@ -288,9 +303,8 @@ class FeedAuthManager:
         # Priority 1: Direct Session Cookie Injection
         auth_cookie = (os.getenv("AUTH_SESSION_COOKIES") or await get_system_setting("AUTH_SESSION_COOKIES", "") or os.getenv("FEED_AUTH_COOKIE") or await get_system_setting("FEED_AUTH_COOKIE", "")).strip()
         if auth_cookie:
-            # Smart Laravel Cookie Sanitizer
             directives = {"expires", "max-age", "path", "domain", "samesite", "secure", "httponly"}
-            parts = re.split(r'[;\\n]', auth_cookie)
+            parts = re.split(r'[;\n]', auth_cookie)
             extracted_cookies = {}
             for part in parts:
                 part = part.strip()
@@ -306,79 +320,67 @@ class FeedAuthManager:
             if extracted_cookies:
                 session.cookie_jar.update_cookies(extracted_cookies)
                 
-            # Verify cookie validity against a protected URL
             try:
-                # Probe a known gated URL
-                async with session.get("https://abasmanesh.com/fa/", timeout=15) as resp:
-                    html = await resp.text()
-                    # Check if ungated or user profile is present
-                    if ("ورود / عضویت" not in html) and ("خروج" in html or "پروفایل" in html):
-                        logger.info("[FeedAuthManager] Priority Cookie Injection successful!")
+                async with session.get("https://abasmanesh.com/fa/profile/", allow_redirects=False, timeout=10) as profile_resp:
+                    if profile_resp.status == 200:
                         await cls.save_session()
                         return True
             except Exception as e:
-                logger.error(f"[FeedAuthManager] Priority Cookie Auth failed: {e}")
+                pass
 
-        # Priority 2: Alpine.js / Custom Form Auto Login
-        email = (os.getenv("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or await get_system_setting("FEED_AUTH_EMAIL", "") or await get_system_setting("ABASMANESH_EMAIL", "")).strip()
-        password = (os.getenv("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("FEED_AUTH_PASSWORD", "") or await get_system_setting("ABASMANESH_PASSWORD", "")).strip()
-        
-        if not email or not password:
-            logger.warning("[FeedAuthManager] Missing Auth Credentials.")
+        username = os.getenv("FEED_AUTH_EMAIL") or await get_system_setting("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or await get_system_setting("ABASMANESH_EMAIL")
+        password = os.getenv("FEED_AUTH_PASSWORD") or await get_system_setting("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("ABASMANESH_PASSWORD")
+        if not username or not password:
             return False
-
+            
         try:
-            # 1. Fetch login page to grab CSRF/XSRF tokens
             async with session.get("https://abasmanesh.com/fa/login/", timeout=15) as resp:
+                if resp.status != 200:
+                    return False
                 html = await resp.text()
                 if "خروج" in html or "پروفایل" in html:
-                    logger.info("[FeedAuthManager] Already logged in via saved cookies.")
                     return True
-                
-                # Extract CSRF token from meta or inputs
-                csrf_token = ""
-                m = re.search(r'<meta name="csrf-token" content="([^"]+)">', html)
-                if m:
-                    csrf_token = m.group(1)
-                else:
-                    m = re.search(r'name="_token" value="([^"]+)"', html)
-                    if m:
-                        csrf_token = m.group(1)
-
-            # 2. Prepare modern headers
-            headers = dict(BROWSER_HEADERS)
+                match = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
+                csrf = match.group(1) if match else ""
+            
+            headers = dict(session.headers)
             headers.update({
-                "Accept": "application/json, text/html, */*",
-                "X-Requested-With": "XMLHttpRequest",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Referer": "https://abasmanesh.com/fa/login/",
+                "Origin": "https://abasmanesh.com"
             })
-            if csrf_token:
-                headers["X-CSRF-TOKEN"] = csrf_token
-
+            
             payload = {
-                "email": email,
-                "password": password,
-                "_token": csrf_token,
+                "csrf_token": csrf,
+                "email": username.strip(),
+                "password": password.strip(),
                 "remember": "on"
             }
             
             async with session.post("https://abasmanesh.com/fa/login/", data=payload, headers=headers, timeout=15) as post_resp:
                 post_html = await post_resp.text()
                 if post_resp.status in [200, 302] and ("خروج" in post_html or "پروفایل" in post_html or post_resp.status == 302):
-                    logger.info("[FeedAuthManager] Alpine.js Login successful!")
                     await cls.save_session()
                     return True
                 else:
-                    logger.error(f"[FeedAuthManager] Login failed. HTTP {post_resp.status}. Snippet: {post_html[:100]}")
                     return False
         except Exception as e:
-            logger.error(f"[FeedAuthManager] Login exception: {e}")
             return False
 
     @classmethod
     async def invalidate_session(cls):
-        if cls._session and not cls._session.closed:
-            await cls._session.close()
-        cls._session = None
+        try:
+            loop = asyncio.get_running_loop()
+        except:
+            loop = None
+            
+        sess = cls._sessions.get(loop) if loop else None
+        if sess and not sess.closed:
+            await sess.close()
+            
+        if loop and loop in cls._sessions:
+            del cls._sessions[loop]
+            
         if os.path.exists(SESSION_FILE):
             try:
                 os.remove(SESSION_FILE)
@@ -395,15 +397,13 @@ class FeedAuthManager:
                 html = await resp.text()
             
             if "برای مشاهده این محتوا باید وارد شوید" in html or "login" in str(resp.url):
-                logger.warning(f"[FeedAuthManager] Auth wall detected at {url}. Auto-healing...")
                 await cls.invalidate_session()
                 logged_in = await cls.login_if_needed()
                 if logged_in:
                     await asyncio.sleep(random.uniform(1.5, 3.5))
                     session = await cls.get_session()
                     async with session.get(url, timeout=timeout) as resp2:
-                        status = resp2.status
-                        html = await resp2.text()
+                        return resp2.status, await resp2.text()
                 else:
                     return 401, html
             
@@ -411,42 +411,29 @@ class FeedAuthManager:
 
     @classmethod
     async def test_connection(cls) -> dict:
-        """Lightweight authenticated probe to check connection health and auth status"""
         try:
             await cls.invalidate_session()
             await cls.login_if_needed()
             session = await cls.get_session()
             async with session.get("https://abasmanesh.com/fa/profile/", timeout=25, allow_redirects=False) as resp:
                 status = resp.status
-                redirect_url = resp.headers.get("Location", "")
                 html = await resp.text()
-                body_preview = html[:250].strip()
-                
-                from core.logger import get_logger
-                logger = get_logger("feed_crawler")
                 
                 if status == 200:
                     username = "کاربر تایید شده"
-                    # Try to extract username
                     m = re.search(r'سلام[\s\n]*<strong[^>]*>([^<]+)</strong>', html)
                     if m: username = m.group(1).strip()
-                    
                     msg = f"نشست فعال با هویت معتبر ({username}) تأیید شد."
-                    logger.info(f"[FeedAuthManager] Test Connection Success - Status: {status}")
                     return {"success": True, "status_code": status, "message": msg, "authenticated": True}
                 elif status in (301, 302):
-                    msg = f"سشن نامعتبر است؛ لطفاً کوکی جدید مرورگر را وارد کنید (کد {status}). کوکی‌ها منقضی شده و سیستم به صفحه ورود ریدایرکت شد."
-                    logger.warning(f"[FeedAuthManager] Test Connection Redirect - Status: {status}, Location: {redirect_url}")
+                    msg = f"سشن نامعتبر است؛ لطفاً کوکی جدید مرورگر را وارد کنید (کد {status})."
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
                 else:
-                    msg = f"خطای ناشناخته از سرور مرجع (کد {status}):\n{body_preview}..."
-                    logger.error(f"[FeedAuthManager] Test Connection Failed - Status: {status}, Body Preview: {body_preview}")
+                    msg = f"خطای ناشناخته از سرور مرجع (کد {status})"
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
         except Exception as e:
-            from core.logger import get_logger
-            logger = get_logger("feed_crawler")
-            logger.error(f"[FeedAuthManager] Test Connection Network Error: {repr(e)}")
             return {"success": False, "status_code": 500, "message": f"خطای ارتباطی: {str(e) or repr(e)}", "authenticated": False}
+
 
 
 class FeedCrawler:
