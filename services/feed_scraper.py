@@ -74,24 +74,67 @@ def load_feed_disk_cache() -> List[Dict[str, Any]]:
             data = json.loads(FEED_CACHE_FILE.read_text(encoding="utf-8"))
             items = data.get("items", [])
             cached_at = data.get("cached_at", 0)
+            if data.get("total_pages"):
+                _CACHE["total_pages"] = data["total_pages"]
             if items and (time.time() - cached_at < DISK_CACHE_TTL_SEC):
                 return items
     except Exception as e:
         logger.debug(f"[feed_scraper] Error loading disk cache: {e}")
     return []
 
-def save_feed_disk_cache(items: List[Dict[str, Any]]) -> None:
+def save_feed_disk_cache(items: List[Dict[str, Any]], total_pages: int = 39) -> None:
     """ذخیره امن دانلودها روی دیسک جهت پاسخگویی لحظه‌ای وب‌پنل."""
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
+        # فقط در صورتی کش را بازنویسی کن که حداقل ۱۰ آیتم داشته باشد تا داده‌های کامل بازنویسی اشتباه نشوند
+        if len(items) < 10 and FEED_CACHE_FILE.exists():
+            old_data = json.loads(FEED_CACHE_FILE.read_text(encoding="utf-8"))
+            if len(old_data.get("items", [])) > len(items):
+                return
         payload = {
             "items": items,
             "cached_at": time.time(),
-            "count": len(items)
+            "count": len(items),
+            "total_pages": max(1, total_pages)
         }
         FEED_CACHE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        _CACHE["total_pages"] = max(1, total_pages)
     except Exception as e:
         logger.warning(f"[feed_scraper] Error saving disk cache: {e}")
+
+def update_item_in_cache(url: str, audio_url: str = "", video_url: str = "", cover_url: str = "") -> bool:
+    """به‌روزرسانی پایدار و آنی مشخصات یک فایل در کش رم و کش دیسک."""
+    updated = False
+    clean_target = url.split("?")[0].rstrip("/")
+    
+    # ۱. به‌روزرسانی در کش رم
+    for it in _CACHE.get("items", []):
+        it_url = (it.get("source_url") or it.get("page_url") or "").split("?")[0].rstrip("/")
+        if it_url == clean_target:
+            if audio_url: it["audio_url"] = audio_url
+            if video_url: it["video_url"] = video_url
+            if cover_url: it["cover_url"] = cover_url
+            updated = True
+            
+    # ۲. به‌روزرسانی در کش دیسک
+    try:
+        if FEED_CACHE_FILE.exists():
+            data = json.loads(FEED_CACHE_FILE.read_text(encoding="utf-8"))
+            items = data.get("items", [])
+            for it in items:
+                it_url = (it.get("source_url") or it.get("page_url") or "").split("?")[0].rstrip("/")
+                if it_url == clean_target:
+                    if audio_url: it["audio_url"] = audio_url
+                    if video_url: it["video_url"] = video_url
+                    if cover_url: it["cover_url"] = cover_url
+                    updated = True
+            if updated:
+                data["items"] = items
+                FEED_CACHE_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.debug(f"[feed_scraper] Error updating item in disk cache: {e}")
+        
+    return updated
 
 ABASMANESH_CACHE_FILE = DATA_DIR / "abasmanesh_cache.json"
 
@@ -490,14 +533,6 @@ async def _fetch_single_article(
                             audio_dl = h
                         elif ".mp4" in h and not video_dl:
                             video_dl = h
-
-                # ۳. قرینه‌سازی لینک صوتی و ویدیویی در صورت وجود یکی از آنها
-                if audio_dl and not video_dl and ".mp3" in audio_dl:
-                    video_candidate = audio_dl.replace(".mp3", ".mp4")
-                    video_dl = video_candidate
-                elif video_dl and not audio_dl and ".mp4" in video_dl:
-                    audio_candidate = video_dl.replace(".mp4", ".mp3")
-                    audio_dl = audio_candidate
     except Exception as e:
         logger.debug(f"[feed_scraper] Error inspecting article {clean_url}: {e}")
 
@@ -593,7 +628,7 @@ async def get_latest_free_downloads(
         if disk_items:
             _CACHE["items"] = disk_items
             _CACHE["last_fetched"] = now
-            return disk_items[:limit], _CACHE.get("total_pages", 1)
+            return disk_items[:limit], _CACHE.get("total_pages", 39)
 
     target_url = build_page_url(effective_base, page_number=page)
     try:
@@ -609,10 +644,23 @@ async def get_latest_free_downloads(
         if not articles_to_fetch:
             return (FALLBACK_ITEMS[:limit] if page == 1 else []), 1
             
-        # واکشی همزمان صفحات مقالات جهت استخراج مدیا
+        # واکشی هوشمند: استفاده فوری از کش دیسک برای فایل‌های موجود جهت افزایش ۳۰ برابری سرعت
+        cached_lookup = {}
+        for it in (load_feed_disk_cache() or []):
+            u = (it.get("source_url") or it.get("page_url") or "").split("?")[0].rstrip("/")
+            if u and (it.get("audio_url") or it.get("video_url")):
+                cached_lookup[u] = it
+
         session = await FeedAuthManager.get_session()
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(10)
         async def fetch_with_sem(u, t, c, g):
+            clean_u = u.split("?")[0].rstrip("/")
+            if clean_u in cached_lookup:
+                cached_copy = dict(cached_lookup[clean_u])
+                if t: cached_copy["title"] = t
+                if c: cached_copy["cover_url"] = c
+                if g: cached_copy["tag"] = g
+                return cached_copy
             async with sem:
                 return await _fetch_single_article(session, u, t, card_cover=c, card_tag=g)
 
@@ -638,7 +686,7 @@ async def get_latest_free_downloads(
             if page == 1:
                 _CACHE["items"] = final_items
                 _CACHE["last_fetched"] = now
-                save_feed_disk_cache(final_items)
+                save_feed_disk_cache(final_items, total_pages=total_pages)
         return final_items[:limit], total_pages
 
     except Exception as e:

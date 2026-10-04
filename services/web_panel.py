@@ -2247,7 +2247,7 @@ def render_dashboard_html() -> str:
                     <button type="button" onclick="selectFeedCategory('')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap active theme-accent-btn" data-cat="">
                         <span>🌐 تمام دانلودها</span>
                     </button>
-                    <span class="text-xs text-slate-400 font-mono py-1 px-2" id="feedCategoriesLoading">در حال واکشی ۱۶ دسته‌بندی زنده...</span>
+                    <span class="text-xs text-slate-400 font-medium py-1 px-2" id="feedCategoriesLoading">در حال واکشی دسته‌بندی‌های زنده...</span>
                 </div>
 
                 <!-- Pagination Controls: Top -->
@@ -2256,7 +2256,7 @@ def render_dashboard_html() -> str:
                         <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                         <span>صفحه قبلی</span>
                     </button>
-                    <span id="feedPaginationInfo" class="text-xs text-slate-300 font-mono font-bold">
+                    <span id="feedPaginationInfo" class="text-xs text-slate-300 font-bold">
                         صفحه <span id="feedCurrentPage" class="text-cyan-400 font-bold">۱</span> از ۳۹
                     </span>
                     <button type="button" id="btnNextFeedPage" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
@@ -2267,7 +2267,7 @@ def render_dashboard_html() -> str:
 
                 <!-- Feed Downloads Grid Container -->
                 <div id="feedDownloadsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="col-span-full text-center py-8 text-xs text-slate-400 font-mono">
+                    <div class="col-span-full text-center py-8 text-xs text-slate-400 font-medium">
                         در حال بارگذاری فایل‌های دانلودی سایت...
                     </div>
                 </div>
@@ -2278,7 +2278,7 @@ def render_dashboard_html() -> str:
                         <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                         <span>صفحه قبلی</span>
                     </button>
-                    <span class="text-xs text-slate-300 font-mono font-bold">
+                    <span class="text-xs text-slate-300 font-bold">
                         صفحه <span id="feedCurrentPageBottom" class="text-cyan-400 font-bold">۱</span> از ۳۹
                     </span>
                     <button type="button" onclick="changeFeedPage(currentFeedPage + 1)" class="theme-card-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
@@ -6607,7 +6607,7 @@ def render_dashboard_html() -> str:
                 ? 'در حال دریافت فایل‌های دسته‌بندی انتخابی...'
                 : 'در حال دریافت ۲۵ هدیه دانلودی صفحه ' + toPersianDigits(currentFeedPage) + ' از سایت...';
             if (force || container.children.length === 0 || container.innerText.includes('در حال بارگذاری')) {{
-                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-mono">' + loadingMsg + '</div>';
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-slate-400 font-medium">' + loadingMsg + '</div>';
             }}
             try {{
                 const catParam = currentFeedCategory ? ('&cat=' + encodeURIComponent(currentFeedCategory)) : '';
@@ -6616,7 +6616,7 @@ def render_dashboard_html() -> str:
                 if (data.ok && Array.isArray(data.items) && data.items.length > 0) {{
                     container.innerHTML = data.items.map(function(item) {{
                         const title = (item.title || 'هدیه دانلودی سایت').replace(/"/g, '&quot;');
-                        const fileNum = item.file_number ? '<span class="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-lg bg-black/80 backdrop-blur-md text-cyan-300 border border-white/10 text-[10px] font-mono font-bold shadow-md">' + item.file_number + '</span>' : '';
+                        const fileNum = item.file_number ? '<span class="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-lg bg-black/80 backdrop-blur-md text-cyan-300 border border-white/10 text-[10px] font-bold shadow-md">' + item.file_number + '</span>' : '';
                         let c_url = item.cover_url || '';
                         if (c_url && c_url.startsWith('/')) {{
                             c_url = 'https://abasmanesh.com' + c_url;
@@ -6981,12 +6981,18 @@ def render_dashboard_html() -> str:
                                 const safeV = (data.video_url || '').replace(/'/g, "\\'");
                                 let newHtml = '<div class="grid grid-cols-2 gap-2">';
                                 if (data.audio_url) {{
-                                    newHtml += '<button type="button" onclick="transferFeedDownload(\\'' + url + '\\', \\'' + title + '\\', \\'' + safeA + '\\', \\'' + safeV + '\\', \\'' + sourceUrl + '\\', this)" class="w-full py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50 flex items-center justify-center gap-1.5 transition text-xs font-medium"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg><span>صوت</span></button>';
+                                    newHtml += '<a href="' + data.audio_url + '" target="_blank" class="theme-card-btn py-1.5 px-2.5 rounded-lg text-cyan-300 flex items-center justify-center gap-1.5 transition text-xs font-medium border border-slate-700/60 hover:border-cyan-500/50">' +
+                                        '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>' +
+                                        '<span>صوت</span>' +
+                                    '</a>';
                                 }} else {{
                                     newHtml += '<div></div>';
                                 }}
                                 if (data.video_url) {{
-                                    newHtml += '<button type="button" onclick="transferFeedDownload(\\'' + url + '\\', \\'' + title + '\\', \\'' + safeA + '\\', \\'' + safeV + '\\', \\'' + sourceUrl + '\\', this)" class="w-full py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/50 flex items-center justify-center gap-1.5 transition text-xs font-medium"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>ویدیو</span></button>';
+                                    newHtml += '<a href="' + data.video_url + '" target="_blank" class="theme-card-btn py-1.5 px-2.5 rounded-lg text-purple-300 flex items-center justify-center gap-1.5 transition text-xs font-medium border border-slate-700/60 hover:border-purple-500/50">' +
+                                        '<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" /></svg>' +
+                                        '<span>ویدیو</span>' +
+                                    '</a>';
                                 }} else {{
                                     newHtml += '<div></div>';
                                 }}
@@ -10848,9 +10854,16 @@ async def handle_crawler_rescrap_item_async(payload: dict) -> dict:
         from core.database import execute_query
         audio_url = details.get("audio_url", "")
         video_url = details.get("video_url", "")
-        thumbnail = details.get("cover_url", "")
         if audio_url or video_url or thumbnail:
-            await execute_query("UPDATE abasmanesh_feed SET audio_url = ?, video_url = ?, thumbnail_url = ? WHERE source_url = ?", (audio_url, video_url, thumbnail, url))
+            try:
+                from services.feed_scraper import update_item_in_cache
+                update_item_in_cache(url, audio_url=audio_url, video_url=video_url, cover_url=thumbnail)
+            except Exception as e_cache:
+                logger.debug(f"[web_panel] update_item_in_cache note: {e_cache}")
+            try:
+                await execute_query("UPDATE abasmanesh_feed SET audio_url = ?, video_url = ?, thumbnail_url = ? WHERE source_url = ?", (audio_url, video_url, thumbnail, url))
+            except Exception:
+                pass
         
         return {"ok": True, "audio_url": audio_url, "video_url": video_url, "url": audio_url or video_url, "thumbnail_url": thumbnail}
     except Exception as e:

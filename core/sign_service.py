@@ -190,7 +190,7 @@ class SignService:
         platform: str = "telegram"
     ) -> str:
         """
-        ساخت متن و کپشن زیبا، معنوی و آرامش‌بخش برای ارسال به همراه فایل نشانه.
+        ساخت متن و کپشن زیبا، معنوی و متناسب با رسانه برای ارسال به همراه فایل نشانه.
 
         ورودی:
             sign_data (Dict[str, Any]): دیکشنری مشخصات نشانه
@@ -199,16 +199,22 @@ class SignService:
             platform (str): پلتفرم مقصد
 
         خروجی:
-            str: کپشن فرمت‌شده فارسی به همراه تقویم شمسی رسمی و ساختار RTL
+            str: کپشن فرمت‌شده فارسی به همراه تاریخ شمسی رسمی و اعتبار ۲۴ ساعته
         """
         title = sign_data.get("title", "نشانه امروز من")
         tag = sign_data.get("tag", "پیام آگاهی و آرامش")
         page_url = sign_data.get("page_url", "")
+        has_audio = bool(sign_data.get("audio_url"))
+        has_video = bool(sign_data.get("video_url"))
 
-        # ۱. تبدیل تاریخ به تقویم‌های سه‌گانه همگام (خورشیدی، قمری و میلادی) بر مبنای قانون دوقلوهای همسان
+        # ۱. تاریخ کوتاه شمسی و ساعت انقضای ۲۴ ساعته اختصاصی
         now = datetime.now(TEHRAN_TZ)
-        from core.jalali import get_synchronized_date_string
-        date_badge = get_synchronized_date_string(now)
+        from core.jalali import format_to_jalali, to_persian_digits
+        from datetime import timedelta
+        date_str = to_persian_digits(format_to_jalali(now).split(" - ")[0])
+        exp_dt = now + timedelta(hours=24)
+        exp_time = to_persian_digits(exp_dt.strftime("%H:%M"))
+        date_badge = f"📅 <b>تاریخ:</b> {date_str} | ⏳ <b>اعتبار:</b> تا فردا ساعت {exp_time}"
 
         clean_reader = str(reader_tag or "abasmanesh365").strip()
         if clean_reader and not clean_reader.startswith("@") and not clean_reader.startswith("http"):
@@ -216,11 +222,13 @@ class SignService:
         else:
             reader_display = clean_reader
 
+        media_icon = "🎬" if (has_video and not has_audio) else "🎧"
+
         msg = (
             "🔮 <b>نشانه امروز من</b>\n"
             f"{date_badge}\n\n"
             "✨ <b>جهان همیشه در زمان مناسب، پیام مناسب را به قلبت می‌رساند:</b>\n\n"
-            f"🎧 <b>عنوان:</b> {title}\n"
+            f"{media_icon} <b>عنوان:</b> {title}\n"
             f"🏷 <b>دسته‌بندی:</b> {tag}\n"
         )
         if reader_display:
@@ -239,13 +247,8 @@ class SignService:
             for ch in chapters[:4]:
                 msg += f"▫️ {ch}\n"
 
-        msg += (
-            "\n▫️ این فایل صوتی با آرامش و تمرکز برای آگاهی امروز شما انتخاب شده است. "
-            "پیشنهاد می‌کنیم در خلوت خود با هندزفری به آن گوش جان بسپارید.\n\n"
-        )
-
         if page_url:
-            msg += f"🌐 <a href=\"{page_url}\">مشاهده صفحه کامل و نظرات در سایت</a>"
+            msg += f"\n🌐 <a href=\"{page_url}\">مشاهده صفحه کامل و نظرات در سایت</a>"
 
         return msg
 

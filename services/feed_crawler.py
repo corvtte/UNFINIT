@@ -605,12 +605,6 @@ class FeedCrawler:
                                 audio_dl = clean_h
                             elif ".mp4" in clean_h and not video_dl:
                                 video_dl = clean_h
-
-                    # قرینه‌سازی لینک در صورت فقدان یکی از دو نسخه
-                    if audio_dl and not video_dl and ".mp3" in audio_dl:
-                        video_dl = audio_dl.replace(".mp3", ".mp4")
-                    elif video_dl and not audio_dl and ".mp4" in video_dl:
-                        audio_dl = video_dl.replace(".mp4", ".mp3")
         except Exception as e:
             logger.debug(f"[feed_crawler] Error inspecting article {clean_url}: {e}")
 
