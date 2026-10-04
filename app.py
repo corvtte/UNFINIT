@@ -363,15 +363,46 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 from core.database import fetch_all
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                cust_rows = loop.run_until_complete(fetch_all("SELECT * FROM customers ORDER BY id DESC LIMIT 200"))
+                cust_rows = loop.run_until_complete(fetch_all("SELECT * FROM customers ORDER BY id DESC LIMIT 500"))
                 loop.close()
 
                 from services.user_service import UserService
                 all_users = UserService.load_users()
-                users_list = []
-                for p, u in all_users.items():
-                    users_list.append(u.to_dict())
+                merged_map = {}
 
+                # اول تمام کاربران ذخیره‌شده در سشن‌ها و کش سیستم
+                for p, u in all_users.items():
+                    d = u.to_dict()
+                    key = str(d.get("user_id") or d.get("phone") or p)
+                    merged_map[key] = d
+
+                # دوم افزودن یا ارتقای ردیف‌های مشتریان ثبت‌شده از طریق استارت بات
+                for r in cust_rows:
+                    rc = dict(r)
+                    uid = str(rc.get("user_id") or "")
+                    if uid in merged_map:
+                        merged_map[uid]["customer_name"] = rc.get("customer_name") or merged_map[uid].get("customer_name")
+                        if rc.get("username") and not merged_map[uid].get("username"):
+                            merged_map[uid]["username"] = rc.get("username")
+                        if rc.get("phone") and not merged_map[uid].get("phone"):
+                            merged_map[uid]["phone"] = rc.get("phone")
+                    else:
+                        merged_map[uid] = {
+                            "user_id": uid,
+                            "platform": rc.get("platform") or "telegram",
+                            "username": rc.get("username") or "",
+                            "full_name": rc.get("customer_name") or rc.get("username") or f"کاربر {uid}",
+                            "phone": rc.get("phone") or "",
+                            "referred_by": rc.get("referred_by") or "",
+                            "wallet_balance": rc.get("wallet_balance") or 0,
+                            "commitment_signed": bool(rc.get("terms_accepted")),
+                            "is_vip": UserService.is_user_vip(uid),
+                            "vip_until": "",
+                            "purchased_courses": [],
+                            "successful_invites": 0
+                        }
+
+                users_list = list(merged_map.values())
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

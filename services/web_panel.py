@@ -2036,6 +2036,11 @@ def render_dashboard_html() -> str:
                                 <label class="block mb-1" style="color: var(--text-muted);">شماره کارت اختصاصی جهت واریز دستی:</label>
                                 <input type="text" id="viphub_card" value="{settings.get('VIP_CARD_NUMBER', '')}" placeholder="۶۰۳۷..." class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
+                            <div>
+                                <label class="block mb-1" style="color: var(--text-muted);">متن و توضیحات تبلیغاتی اشتراک پریمیوم (سفارشی):</label>
+                                <textarea id="viphub_promo" rows="4" placeholder="متن توضیحات مزایا و امکانات اشتراک پریمیوم در ربات..." class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 text-xs custom-scrollbar" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main); font-family: 'Vazirmatn', sans-serif;">{settings.get('VIP_PROMO_TEXT', '')}</textarea>
+                                <p class="text-[10px] mt-1 text-slate-400">در صورت خالی بودن، متن استاندارد شامل ۱۶ دسته‌بندی، فرکانس فراوانی و دریافت مستقیم رسانه‌ها نمایش داده می‌شود.</p>
+                            </div>
                             <div class="pt-2">
                                 <button type="button" onclick="saveVipHubSettings()" id="btnSaveVipHub" class="w-full py-2.5 px-4 rounded-xl font-bold text-white transition flex items-center justify-center gap-2 cursor-pointer shadow-lg" style="background: var(--accent-color);">
                                     <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
@@ -4997,11 +5002,13 @@ def render_dashboard_html() -> str:
                     const priceInput = document.getElementById('viphub_price');
                     const daysInput = document.getElementById('viphub_days');
                     const cardInput = document.getElementById('viphub_card');
+                    const promoInput = document.getElementById('viphub_promo');
                     const btn = document.getElementById('btnSaveVipHub');
                     
                     const price = priceInput ? priceInput.value.replace(/[,،\\s]/g, '') : '111000';
                     const days = daysInput ? daysInput.value.trim() : '30';
                     const card = cardInput ? cardInput.value.trim() : '';
+                    const promo = promoInput ? promoInput.value.trim() : '';
 
                     if (btn) btn.innerHTML = '<span>⏳</span> در حال ذخیره...';
                     try {{
@@ -5013,6 +5020,7 @@ def render_dashboard_html() -> str:
                                 vip_monthly_price: parseInt(price) || 111000,
                                 vip_duration_days: parseInt(days) || 30,
                                 vip_card_number: card,
+                                vip_promo_text: promo,
                                 admin_password: pwd
                             }})
                         }});

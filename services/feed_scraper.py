@@ -536,18 +536,31 @@ async def _fetch_single_article(
     except Exception as e:
         logger.debug(f"[feed_scraper] Error inspecting article {clean_url}: {e}")
 
+    # استخراج سرفصل‌ها صرفاً از بدنه اصلی محتوای مقاله جهت جلوگیری از دریافت گزینه‌های منو و ناوبری
     chapters = []
-    if BeautifulSoup:
+    if BeautifulSoup and soup:
         try:
-            for heading in soup.find_all(["h2", "h3", "strong", "b"]):
-                txt = heading.get_text().strip()
-                if 8 <= len(txt) <= 75 and not any(skip in txt for skip in ["دیدگاه", "نظرات", "پاسخ", "ارسال", "ورود", "ثبت", "دانلود", "کلیک", "سبد خرید"]):
-                    if txt not in chapters and txt != title:
-                        chapters.append(txt)
-                if len(chapters) >= 4:
-                    break
-        except Exception:
-            pass
+            # جستجوی کانتینر اصلی محتوای درس (content-markdown--card یا article)
+            content_container = (
+                soup.find("div", class_=lambda c: c and "content-markdown--card" in c)
+                or soup.find("div", class_=lambda c: c and "article-content" in c)
+                or soup.find("article")
+            )
+            if content_container:
+                # کلمات ممنوعه مربوط به پنل کاربری، دیدگاه‌ها و المان‌های عمومی سایت
+                ui_noise = [
+                    "دیدگاه", "نظرات", "پاسخ", "ارسال", "ورود", "ثبت", "دانلود", "کلیک", "سبد خرید",
+                    "اتاق شخصی", "پروفایل", "تنظیمات", "عکس پروفایل", "سفارش", "تیکت", "عضویت", "خروج"
+                ]
+                for heading in content_container.find_all(["h2", "h3", "h4"]):
+                    txt = heading.get_text().strip()
+                    if 8 <= len(txt) <= 75 and not any(skip in txt for skip in ui_noise):
+                        if txt not in chapters and txt != title:
+                            chapters.append(txt)
+                    if len(chapters) >= 4:
+                        break
+        except Exception as e_ch:
+            logger.debug(f"[feed_scraper] Error extracting chapters: {e_ch}")
 
     tag = card_tag or "هدیه دانلودی"
     if "توحید" in title:

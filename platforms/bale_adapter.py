@@ -2357,24 +2357,25 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             price_val = 111000
                                             price_formatted = "111,000"
                                         days = await get_system_setting("vip_duration_days", "30")
-                                        card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
                                         bale_pay_tok = await get_system_setting("vip_bale_payment_token", await get_system_setting("bale_payment_token", config.BALE_PAYMENT_TOKEN))
-                                        
-                                        txt = (
-                                            "💎 <b>اشتراک پریمیوم</b>\n\n"
-                                            "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                                            "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
-                                            "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
-                                            "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
-                                            "▫️ <b>دریافت فایل‌های صوتی و تصویری مستقیم در بله</b>\n\n"
-                                            f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
-                                        )
+                                        custom_promo = (await get_system_setting("vip_promo_text", "")).strip()
+
+                                        if custom_promo:
+                                            txt = f"💎 <b>اشتراک پریمیوم</b>\n\n{escape(custom_promo)}\n\n💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان"
+                                        else:
+                                            txt = (
+                                                "💎 <b>اشتراک پریمیوم</b>\n\n"
+                                                "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                                                "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                                                "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                                                "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                                                "▫️ <b>دریافت فایل‌های صوتی و تصویری مستقیم در بله</b>\n\n"
+                                                f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
+                                            )
                                         vip_btns = []
                                         if bale_pay_tok:
                                             vip_btns.append([{"text": f"⚡️ پرداخت آنلاین و فعال‌سازی آنی ({price_formatted} تومان)", "callback_data": "bale:vip_pay_online"}])
-                                        if card_num:
-                                            txt += f"\n💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n"
-                                            vip_btns.append([{"text": "🧾 ارسال رسید واریز کارت به کارت", "callback_data": "bale:vip_pay_card"}])
+                                        vip_btns.append([{"text": "💳 پرداخت از طریق کارت به کارت", "callback_data": "bale:vip_pay_card"}])
                                         vip_btns.append([{"text": "📁 مشاهده عناوین ۱۶ دسته‌بندی", "callback_data": "bale:vip_cats:1"}])
                                         vip_btns.append([{"text": "🔙 بازگشت به محصولات", "callback_data": "bale:prods_hub"}])
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": vip_btns} if vip_btns else None)
@@ -2406,13 +2407,25 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if cb_data == "bale:vip_pay_card":
+                                        price = await get_system_setting("vip_monthly_price", "111000")
+                                        try:
+                                            price_formatted = f"{int(price):,}"
+                                        except Exception:
+                                            price_formatted = str(price)
+                                        card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
                                         session_manager.set_user_action(f"bale_{chat_id}", "await_vip_receipt", "vip_receipt", extra={})
-                                        await bale.send_message(
-                                            chat_id,
-                                            "🧾 <b>ثبت فیش واریز اشتراک پریمیوم:</b>\n\n"
+                                        card_msg = (
+                                            "💳 <b>اطلاعات پرداخت کارت به کارت اشتراک پریمیوم</b>\n\n"
+                                            f"💰 <b>مبلغ دقیق قابل پرداخت:</b> <code>{price_formatted}</code> تومان\n\n"
+                                            f"💳 <b>شماره کارت:</b>\n<code>{card_num}</code>\n\n"
+                                            "⚠️ <b>نکته بسیار مهم:</b> لطفاً از <u>رند کردن مبلغ</u> خودداری نمایید و دقیقاً مبلغ درج‌شده را واریز فرمایید.\n\n"
                                             "لطفاً تصویر رسید واریز یا شماره پیگیری خود را ارسال فرمایید تا پس از بررسی فعال شود:\n"
                                             "(جهت انصراف عبارت <code>/cancel</code> را بفرستید)"
                                         )
+                                        card_kb = [
+                                            [{"text": "🔙 بازگشت به پلن اشتراک", "callback_data": "bale:vip_plan"}]
+                                        ]
+                                        await bale.send_message(chat_id, card_msg, reply_markup={"inline_keyboard": card_kb})
                                         continue
 
                                     if cb_data.startswith("bale:vip_cats:"):
@@ -2523,10 +2536,17 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         txt += "\nفرمت مورد نظر جهت دریافت مستقیم را انتخاب فرمایید:"
                                         btns = []
                                         dl_row = []
-                                        if ep.get("audio_download_url") or ep.get("audio_url"):
+                                        has_native_audio = bool(ep.get("audio_download_url") or ep.get("audio_url"))
+                                        has_video = bool(ep.get("video_download_url") or ep.get("video_url"))
+
+                                        if has_native_audio:
                                             dl_row.append({"text": "🎧 دریافت صوت (MP3)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"})
-                                        if ep.get("video_download_url") or ep.get("video_url"):
+                                        elif has_video:
+                                            dl_row.append({"text": "🎧 دریافت نسخه صوتی (MP3)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"})
+
+                                        if has_video:
                                             dl_row.append({"text": "🎬 دریافت ویدیو (MP4)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:video"})
+
                                         if dl_row:
                                             btns.append(dl_row)
                                         btns.append([{"text": "🔙 بازگشت به لیست جلسات", "callback_data": f"bale:vip_cat:{cat_id}:{page}"}])
@@ -2554,6 +2574,11 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                         ep = episodes[ep_idx]
                                         url = (ep.get("audio_download_url") or ep.get("audio_url")) if media_type == "audio" else (ep.get("video_download_url") or ep.get("video_url"))
+                                        is_extracting_audio_from_video = False
+                                        if media_type == "audio" and not (ep.get("audio_download_url") or ep.get("audio_url")) and (ep.get("video_download_url") or ep.get("video_url")):
+                                            url = (ep.get("video_download_url") or ep.get("video_url"))
+                                            is_extracting_audio_from_video = True
+
                                         if not url:
                                             await bale.send_message(chat_id, "❌ لینک دانلودی برای این فرمت موجود نیست.")
                                             continue
@@ -2576,12 +2601,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             except Exception as e:
                                                 logger.warning(f"Failed sending cached file_id in bale: {e}")
 
-                                        ext = ".mp3" if media_type == "audio" else ".mp4"
+                                        ext = ".mp4" if (media_type == "video" or is_extracting_audio_from_video) else ".mp3"
                                         target_path = config.TEMP_DIR / f"vip_bale_{uuid.uuid4().hex[:8]}{ext}"
                                         target_path.parent.mkdir(parents=True, exist_ok=True)
                                         try:
                                             async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
-                                                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=180)) as resp:
+                                                async with sess.get(url, timeout=aiohttp.ClientTimeout(total=240)) as resp:
                                                     if resp.status == 200:
                                                         with open(target_path, "wb") as f_out:
                                                             async for chunk in resp.content.iter_chunked(128 * 1024):
@@ -2594,13 +2619,29 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 await bale.send_message(chat_id, "❌ فایل نامعتبر است.")
                                                 continue
 
+                                            if is_extracting_audio_from_video:
+                                                await bale.send_message(chat_id, "⏳ <i>در حال استخراج لاین صوتی از فایل سریال...</i>")
+                                                mp3_extracted = config.TEMP_DIR / f"vip_bale_audio_{uuid.uuid4().hex[:8]}.mp3"
+                                                cmd = ["ffmpeg", "-y", "-i", str(target_path), "-vn", "-c:a", "libmp3lame", "-b:a", "128k", str(mp3_extracted)]
+                                                proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                                                await proc.communicate()
+                                                try: target_path.unlink()
+                                                except Exception: pass
+                                                if mp3_extracted.exists() and mp3_extracted.stat().st_size > 1000:
+                                                    target_path = mp3_extracted
+                                                else:
+                                                    await bale.send_message(chat_id, "❌ خطا در استخراج صوت از ویدیو.")
+                                                    continue
+
                                             if media_type == "audio":
+                                                reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
+                                                perf_val = f"@{reader_tag.lstrip('@')}" if reader_tag else None
                                                 sent = await bale.send_audio(
                                                     chat_id,
                                                     target_path,
                                                     caption=f"🎧 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
                                                     title=ep.get("title", "فایل صوتی"),
-                                                    performer="استاد عباس‌منش"
+                                                    performer=perf_val
                                                 )
                                                 f_id = (sent.get("result") or {}).get("audio", {}).get("file_id") if isinstance(sent, dict) else None
                                                 if f_id:
@@ -3302,8 +3343,9 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             audio_url = (sign.get("audio_url") or "").strip()
                                             video_url = (sign.get("video_url") or "").strip()
 
-                                            sign_kb = SignService.build_sign_buttons(sign, platform="bale")
-                                            perf_title = reader_tag or "نشانه امروز"
+                                            is_vip = UserService.is_user_vip(chat_id)
+                                            sign_kb = SignService.build_sign_buttons(sign, platform="bale", is_vip=is_vip)
+                                            perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
 
                                             # ۱. اگر فایل نسخه صوتی واقعی داشته باشد
                                             if audio_url and not (".mp4" in audio_url.lower()):
@@ -3329,11 +3371,19 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                             # ۲. اگر فایل فقط تصویری باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
                                             if video_url and not audio_url:
-                                                bale_msg = (
-                                                    caption + "\n\n"
-                                                    "🎬 <b>توجه: نشانه امروز شما یک محتوای تصویری و ویدیویی است.</b>\n\n"
-                                                    "به دلیل محدودیت حجم آپلود فایل در پیام‌رسان بله، جهت دریافت فایل‌های ویدیویی کامل در ربات لطفاً از ربات تلگرام استفاده فرمایید یا از طریق دکمه زیر مستقیماً دانلود نمایید:"
-                                                )
+                                                if not is_vip:
+                                                    bale_msg = (
+                                                        caption + "\n\n"
+                                                        "🎬 <b>توجه: نشانه امروز شما یک محتوای اختصاصی تصویری و سریالی است.</b>\n\n"
+                                                        "ارسال مستقیم و دریافت نسخه صوتی و ویدیویی این سریال در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                                                        "جهت دسترسی به این قسمت و تمامی سریال‌ها و آموزش‌ها، اشتراک پریمیوم خود را فعال فرمایید:"
+                                                    )
+                                                else:
+                                                    bale_msg = (
+                                                        caption + "\n\n"
+                                                        "💎 <b>کاربر گرامی پریمیوم؛</b>\n"
+                                                        "این نشانه یک محتوای تصویری است. جهت مشاهده و دانلود مستقیم، از گزینه‌های زیر استفاده فرمایید:"
+                                                    )
                                                 await bale.send_message(chat_id, bale_msg, reply_markup=sign_kb)
                                             else:
                                                 await bale.send_message(chat_id, caption, reply_markup=sign_kb)
@@ -3790,6 +3840,15 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if text.startswith("/start") or text in ("start", "شروع", "منوی اصلی", "خانه"):
+                                        try:
+                                            b_uname = from_user.get("username") or ""
+                                            b_fname = f"{from_user.get('first_name') or ''} {from_user.get('last_name') or ''}".strip() or b_uname or f"کاربر {chat_id}"
+                                            await StoreService.get_or_create_customer(chat_id, platform="bale", username=b_uname, full_name=b_fname)
+                                            if not UserService.get_user_by_any_id(chat_id):
+                                                UserService.register_anonymous_user(str(chat_id), platform="bale", username=b_uname, full_name=b_fname)
+                                        except Exception as e_reg_b:
+                                            logger.warning(f"[Bale] error registering user on start: {e_reg_b}")
+
                                         s_name = fix_mojibake(await get_system_setting("STORE_NAME", config.STORE_NAME), default=config.STORE_NAME)
                                         w_text = fix_mojibake(await get_system_setting("WELCOME_TEXT", config.WELCOME_TEXT), default=config.WELCOME_TEXT)
                                         if bale.is_admin(chat_id):

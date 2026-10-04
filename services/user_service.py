@@ -436,6 +436,49 @@ class UserService:
             user = UserModel(u_dict)
             users[norm_p] = user
 
+    @classmethod
+    def register_anonymous_user(
+        cls,
+        platform_user_id: Union[str, int],
+        platform: str = "telegram",
+        username: str = "",
+        full_name: str = ""
+    ) -> UserModel:
+        """
+        ثبت اولیه کاربر در هنگام اجرای دستور start ربات در بله یا تلگرام قبل از ثبت شماره موبایل.
+        """
+        pid = str(platform_user_id).strip()
+        if not pid:
+            raise ValueError("شناسه کاربر الزامی است.")
+        users = cls.load_users()
+        plat = platform.lower().strip()
+        existing = cls.get_user_by_platform_id(plat, pid)
+        if existing:
+            if username and not existing.username:
+                existing.username = username
+            if full_name and not existing.full_name:
+                existing.full_name = full_name
+            cls.save_users()
+            return existing
+
+        key = f"{plat}_{pid}"
+        u_dict = {
+            "user_id": pid,
+            "platform": plat,
+            "username": username or f"کاربر {pid}",
+            "full_name": full_name or username or f"کاربر {pid}",
+            "telegram_id": pid if plat == "telegram" else None,
+            "bale_id": pid if plat == "bale" else None,
+            "purchased_courses": [],
+            "unlocked_gifts": [],
+            "referral_code": cls.generate_referral_code(),
+            "invited_by": None,
+            "successful_invites": 0,
+            "terms_accepted": False,
+            "created_at": get_tehran_now_str()
+        }
+        user = UserModel(u_dict)
+        users[key] = user
         cls.save_users()
         return user
 

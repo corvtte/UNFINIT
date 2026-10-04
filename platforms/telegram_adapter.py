@@ -1008,8 +1008,13 @@ class TelegramAdapter:
                         except Exception as e_ref:
                             logger.warning(f"[Telegram] record_referral error: {e_ref}")
 
+                u_name = message.from_user.username or ""
+                f_name = f"{message.from_user.first_name or ''} {message.from_user.last_name or ''}".strip() or u_name or f"کاربر {user_id}"
                 try:
-                    await StoreService.get_or_create_customer(user_id, platform="telegram")
+                    await StoreService.get_or_create_customer(user_id, platform="telegram", username=u_name, full_name=f_name)
+                    # ثبت کاربر در حافظه کاربران سیستم
+                    if not UserService.get_user_by_any_id(user_id):
+                        UserService.register_anonymous_user(str(user_id), platform="telegram", username=u_name, full_name=f_name)
                 except Exception as e_cust:
                     logger.warning(f"[Telegram] get_or_create_customer note: {e_cust}")
 
@@ -1394,7 +1399,7 @@ class TelegramAdapter:
                 video_url = (sign.get("video_url") or "").strip()
                 is_vip = UserService.is_user_vip(user_id)
 
-                vip_kb = SignService.build_sign_buttons(sign, platform="telegram")
+                vip_kb = SignService.build_sign_buttons(sign, platform="telegram", is_vip=is_vip)
 
                 # ۱. اگر فایل دارای نسخه صوتی واقعی باشد
                 if audio_url and not (".mp4" in audio_url.lower()):
@@ -1404,7 +1409,7 @@ class TelegramAdapter:
                     except Exception as e_dl:
                         logger.warning(f"[tg_sign] ensure_audio_downloaded failed: {e_dl}")
 
-                    perf_title = reader_tag or "نشانه امروز"
+                    perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
                     sent_audio_ok = False
                     if local_audio_path and local_audio_path.exists():
                         try:
@@ -1432,9 +1437,9 @@ class TelegramAdapter:
                     if not is_vip:
                         vip_prompt = (
                             caption + "\n\n"
-                            "🎬 <b>توجه: نشانه امروز شما یک محتوای تصویری و ویدیویی است.</b>\n\n"
-                            "ارسال مستقیم و استریم فایل‌های ویدیویی با کیفیت بالا در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
-                            "جهت مشاهده این قسمت می‌توانید از دکمه «دانلود مستقیم ویدیو» در زیر استفاده فرمایید یا با فعال‌سازی اشتراک پریمیوم، به تمامی ویدیوها و سریال‌ها در ربات دسترسی داشته باشید:"
+                            "🎬 <b>توجه: نشانه امروز شما یک محتوای اختصاصی تصویری و سریالی است.</b>\n\n"
+                            "ارسال مستقیم و دریافت نسخه صوتی و ویدیویی این سریال در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                            "جهت دسترسی به این قسمت و تمامی سریال‌ها و آموزش‌ها، اشتراک پریمیوم خود را فعال فرمایید:"
                         )
                         try:
                             await wait_msg.edit_text(vip_prompt, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
@@ -1497,25 +1502,51 @@ class TelegramAdapter:
             except Exception:
                 price_formatted = price
             days = await get_system_setting("vip_duration_days", "30")
-            card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
-            txt = (
-                "💎 <b>اشتراک پریمیوم</b>\n\n"
-                "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
-                "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
-                "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
-                "▫️ <b>دریافت فایل‌های صوتی و تصویری با متادیتا و کاور اختصاصی</b>\n\n"
-                f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
-            )
-            if card_num:
-                txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
+            custom_promo = (await get_system_setting("vip_promo_text", "")).strip()
+
+            if custom_promo:
+                txt = f"💎 <b>اشتراک پریمیوم</b>\n\n{escape(custom_promo)}\n\n💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان"
             else:
-                txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
+                txt = (
+                    "💎 <b>اشتراک پریمیوم</b>\n\n"
+                    "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                    "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                    "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                    "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                    "▫️ <b>دریافت فایل‌های صوتی و تصویری با متادیتا و کاور اختصاصی</b>\n\n"
+                    f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
+                )
+
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("📁 مشاهده عناوین ۱۶ دسته‌بندی", callback_data="tg_vip_cats:1")],
+                [InlineKeyboardButton("💳 پرداخت از طریق کارت به کارت", callback_data="tg:vip_card_info")],
                 [InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]
             ])
             await callback_query.message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+
+        @self.app.on_callback_query(filters.regex(r"^tg:vip_card_info$"))
+        async def handle_tg_vip_card_info(client: Client, callback_query: CallbackQuery):
+            """نمایش شماره کارت و هشدار عدم رند کردن مبلغ برای خرید اشتراک پریمیوم."""
+            await callback_query.answer()
+            from core.database import get_system_setting
+            price = await get_system_setting("vip_monthly_price", "111000")
+            try:
+                price_formatted = f"{int(price):,}"
+            except Exception:
+                price_formatted = price
+            card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
+            
+            card_txt = (
+                "💳 <b>اطلاعات پرداخت کارت به کارت اشتراک پریمیوم</b>\n\n"
+                f"💰 <b>مبلغ دقیق قابل پرداخت:</b> <code>{price_formatted}</code> تومان\n\n"
+                f"💳 <b>شماره کارت:</b>\n<code>{card_num}</code>\n\n"
+                "⚠️ <b>نکته بسیار مهم:</b> لطفاً از <u>رند کردن مبلغ</u> خودداری نمایید و دقیقاً مبلغ درج‌شده را واریز فرمایید.\n\n"
+                "پس از واریز، لطفاً تصویر فیش واریزی خود را در همین بخش ارسال نمایید."
+            )
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 بازگشت", callback_data="tg:vip_plan")]
+            ])
+            await callback_query.message.reply_text(card_txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
         @self.app.on_message(filters.private & filters.regex(r"(?i)^(💎\s*اشتراک پریمیوم|💎\s*عضویت در اشتراک پریمیوم|عضویت در اشتراک پریمیوم|اشتراک پریمیوم|باشگاه پریمیوم|💎\s*عضویت در باشگاه پریمیوم VIP|عضویت در باشگاه پریمیوم VIP|اشتراک VIP|/vip|/premium)$"))
         async def handle_vip_command_tg(client: Client, message: Message):
@@ -1547,22 +1578,24 @@ class TelegramAdapter:
             except Exception:
                 price_formatted = price
             days = await get_system_setting("vip_duration_days", "30")
-            card_num = await get_system_setting("vip_card_number", await get_system_setting("CARD_NUMBER", config.CARD_NUMBER))
-            txt = (
-                "💎 <b>اشتراک پریمیوم</b>\n\n"
-                "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
-                "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
-                "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
-                "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
-                "▫️ <b>دریافت فایل‌های صوتی و تصویری با متادیتا و کاور اختصاصی</b>\n\n"
-                f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n\n"
-            )
-            if card_num:
-                txt += f"💳 <b>شماره کارت جهت واریز:</b>\n<code>{card_num}</code>\n\nپس از واریز، تصویر فیش واریزی را برای پشتیبانی ارسال فرمایید."
+            custom_promo = (await get_system_setting("vip_promo_text", "")).strip()
+
+            if custom_promo:
+                txt = f"💎 <b>اشتراک پریمیوم</b>\n\n{escape(custom_promo)}\n\n💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان"
             else:
-                txt += "جهت فعال‌سازی اشتراک، با پشتیبانی در ارتباط باشید."
+                txt = (
+                    "💎 <b>اشتراک پریمیوم</b>\n\n"
+                    "با تهیه اشتراک پریمیوم، به تمامی خدمات ویژه زیر به مدت ۳۰ روز دسترسی نامحدود خواهید داشت:\n\n"
+                    "▫️ <b>۱۶ دسته‌بندی رسمی مقالات و آموزش‌های عباس‌منش</b>\n"
+                    "▫️ <b>۵ پروژه تحول گام‌به‌گام</b>\n"
+                    "▫️ <b>دسترسی کامل به فرکانس فراوانی (باورهای روزانه ثروت و آرامش)</b>\n"
+                    "▫️ <b>دریافت فایل‌های صوتی و تصویری با متادیتا و کاور اختصاصی</b>\n\n"
+                    f"💰 <b>تعرفه اشتراک {days} روزه:</b> {price_formatted} تومان\n"
+                )
+
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("📁 مشاهده عناوین ۱۶ دسته‌بندی", callback_data="tg_vip_cats:1")],
+                [InlineKeyboardButton("💳 پرداخت از طریق کارت به کارت", callback_data="tg:vip_card_info")],
                 [InlineKeyboardButton("🔙 بازگشت به محصولات", callback_data="tg:prods_hub")]
             ])
             await message.reply_text(txt, parse_mode=enums.ParseMode.HTML, reply_markup=kb)
@@ -1697,10 +1730,18 @@ class TelegramAdapter:
             txt += "\nفرمت مورد نظر جهت دریافت مستقیم را انتخاب فرمایید:"
             btns = []
             dl_row = []
-            if ep.get("audio_download_url") or ep.get("audio_url"):
+            has_native_audio = bool(ep.get("audio_download_url") or ep.get("audio_url"))
+            has_video = bool(ep.get("video_download_url") or ep.get("video_url"))
+
+            if has_native_audio:
                 dl_row.append(InlineKeyboardButton("🎧 دریافت صوت (MP3)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio"))
-            if ep.get("video_download_url") or ep.get("video_url"):
+            elif has_video:
+                # برای سریال‌ها یا فایل‌هایی که فقط ویدیویی هستند، امکان استخراج اختصاصی صوت برای کاربر پریمیوم
+                dl_row.append(InlineKeyboardButton("🎧 دریافت نسخه صوتی (MP3)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio"))
+
+            if has_video:
                 dl_row.append(InlineKeyboardButton("🎬 دریافت ویدیو (MP4)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:video"))
+
             if dl_row:
                 btns.append(dl_row)
             btns.append([InlineKeyboardButton("🔙 بازگشت به لیست جلسات", callback_data=f"tg_vip_cat:{cat_id}:{page}")])
@@ -1770,13 +1811,18 @@ class TelegramAdapter:
                     logger.warning(f"Failed sending cached file_id in telegram: {e}")
 
             # Download locally and send
-            ext = ".mp3" if media_type == "audio" else ".mp4"
+            is_extracting_audio_from_video = False
+            if media_type == "audio" and not (ep.get("audio_download_url") or ep.get("audio_url")) and (ep.get("video_download_url") or ep.get("video_url")):
+                url = (ep.get("video_download_url") or ep.get("video_url"))
+                is_extracting_audio_from_video = True
+
+            ext = ".mp4" if (media_type == "video" or is_extracting_audio_from_video) else ".mp3"
             target_path = config.TEMP_DIR / f"vip_tg_{uuid.uuid4().hex[:8]}{ext}"
             target_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 import aiohttp
                 async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
-                    async with sess.get(url, timeout=aiohttp.ClientTimeout(total=180)) as resp:
+                    async with sess.get(url, timeout=aiohttp.ClientTimeout(total=240)) as resp:
                         if resp.status == 200:
                             with open(target_path, "wb") as f_out:
                                 async for chunk in resp.content.iter_chunked(128 * 1024):
@@ -1789,12 +1835,28 @@ class TelegramAdapter:
                     await status_msg.edit_text("❌ فایل دانلود شده نامعتبر است.")
                     return
 
+                if is_extracting_audio_from_video:
+                    await status_msg.edit_text("⏳ <i>در حال استخراج لاین صوتی از فایل سریال با بالاترین کیفیت...</i>", parse_mode=enums.ParseMode.HTML)
+                    mp3_extracted = config.TEMP_DIR / f"vip_tg_audio_{uuid.uuid4().hex[:8]}.mp3"
+                    cmd = ["ffmpeg", "-y", "-i", str(target_path), "-vn", "-c:a", "libmp3lame", "-b:a", "128k", str(mp3_extracted)]
+                    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                    await proc.communicate()
+                    try: target_path.unlink()
+                    except Exception: pass
+                    if mp3_extracted.exists() and mp3_extracted.stat().st_size > 1000:
+                        target_path = mp3_extracted
+                    else:
+                        await status_msg.edit_text("❌ خطا در استخراج صوت از ویدیو.")
+                        return
+
                 if media_type == "audio":
+                    reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
+                    perf_val = f"@{reader_tag.lstrip('@')}" if reader_tag else None
                     sent = await client.send_audio(
                         chat_id=callback_query.message.chat.id,
                         audio=str(target_path),
                         title=ep.get("title", "فایل صوتی"),
-                        performer="استاد عباس‌منش",
+                        performer=perf_val,
                         caption=f"🎧 <b>{escape(ep.get('title', ''))}</b>\n💎 اشتراک پریمیوم",
                         parse_mode=enums.ParseMode.HTML
                     )

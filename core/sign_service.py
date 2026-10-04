@@ -287,18 +287,26 @@ class SignService:
     def build_sign_buttons(
         cls,
         sign_data: Dict[str, Any],
-        platform: str = "telegram"
+        platform: str = "telegram",
+        is_vip: bool = False
     ) -> Any:
         """
-        ساخت دکمه‌های شیشه‌ای دسترسی سریع به نشانه شامل دریافت صوت، ویدیو و لینک مستقیم سایت.
+        ساخت دکمه‌های شیشه‌ای دسترسی سریع به نشانه.
+        برای کاربران عادی در نشانه‌های تصویری، لینک دانلود مستقیم ویدیو حذف و منحصراً دکمه عضویت پریمیوم نمایش داده می‌شود.
         """
-        audio_url = sign_data.get("audio_url") or ""
-        video_url = sign_data.get("video_url") or ""
+        audio_url = (sign_data.get("audio_url") or "").strip()
+        video_url = (sign_data.get("video_url") or "").strip()
         page_url = sign_data.get("page_url") or "https://abasmanesh.com/fa/articles/"
+        is_video_only = bool(video_url and not audio_url)
 
         if platform == "telegram":
             from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
             rows = []
+            if is_video_only and not is_vip:
+                # برای کاربر عادی در محتوای ویدیویی، هیچ لینک مستقیمی نمایش داده نمی‌شود
+                rows.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="tg:vip_plan")])
+                return InlineKeyboardMarkup(rows)
+
             row1 = []
             if audio_url and not (".mp4" in audio_url.lower()):
                 row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت", url=audio_url))
@@ -307,10 +315,16 @@ class SignService:
             if row1:
                 rows.append(row1)
             rows.append([InlineKeyboardButton("🌐 مشاهده کامل در سایت", url=page_url)])
-            rows.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="tg:vip_plan")])
+            if not is_vip:
+                rows.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="tg:vip_plan")])
             return InlineKeyboardMarkup(rows)
         else:
             rows = []
+            if is_video_only and not is_vip:
+                # برای کاربر عادی در محتوای ویدیویی در بله
+                rows.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
+                return {"inline_keyboard": rows}
+
             row1 = []
             if audio_url and not (".mp4" in audio_url.lower()):
                 row1.append({"text": "🎧 دانلود مستقیم صوت", "url": audio_url})
@@ -319,7 +333,8 @@ class SignService:
             if row1:
                 rows.append(row1)
             rows.append([{"text": "🌐 مشاهده کامل در سایت", "url": page_url}])
-            rows.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
+            if not is_vip:
+                rows.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
             return {"inline_keyboard": rows}
 
     @classmethod

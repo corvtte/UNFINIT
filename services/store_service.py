@@ -482,16 +482,27 @@ class StoreService:
         return True
 
     @staticmethod
-    async def get_or_create_customer(user_id: str | int, platform: str = "telegram") -> CustomerItem:
+    async def get_or_create_customer(user_id: str | int, platform: str = "telegram", username: str = "", full_name: str = "", phone: str = "") -> CustomerItem:
         uid = str(user_id)
         row = await fetch_one("SELECT * FROM customers WHERE user_id = ?", (uid,))
+        now_str = get_tehran_now_str()
         if not row:
-            now_str = get_tehran_now_str()
             await execute_query(
-                "INSERT INTO customers (user_id, platform, wallet_balance, terms_accepted, created_at) VALUES (?, ?, 0, 0, ?)",
-                (uid, platform, now_str)
+                "INSERT INTO customers (user_id, platform, username, customer_name, phone, wallet_balance, terms_accepted, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)",
+                (uid, platform, username, full_name, phone, now_str)
             )
             row = await fetch_one("SELECT * FROM customers WHERE user_id = ?", (uid,))
+        else:
+            # به‌روزرسانی نام یا نام کاربری در صورت خالی بودن قبلی
+            curr_u = row["username"] if "username" in row.keys() else ""
+            curr_n = row["customer_name"] if "customer_name" in row.keys() else ""
+            curr_p = row["phone"] if "phone" in row.keys() else ""
+            if (username and not curr_u) or (full_name and not curr_n) or (phone and not curr_p):
+                await execute_query(
+                    "UPDATE customers SET username = COALESCE(NULLIF(?, ''), username), customer_name = COALESCE(NULLIF(?, ''), customer_name), phone = COALESCE(NULLIF(?, ''), phone) WHERE user_id = ?",
+                    (username, full_name, phone, uid)
+                )
+                row = await fetch_one("SELECT * FROM customers WHERE user_id = ?", (uid,))
         return CustomerItem(row)
 
     @staticmethod
