@@ -17,6 +17,7 @@ for _t_name in ("Union", "Optional", "List", "Dict", "Any", "Tuple", "Callable")
     if not hasattr(builtins, _t_name):
         setattr(builtins, _t_name, getattr(typing, _t_name, None))
 
+
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -2708,8 +2709,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 from services.feed_crawler import FeedAuthManager
                 loop.run_until_complete(FeedAuthManager.invalidate_session())
                 
-                from pathlib import Path
-                import json
+                
                 import core.config as config
                 settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
                 if settings_file.exists():

@@ -4058,6 +4058,49 @@ def render_dashboard_html() -> str:
                     }}
                 }};
 
+                window.loginAndTestConnection = async function(btn) {{
+                    const origHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال ورود...</span>';
+                    try {{
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const payload = {{
+                            cookie: document.getElementById('quick_FEED_AUTH_COOKIE').value,
+                            email: document.getElementById('quick_FEED_AUTH_EMAIL').value,
+                            password: document.getElementById('quick_FEED_AUTH_PASSWORD').value
+                        }};
+                        const saveRes = await fetch('/api/crawler/save-auth', {{ method: 'POST', headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd }}, body: JSON.stringify(payload) }});
+                        const saveData = await saveRes.json();
+                        
+                        if (saveData.success) {{
+                            const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}' }});
+                            const data = await res.json();
+                            const resDiv = document.getElementById('quickFeedAuthResult');
+                            if (resDiv) {{
+                                resDiv.classList.remove('hidden');
+                                if (data.success) {{
+                                    resDiv.innerHTML = '<span class="text-emerald-500 font-bold">✅ ورود موفق:</span> ' + data.message;
+                                    showToast('✅ ورود موفقیت‌آمیز بود');
+                                    const b = document.getElementById('crawlerStatusBadge');
+                                    if (b) {{
+                                        b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm';
+                                        b.innerText = 'متصل به حساب مرجع (ONLINE)';
+                                    }}
+                                }} else {{
+                                    resDiv.innerHTML = '<span class="text-rose-500 font-bold">❌ ورود ناموفق:</span> ' + (data.message || data.error || 'بررسی کنید.');
+                                    showToast('❌ ' + data.message, 'error');
+                                }}
+                            }}
+                        }} else {{
+                            showToast('خطا در ذخیره فرم', 'error');
+                        }}
+                    }} catch (e) {{
+                        showToast('❌ خطای شبکه: ' + e.message, 'error');
+                    }} finally {{
+                        btn.innerHTML = origHtml;
+                        btn.disabled = false;
+                    }}
+                }};
                 window.testCrawlerConnection = async function(btn) {{
                     const origHtml = btn.innerHTML;
                     btn.disabled = true;
@@ -9683,20 +9726,22 @@ def render_dashboard_html() -> str:
                             </button>
                         </div>
                     </div>
-                    <div class="flex gap-2 mt-2">
-                        <button type="button" onclick="saveQuickFeedAuth(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-1.5">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <button type="button" onclick="saveQuickFeedAuth(this)" class="w-full py-2 rounded-xl text-[13px] font-bold bg-slate-700 hover:bg-slate-600 text-slate-300 transition flex justify-center items-center gap-1.5" style="background: var(--button-bg, #334155);">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                            <span>ذخیره نشست</span>
+                            <span>ذخیره دستی فرم در فایل Settings</span>
                         </button>
-                        <button type="button" onclick="testCrawlerConnection(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-slate-700 hover:bg-slate-600 text-white transition flex justify-center items-center gap-1.5" style="background: var(--button-bg, #334155);">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            <span>تست اتصال</span>
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="loginAndTestConnection(this)" class="flex-1 py-2 rounded-xl text-[13px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex justify-center items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                                <span>ورود به حساب مرجع</span>
+                            </button>
+                            <button type="button" onclick="logoutCrawlerConnection(this)" class="flex-1 py-2 rounded-xl text-[13px] font-bold bg-rose-600 hover:bg-rose-500 text-white transition flex justify-center items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                <span>خروج از حساب</span>
+                            </button>
+                        </div>
                     </div>
-                    <button type="button" onclick="logoutCrawlerConnection(this)" class="w-full mt-2 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white transition flex justify-center items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        <span>خروج از اکانت مرجع</span>
-                    </button>
                     <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
                 </div>
             </div>
@@ -12062,20 +12107,22 @@ def render_storefront_html() -> str:
                             </button>
                         </div>
                     </div>
-                    <div class="flex gap-2 mt-2">
-                        <button type="button" onclick="saveQuickFeedAuth(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-1.5">
+                    <div class="flex flex-col gap-2 mt-2">
+                        <button type="button" onclick="saveQuickFeedAuth(this)" class="w-full py-2 rounded-xl text-[13px] font-bold bg-slate-700 hover:bg-slate-600 text-slate-300 transition flex justify-center items-center gap-1.5" style="background: var(--button-bg, #334155);">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                            <span>ذخیره نشست</span>
+                            <span>ذخیره دستی فرم در فایل Settings</span>
                         </button>
-                        <button type="button" onclick="testCrawlerConnection(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-slate-700 hover:bg-slate-600 text-white transition flex justify-center items-center gap-1.5" style="background: var(--button-bg, #334155);">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            <span>تست اتصال</span>
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="loginAndTestConnection(this)" class="flex-1 py-2 rounded-xl text-[13px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex justify-center items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                                <span>ورود به حساب مرجع</span>
+                            </button>
+                            <button type="button" onclick="logoutCrawlerConnection(this)" class="flex-1 py-2 rounded-xl text-[13px] font-bold bg-rose-600 hover:bg-rose-500 text-white transition flex justify-center items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                                <span>خروج از حساب</span>
+                            </button>
+                        </div>
                     </div>
-                    <button type="button" onclick="logoutCrawlerConnection(this)" class="w-full mt-2 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white transition flex justify-center items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        <span>خروج از اکانت مرجع</span>
-                    </button>
                     <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
                 </div>
             </div>
