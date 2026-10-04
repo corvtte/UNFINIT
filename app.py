@@ -444,38 +444,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                         content = f.read()
                 except Exception as e:
                     content = f"Error reading log file: {e}".encode("utf-8")
-            elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+            else:
                 from core.logger import get_recent_logs
                 logs = get_recent_logs(500)
                 content = "\n".join(logs).encode("utf-8")
@@ -529,38 +498,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 p_disk = _run_sync(ensure_session_file_on_disk(drop_id))
                 if p_disk and p_disk.exists():
                     local_path = str(p_disk)
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     self.send_response(404)
                     self.send_header("Content-Type", "text/plain; charset=utf-8")
                     self.end_headers()
@@ -605,38 +543,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
             if rel_sub.startswith("banners/"):
                 b_name = Path(rel_sub[len("banners/"):].strip()).name
                 file_path = config.BANNERS_DIR / b_name
-            elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+            else:
                 file_path = (config.UPLOADS_DIR / clean_sub).resolve()
                 try:
                     file_path.relative_to(config.UPLOADS_DIR.resolve())
@@ -716,38 +623,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Cache-Control", "public, max-age=3600")
                 self.end_headers()
                 self.wfile.write(cov_bytes)
-            elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+            else:
                 self.send_response(404)
                 self.end_headers()
             return
@@ -869,38 +745,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 cat = q_params.get("category", [""])[0].strip()
                 if cat:
                     items = FrequencyService.get_by_category(cat)
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     items = FrequencyService.get_all()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -936,38 +781,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 uid = query_params.get("user_id", ["web_admin"])[0]
                 if path == "/api/sign/test":
                     res = loop.run_until_complete(SignService.get_random_sign_for_test())
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     res = loop.run_until_complete(SignService.get_user_today_sign(uid))
                 loop.close()
                 self.send_response(200)
@@ -990,38 +804,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     asyncio.set_event_loop(loop)
                     cats = loop.run_until_complete(fetch_live_categories(force_refresh=True))
                     loop.close()
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     cats = get_all_categories()
                 res = {"ok": True, "categories": cats, "count": len(cats)}
                 self.send_response(200)
@@ -1076,38 +859,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     has_next = cat_res.get("has_next", False)
                     total_pages = cat_res.get("total_pages", 1)
                     res = {"ok": True, "items": items, "count": len(items), "page": page, "category": cat_res.get("category"), "has_next": has_next, "total_pages": total_pages}
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     items, total_pages = loop.run_until_complete(get_latest_free_downloads(limit=limit, force_refresh=force, page=page))
                     res = {"ok": True, "items": items, "count": len(items), "page": page, "total_pages": total_pages}
 
@@ -1178,38 +930,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.send_response(302)
                     self.send_header("Location", f"/store?payment=success&order_id={urllib.parse.quote(order_id)}&ref_id={ref_id}&dl={dl}")
                     self.end_headers()
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     err = urllib.parse.quote(str(res.get("error") or "Verification failed"))
                     self.send_response(302)
                     self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={err}")
@@ -1218,37 +939,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(302)
                 self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={urllib.parse.quote(str(e) or repr(e))}")
                 self.end_headers()
-            return
-        elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
             return
         else:
             self.send_response(200)
@@ -1418,38 +1108,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 if action == "revoke":
                     u = UserService.revoke_vip(user_id)
                     msg = f"Ø§Ø´ØªØ±Ø§Ú© Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… Ú©Ø§Ø±Ø¨Ø± {user_id} Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ù„ØºÙˆ Ø´Ø¯."
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     u = UserService.grant_vip(user_id, days=days)
                     msg = f"Ø§Ø´ØªØ±Ø§Ú© Ù¾Ø±ÛŒÙ…ÛŒÙˆÙ… Ú©Ø§Ø±Ø¨Ø± {user_id} Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ù‡ Ù…Ø¯Øª {days} Ø±ÙˆØ² ÙØ¹Ø§Ù„/ØªÙ…Ø¯ÛŒØ¯ Ø´Ø¯."
                     
@@ -2222,38 +1881,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": True, "token": "authenticated"}, ensure_ascii=False).encode("utf-8"))
-            elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+            else:
                 self.send_response(401)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
@@ -2308,38 +1936,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     out_bytes = image_service.convert_svg_to_jpg(svg_bytes)
                     mime = "image/jpeg"
                     out_name = f"{stem}.jpg"
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     out_bytes = image_service.convert_svg_to_png(svg_bytes)
                     mime = "image/png"
                     out_name = f"{stem}.png"
@@ -2641,38 +2238,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                         raw_order = []
                                 if isinstance(raw_order, list) and raw_order:
                                     clean_order = ["dashboard"] + [t for t in raw_order if t != "dashboard"]
-                                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                                else:
                                     clean_order = ["dashboard"]
                                 val = clean_order
                                 val_str = json.dumps(val, ensure_ascii=False)
@@ -2688,38 +2254,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                     settings_path.write_text(json.dumps(s_data, ensure_ascii=False, indent=2), encoding="utf-8")
                                 except Exception as err:
                                     logger.warning(f"Error persisting NAV_TABS_ORDER to settings.json: {err}")
-                            elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                            else:
                                 val_str = str(val).strip()
                             if k in SENSITIVE_KEYS and is_masked_or_empty(val_str):
                                 continue
@@ -2733,38 +2268,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                 try:
                                     if isinstance(getattr(config, k), int):
                                         setattr(config, k, int(val_str or 0))
-                                    elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                                    else:
                                         setattr(config, k, val_str)
                                     if k in ("AI_BASE_URL", "AI_API_KEY", "AI_MODEL"):
                                         os.environ[k] = val_str
@@ -2882,71 +2386,9 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                                         existing.add(ek)
                                         if ek in secrets_dict and secrets_dict[ek]:
                                             new_lines.append(f"{ek}={secrets_dict[ek]}\n")
-                                        elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                                        else:
                                             new_lines.append(line)
-                                    elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                                    else:
                                         new_lines.append(line)
                                 for ek, ev in secrets_dict.items():
                                     if ek not in existing and ev:
@@ -3056,38 +2498,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                             try:
                                 if isinstance(getattr(config, cfg_attr), int):
                                     setattr(config, cfg_attr, int(val_str or 0))
-                                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                                else:
                                     setattr(config, cfg_attr, val_str)
                             except Exception:
                                 pass
@@ -3132,38 +2543,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                             val = 1 if payload[field] else 0
                         elif field == "files_package":
                             val = json.dumps(payload[field], ensure_ascii=False) if isinstance(payload[field], list) else str(payload[field])
-                        elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                        else:
                             val = str(payload[field])
                         loop.run_until_complete(StoreService.update_product_field(p_id, field, val))
                 loop.close()
@@ -3277,38 +2657,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                     self.send_response(302)
                     self.send_header("Location", f"/store?payment=success&order_id={urllib.parse.quote(order_id)}&ref_id={ref_id}&dl={dl}")
                     self.end_headers()
-                elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                else:
                     err = urllib.parse.quote(str(res.get("error") or "Verification failed"))
                     self.send_response(302)
                     self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={err}")
@@ -3499,76 +2848,14 @@ async def main():
                     if hasattr(tg_adapter.app, "is_connected"):
                         if callable(tg_adapter.app.is_connected):
                             is_conn = tg_adapter.app.is_connected()
-                        elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                        else:
                             is_conn = getattr(tg_adapter.app, "is_connected", False)
                             
                     if not is_conn:
                         logger.info("Starting/Reconnecting Telegram MTProto Client (Supervisor)...")
                         if hasattr(tg_adapter, "start_client"):
                             await tg_adapter.start_client()
-                        elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                        else:
                             await tg_adapter.app.start()
                         logger.info("Telegram MTProto Client is ONLINE and listening!")
                 except FloodWait as fw:
@@ -3582,38 +2869,7 @@ async def main():
                         wait_sec = int(m.group(1)) if m else 60
                         logger.warning(f"Telegram MTProto FloodWait: waiting {wait_sec}s before auto-reconnecting...")
                         await asyncio.sleep(wait_sec + 2)
-                    elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                    else:
                         err_str_lower = err_str.lower()
                         if "auth_key_duplicated" in err_str_lower or getattr(e, "ID", None) == "AUTH_KEY_DUPLICATED" or getattr(e, "CODE", None) == 406 or "406" in err_str:
                             logger.warning("[TG] AUTH_KEY_DUPLICATED detected. Another container may be disconnecting. Waiting 5s...")
@@ -3632,38 +2888,7 @@ async def main():
                             except:
                                 pass
                             await asyncio.sleep(2)
-                        elif path == "/api/crawler/logout":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.feed_crawler import FeedAuthManager
-                loop.run_until_complete(FeedAuthManager.invalidate_session())
-                
-                from pathlib import Path
-                import json
-                import core.config as config
-                settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
-                if settings_file.exists():
-                    with open(settings_file, "r", encoding="utf-8") as f:
-                        settings = json.load(f)
-                    settings["FEED_AUTH_EMAIL"] = ""
-                    settings["FEED_AUTH_PASSWORD"] = ""
-                    settings["FEED_AUTH_COOKIE"] = ""
-                    with open(settings_file, "w", encoding="utf-8") as f:
-                        json.dump(settings, f, ensure_ascii=False, indent=4)
-                        
-                loop.close()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True, "message": "با موفقیت خارج شدید."}, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        else:
+                        else:
                             logger.error(f"Telegram client start error: {e}. Retrying in 5s...")
                             await asyncio.sleep(5)
                 
