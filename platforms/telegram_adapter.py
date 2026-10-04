@@ -210,7 +210,7 @@ def get_customer_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             ["🛍 محصولات آموزشی"],
-            ["🔮 نشانه امروز من", "💎 اشتراک پریمیوم"],
+            ["✨ نشانه امروز من", "💎 اشتراک پریمیوم"],
             [GiftButtonStr("📂 دانلودها (هدیه)"), "👤 حساب کاربری"]
         ],
         resize_keyboard=True
@@ -1374,61 +1374,91 @@ class TelegramAdapter:
             buttons.append([InlineKeyboardButton("💬 ارتباط با پشتیبانی", callback_data="cnav:support")])
             await message.reply_text("\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(buttons))
 
-        @self.app.on_message(filters.private & filters.regex(r"(?i)^(🔮\s*نشانه امروز من|نشانه امروز من|نشانه امروز|نشانه|/sign)$"))
+        @self.app.on_message(filters.private & filters.regex(r"(?i)^(?:[✨🔮\s]*نشانه امروز من|نشانه امروز من|نشانه امروز|نشانه|/sign)$"))
         async def customer_sign_handler(client: Client, message: Message):
             """
-            ارسال فایل صوتی و پیام الهام‌بخش لید مگنت «نشانه امروز من».
-            این متد با دانلود محلی در کش و ارسال فایل به صورت دیسک از خطاهای CURL و MessageIdInvalid جلوگیری می‌کند.
+            ارسال فایل صوتی و پیام الهام‌بخش لید مگنت «نشانه امروز من» با تفکیک دقیق صوت از ویدیو.
             """
             user_id = message.from_user.id
-            wait_msg = await message.reply_text("🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>", parse_mode=enums.ParseMode.HTML)
+            wait_msg = await message.reply_text("✨ <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>", parse_mode=enums.ParseMode.HTML)
             try:
                 from core.sign_service import SignService
                 from core.database import get_system_setting
+                from services.user_service import UserService
                 reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
                 extract_chapters = (await get_system_setting("sign_extract_chapters", "1")) == "1"
 
                 sign = await SignService.get_user_today_sign(user_id)
                 caption = SignService.format_sign_caption(sign, reader_tag=reader_tag, include_chapters=extract_chapters)
-                audio_url = sign.get("audio_url")
+                audio_url = (sign.get("audio_url") or "").strip()
+                video_url = (sign.get("video_url") or "").strip()
+                is_vip = UserService.is_user_vip(user_id)
 
                 vip_kb = SignService.build_sign_buttons(sign, platform="telegram")
 
-                local_audio_path = None
-                if audio_url:
+                # ۱. اگر فایل دارای نسخه صوتی واقعی باشد
+                if audio_url and not (".mp4" in audio_url.lower()):
+                    local_audio_path = None
                     try:
                         local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
                     except Exception as e_dl:
                         logger.warning(f"[tg_sign] ensure_audio_downloaded failed: {e_dl}")
 
-                perf_title = reader_tag or "نشانه امروز"
-                sent_audio_ok = False
-                if local_audio_path and local_audio_path.exists():
-                    try:
-                        await message.reply_audio(
-                            audio=str(local_audio_path),
-                            caption=caption,
-                            title=sign.get("title", "نشانه امروز من"),
-                            performer=perf_title,
-                            reply_markup=vip_kb,
-                            parse_mode=enums.ParseMode.HTML
-                        )
-                        sent_audio_ok = True
-                    except Exception as e_send_loc:
-                        logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
+                    perf_title = reader_tag or "نشانه امروز"
+                    sent_audio_ok = False
+                    if local_audio_path and local_audio_path.exists():
+                        try:
+                            await message.reply_audio(
+                                audio=str(local_audio_path),
+                                caption=caption,
+                                title=sign.get("title", "نشانه امروز من"),
+                                performer=perf_title,
+                                reply_markup=vip_kb,
+                                parse_mode=enums.ParseMode.HTML
+                            )
+                            sent_audio_ok = True
+                        except Exception as e_send_loc:
+                            logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
 
-                if sent_audio_ok:
-                    try:
-                        await wait_msg.delete()
-                    except Exception:
-                        pass
-                else:
-                    # مستندسازی فارسی: در صورت عدم دانلود موفق صوت، پیام کامل همراه با دکمه‌های مستقیم ارسال می‌گردد تا از خطای ۴۰۰ تلگرام جلوگیری شود
-                    fallback_kb = vip_kb
-                    try:
-                        await wait_msg.edit_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
-                    except Exception:
-                        await message.reply_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
+                    if sent_audio_ok:
+                        try:
+                            await wait_msg.delete()
+                        except Exception:
+                            pass
+                        return
+
+                # ۲. اگر فایل صرفاً ویدیویی باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
+                if video_url and not audio_url:
+                    if not is_vip:
+                        vip_prompt = (
+                            caption + "\n\n"
+                            "🎬 <b>توجه: نشانه امروز شما یک محتوای تصویری و ویدیویی است.</b>\n\n"
+                            "ارسال مستقیم و استریم فایل‌های ویدیویی با کیفیت بالا در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                            "جهت مشاهده این قسمت می‌توانید از دکمه «دانلود مستقیم ویدیو» در زیر استفاده فرمایید یا با فعال‌سازی اشتراک پریمیوم، به تمامی ویدیوها و سریال‌ها در ربات دسترسی داشته باشید:"
+                        )
+                        try:
+                            await wait_msg.edit_text(vip_prompt, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                        except Exception:
+                            await message.reply_text(vip_prompt, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                        return
+                    else:
+                        vip_msg = (
+                            caption + "\n\n"
+                            "💎 <b>کاربر گرامی پریمیوم؛</b>\n"
+                            "این نشانه یک محتوای اختصاصی تصویری است. جهت مشاهده و دانلود با نهایت سرعت، از دکمه‌های مستقیم زیر استفاده فرمایید:"
+                        )
+                        try:
+                            await wait_msg.edit_text(vip_msg, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                        except Exception:
+                            await message.reply_text(vip_msg, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                        return
+
+                # ۳. در صورت عدم وجود مدیا یا فالبک
+                fallback_kb = vip_kb
+                try:
+                    await wait_msg.edit_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
+                except Exception:
+                    await message.reply_text(caption, reply_markup=fallback_kb, parse_mode=enums.ParseMode.HTML)
             except Exception as e:
                 logger.error(f"[tg_sign] Error sending sign to {user_id}: {e}")
                 try:

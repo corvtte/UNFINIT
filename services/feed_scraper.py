@@ -723,6 +723,17 @@ async def get_category_episodes(
     if not cat:
         cat = ABASMANESH_PREMIUM_CATEGORIES[0]
 
+    # اگر دسته ۱ (تمام دانلودها) بود، مستقیماً از متد اصلی دانلودها با کش پرسرعت واکشی کن
+    if str(cat.get("id")) == "1" or cat.get("slug") == "all-downloads":
+        items, total_pages = await get_latest_free_downloads(limit=limit, force_refresh=force_refresh, page=page)
+        return {
+            "category": cat,
+            "episodes": items,
+            "page": page,
+            "has_next": len(items) >= limit,
+            "total_pages": total_pages
+        }
+
     now = time.time()
     cache_key = f"cat_{cat['id']}_p{page}"
     if not force_refresh:
@@ -750,34 +761,34 @@ async def get_category_episodes(
         episodes = []
         if articles_to_fetch:
             session = await FeedAuthManager.get_session()
-            sem = asyncio.Semaphore(5)
+            sem = asyncio.Semaphore(10)
             async def fetch_with_sem_cat(u, t, c, tg):
                 async with sem:
                     return await _fetch_single_article(session, u, t, card_cover=c, card_tag=tg or cat.get("title", ""))
 
-                tasks = [
-                    fetch_with_sem_cat(url, title, cover, tag)
-                    for url, title, cover, tag in articles_to_fetch[:limit]
-                ]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                for idx, r in enumerate(results):
-                    if isinstance(r, dict) and r.get("title"):
-                        r["category_id"] = cat["id"]
-                        r["category_title"] = cat["title"]
-                        r["episode_index"] = ((page - 1) * limit) + idx + 1
-                        episodes.append(r)
+            tasks = [
+                fetch_with_sem_cat(url, title, cover, tag)
+                for url, title, cover, tag in articles_to_fetch[:limit]
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for idx, r in enumerate(results):
+                if isinstance(r, dict) and r.get("title"):
+                    r["category_id"] = cat["id"]
+                    r["category_title"] = cat["title"]
+                    r["episode_index"] = ((page - 1) * limit) + idx + 1
+                    episodes.append(r)
 
-            result_obj = {
-                "category": cat,
-                "episodes": episodes,
-                "page": page,
-                "has_next": len(episodes) >= limit,
-                "total_pages": total_pages
-            }
-            if episodes:
-                _CACHE[cache_key] = {"data": result_obj, "last_fetched": now}
-                save_category_disk_cache(cache_key, result_obj)
-            return result_obj
+        result_obj = {
+            "category": cat,
+            "episodes": episodes,
+            "page": page,
+            "has_next": len(episodes) >= limit,
+            "total_pages": total_pages
+        }
+        if episodes:
+            _CACHE[cache_key] = {"data": result_obj, "last_fetched": now}
+            save_category_disk_cache(cache_key, result_obj)
+        return result_obj
 
     except Exception as e:
         logger.warning(f"[feed_scraper] Failed to scrape category {cat['slug']}: {e}")

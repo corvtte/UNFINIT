@@ -95,7 +95,7 @@ def get_bale_customer_keyboard() -> dict:
     return {
         "keyboard": [
             [{"text": "🛍 محصولات آموزشی"}],
-            [{"text": "🔮 نشانه امروز من"}, {"text": "💎 اشتراک پریمیوم"}],
+            [{"text": "✨ نشانه امروز من"}, {"text": "💎 اشتراک پریمیوم"}],
             [{"text": GiftButtonStr("📂 دانلودها (هدیه)")}, {"text": "👤 حساب کاربری"}]
         ],
         "resize_keyboard": True
@@ -3290,8 +3290,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                     # مستندسازی فارسی: هندلر لید مگنت «نشانه امروز من» با فالبک هوشمند
                                     # در صورت بروز خطا در استخراج صوت، متن الهام‌بخش به همراه دکمه دانلود مستقیم بلافاصله تحویل می‌گردد.
-                                    if canon_action == ACTION_TODAY_SIGN or any(text.startswith(cmd) for cmd in ["🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
-                                        wait_msg = await bale.send_message(chat_id, "🔮 <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
+                                    if canon_action == ACTION_TODAY_SIGN or any(text.startswith(cmd) for cmd in ["✨ نشانه امروز من", "🔮 نشانه امروز من", "نشانه امروز من", "نشانه امروز", "نشانه", "/sign"]):
+                                        wait_msg = await bale.send_message(chat_id, "✨ <i>در حال مکاشفه و دریافت نشانه امروز شما...</i>")
                                         try:
                                             from core.sign_service import SignService
                                             reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
@@ -3299,33 +3299,43 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                             sign = await SignService.get_user_today_sign(chat_id)
                                             caption = SignService.format_sign_caption(sign, reader_tag=reader_tag, include_chapters=extract_chapters)
-                                            audio_url = sign.get("audio_url")
-                                            local_audio_path = None
-                                            if audio_url:
+                                            audio_url = (sign.get("audio_url") or "").strip()
+                                            video_url = (sign.get("video_url") or "").strip()
+
+                                            sign_kb = SignService.build_sign_buttons(sign, platform="bale")
+                                            perf_title = reader_tag or "نشانه امروز"
+
+                                            # ۱. اگر فایل نسخه صوتی واقعی داشته باشد
+                                            if audio_url and not (".mp4" in audio_url.lower()):
+                                                local_audio_path = None
                                                 try:
                                                     local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
                                                 except Exception as e_dl:
                                                     logger.warning(f"[bale_sign] ensure_audio_downloaded failed: {e_dl}")
 
-                                            sign_kb = SignService.build_sign_buttons(sign, platform="bale")
-                                            perf_title = reader_tag or "نشانه امروز"
-                                            sent_ok = False
-                                            if local_audio_path and local_audio_path.exists():
-                                                try:
-                                                    await bale.send_audio(
-                                                        chat_id=chat_id,
-                                                        file_path=str(local_audio_path),
-                                                        title=sign.get("title", "نشانه امروز من"),
-                                                        performer=perf_title,
-                                                        caption=caption,
-                                                        reply_markup=sign_kb
-                                                    )
-                                                    sent_ok = True
-                                                except Exception as ex_snd:
-                                                    logger.warning(f"[bale_sign] send_audio local failed: {ex_snd}")
+                                                if local_audio_path and local_audio_path.exists():
+                                                    try:
+                                                        await bale.send_audio(
+                                                            chat_id=chat_id,
+                                                            file_path=str(local_audio_path),
+                                                            title=sign.get("title", "نشانه امروز من"),
+                                                            performer=perf_title,
+                                                            caption=caption,
+                                                            reply_markup=sign_kb
+                                                        )
+                                                        continue
+                                                    except Exception as ex_snd:
+                                                        logger.warning(f"[bale_sign] send_audio local failed: {ex_snd}")
 
-                                            if not sent_ok:
-                                                # مستندسازی فارسی: در صورت عدم امکان ارسال باینری صوت، پیام کامل متنی همراه با دکمه‌های شیشه‌ای ارسال می‌شود
+                                            # ۲. اگر فایل فقط تصویری باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
+                                            if video_url and not audio_url:
+                                                bale_msg = (
+                                                    caption + "\n\n"
+                                                    "🎬 <b>توجه: نشانه امروز شما یک محتوای تصویری و ویدیویی است.</b>\n\n"
+                                                    "به دلیل محدودیت حجم آپلود فایل در پیام‌رسان بله، جهت دریافت فایل‌های ویدیویی کامل در ربات لطفاً از ربات تلگرام استفاده فرمایید یا از طریق دکمه زیر مستقیماً دانلود نمایید:"
+                                                )
+                                                await bale.send_message(chat_id, bale_msg, reply_markup=sign_kb)
+                                            else:
                                                 await bale.send_message(chat_id, caption, reply_markup=sign_kb)
                                         except Exception as ex_sign:
                                             logger.error(f"[bale_sign] Error sending sign to {chat_id}: {ex_sign}")

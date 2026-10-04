@@ -98,7 +98,17 @@ class SignService:
         خروجی:
             Dict[str, Any]: اطلاعات نشانه شامل title, audio_url, page_url, tag, cover_url, date
         """
-        uid = str(user_id).strip()
+        # ۱. استخراج شناسه یکتا بر اساس شماره همراه کاربر (قانون دوقلوهای همسان بله و تلگرام)
+        unified_id = str(user_id).strip()
+        try:
+            from services.user_service import UserService
+            u = UserService.get_user_by_any_id(user_id)
+            if u and u.phone:
+                unified_id = f"phone_{u.phone}"
+        except Exception:
+            pass
+
+        uid = unified_id
         today = cls.get_tehran_today_str()
         cache = cls._load_user_cache()
 
@@ -108,18 +118,18 @@ class SignService:
             not force_refresh
             and user_entry.get("date") == today
             and cached_sign
-            and cached_sign.get("audio_url")
+            and (cached_sign.get("audio_url") or cached_sign.get("video_url"))
             and cached_sign.get("lesson_text")
         ):
             logger.debug(f"[sign_service] Serving cached sign for user {uid} on {today}")
             return cached_sign
 
-        # ۱. محاسبه هش پایدار بر مبنای User ID و تاریخ روز
+        # ۲. محاسبه هش پایدار بر مبنای User ID یا شماره همراه یکتا و تاریخ روز
         seed_str = f"unfinit_sign_{uid}_{today}"
         hash_digest = hashlib.sha256(seed_str.encode("utf-8")).hexdigest()
         hash_int = int(hash_digest, 16)
 
-        # ۲. نگاشت به شماره صفحه (۱ تا ۳۹)
+        # ۳. نگاشت به شماره صفحه (۱ تا ۳۹)
         target_page = (hash_int % 39) + 1
 
         logger.info(f"[sign_service] Selecting deterministic sign for {uid}: page={target_page} (hash={hash_digest[:8]})")
@@ -134,7 +144,7 @@ class SignService:
         if not items:
             items = FALLBACK_ITEMS
 
-        # ۳. انتخاب آیتم از میان لیست صفحه
+        # ۴. انتخاب آیتم از میان لیست صفحه
         item_idx = (hash_int // 39) % len(items)
         selected = dict(items[item_idx])
 
@@ -149,12 +159,33 @@ class SignService:
             except Exception as art_err:
                 logger.debug(f"[sign_service] Error enriching article {p_url}: {art_err}")
 
+        # تفکیک دقیق و سخت‌گیرانه رسانه: هیچ‌وقت ویدیو را به عنوان صوت در نظر نگیر
+        raw_audio = (selected.get("audio_download_url") or selected.get("audio_url") or "").strip()
+        raw_video = (selected.get("video_download_url") or selected.get("video_url") or "").strip()
+
+        if raw_audio and (".mp4" in raw_audio.lower()):
+            if not raw_video:
+                raw_video = raw_audio
+            raw_audio = ""
+
+        if raw_video and (".mp3" in raw_video.lower() or ".m4a" in raw_video.lower()):
+            if not raw_audio:
+                raw_audio = raw_video
+            raw_video = ""
+
+        direct_dl = (selected.get("direct_download_url") or "").strip()
+        if direct_dl:
+            if (".mp3" in direct_dl.lower() or ".m4a" in direct_dl.lower()) and not raw_audio:
+                raw_audio = direct_dl
+            elif ".mp4" in direct_dl.lower() and not raw_video:
+                raw_video = direct_dl
+
         sign_data = {
             "title": selected.get("title", "نشانه هدایت و آرامش امروز شما"),
             "tag": selected.get("tag", "فایل دانلودی"),
             "lesson_text": selected.get("lesson_text", ""),
-            "audio_url": selected.get("audio_download_url") or selected.get("audio_url") or selected.get("direct_download_url", ""),
-            "video_url": selected.get("video_download_url") or selected.get("video_url", ""),
+            "audio_url": raw_audio,
+            "video_url": raw_video,
             "page_url": selected.get("page_url", "https://abasmanesh.com/fa/articles/"),
             "cover_url": selected.get("cover_url", ""),
             "page_number": target_page,
@@ -162,7 +193,7 @@ class SignService:
             "user_id": uid
         }
 
-        # ۴. ذخیره در کش روزانه
+        # ۵. ذخیره در کش روزانه
         cache[uid] = {
             "date": today,
             "sign": sign_data,
@@ -269,7 +300,7 @@ class SignService:
             from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
             rows = []
             row1 = []
-            if audio_url:
+            if audio_url and not (".mp4" in audio_url.lower()):
                 row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت", url=audio_url))
             if video_url:
                 row1.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو", url=video_url))
@@ -281,7 +312,7 @@ class SignService:
         else:
             rows = []
             row1 = []
-            if audio_url:
+            if audio_url and not (".mp4" in audio_url.lower()):
                 row1.append({"text": "🎧 دانلود مستقیم صوت", "url": audio_url})
             if video_url:
                 row1.append({"text": "🎬 دانلود مستقیم ویدیو", "url": video_url})
@@ -299,21 +330,10 @@ class SignService:
     ) -> Optional[Path]:
         """
         دانلود و نگهداری فایل صوتی نشانه در کش محلی دیسک جهت ارسال امن و پرسرعت.
-
-        این متد نشانی اینترنتی صوت نشانه را بررسی کرده و در صورتی که قبلاً دانلود نشده باشد،
-        با استفاده از خط لوله استریم UrlService آن را در مسیر اختصاصی data/sign_cache ذخیره می‌کند.
-        این فرآیند از خطای CURL تلگرام و عدم پشتیبانی URL مستقیم در بله جلوگیری می‌نماید.
-
-        ورودی‌ها:
-            sign_data (Dict[str, Any]): دیکشنری مشخصات نشانه دریافتی کاربر
-            reader_tag (str): نام هنرمند/خواننده جهت تنظیم متادیتای صوتی
-
-        خروجی:
-            Optional[Path]: مسیر شیء Path فایل صوتی دانلودشده روی دیسک، یا None در صورت بروز خطا
         """
         cls._ensure_storage()
         raw_url = (sign_data.get("audio_url") or "").strip()
-        if not raw_url:
+        if not raw_url or ".mp4" in raw_url.lower():
             return None
 
         # اولویت‌بندی دامنه cdnir برای جلوگیری از خطای ۴۰۴

@@ -6513,12 +6513,15 @@ def render_dashboard_html() -> str:
                         '<span>🌐 تمام دانلودها</span>' +
                     '</button>';
 
-                    const catBtns = data.categories.map(function(c) {{
+                    const catBtns = data.categories.filter(function(c) {{
+                        return c.id !== 1 && c.slug !== 'all-downloads' && c.title !== 'تمام دانلودها';
+                    }}).map(function(c) {{
                         const isActive = currentFeedCategory === c.slug;
                         const btnClass = isActive ? 'theme-accent-btn active' : 'theme-card-btn';
                         const safeTitle = (c.title || '').replace(/'/g, "\\\\'");
+                        const catEmoji = c.emoji ? (c.emoji + ' ') : '';
                         return '<button type="button" onclick="selectFeedCategory(\\'' + c.slug + '\\')" class="feed-cat-btn px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ' + btnClass + '" data-cat="' + c.slug + '">' +
-                            '<span>' + safeTitle + '</span>' +
+                            '<span>' + catEmoji + safeTitle + '</span>' +
                         '</button>';
                     }}).join('');
 
@@ -6680,10 +6683,10 @@ def render_dashboard_html() -> str:
                         '</div>';
                     }}).join('');
                 }} else {{
-                    container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-rose-400 font-mono">❌ دریافت هدایای دانلودی ناموفق بود یا فایلی یافت نشد.</div>';
+                    container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-rose-400 font-medium">❌ دریافت هدایای دانلودی ناموفق بود یا فایلی یافت نشد.</div>';
                 }}
             }} catch (err) {{
-                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-rose-400 font-mono">❌ خطای ارتباط با سرور: ' + err.message + '</div>';
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-xs text-rose-400 font-medium">❌ خطای ارتباط با سرور: ' + err.message + '</div>';
             }} finally {{
                 if (btn) {{
                     btn.disabled = false;
