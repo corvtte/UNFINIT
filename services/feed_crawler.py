@@ -301,7 +301,7 @@ class FeedAuthManager:
         session = await cls.get_session()
         
         # Priority 1: Direct Session Cookie Injection
-        auth_cookie = (os.getenv("AUTH_SESSION_COOKIES") or await get_system_setting("AUTH_SESSION_COOKIES", "") or os.getenv("FEED_AUTH_COOKIE") or await get_system_setting("FEED_AUTH_COOKIE", "")).strip()
+        auth_cookie = (await get_system_setting("FEED_AUTH_COOKIE", "")).strip()
         if auth_cookie:
             directives = {"expires", "max-age", "path", "domain", "samesite", "secure", "httponly"}
             parts = re.split(r'[;\n]', auth_cookie)
@@ -329,8 +329,8 @@ class FeedAuthManager:
             except Exception as e:
                 pass
 
-        username = os.getenv("FEED_AUTH_EMAIL") or await get_system_setting("FEED_AUTH_EMAIL") or os.getenv("ABASMANESH_EMAIL") or await get_system_setting("ABASMANESH_EMAIL")
-        password = os.getenv("FEED_AUTH_PASSWORD") or await get_system_setting("FEED_AUTH_PASSWORD") or os.getenv("ABASMANESH_PASSWORD") or await get_system_setting("ABASMANESH_PASSWORD")
+        username = (await get_system_setting("FEED_AUTH_EMAIL", "")).strip()
+        password = (await get_system_setting("FEED_AUTH_PASSWORD", "")).strip()
         if not username or not password:
             return False
             
@@ -359,13 +359,18 @@ class FeedAuthManager:
                 "remember_me": "1"
             }
             
-            async with session.post("https://abasmanesh.com/fa/login/", data=payload, headers=headers, timeout=15) as post_resp:
+            async with session.post("https://abasmanesh.com/fa/login/", data=payload, headers=headers, timeout=15, allow_redirects=False) as post_resp:
+                if post_resp.status in [301, 302]:
+                    loc = post_resp.headers.get("Location", "")
+                    if "login" not in loc.lower():
+                        await cls.save_session()
+                        return True
+                    return False
                 post_html = await post_resp.text()
-                if post_resp.status in [200, 302] and ("خروج" in post_html or "پروفایل" in post_html or post_resp.status == 302):
+                if "خروج" in post_html or "پروفایل" in post_html:
                     await cls.save_session()
                     return True
-                else:
-                    return False
+                return False
         except Exception as e:
             return False
 

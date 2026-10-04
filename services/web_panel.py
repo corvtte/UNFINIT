@@ -4026,7 +4026,39 @@ def render_dashboard_html() -> str:
                     }}
                 }};
 
-                                                window.testCrawlerConnection = async function(btn) {{
+                                                window.logoutCrawlerConnection = async function(btn) {
+                    const origHtml = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال خروج...</span>';
+                    try {
+                        const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
+                        const res = await fetch('/api/crawler/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + pwd } });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast('✅ ' + data.message);
+                            document.getElementById('quick_FEED_AUTH_COOKIE').value = '';
+                            document.getElementById('quick_FEED_AUTH_EMAIL').value = '';
+                            document.getElementById('quick_FEED_AUTH_PASSWORD').value = '';
+                            const b = document.getElementById('crawlerStatusBadge');
+                            if (b) {
+                                b.className = 'text-[10px] px-2 py-0.5 rounded-full bg-amber-600 text-white shadow-sm';
+                                b.innerText = 'نیاز به لاگین (REQUIRE_AUTH)';
+                            }
+                            const resDiv = document.getElementById('quickFeedAuthResult');
+                            if (resDiv) {
+                                resDiv.classList.remove('hidden');
+                                resDiv.innerHTML = '<span class="text-rose-500 font-bold">✅ خروج موفق:</span> نشست مرجع لغو شد.';
+                            }
+                        }
+                    } catch (e) {
+                        showToast('خطا در خروج از حساب', 'error');
+                    } finally {
+                        btn.innerHTML = origHtml;
+                        btn.disabled = false;
+                    }
+                };
+
+                window.testCrawlerConnection = async function(btn) {{
                     const origHtml = btn.innerHTML;
                     btn.disabled = true;
                     btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
@@ -9661,6 +9693,10 @@ def render_dashboard_html() -> str:
                             <span>تست اتصال</span>
                         </button>
                     </div>
+                    <button type="button" onclick="logoutCrawlerConnection(this)" class="w-full mt-2 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white transition flex justify-center items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>خروج از اکانت مرجع</span>
+                    </button>
                     <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
                 </div>
             </div>
@@ -12036,6 +12072,10 @@ def render_storefront_html() -> str:
                             <span>تست اتصال</span>
                         </button>
                     </div>
+                    <button type="button" onclick="logoutCrawlerConnection(this)" class="w-full mt-2 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white transition flex justify-center items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>خروج از اکانت مرجع</span>
+                    </button>
                     <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
                 </div>
             </div>
