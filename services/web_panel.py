@@ -4058,7 +4058,17 @@ def render_dashboard_html() -> str:
                             const saveData = await saveRes.json();
                             
                             if (saveData.success) {{
-                                const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}', headers: {{'Authorization': 'Bearer ' + pwd}} }});
+                                const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: JSON.stringify({{force_login: true}}), headers: {{'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd}} }});
+                                const data = await res.json();
+                                if (data.cookie) {{
+                                    document.getElementById('quick_FEED_AUTH_COOKIE').value = data.cookie;
+                                    
+                                    await fetch('/api/crawler/save-auth', {{ 
+                                        method: 'POST', 
+                                        headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd }}, 
+                                        body: JSON.stringify({{cookie: data.cookie, email: document.getElementById('quick_FEED_AUTH_EMAIL').value, password: document.getElementById('quick_FEED_AUTH_PASSWORD').value}}) 
+                                    }});
+                                }}
                                 const data = await res.json();
                                 const resDiv = document.getElementById('quickFeedAuthResult');
                                 if (resDiv) {{
@@ -4098,7 +4108,17 @@ def render_dashboard_html() -> str:
                     btn.innerHTML = '<span class="flex items-center gap-2"><svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> در حال بررسی...</span>';
                     try {{
                         const pwd = window.currentAdminPassword || localStorage.getItem('unfinit_admin_pwd') || '';
-                        const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: '{{}}', headers: {{'Authorization': 'Bearer ' + pwd}} }});
+                        const res = await fetch('/api/crawler/test-auth', {{ method: 'POST', body: JSON.stringify({{force_login: true}}), headers: {{'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd}} }});
+                                const data = await res.json();
+                                if (data.cookie) {{
+                                    document.getElementById('quick_FEED_AUTH_COOKIE').value = data.cookie;
+                                    
+                                    await fetch('/api/crawler/save-auth', {{ 
+                                        method: 'POST', 
+                                        headers: {{ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pwd }}, 
+                                        body: JSON.stringify({{cookie: data.cookie, email: document.getElementById('quick_FEED_AUTH_EMAIL').value, password: document.getElementById('quick_FEED_AUTH_PASSWORD').value}}) 
+                                    }});
+                                }}
                         const data = await res.json();
                         
                         const resDiv = document.getElementById('quickFeedAuthResult');
@@ -10739,7 +10759,8 @@ def handle_store_buy_bale(payload: dict) -> dict:
 
 async def handle_crawler_test_auth_async(payload: dict) -> dict:
     from services.feed_crawler import FeedAuthManager
-    return await FeedAuthManager.test_connection()
+    force_login = payload.get("force_login", False)
+    return await FeedAuthManager.test_connection(force_login=force_login)
 
 def handle_crawler_test_auth(payload: dict) -> dict:
     return _run_sync(handle_crawler_test_auth_async(payload))

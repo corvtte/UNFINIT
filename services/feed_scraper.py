@@ -550,6 +550,7 @@ async def _fetch_single_article(
         "tag": tag,
         "category": tag,
         "page_url": clean_url,
+        "source_url": clean_url,
         "url": primary_url,
         "cover_url": cover_url,
         "audio_download_url": audio_dl,

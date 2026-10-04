@@ -417,10 +417,11 @@ class FeedAuthManager:
             return status, html
 
     @classmethod
-    async def test_connection(cls) -> dict:
+    async def test_connection(cls, force_login=False) -> dict:
         try:
-            await cls.invalidate_session()
-            await cls.login_if_needed()
+            if force_login:
+                await cls.invalidate_session()
+                await cls.login_if_needed()
             session = await cls.get_session()
             async with session.get("https://abasmanesh.com/fa/profile/", timeout=25, allow_redirects=False) as resp:
                 status = resp.status
@@ -435,19 +436,26 @@ class FeedAuthManager:
                     
                 if is_valid:
                     username = "کاربر تایید شده"
-                    m = re.search(r'سلام[\s\n]*<strong[^>]*>([^<]+)</strong>', html)
+                    m = re.search(r'سلام[\\s\\n]*<strong[^>]*>([^<]+)</strong>', html)
                     if m: username = m.group(1).strip()
+                    
+                    import yarl
+                    cookies = session.cookie_jar.filter_cookies(yarl.URL("https://abasmanesh.com"))
+                    cookie_str = "; ".join([f"{k}={v.value}" for k, v in cookies.items()])
+                    
+                    from core.database import set_system_setting
+                    await set_system_setting("FEED_AUTH_COOKIE", cookie_str)
+                    
                     msg = f"نشست فعال با هویت معتبر ({username}) تأیید شد."
-                    return {"success": True, "status_code": status, "message": msg, "authenticated": True}
+                    return {"success": True, "status_code": status, "message": msg, "authenticated": True, "cookie": cookie_str}
                 elif status in (301, 302):
-                    msg = f"نام کاربری یا رمز عبور اشتباه است، یا کوکی منقضی شده (کد {status})."
+                    msg = f"سشن نامعتبر است؛ لطفاً کوکی جدید مرورگر را وارد کنید (کد {status})."
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
                 else:
                     msg = f"خطای ناشناخته از سرور مرجع (کد {status})"
                     return {"success": False, "status_code": status, "message": msg, "authenticated": False}
         except Exception as e:
             return {"success": False, "status_code": 500, "message": f"خطای ارتباطی: {str(e) or repr(e)}", "authenticated": False}
-
 
 
 class FeedCrawler:
