@@ -528,7 +528,7 @@ async def _fetch_single_article(
     if BeautifulSoup and 'soup' in locals() and soup:
         try:
             content_el = (
-                soup.find("div", class_=lambda c: c and any(x in c for x in ["entry-content", "post-content", "article__body", "article-content"]))
+                soup.find("div", class_=lambda c: c and any(x in c for x in ["content-markdown--card", "entry-content", "post-content", "article__body", "article-content"]))
                 or soup.find("article")
                 or soup.find("main")
             )
@@ -689,21 +689,23 @@ async def get_category_episodes(
 
     target_url = build_page_url(cat["url"], page_number=page)
 
-    timeout = aiohttp.ClientTimeout(total=20)
     articles_to_fetch = []
     try:
-        async with aiohttp.ClientSession(headers=BROWSER_HEADERS, timeout=timeout) as session:
-            async with session.get(target_url) as resp:
-                if resp.status == 200:
-                    html = await resp.text()
-                    articles_to_fetch, total_pages = _extract_articles_from_html(html, limit=limit)
+        from services.feed_crawler import FeedAuthManager
+        status, html = await FeedAuthManager.fetch_html_with_auth(target_url, timeout=20)
+        
+        if status == 200:
+            articles_to_fetch, total_pages = _extract_articles_from_html(html, limit=limit)
+        else:
+            total_pages = 1
 
-            episodes = []
-            if articles_to_fetch:
-                sem = asyncio.Semaphore(5)
-                async def fetch_with_sem_cat(u, t, c, tg):
-                    async with sem:
-                        return await _fetch_single_article(session, u, t, card_cover=c, card_tag=tg or cat.get("title", ""))
+        episodes = []
+        if articles_to_fetch:
+            session = await FeedAuthManager.get_session()
+            sem = asyncio.Semaphore(5)
+            async def fetch_with_sem_cat(u, t, c, tg):
+                async with sem:
+                    return await _fetch_single_article(session, u, t, card_cover=c, card_tag=tg or cat.get("title", ""))
 
                 tasks = [
                     fetch_with_sem_cat(url, title, cover, tag)

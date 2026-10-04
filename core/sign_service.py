@@ -126,7 +126,8 @@ class SignService:
 
         items = []
         try:
-            items = await get_latest_free_downloads(page=target_page, limit=25, base_url="https://abasmanesh.com/fa/articles/")
+            res = await get_latest_free_downloads(page=target_page, limit=25, base_url="https://abasmanesh.com/fa/articles/")
+            items = res[0] if isinstance(res, tuple) else res
         except Exception as e:
             logger.warning(f"[sign_service] Failed to fetch page {target_page}: {e}")
 

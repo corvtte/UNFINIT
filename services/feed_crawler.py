@@ -40,6 +40,14 @@ FREE_DOWNLOAD_BASE_URL = "https://abasmanesh.com/fa/articles/"
 # فهرست رسمی ۱۷ دسته‌بندی استخراج‌شده زنده از ساختار واقعی سایت عباس‌منش
 OFFICIAL_17_CATEGORIES: List[Dict[str, Any]] = [
     {
+        "id": 1,
+        "emoji": "🌐",
+        "slug": "all-downloads",
+        "title": "تمام دانلودها",
+        "url": "https://abasmanesh.com/fa/articles/",
+        "path": "/fa/articles/"
+    },
+    {
         "id": 2,
         "emoji": "🎙️",
         "slug": "interview-with-master-abasmanesh",
@@ -582,7 +590,7 @@ class FeedCrawler:
                             logging.getLogger().debug(f"SQLite update error in fetch_article_details: {ex}")
 
                         # استخراج متن درس‌نامه
-                        entry_content = soup.find("div", class_=lambda c: c and any(k in c for k in ["entry-content", "post-content", "article__body", "article-content"]))
+                        entry_content = soup.find("div", class_=lambda c: c and any(k in c for k in ["content-markdown--card", "entry-content", "post-content", "article__body", "article-content"]))
                         if entry_content:
                             p_nodes = [p.get_text(strip=True) for p in entry_content.find_all("p") if len(p.get_text(strip=True)) > 25]
                             if p_nodes:
