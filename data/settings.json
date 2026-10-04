@@ -38,7 +38,7 @@
   "INVITE_FRIENDS_TEXT": "با دعوت از دوستانتان ۲۰ درصد هدیه بگیرید",
   "MAX_SAFE_BALE_SIZE_MB": "48.5",
   "TEST_SCOPE_KEY": "test_scope_val",
-  "FEED_AUTH_EMAIL": "",
-  "FEED_AUTH_PASSWORD": "",
-  "FEED_AUTH_COOKIE": "test"
+  "FEED_AUTH_EMAIL": "test@test.com",
+  "FEED_AUTH_PASSWORD": "test",
+  "FEED_AUTH_COOKIE": ""
 }

@@ -10689,11 +10689,9 @@ async def handle_crawler_save_auth_async(payload: dict) -> dict:
     from services.feed_crawler import FeedAuthManager
     await FeedAuthManager.invalidate_session()
     
-    res = await FeedAuthManager.test_connection()
-    if res.get("success"):
-        return {"success": True, "message": "نشست با موفقیت ذخیره و فعال شد!"}
-    else:
-        return {"success": False, "message": res.get("message", "خطا در تأیید نشست.")}
+    # Just save and return success. 
+    # Don't block the save on the network connection test.
+    return {"success": True, "message": "اطلاعات نشست با موفقیت ذخیره شد. برای اطمینان می‌توانید دکمه تست اتصال را بزنید."}
 
 def handle_crawler_save_auth(payload: dict) -> dict:
     return _run_sync(handle_crawler_save_auth_async(payload))

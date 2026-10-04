@@ -453,7 +453,8 @@ async def _fetch_single_article(
                     if og_img and og_img.get("content"):
                         og_content = og_img["content"].strip()
                         # اولویت با کاور اصلی مقاله است مگر اینکه عکس پیش‌فرض سایت (og-default) باشد
-                        if not cover_url or "og-default" not in og_content:
+                        og_content = og_content.replace("/storage//storage/", "/storage/")
+                        if not cover_url or "og-default" in cover_url:
                             cover_url = og_content
 
                     # ۱. جستجو در تگ‌های ویدیو و سورس
@@ -478,7 +479,8 @@ async def _fetch_single_article(
                     img_m = re.search(r'property="og:image"\s+content="([^"]+)"', html)
                     if img_m:
                         og_content = img_m.group(1).strip()
-                        if not cover_url or "og-default" not in og_content:
+                        og_content = og_content.replace("/storage//storage/", "/storage/")
+                        if not cover_url or "og-default" in cover_url:
                             cover_url = og_content
                     for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
                         h = re.sub(r"^rhttp", "http", m.group(1).strip())

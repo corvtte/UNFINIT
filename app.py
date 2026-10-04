@@ -817,40 +817,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": False, "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
             return
-        elif path == "/api/crawler/save-auth":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.web_panel import handle_crawler_save_auth_async
-                res = loop.run_until_complete(handle_crawler_save_auth_async(payload))
-                loop.close()
-                self.send_response(200 if res.get("success") else 400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e), "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
-            return
-        elif path == "/api/crawler/test-auth":
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                from services.web_panel import handle_crawler_test_auth_async
-                res = loop.run_until_complete(handle_crawler_test_auth_async(payload))
-                loop.close()
-                self.send_response(200 if res.get("success") else 400)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e), "authenticated": False}, ensure_ascii=False).encode("utf-8"))
-            return
         elif path == "/api/feed/sync":
             try:
                 loop = asyncio.new_event_loop()
@@ -2700,6 +2666,40 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 self.send_response(302)
                 self.send_header("Location", f"/store?payment=failed&order_id={urllib.parse.quote(order_id)}&error={urllib.parse.quote(str(e) or repr(e))}")
                 self.end_headers()
+            return
+        elif path == "/api/crawler/save-auth":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                from services.web_panel import handle_crawler_save_auth_async
+                res = loop.run_until_complete(handle_crawler_save_auth_async(payload))
+                loop.close()
+                self.send_response(200 if res.get("success") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e), "error": str(e) or repr(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+        elif path == "/api/crawler/test-auth":
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                from services.web_panel import handle_crawler_test_auth_async
+                res = loop.run_until_complete(handle_crawler_test_auth_async(payload))
+                loop.close()
+                self.send_response(200 if res.get("success") else 400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "message": str(e) or repr(e), "authenticated": False}, ensure_ascii=False).encode("utf-8"))
             return
         else:
             self.send_response(200)
