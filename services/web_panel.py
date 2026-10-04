@@ -9651,9 +9651,16 @@ def render_dashboard_html() -> str:
                             </button>
                         </div>
                     </div>
-                    <button type="button" onclick="saveQuickFeedAuth(this)" class="w-full mt-2 py-2.5 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-2">
-                        <span>ذخیره و تست اتصال</span>
-                    </button>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" onclick="saveQuickFeedAuth(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                            <span>ذخیره نشست</span>
+                        </button>
+                        <button type="button" onclick="testCrawlerConnection(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-slate-700 hover:bg-slate-600 text-white transition flex justify-center items-center gap-1.5" style="background: var(--button-bg, #334155);">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>تست اتصال</span>
+                        </button>
+                    </div>
                     <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
                 </div>
             </div>
@@ -12019,9 +12026,16 @@ def render_storefront_html() -> str:
                             </button>
                         </div>
                     </div>
-                    <button type="button" onclick="saveQuickFeedAuth(this)" class="w-full mt-2 py-2.5 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-2">
-                        <span>ذخیره و تست اتصال</span>
-                    </button>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" onclick="saveQuickFeedAuth(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-orange-600 hover:bg-orange-500 text-white transition flex justify-center items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                            <span>ذخیره نشست</span>
+                        </button>
+                        <button type="button" onclick="testCrawlerConnection(this)" class="flex-1 py-2 rounded-xl text-sm font-bold bg-slate-700 hover:bg-slate-600 text-white transition flex justify-center items-center gap-1.5" style="background: var(--button-bg, #334155);">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>تست اتصال</span>
+                        </button>
+                    </div>
                     <div id="quickFeedAuthResult" class="hidden mt-2 p-3 rounded-xl text-[10px] font-mono border text-left whitespace-pre-wrap break-all" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);"></div>
                 </div>
             </div>

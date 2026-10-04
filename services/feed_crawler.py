@@ -318,7 +318,8 @@ class FeedAuthManager:
                         extracted_cookies[k] = v
             
             if extracted_cookies:
-                session.cookie_jar.update_cookies(extracted_cookies)
+                import yarl
+                session.cookie_jar.update_cookies(extracted_cookies, response_url=yarl.URL("https://abasmanesh.com"))
                 
             try:
                 async with session.get("https://abasmanesh.com/fa/profile/", allow_redirects=False, timeout=10) as profile_resp:
@@ -340,7 +341,7 @@ class FeedAuthManager:
                 html = await resp.text()
                 if "خروج" in html or "پروفایل" in html:
                     return True
-                match = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
+                match = re.search(r'name="_token"\s+value="([^"]+)"', html)
                 csrf = match.group(1) if match else ""
             
             headers = dict(session.headers)
@@ -351,10 +352,11 @@ class FeedAuthManager:
             })
             
             payload = {
-                "csrf_token": csrf,
-                "email": username.strip(),
+                "_token": csrf,
+                "login_method": "email",
+                "identifier": username.strip(),
                 "password": password.strip(),
-                "remember": "on"
+                "remember_me": "1"
             }
             
             async with session.post("https://abasmanesh.com/fa/login/", data=payload, headers=headers, timeout=15) as post_resp:
