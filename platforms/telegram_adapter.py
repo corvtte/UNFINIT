@@ -1425,7 +1425,7 @@ class TelegramAdapter:
                         except Exception as e_send_loc:
                             logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
 
-                    if sent_audio_ok:
+                    if sent_audio_ok and not video_url:
                         try:
                             await wait_msg.delete()
                         except Exception:
@@ -1896,15 +1896,11 @@ class TelegramAdapter:
             if dl_row:
                 btns.append(dl_row)
 
-            # اگر محتوا صرفاً ویدیویی باشد، دکمه اختصاصی استخراج لاین صوتی پریمیوم
-            if has_video and not has_native_audio:
-                btns.append([InlineKeyboardButton("✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio")])
-
             site_row = []
             if has_native_audio:
-                site_row.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت از سرور سایت", url=audio_url))
+                site_row.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت", url=audio_url))
             if has_video:
-                site_row.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو از سرور سایت", url=video_url))
+                site_row.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو", url=video_url))
             if site_row:
                 btns.append(site_row)
 

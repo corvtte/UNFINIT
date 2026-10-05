@@ -2570,15 +2570,11 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         if dl_row:
                                             btns.append(dl_row)
 
-                                        # اگر محتوا صرفاً ویدیویی باشد، دکمه اختصاصی استخراج لاین صوتی پریمیوم
-                                        if has_video and not has_native_audio:
-                                            btns.append([{"text": "✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"}])
-
                                         site_row = []
                                         if has_native_audio:
-                                            site_row.append({"text": "🎧 دانلود مستقیم صوت از سرور سایت", "url": audio_url})
+                                            site_row.append({"text": "🎧 دانلود مستقیم صوت", "url": audio_url})
                                         if has_video:
-                                            site_row.append({"text": "🎬 دانلود مستقیم ویدیو از سرور سایت", "url": video_url})
+                                            site_row.append({"text": "🎬 دانلود مستقیم ویدیو", "url": video_url})
                                         if site_row:
                                             btns.append(site_row)
 
