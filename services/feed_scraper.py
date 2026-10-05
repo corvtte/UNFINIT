@@ -472,67 +472,93 @@ def _extract_articles_from_html(html: str, limit: int = 100) -> tuple[List[tuple
 # خروجی: دیکشنری استاندارد مشخصات و رسانه‌های مقاله
 # ==============================================================================
 async def _fetch_single_article(
-    session: aiohttp.ClientSession,
-    url: str,
-    title: str,
+    session: Optional[aiohttp.ClientSession] = None,
+    url: str = "",
+    title: str = "",
     card_cover: str = "",
     card_tag: str = ""
 ) -> Dict[str, Any]:
     """
     صفحه مفصل مقاله را دریافت کرده و لینک‌های قطعی MP3 و MP4 و کاور باکیفیت را استخراج می‌کند.
+    پشتیبانی همزمان از ارسال یا عدم ارسال session، و فالبک خودکار به FeedAuthManager در برابر کلودفلر.
     """
+    if isinstance(session, str):
+        card_tag = card_cover
+        card_cover = title
+        title = url
+        url = session
+        session = None
+
     audio_dl = ""
     video_dl = ""
     cover_url = card_cover or ""
+    soup = None
 
     clean_url = url.split("?")[0]
+    html = ""
     try:
-        async with session.get(clean_url, timeout=aiohttp.ClientTimeout(total=12)) as resp:
-            if resp.status == 200:
-                html = await resp.text()
-                if BeautifulSoup:
-                    soup = BeautifulSoup(html, "html.parser")
-                    og_img = soup.find("meta", property="og:image")
-                    if og_img and og_img.get("content"):
-                        og_content = og_img["content"].strip()
-                        # اولویت با کاور اصلی مقاله است مگر اینکه عکس پیش‌فرض سایت (og-default) باشد
-                        og_content = og_content.replace("/storage//storage/", "/storage/")
-                        if not cover_url or "og-default" in cover_url:
-                            cover_url = og_content
+        if session and hasattr(session, "get"):
+            try:
+                async with session.get(clean_url, timeout=aiohttp.ClientTimeout(total=12)) as resp:
+                    if resp.status == 200:
+                        html = await resp.text()
+            except Exception:
+                pass
 
-                    # ۱. جستجو در تگ‌های ویدیو و سورس
-                    for v in soup.find_all(["video", "source"]):
-                        v_src = (v.get("src") or v.get("data-src") or "").strip()
-                        if v_src and ".mp4" in v_src and not video_dl:
-                            video_dl = re.sub(r"^rhttp", "http", v_src)
+        if not html:
+            from services.feed_crawler import FeedAuthManager
+            status, html_auth = await FeedAuthManager.fetch_html_with_auth(clean_url, timeout=15)
+            if status == 200 and html_auth:
+                html = html_auth
 
-                    # ۲. جستجو در تگ‌های a برای دانلود مستقیم با اولویت قطعی cdnir
-                    for a in soup.find_all("a", href=True):
-                        h = a["href"].strip()
-                        if "download.php?url=" in h or (".mp3" in h and "http" in h) or (".mp4" in h and "http" in h):
-                            clean_h = re.sub(r"^rhttp", "http", h)
-                            # تبدیل دامنه قدیمی یا کند cdneu به CDN پایدار و پرسرعت cdnir
-                            if "cdneu.abasmanesh.com" in clean_h:
-                                clean_h = clean_h.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com")
-                            if ".mp3" in clean_h and not audio_dl:
-                                audio_dl = clean_h
-                            elif ".mp4" in clean_h and not video_dl:
-                                video_dl = clean_h
-                else:
-                    img_m = re.search(r'property="og:image"\s+content="([^"]+)"', html)
-                    if img_m:
-                        og_content = img_m.group(1).strip()
-                        og_content = og_content.replace("/storage//storage/", "/storage/")
-                        if not cover_url or "og-default" in cover_url:
-                            cover_url = og_content
-                    for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
-                        h = re.sub(r"^rhttp", "http", m.group(1).strip())
-                        if "cdneu.abasmanesh.com" in h:
-                            h = h.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com")
-                        if ".mp3" in h and not audio_dl:
-                            audio_dl = h
-                        elif ".mp4" in h and not video_dl:
-                            video_dl = h
+        if html:
+            if BeautifulSoup:
+                soup = BeautifulSoup(html, "html.parser")
+                og_img = soup.find("meta", property="og:image")
+                if og_img and og_img.get("content"):
+                    og_content = og_img["content"].strip()
+                    og_content = og_content.replace("/storage//storage/", "/storage/")
+                    if not cover_url or "og-default" in cover_url:
+                        cover_url = og_content
+
+                # ۱. جستجو در تگ‌های ویدیو و سورس
+                for v in soup.find_all(["video", "source"]):
+                    v_src = (v.get("src") or v.get("data-src") or "").strip()
+                    if v_src and ".mp4" in v_src and not video_dl:
+                        video_dl = re.sub(r"^rhttp", "http", v_src)
+
+                # ۲. جستجو در تگ‌های صوت
+                for a_tag in soup.find_all(["audio", "source"]):
+                    a_src = (a_tag.get("src") or a_tag.get("data-src") or "").strip()
+                    if a_src and (".mp3" in a_src or ".m4a" in a_src) and not audio_dl:
+                        audio_dl = re.sub(r"^rhttp", "http", a_src)
+
+                # ۳. جستجو در تگ‌های a برای دانلود مستقیم با اولویت قطعی cdnir
+                for a in soup.find_all("a", href=True):
+                    h = a["href"].strip()
+                    if "download.php?url=" in h or (".mp3" in h and "http" in h) or (".mp4" in h and "http" in h) or (".m4a" in h and "http" in h):
+                        clean_h = re.sub(r"^rhttp", "http", h)
+                        if "cdneu.abasmanesh.com" in clean_h:
+                            clean_h = clean_h.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com")
+                        if (".mp3" in clean_h or ".m4a" in clean_h) and not audio_dl:
+                            audio_dl = clean_h
+                        elif ".mp4" in clean_h and not video_dl:
+                            video_dl = clean_h
+            else:
+                img_m = re.search(r'property="og:image"\s+content="([^"]+)"', html)
+                if img_m:
+                    og_content = img_m.group(1).strip()
+                    og_content = og_content.replace("/storage//storage/", "/storage/")
+                    if not cover_url or "og-default" in cover_url:
+                        cover_url = og_content
+                for m in re.finditer(r'(?:href|src)=["\']([^"\']*(?:\.mp4|\.mp3|download\.php\?url=[^"\']+))["\']', html):
+                    h = re.sub(r"^rhttp", "http", m.group(1).strip())
+                    if "cdneu.abasmanesh.com" in h:
+                        h = h.replace("cdneu.abasmanesh.com", "cdnir.abasmanesh.com")
+                    if ".mp3" in h and not audio_dl:
+                        audio_dl = h
+                    elif ".mp4" in h and not video_dl:
+                        video_dl = h
     except Exception as e:
         logger.debug(f"[feed_scraper] Error inspecting article {clean_url}: {e}")
 

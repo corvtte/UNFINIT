@@ -2513,7 +2513,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         continue
 
                                     if cb_data.startswith("bale:vip_ep:"):
-                                        from services.feed_scraper import feed_scraper
+                                        from services.feed_scraper import feed_scraper, _fetch_single_article
                                         parts = cb_data.split(":")
                                         cat_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 1
                                         page = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
@@ -2526,29 +2526,65 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             continue
 
                                         ep = episodes[ep_idx]
+
+                                        # غنی‌سازی هوشمند در صورت ناقص بودن لینک‌های دانلود یا متن درس
+                                        if not ep.get("audio_download_url") and not ep.get("video_download_url") or not ep.get("lesson_text"):
+                                            page_url = ep.get("page_url") or ep.get("source_url") or ep.get("url")
+                                            if page_url and "abasmanesh.com" in page_url:
+                                                try:
+                                                    enriched = await _fetch_single_article(None, page_url, ep.get("title", ""))
+                                                    if enriched:
+                                                        ep.update(enriched)
+                                                except Exception as e_enr:
+                                                    logger.debug(f"[bale_vip_ep] Error enriching: {e_enr}")
+
+                                        title = ep.get("title", "")
+                                        cat_name = res.get("category", {}).get("title", "")
+                                        lesson_txt = (ep.get("lesson_text") or "").strip()
+                                        chapters = ep.get("chapters") or []
+
                                         txt = (
-                                            f"💎 <b>{escape(ep.get('title', ''))}</b>\n\n"
-                                            f"📂 دسته‌بندی: <b>{escape(res.get('category', {}).get('title', ''))}</b>\n"
+                                            f"💎 <b>{escape(title)}</b>\n\n"
+                                            f"📂 دسته‌بندی: <b>{escape(cat_name)}</b>\n"
                                         )
-                                        if ep.get("chapters"):
-                                            txt += "\n📌 <b>سرفصل‌های این بخش:</b>\n" + "\n".join(f"▫️ {c}" for c in ep["chapters"][:3]) + "\n"
+                                        if lesson_txt:
+                                            short_lesson = lesson_txt[:600] + ("..." if len(lesson_txt) > 600 else "")
+                                            txt += f"\n📝 <b>گزیده پیام و آموزش درس:</b>\n<i>«{short_lesson}»</i>\n"
+                                        if chapters:
+                                            txt += "\n📖 <b>سرفصل‌های آگاهی این فایل:</b>\n" + "\n".join(f"▫️ {c}" for c in chapters[:4]) + "\n"
 
                                         txt += "\nفرمت مورد نظر جهت دریافت مستقیم را انتخاب فرمایید:"
                                         btns = []
                                         dl_row = []
-                                        has_native_audio = bool(ep.get("audio_download_url") or ep.get("audio_url"))
-                                        has_video = bool(ep.get("video_download_url") or ep.get("video_url"))
+                                        audio_url = (ep.get("audio_download_url") or ep.get("audio_url") or "").strip()
+                                        video_url = (ep.get("video_download_url") or ep.get("video_url") or "").strip()
+                                        page_link = ep.get("page_url") or ep.get("source_url") or ""
+                                        has_native_audio = bool(audio_url and not (".mp4" in audio_url.lower()))
+                                        has_video = bool(video_url)
 
                                         if has_native_audio:
                                             dl_row.append({"text": "🎧 دریافت صوت (MP3)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"})
-                                        elif has_video:
-                                            dl_row.append({"text": "🎧 دریافت نسخه صوتی (MP3)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"})
-
                                         if has_video:
                                             dl_row.append({"text": "🎬 دریافت ویدیو (MP4)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:video"})
 
                                         if dl_row:
                                             btns.append(dl_row)
+
+                                        # اگر محتوا صرفاً ویدیویی باشد، دکمه اختصاصی استخراج لاین صوتی پریمیوم
+                                        if has_video and not has_native_audio:
+                                            btns.append([{"text": "✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", "callback_data": f"bale:vip_dl:{cat_id}:{page}:{ep_idx}:audio"}])
+
+                                        site_row = []
+                                        if has_native_audio:
+                                            site_row.append({"text": "🎧 دانلود مستقیم صوت از سرور سایت", "url": audio_url})
+                                        if has_video:
+                                            site_row.append({"text": "🎬 دانلود مستقیم ویدیو از سرور سایت", "url": video_url})
+                                        if site_row:
+                                            btns.append(site_row)
+
+                                        if page_link:
+                                            btns.append([{"text": "🌐 مشاهده کامل در سایت", "url": page_link}])
+
                                         btns.append([{"text": "🔙 بازگشت به لیست جلسات", "callback_data": f"bale:vip_cat:{cat_id}:{page}"}])
                                         await bale.send_message(chat_id, txt, reply_markup={"inline_keyboard": btns})
                                         continue
@@ -2662,6 +2698,84 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             if target_path.exists():
                                                 try: target_path.unlink()
                                                 except Exception: pass
+                                    if cb_data == "bale:sign_extract_audio":
+                                        from core.sign_service import SignService
+                                        from core.database import db_get_cached_file_id, db_set_cached_file_id, get_system_setting
+                                        if not UserService.is_user_vip(chat_id):
+                                            await bale.send_message(chat_id, "🔒 استخراج لاین صوتی با بالاترین کیفیت مختص اعضای دارای اشتراک پریمیوم می‌باشد.")
+                                            continue
+
+                                        sign = await SignService.get_user_today_sign(chat_id)
+                                        video_url = (sign.get("video_url") or "").strip()
+                                        if not video_url:
+                                            await bale.send_message(chat_id, "❌ لینک ویدیویی جهت استخراج صوت یافت نشد.")
+                                            continue
+
+                                        audio_key = f"sign_audio_extracted_{abs(hash(video_url))}"
+                                        cached_fid = await db_get_cached_file_id(audio_key, "bale")
+                                        reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
+                                        perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
+
+                                        if cached_fid:
+                                            try:
+                                                await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    file_path=cached_fid,
+                                                    title=sign.get("title", "نشانه امروز من"),
+                                                    performer=perf_title,
+                                                    caption=f"🎧 <b>نسخه صوتی با کیفیت (استخراج شده از ویدیو)</b>\n💎 نشانه اختصاصی پریمیوم\n\n✨ <b>{escape(sign.get('title', ''))}</b>"
+                                                )
+                                                continue
+                                            except Exception as ex_cf:
+                                                logger.warning(f"[bale_sign_extract] Send cached audio failed: {ex_cf}")
+
+                                        await bale.send_message(chat_id, "⏳ <i>در حال استخراج لاین صوتی باکیفیت از فایل سریال با موتور FFmpeg...</i>")
+                                        vid_path = config.TEMP_DIR / f"sign_bale_ext_vid_{uuid.uuid4().hex[:8]}.mp4"
+                                        mp3_path = config.TEMP_DIR / f"sign_bale_ext_aud_{uuid.uuid4().hex[:8]}.mp3"
+                                        vid_path.parent.mkdir(parents=True, exist_ok=True)
+                                        try:
+                                            from services.url_service import UrlService
+                                            dl_ok = await UrlService.download_file_stream(video_url, vid_path)
+                                            if not dl_ok or not vid_path.exists():
+                                                await bale.send_message(chat_id, "❌ خطا در دریافت فایل ویدیو از سرور سایت.")
+                                                continue
+
+                                            cmd = ["ffmpeg", "-y", "-i", str(vid_path), "-vn", "-c:a", "libmp3lame", "-b:a", "192k", str(mp3_path)]
+                                            proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                                            await proc.communicate()
+
+                                            if mp3_path.exists() and mp3_path.stat().st_size > 1000:
+                                                try:
+                                                    from mutagen.easyid3 import EasyID3
+                                                    from mutagen.mp3 import MP3
+                                                    audio_meta = MP3(str(mp3_path), ID3=EasyID3)
+                                                    if perf_title:
+                                                        audio_meta["artist"] = perf_title
+                                                    if sign.get("title"):
+                                                        audio_meta["title"] = str(sign["title"])
+                                                    audio_meta.save()
+                                                except Exception:
+                                                    pass
+
+                                                resp = await bale.send_audio(
+                                                    chat_id=chat_id,
+                                                    file_path=str(mp3_path),
+                                                    title=sign.get("title", "نشانه امروز من"),
+                                                    performer=perf_title,
+                                                    caption=f"🎧 <b>نسخه صوتی با کیفیت (استخراج شده از ویدیو)</b>\n💎 نشانه اختصاصی پریمیوم\n\n✨ <b>{escape(sign.get('title', ''))}</b>"
+                                                )
+                                                if resp and isinstance(resp, dict):
+                                                    res_obj = resp.get("result", {})
+                                                    fid = (res_obj.get("audio") or {}).get("file_id") or (res_obj.get("document") or {}).get("file_id")
+                                                    if fid:
+                                                        await db_set_cached_file_id(audio_key, "bale", fid, "audio")
+                                            else:
+                                                await bale.send_message(chat_id, "❌ خطا در فرآیند استخراج صوت از ویدیو.")
+                                        finally:
+                                            try: vid_path.unlink()
+                                            except Exception: pass
+                                            try: mp3_path.unlink()
+                                            except Exception: pass
                                         continue
 
                                     if cb_data in ("bale:prods_hub", "bale:prods_back"):
@@ -3375,14 +3489,14 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     bale_msg = (
                                                         caption + "\n\n"
                                                         "🎬 <b>توجه: نشانه امروز شما یک محتوای اختصاصی تصویری و سریالی است.</b>\n\n"
-                                                        "ارسال مستقیم و دریافت نسخه صوتی و ویدیویی این سریال در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                                                        "ارسال مستقیم و دریافت این فایل ویدیویی در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
                                                         "جهت دسترسی به این قسمت و تمامی سریال‌ها و آموزش‌ها، اشتراک پریمیوم خود را فعال فرمایید:"
                                                     )
                                                 else:
                                                     bale_msg = (
                                                         caption + "\n\n"
                                                         "💎 <b>کاربر گرامی پریمیوم؛</b>\n"
-                                                        "این نشانه یک محتوای تصویری است. جهت مشاهده و دانلود مستقیم، از گزینه‌های زیر استفاده فرمایید:"
+                                                        "این نشانه یک محتوای اختصاصی تصویری است. جهت مشاهده و دانلود با نهایت سرعت یا استخراج صوت، از گزینه‌های زیر استفاده فرمایید:"
                                                     )
                                                 await bale.send_message(chat_id, bale_msg, reply_markup=sign_kb)
                                             else:

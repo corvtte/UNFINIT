@@ -121,6 +121,8 @@ class SignService:
             and (cached_sign.get("audio_url") or cached_sign.get("video_url"))
             and cached_sign.get("lesson_text")
         ):
+            if not cached_sign.get("created_at"):
+                cached_sign["created_at"] = user_entry.get("created_at") or user_entry.get("updated_at") or time.time()
             logger.debug(f"[sign_service] Serving cached sign for user {uid} on {today}")
             return cached_sign
 
@@ -153,7 +155,7 @@ class SignService:
         if p_url and (not selected.get("lesson_text") or not selected.get("audio_download_url")):
             try:
                 from services.feed_scraper import _fetch_single_article
-                full_art = await _fetch_single_article(p_url, title=selected.get("title", ""), tag=selected.get("tag", ""))
+                full_art = await _fetch_single_article(None, p_url, title=selected.get("title", ""), card_tag=selected.get("tag", ""))
                 if full_art:
                     selected.update(full_art)
             except Exception as art_err:
@@ -180,16 +182,19 @@ class SignService:
             elif ".mp4" in direct_dl.lower() and not raw_video:
                 raw_video = direct_dl
 
+        now_ts = time.time()
         sign_data = {
             "title": selected.get("title", "نشانه هدایت و آرامش امروز شما"),
             "tag": selected.get("tag", "فایل دانلودی"),
             "lesson_text": selected.get("lesson_text", ""),
+            "chapters": selected.get("chapters", []),
             "audio_url": raw_audio,
             "video_url": raw_video,
             "page_url": selected.get("page_url", "https://abasmanesh.com/fa/articles/"),
             "cover_url": selected.get("cover_url", ""),
             "page_number": target_page,
             "date": today,
+            "created_at": now_ts,
             "user_id": uid
         }
 
@@ -197,7 +202,8 @@ class SignService:
         cache[uid] = {
             "date": today,
             "sign": sign_data,
-            "updated_at": time.time()
+            "created_at": now_ts,
+            "updated_at": now_ts
         }
         cls._save_user_cache(cache)
 
@@ -238,12 +244,21 @@ class SignService:
         has_audio = bool(sign_data.get("audio_url"))
         has_video = bool(sign_data.get("video_url"))
 
-        # ۱. تاریخ کوتاه شمسی و ساعت انقضای ۲۴ ساعته اختصاصی
+        # ۱. تاریخ کوتاه شمسی و ساعت انقضای ۲۴ ساعته اختصاصی بر مبنای زمان صدور نشانه
         now = datetime.now(TEHRAN_TZ)
         from core.jalali import format_to_jalali, to_persian_digits
         from datetime import timedelta
-        date_str = to_persian_digits(format_to_jalali(now).split(" - ")[0])
-        exp_dt = now + timedelta(hours=24)
+        created_ts = sign_data.get("created_at")
+        if created_ts:
+            try:
+                gen_dt = datetime.fromtimestamp(float(created_ts), TEHRAN_TZ)
+            except Exception:
+                gen_dt = now
+        else:
+            gen_dt = now
+
+        date_str = to_persian_digits(format_to_jalali(gen_dt).split(" - ")[0])
+        exp_dt = gen_dt + timedelta(hours=24)
         exp_time = to_persian_digits(exp_dt.strftime("%H:%M"))
         date_badge = f"📅 <b>تاریخ:</b> {date_str} | ⏳ <b>اعتبار:</b> تا فردا ساعت {exp_time}"
 
@@ -305,15 +320,21 @@ class SignService:
             if is_video_only and not is_vip:
                 # برای کاربر عادی در محتوای ویدیویی، هیچ لینک مستقیمی نمایش داده نمی‌شود
                 rows.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="tg:vip_plan")])
+                rows.append([InlineKeyboardButton("🌐 مشاهده کامل در سایت", url=page_url)])
                 return InlineKeyboardMarkup(rows)
 
             row1 = []
             if audio_url and not (".mp4" in audio_url.lower()):
-                row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت", url=audio_url))
+                row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت از سرور سایت", url=audio_url))
             if video_url:
-                row1.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو", url=video_url))
+                row1.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو از سرور سایت", url=video_url))
             if row1:
                 rows.append(row1)
+
+            # دکمه استخراج لاین صوتی با کیفیت مختص اعضای پریمیوم در صورت ویدیویی بودن
+            if is_video_only and is_vip:
+                rows.append([InlineKeyboardButton("✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", callback_data="tg:sign_extract_audio")])
+
             rows.append([InlineKeyboardButton("🌐 مشاهده کامل در سایت", url=page_url)])
             if not is_vip:
                 rows.append([InlineKeyboardButton("💎 عضویت در اشتراک پریمیوم", callback_data="tg:vip_plan")])
@@ -323,15 +344,20 @@ class SignService:
             if is_video_only and not is_vip:
                 # برای کاربر عادی در محتوای ویدیویی در بله
                 rows.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
+                rows.append([{"text": "🌐 مشاهده کامل در سایت", "url": page_url}])
                 return {"inline_keyboard": rows}
 
             row1 = []
             if audio_url and not (".mp4" in audio_url.lower()):
-                row1.append({"text": "🎧 دانلود مستقیم صوت", "url": audio_url})
+                row1.append({"text": "🎧 دانلود مستقیم صوت از سرور سایت", "url": audio_url})
             if video_url:
-                row1.append({"text": "🎬 دانلود مستقیم ویدیو", "url": video_url})
+                row1.append({"text": "🎬 دانلود مستقیم ویدیو از سرور سایت", "url": video_url})
             if row1:
                 rows.append(row1)
+
+            if is_video_only and is_vip:
+                rows.append([{"text": "✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", "callback_data": "bale:sign_extract_audio"}])
+
             rows.append([{"text": "🌐 مشاهده کامل در سایت", "url": page_url}])
             if not is_vip:
                 rows.append([{"text": "💎 عضویت در اشتراک پریمیوم", "callback_data": "vip_club_info"}])
@@ -378,6 +404,17 @@ class SignService:
                 logger.info(f"[sign_service] Downloading sign audio locally: {audio_url} -> {dest_file.name}")
                 ok = await UrlService.download_file_stream(audio_url, dest_file)
                 if ok and dest_file.exists() and dest_file.stat().st_size > 1024:
+                    # بررسی اعتبارسنجی بایت‌های فایل صوتی جهت جلوگیری از کش شدن صفحات HTML خطای سرور
+                    try:
+                        with open(dest_file, "rb") as check_f:
+                            head = check_f.read(100)
+                            if b"<!DOCTYPE" in head or b"<html" in head.lower():
+                                logger.warning(f"[sign_service] Downloaded file is HTML error, discarding: {audio_url}")
+                                dest_file.unlink(missing_ok=True)
+                                continue
+                    except Exception:
+                        pass
+
                     logger.info(f"[sign_service] Sign audio cached successfully: {dest_file} ({dest_file.stat().st_size} bytes)")
                     if dest_file.suffix.lower() == ".mp3":
                         try:

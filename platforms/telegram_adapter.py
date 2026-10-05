@@ -1438,7 +1438,7 @@ class TelegramAdapter:
                         vip_prompt = (
                             caption + "\n\n"
                             "🎬 <b>توجه: نشانه امروز شما یک محتوای اختصاصی تصویری و سریالی است.</b>\n\n"
-                            "ارسال مستقیم و دریافت نسخه صوتی و ویدیویی این سریال در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
+                            "ارسال مستقیم و دریافت این فایل ویدیویی در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
                             "جهت دسترسی به این قسمت و تمامی سریال‌ها و آموزش‌ها، اشتراک پریمیوم خود را فعال فرمایید:"
                         )
                         try:
@@ -1447,16 +1447,60 @@ class TelegramAdapter:
                             await message.reply_text(vip_prompt, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
                         return
                     else:
-                        vip_msg = (
-                            caption + "\n\n"
-                            "💎 <b>کاربر گرامی پریمیوم؛</b>\n"
-                            "این نشانه یک محتوای اختصاصی تصویری است. جهت مشاهده و دانلود با نهایت سرعت، از دکمه‌های مستقیم زیر استفاده فرمایید:"
-                        )
+                        from core.database import db_get_cached_file_id, db_set_cached_file_id
+                        file_key = f"sign_video_{abs(hash(video_url))}"
+                        cached_vid_fid = await db_get_cached_file_id(file_key, "telegram")
+                        if cached_vid_fid:
+                            try:
+                                await message.reply_video(
+                                    video=cached_vid_fid,
+                                    caption=caption,
+                                    reply_markup=vip_kb,
+                                    parse_mode=enums.ParseMode.HTML
+                                )
+                                try: await wait_msg.delete()
+                                except Exception: pass
+                                return
+                            except Exception as e_cached_v:
+                                logger.warning(f"[tg_sign] Failed sending cached video file_id: {e_cached_v}")
+
                         try:
-                            await wait_msg.edit_text(vip_msg, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                            await wait_msg.edit_text(
+                                f"⏳ <b>در حال دریافت و ارسال ویدیو نشانه امروز...</b>\n\n"
+                                f"🎬 <b>{escape(sign.get('title', ''))}</b>\n"
+                                f"<i>لطفاً چند لحظه شکیبا باشید...</i>",
+                                parse_mode=enums.ParseMode.HTML
+                            )
                         except Exception:
-                            await message.reply_text(vip_msg, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
-                        return
+                            pass
+
+                        local_video_path = config.TEMP_DIR / f"sign_vid_{uuid.uuid4().hex[:8]}.mp4"
+                        local_video_path.parent.mkdir(parents=True, exist_ok=True)
+                        from services.url_service import UrlService
+                        dl_ok = await UrlService.download_file_stream(video_url, local_video_path)
+                        if dl_ok and local_video_path.exists() and local_video_path.stat().st_size > 1024:
+                            try:
+                                sent_v = await message.reply_video(
+                                    video=str(local_video_path),
+                                    caption=caption,
+                                    reply_markup=vip_kb,
+                                    parse_mode=enums.ParseMode.HTML
+                                )
+                                if sent_v and sent_v.video:
+                                    await db_set_cached_file_id(file_key, "telegram", sent_v.video.file_id, "video")
+                                try: await wait_msg.delete()
+                                except Exception: pass
+                                return
+                            except Exception as e_v_snd:
+                                logger.warning(f"[tg_sign] reply_video failed: {e_v_snd}")
+                                await wait_msg.edit_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                                return
+                            finally:
+                                try: local_video_path.unlink()
+                                except Exception: pass
+                        else:
+                            await wait_msg.edit_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
+                            return
 
                 # ۳. در صورت عدم وجود مدیا یا فالبک
                 fallback_kb = vip_kb
@@ -1470,6 +1514,94 @@ class TelegramAdapter:
                     await wait_msg.edit_text("❌ متأسفانه در این لحظه دریافت نشانه میسر نشد. لطفاً دقایقی دیگر مجدداً تلاش فرمایید.", parse_mode=enums.ParseMode.HTML)
                 except Exception:
                     pass
+
+        @self.app.on_callback_query(filters.regex(r"^tg:sign_extract_audio$"))
+        async def handle_tg_sign_extract_audio(client: Client, callback_query: CallbackQuery):
+            """
+            استخراج اختصاصی لاین صوتی از فایل سریال ویدیویی برای کاربر پریمیوم با موتور FFmpeg.
+            """
+            await callback_query.answer()
+            from core.sign_service import SignService
+            from core.database import db_get_cached_file_id, db_set_cached_file_id, get_system_setting
+            from services.user_service import UserService
+
+            user_id = callback_query.from_user.id
+            if not UserService.is_user_vip(user_id):
+                await callback_query.message.reply_text("🔒 استخراج لاین صوتی با بالاترین کیفیت مختص اعضای دارای اشتراک پریمیوم می‌باشد.")
+                return
+
+            sign = await SignService.get_user_today_sign(user_id)
+            video_url = (sign.get("video_url") or "").strip()
+            if not video_url:
+                await callback_query.message.reply_text("❌ لینک ویدیویی جهت استخراج صوت یافت نشد.")
+                return
+
+            audio_key = f"sign_audio_extracted_{abs(hash(video_url))}"
+            cached_fid = await db_get_cached_file_id(audio_key, "telegram")
+            reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
+            perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
+
+            if cached_fid:
+                try:
+                    await client.send_audio(
+                        chat_id=callback_query.message.chat.id,
+                        audio=cached_fid,
+                        caption=f"🎧 <b>نسخه صوتی با کیفیت (استخراج شده از ویدیو)</b>\n💎 نشانه اختصاصی پریمیوم\n\n✨ <b>{escape(sign.get('title', ''))}</b>",
+                        title=sign.get("title", "نشانه امروز من"),
+                        performer=perf_title,
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    return
+                except Exception as e_cf:
+                    logger.warning(f"[tg_sign_extract] Send cached audio failed: {e_cf}")
+
+            status_m = await callback_query.message.reply_text("⏳ <i>در حال استخراج لاین صوتی باکیفیت از فایل سریال با موتور FFmpeg...</i>", parse_mode=enums.ParseMode.HTML)
+            vid_path = config.TEMP_DIR / f"sign_ext_vid_{uuid.uuid4().hex[:8]}.mp4"
+            mp3_path = config.TEMP_DIR / f"sign_ext_aud_{uuid.uuid4().hex[:8]}.mp3"
+            vid_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                from services.url_service import UrlService
+                dl_ok = await UrlService.download_file_stream(video_url, vid_path)
+                if not dl_ok or not vid_path.exists():
+                    await status_m.edit_text("❌ خطا در دریافت فایل ویدیو از سرور سایت.")
+                    return
+
+                cmd = ["ffmpeg", "-y", "-i", str(vid_path), "-vn", "-c:a", "libmp3lame", "-b:a", "192k", str(mp3_path)]
+                proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                await proc.communicate()
+
+                if mp3_path.exists() and mp3_path.stat().st_size > 1000:
+                    try:
+                        from mutagen.easyid3 import EasyID3
+                        from mutagen.mp3 import MP3
+                        audio_meta = MP3(str(mp3_path), ID3=EasyID3)
+                        if perf_title:
+                            audio_meta["artist"] = perf_title
+                        if sign.get("title"):
+                            audio_meta["title"] = str(sign["title"])
+                        audio_meta.save()
+                    except Exception:
+                        pass
+
+                    sent_aud = await client.send_audio(
+                        chat_id=callback_query.message.chat.id,
+                        audio=str(mp3_path),
+                        caption=f"🎧 <b>نسخه صوتی با کیفیت (استخراج شده از ویدیو)</b>\n💎 نشانه اختصاصی پریمیوم\n\n✨ <b>{escape(sign.get('title', ''))}</b>",
+                        title=sign.get("title", "نشانه امروز من"),
+                        performer=perf_title,
+                        parse_mode=enums.ParseMode.HTML
+                    )
+                    if sent_aud and sent_aud.audio:
+                        await db_set_cached_file_id(audio_key, "telegram", sent_aud.audio.file_id, "audio")
+                    try: await status_m.delete()
+                    except Exception: pass
+                else:
+                    await status_m.edit_text("❌ خطا در فرآیند استخراج صوت از ویدیو.")
+            finally:
+                try: vid_path.unlink()
+                except Exception: pass
+                try: mp3_path.unlink()
+                except Exception: pass
 
         @self.app.on_callback_query(filters.regex(r"^(vip_club_info|tg:vip_plan)$"))
         async def handle_vip_club_info_cb(client: Client, callback_query: CallbackQuery):
@@ -1708,7 +1840,7 @@ class TelegramAdapter:
             مشاهده جزییات یک مقاله و انتخاب فرمت دریافت (صوت یا ویدیو).
             """
             await callback_query.answer()
-            from services.feed_scraper import feed_scraper
+            from services.feed_scraper import feed_scraper, _fetch_single_article
             cat_id = int(callback_query.matches[0].group(1))
             page = int(callback_query.matches[0].group(2))
             ep_idx = int(callback_query.matches[0].group(3))
@@ -1720,30 +1852,65 @@ class TelegramAdapter:
                 return
 
             ep = episodes[ep_idx]
+
+            # غنی‌سازی هوشمند در صورت ناقص بودن لینک‌های دانلود یا متن درس
+            if not ep.get("audio_download_url") and not ep.get("video_download_url") or not ep.get("lesson_text"):
+                page_url = ep.get("page_url") or ep.get("source_url") or ep.get("url")
+                if page_url and "abasmanesh.com" in page_url:
+                    try:
+                        enriched = await _fetch_single_article(None, page_url, ep.get("title", ""))
+                        if enriched:
+                            ep.update(enriched)
+                    except Exception as e_enr:
+                        logger.debug(f"[tg_vip_ep] Error enriching: {e_enr}")
+
+            title = ep.get("title", "")
+            cat_name = res.get("category", {}).get("title", "")
+            lesson_txt = (ep.get("lesson_text") or "").strip()
+            chapters = ep.get("chapters") or []
+
             txt = (
-                f"💎 <b>{escape(ep.get('title', ''))}</b>\n\n"
-                f"📂 دسته‌بندی: <b>{escape(res.get('category', {}).get('title', ''))}</b>\n"
+                f"💎 <b>{escape(title)}</b>\n\n"
+                f"📂 دسته‌بندی: <b>{escape(cat_name)}</b>\n"
             )
-            if ep.get("chapters"):
-                txt += "\n📌 <b>سرفصل‌های این بخش:</b>\n" + "\n".join(f"▫️ {c}" for c in ep["chapters"][:3]) + "\n"
+            if lesson_txt:
+                short_lesson = lesson_txt[:600] + ("..." if len(lesson_txt) > 600 else "")
+                txt += f"\n📝 <b>گزیده پیام و آموزش درس:</b>\n<i>«{short_lesson}»</i>\n"
+            if chapters:
+                txt += "\n📖 <b>سرفصل‌های آگاهی این فایل:</b>\n" + "\n".join(f"▫️ {c}" for c in chapters[:4]) + "\n"
 
             txt += "\nفرمت مورد نظر جهت دریافت مستقیم را انتخاب فرمایید:"
             btns = []
             dl_row = []
-            has_native_audio = bool(ep.get("audio_download_url") or ep.get("audio_url"))
-            has_video = bool(ep.get("video_download_url") or ep.get("video_url"))
+            audio_url = (ep.get("audio_download_url") or ep.get("audio_url") or "").strip()
+            video_url = (ep.get("video_download_url") or ep.get("video_url") or "").strip()
+            page_link = ep.get("page_url") or ep.get("source_url") or ""
+            has_native_audio = bool(audio_url and not (".mp4" in audio_url.lower()))
+            has_video = bool(video_url)
 
             if has_native_audio:
                 dl_row.append(InlineKeyboardButton("🎧 دریافت صوت (MP3)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio"))
-            elif has_video:
-                # برای سریال‌ها یا فایل‌هایی که فقط ویدیویی هستند، امکان استخراج اختصاصی صوت برای کاربر پریمیوم
-                dl_row.append(InlineKeyboardButton("🎧 دریافت نسخه صوتی (MP3)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio"))
-
             if has_video:
                 dl_row.append(InlineKeyboardButton("🎬 دریافت ویدیو (MP4)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:video"))
 
             if dl_row:
                 btns.append(dl_row)
+
+            # اگر محتوا صرفاً ویدیویی باشد، دکمه اختصاصی استخراج لاین صوتی پریمیوم
+            if has_video and not has_native_audio:
+                btns.append([InlineKeyboardButton("✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", callback_data=f"tg_vip_dl:{cat_id}:{page}:{ep_idx}:audio")])
+
+            site_row = []
+            if has_native_audio:
+                site_row.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت از سرور سایت", url=audio_url))
+            if has_video:
+                site_row.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو از سرور سایت", url=video_url))
+            if site_row:
+                btns.append(site_row)
+
+            if page_link:
+                btns.append([InlineKeyboardButton("🌐 مشاهده کامل در سایت", url=page_link)])
+
             btns.append([InlineKeyboardButton("🔙 بازگشت به لیست جلسات", callback_data=f"tg_vip_cat:{cat_id}:{page}")])
 
             try:

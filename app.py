@@ -163,7 +163,7 @@ async def get_all_settings_async() -> dict:
         "RUBIKA_BOT_TOKEN": mask_secret(rubika_tok),
         "FORCE_JOIN_CHANNEL_TELEGRAM": await get_system_setting("tg_fjoin_channel", config.FORCE_JOIN_CHANNEL_TELEGRAM),
         "FORCE_JOIN_CHANNEL_BALE": await get_system_setting("bale_fjoin_channel", config.FORCE_JOIN_CHANNEL_BALE),
-        "CARD_NUMBER": mask_secret(card_num, 4, 4),
+        "CARD_NUMBER": card_num or "",
         "CARD_HOLDER": card_holder,
         "DEFAULT_ARTIST": fix_mojibake(await get_system_setting("DEFAULT_ARTIST", config.DEFAULT_ARTIST), default=config.DEFAULT_ARTIST),
         "COURSE_DESC_MAX_LEN": await get_system_setting("COURSE_DESC_MAX_LEN", str(getattr(config, "COURSE_DESC_MAX_LEN", 255))),
@@ -2740,8 +2740,6 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                 from services.feed_crawler import FeedAuthManager
                 loop.run_until_complete(FeedAuthManager.invalidate_session())
                 
-                
-                import core.config as config
                 settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
                 if settings_file.exists():
                     with open(settings_file, "r", encoding="utf-8") as f:

@@ -8884,7 +8884,7 @@ def render_dashboard_html() -> str:
             const sensitiveKeys = [
                 'TELEGRAM_BOT_TOKEN', 'BALE_BOT_TOKEN', 'BALE_PAYMENT_TOKEN',
                 'RUBIKA_BOT_TOKEN', 'AI_API_KEY', 'VYCEAI_API_KEY', 'NARA_API_KEY',
-                'GEMINI_API_KEY', 'HF_TOKEN', 'CARD_NUMBER', 'FEED_AUTH_PASSWORD', 'FEED_AUTH_COOKIE'
+                'GEMINI_API_KEY', 'HF_TOKEN', 'FEED_AUTH_PASSWORD', 'FEED_AUTH_COOKIE'
             ];
             fields.forEach(f => {{
                 const el = document.getElementById('cfg_' + f);
