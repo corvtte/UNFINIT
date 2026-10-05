@@ -608,14 +608,23 @@ async def _fetch_single_article(
             )
             if content_el:
                 p_list = []
-                for p in content_el.find_all("p"):
-                    p_txt = p.get_text(strip=True)
-                    if len(p_txt) > 25 and not any(skip in p_txt for skip in ["دیدگاه", "نظرات", "دانلود", "ثبت‌نام", "حقوق این سایت", "اشتراک"]):
-                        p_list.append(p_txt)
-                    if sum(len(x) for x in p_list) > 1200:
-                        break
+                for h in content_el.find_all(['h2', 'h3']):
+                    t = h.get_text(strip=True)
+                    if len(t) > 5 and not any(s in t for s in ['دانلود', 'دیدگاه', 'پاسخ', 'ثبت نام']):
+                        p_list.append('🔹 ' + t)
+                for li in content_el.find_all('li'):
+                    t = li.get_text(strip=True)
+                    if len(t) > 15 and not any(s in t for s in ['دانلود', 'دیدگاه', 'پاسخ']):
+                        p_list.append('✔️ ' + t)
+                if not p_list:
+                    for p in content_el.find_all("p"):
+                        p_txt = p.get_text(strip=True)
+                        if len(p_txt) > 25 and not any(skip in p_txt for skip in ['دانلود', 'خرید', 'ثبت نام', 'دیدگاه']):
+                            p_list.append(p_txt)
+                        if sum(len(x) for x in p_list) > 1200:
+                            break
                 if p_list:
-                    lesson_text = "\n\n".join(p_list[:4])
+                    lesson_text = chr(10).join(p_list[:6])
         except Exception as p_err:
             logger.debug(f"[feed_scraper] Error extracting lesson text: {p_err}")
 

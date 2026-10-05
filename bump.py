@@ -1,13 +1,11 @@
 import re
 
-def bump(filepath, old, new):
-    try:
-        text = open(filepath, encoding='utf-8').read()
-        text = re.sub(old, new, text)
-        open(filepath, 'w', encoding='utf-8').write(text)
-        print(f'Bumped {filepath}')
-    except Exception as e:
-        print(e)
+def update_version(file_path, old_ver, new_ver):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        text = f.read()
+    text = text.replace(old_ver, new_ver)
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(text)
 
-bump('AGENTS.md', r'v0\.7\.30', 'v0.7.31')
-bump('core/config.py', r'ENGINE_VERSION\s*=\s*"[^"]+"', 'ENGINE_VERSION = "v0.7.31"')
+update_version('AGENTS.md', 'v0.7.41', 'v0.7.42')
+update_version('core/config.py', 'v0.7.41', 'v0.7.42')

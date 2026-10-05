@@ -1433,7 +1433,7 @@ class TelegramAdapter:
                         return
 
                 # ۲. اگر فایل صرفاً ویدیویی باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
-                if video_url and not audio_url:
+                if video_url:
                     if not is_vip:
                         vip_prompt = (
                             caption + "\n\n"

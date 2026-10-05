@@ -2700,7 +2700,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 except Exception: pass
                                     if cb_data == "bale:sign_extract_audio":
                                         from core.sign_service import SignService
-                                        from core.database import db_get_cached_file_id, db_set_cached_file_id, get_system_setting
+                                        from core.database import db_get_cached_file_id, db_set_cached_file_id
                                         if not UserService.is_user_vip(chat_id):
                                             await bale.send_message(chat_id, "🔒 استخراج لاین صوتی با بالاترین کیفیت مختص اعضای دارای اشتراک پریمیوم می‌باشد.")
                                             continue
@@ -3479,12 +3479,11 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                             caption=caption,
                                                             reply_markup=sign_kb
                                                         )
-                                                        continue
                                                     except Exception as ex_snd:
                                                         logger.warning(f"[bale_sign] send_audio local failed: {ex_snd}")
 
                                             # ۲. اگر فایل فقط تصویری باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
-                                            if video_url and not audio_url:
+                                            if video_url:
                                                 if not is_vip:
                                                     bale_msg = (
                                                         caption + "\n\n"

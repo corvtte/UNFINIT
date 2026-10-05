@@ -325,15 +325,13 @@ class SignService:
 
             row1 = []
             if audio_url and not (".mp4" in audio_url.lower()):
-                row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت از سرور سایت", url=audio_url))
+                row1.append(InlineKeyboardButton("🎧 دانلود مستقیم صوت", url=audio_url))
             if video_url:
-                row1.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو از سرور سایت", url=video_url))
+                row1.append(InlineKeyboardButton("🎬 دانلود مستقیم ویدیو", url=video_url))
             if row1:
                 rows.append(row1)
 
             # دکمه استخراج لاین صوتی با کیفیت مختص اعضای پریمیوم در صورت ویدیویی بودن
-            if is_video_only and is_vip:
-                rows.append([InlineKeyboardButton("✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", callback_data="tg:sign_extract_audio")])
 
             rows.append([InlineKeyboardButton("🌐 مشاهده کامل در سایت", url=page_url)])
             if not is_vip:
@@ -349,14 +347,12 @@ class SignService:
 
             row1 = []
             if audio_url and not (".mp4" in audio_url.lower()):
-                row1.append({"text": "🎧 دانلود مستقیم صوت از سرور سایت", "url": audio_url})
+                row1.append({"text": "🎧 دانلود مستقیم صوت", "url": audio_url})
             if video_url:
-                row1.append({"text": "🎬 دانلود مستقیم ویدیو از سرور سایت", "url": video_url})
+                row1.append({"text": "🎬 دانلود مستقیم ویدیو", "url": video_url})
             if row1:
                 rows.append(row1)
 
-            if is_video_only and is_vip:
-                rows.append([{"text": "✨ استخراج لاین صوتی با کیفیت (مختص اعضای پریمیوم)", "callback_data": "bale:sign_extract_audio"}])
 
             rows.append([{"text": "🌐 مشاهده کامل در سایت", "url": page_url}])
             if not is_vip:
