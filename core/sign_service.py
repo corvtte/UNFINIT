@@ -433,3 +433,36 @@ class SignService:
             logger.error(f"[sign_service] Error ensuring audio downloaded: {e}")
             return None
 
+
+    @classmethod
+    async def ensure_video_downloaded(
+        cls,
+        sign_data: Dict[str, Any],
+        reader_tag: Optional[str] = None,
+        progress_callback=None
+    ) -> Optional[Path]:
+        video_url = (sign_data.get("video_url") or "").strip()
+        if not video_url:
+            return None
+
+        from pathlib import Path
+        video_path = config.TEMP_DIR / f"sign_{abs(hash(video_url))}.mp4"
+        if video_path.exists() and video_path.stat().st_size > 1000:
+            return video_path
+
+        import aiohttp
+        async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as session:
+            async with session.get(video_url, timeout=aiohttp.ClientTimeout(total=600)) as resp:
+                if resp.status == 200:
+                    total_size = int(resp.headers.get("content-length", 0))
+                    downloaded = 0
+                    with open(video_path, "wb") as f:
+                        async for chunk in resp.content.iter_chunked(128 * 1024):
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if total_size > 0 and progress_callback:
+                                await progress_callback(downloaded, total_size, (downloaded / total_size) * 100)
+
+        if video_path.exists() and video_path.stat().st_size > 1000:
+            return video_path
+        return None

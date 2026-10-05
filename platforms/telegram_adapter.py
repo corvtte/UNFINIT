@@ -1987,9 +1987,21 @@ class TelegramAdapter:
                 async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
                     async with sess.get(url, timeout=aiohttp.ClientTimeout(total=240)) as resp:
                         if resp.status == 200:
+                            total_size = int(resp.headers.get('content-length', 0))
+                            downloaded = 0
+                            last_prog_text = ""
                             with open(target_path, "wb") as f_out:
                                 async for chunk in resp.content.iter_chunked(128 * 1024):
                                     f_out.write(chunk)
+                                    downloaded += len(chunk)
+                                    if total_size > 0:
+                                        pct = (downloaded / total_size) * 100
+                                        if int(pct) % 5 == 0:
+                                            prog_text = f"⏳ <b>در حال دریافت و آماده‌سازی مستقیم از سرور...</b>\n\n✨ <b>{escape(ep.get('title', ''))}</b>\n\n⬇️ <b>دریافت:</b> <code>{pct:.1f}%</code>"
+                                            if prog_text != last_prog_text:
+                                                last_prog_text = prog_text
+                                                try: await status_msg.edit_text(prog_text, parse_mode=enums.ParseMode.HTML)
+                                                except Exception: pass
                         else:
                             await status_msg.edit_text("❌ خطا در دانلود فایل از سرور منبع.")
                             return
