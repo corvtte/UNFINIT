@@ -452,7 +452,7 @@ class SignService:
 
         import aiohttp
         async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as session:
-            async with session.get(video_url, timeout=aiohttp.ClientTimeout(total=600)) as resp:
+            async with session.get(video_url, timeout=aiohttp.ClientTimeout(total=3600, connect=30)) as resp:
                 if resp.status == 200:
                     total_size = int(resp.headers.get("content-length", 0))
                     downloaded = 0

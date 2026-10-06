@@ -1434,10 +1434,17 @@ class TelegramAdapter:
                                 logger.warning(f"[tg_sign] Failed sending cached video file_id: {e_cached_v}")
 
                         last_vid_prog = ""
+                        import time
+                        last_vid_upd = 0
                         async def vid_prog(dl, tot, pct):
-                            nonlocal last_vid_prog
-                            if int(pct) % 5 == 0:
-                                p_txt = f"⏳ <b>در حال آماده‌سازی نشانه امروز شما...</b>\n\n✨ <b>{escape(sign.get('title', ''))}</b>\n\n⬇️ <b>پیشرفت:</b> <code>{pct:.1f}%</code>"
+                            nonlocal last_vid_prog, last_vid_upd
+                            now = time.time()
+                            if now - last_vid_upd > 3.0:
+                                last_vid_upd = now
+                                bar_length = 10
+                                filled = int(bar_length * pct // 100)
+                                bar = "█" * filled + "░" * (bar_length - filled)
+                                p_txt = f"⏳ <b>در حال دریافت نشانه امروز شما...</b>\n\n✨ <b>{escape(sign.get('title', ''))}</b>\n\n⬇️ <b>پیشرفت:</b> <code>[{bar}] {pct:.1f}%</code>"
                                 if p_txt != last_vid_prog:
                                     last_vid_prog = p_txt
                                     try: await wait_msg.edit_text(p_txt, parse_mode=enums.ParseMode.HTML)
@@ -1449,6 +1456,10 @@ class TelegramAdapter:
                         except Exception as e_dl_v:
                             logger.warning(f"[tg_sign] ensure_video_downloaded failed: {e_dl_v}")
 
+                        if not target_path or not target_path.exists():
+                            try: await wait_msg.edit_text("❌ خطا در دریافت فایل از سرور. ممکن است لینک اصلی در سایت عباس‌منش منقضی شده باشد.")
+                            except Exception: pass
+                            return
                         if target_path and target_path.exists():
                             try:
                                 from media.inspector import inspect_technical_metadata

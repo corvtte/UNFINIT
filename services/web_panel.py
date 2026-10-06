@@ -3565,6 +3565,24 @@ def render_dashboard_html() -> str:
                     </div>
                 </div>
 
+                                <!-- Audio Metadata Override -->
+                <div class="space-y-2 pt-2 border-t border-slate-700/60">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="chkOverrideMeta" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" onchange="document.getElementById('metaOverrideBox').classList.toggle('hidden', !this.checked)">
+                        <span class="text-[11px] text-slate-300 font-medium">⚡ اصلاح خودکار تگ‌های فایل صوتی (ID3)</span>
+                    </label>
+                    <div id="metaOverrideBox" class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">عنوان (Title):</label>
+                            <input type="text" id="metaTitleInput" class="w-full p-2 rounded-xl border text-slate-200 placeholder-slate-500" style="background: var(--input-bg); border-color: var(--border-color);" placeholder="نام فایل">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 block mb-1">خواننده (Artist):</label>
+                            <input type="text" id="metaArtistInput" class="w-full p-2 rounded-xl border text-slate-200 placeholder-slate-500" style="background: var(--input-bg); border-color: var(--border-color);" value="@abasmanesh365">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Multi-select Checklist for Target Platforms -->
                 <div class="space-y-2 pt-2 border-t border-slate-700/60">
                     <label class="text-[11px] text-slate-400 block font-medium">پلتفرم‌های مقصد را انتخاب فرمایید:</label>
@@ -6809,7 +6827,11 @@ def render_dashboard_html() -> str:
             const courseSelect = document.getElementById('feedCourseSelect');
             const pid = courseSelect ? courseSelect.value : '';
             const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
-            const title = pendingFeedDispatchTitle;
+                        const title = pendingFeedDispatchTitle;
+            const meta_override = !!document.getElementById('chkOverrideMeta')?.checked;
+            const meta_title = document.getElementById('metaTitleInput')?.value || title;
+            const meta_artist = document.getElementById('metaArtistInput')?.value || '@abasmanesh365';
+
             if (!pid) {{
                 showToast('لطفاً یک دوره را انتخاب فرمایید.');
                 return;
@@ -6882,7 +6904,11 @@ def render_dashboard_html() -> str:
                 if (fallbackUrl) urlsToDispatch.push({{ url: fallbackUrl, label: 'رسانه' }});
             }}
 
-            const title = pendingFeedDispatchTitle;
+                        const title = pendingFeedDispatchTitle;
+            const meta_override = !!document.getElementById('chkOverrideMeta')?.checked;
+            const meta_title = document.getElementById('metaTitleInput')?.value || title;
+            const meta_artist = document.getElementById('metaArtistInput')?.value || '@abasmanesh365';
+
             closeFeedDispatchModal();
             if (urlsToDispatch.length === 0) return;
 
@@ -6902,7 +6928,7 @@ def render_dashboard_html() -> str:
                             'Authorization': 'Bearer ' + pwd,
                             'X-Admin-Password': pwd
                         }},
-                        body: JSON.stringify({{ url: item.url, targets: targets, target: targets.join(',') }})
+                        body: JSON.stringify({{ url: item.url, targets: targets, target: targets.join(','), meta_override: meta_override, meta_title: meta_title, meta_artist: meta_artist }})
                     }});
                     const data = await res.json();
                     if (!data.ok) allSuccess = false;
@@ -6923,7 +6949,11 @@ def render_dashboard_html() -> str:
 
         async function executeFeedDispatch(target) {{
             const url = pendingFeedDispatchUrl || pendingFeedAudioUrl || pendingFeedVideoUrl;
-            const title = pendingFeedDispatchTitle;
+                        const title = pendingFeedDispatchTitle;
+            const meta_override = !!document.getElementById('chkOverrideMeta')?.checked;
+            const meta_title = document.getElementById('metaTitleInput')?.value || title;
+            const meta_artist = document.getElementById('metaArtistInput')?.value || '@abasmanesh365';
+
             closeFeedDispatchModal();
             if (!url) return;
 
@@ -6945,7 +6975,7 @@ def render_dashboard_html() -> str:
                         'Authorization': 'Bearer ' + pwd,
                         'X-Admin-Password': pwd
                     }},
-                    body: JSON.stringify({{ url: url, target: target || 'all' }})
+                    body: JSON.stringify({{ url: url, target: target || 'all', meta_override: meta_override, meta_title: meta_title, meta_artist: meta_artist }})
                 }});
                 const data = await res.json();
                 if (data.ok) {{
@@ -9898,6 +9928,16 @@ async def handle_api_dispatch_url(data: dict) -> dict:
     drop["is_downloaded_locally"] = True
 
     # 2. Inspect full metadata via MediaService
+    meta_override = data.get("meta_override")
+    meta_title = data.get("meta_title", "").strip() or fn
+    meta_artist = data.get("meta_artist", "").strip() or config.DEFAULT_ARTIST
+    if meta_override:
+        drop["draft_tags"] = {
+            "title": meta_title,
+            "artist": meta_artist,
+            "album": meta_artist
+        }
+
     tech_meta, embed_meta = MediaService.inspect_full(drop_id)
     drop["tech_meta"] = tech_meta
     drop["embed_meta"] = embed_meta
