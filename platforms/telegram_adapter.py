@@ -1401,45 +1401,14 @@ class TelegramAdapter:
 
                 vip_kb = SignService.build_sign_buttons(sign, platform="telegram", is_vip=is_vip)
 
-                # ۱. اگر فایل دارای نسخه صوتی واقعی باشد
-                if audio_url and not (".mp4" in audio_url.lower()):
-                    local_audio_path = None
-                    try:
-                        local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
-                    except Exception as e_dl:
-                        logger.warning(f"[tg_sign] ensure_audio_downloaded failed: {e_dl}")
-
-                    perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
-                    sent_audio_ok = False
-                    if local_audio_path and local_audio_path.exists():
-                        try:
-                            await message.reply_audio(
-                                audio=str(local_audio_path),
-                                caption=caption,
-                                title=sign.get("title", "نشانه امروز من"),
-                                performer=perf_title,
-                                reply_markup=vip_kb,
-                                parse_mode=enums.ParseMode.HTML
-                            )
-                            sent_audio_ok = True
-                        except Exception as e_send_loc:
-                            logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
-
-                    if sent_audio_ok and not video_url:
-                        try:
-                            await wait_msg.delete()
-                        except Exception:
-                            pass
-                        return
-
-                # ۲. اگر فایل صرفاً ویدیویی باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
+                # ۱. اگ# ۱. ارسال ویدیو (در صورت وجود)
                 if video_url:
                     if not is_vip:
                         vip_prompt = (
                             caption + "\n\n"
-                            "🎬 <b>توجه: نشانه امروز شما یک محتوای اختصاصی تصویری و سریالی است.</b>\n\n"
-                            "ارسال مستقیم و دریافت این فایل ویدیویی در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
-                            "جهت دسترسی به این قسمت و تمامی سریال‌ها و آموزش‌ها، اشتراک پریمیوم خود را فعال فرمایید:"
+                            "💎 <b>توجه: این محتوا حاوی فایل تصویری و ویدیویی می‌باشد.</b>\n\n"
+                            "جهت دریافت مستقیم و مشاهده نیتیو این فایل تصویری و صدها فایل دیگر در <b>باشگاه پریمیوم</b> عضو شوید.\n\n"
+                            "شما می‌توانید با تهیه اشتراک ۳۰ روزه باشگاه، به صورت نامحدود از امکانات ویژه ربات استفاده کنید:"
                         )
                         try:
                             await wait_msg.edit_text(vip_prompt, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
@@ -1464,40 +1433,71 @@ class TelegramAdapter:
                             except Exception as e_cached_v:
                                 logger.warning(f"[tg_sign] Failed sending cached video file_id: {e_cached_v}")
 
-                        try:
-                            await wait_msg.edit_text(
-                                f"⏳ <b>در حال دریافت و ارسال ویدیو نشانه امروز...</b>\n\n"
-                                f"🎬 <b>{escape(sign.get('title', ''))}</b>\n"
-                                f"<i>لطفاً چند لحظه شکیبا باشید...</i>",
-                                parse_mode=enums.ParseMode.HTML
-                            )
-                        except Exception:
-                            pass
+                        last_vid_prog = ""
+                        async def vid_prog(dl, tot, pct):
+                            nonlocal last_vid_prog
+                            if int(pct) % 5 == 0:
+                                p_txt = f"⏳ <b>در حال آماده‌سازی نشانه امروز شما...</b>\n\n✨ <b>{escape(sign.get('title', ''))}</b>\n\n⬇️ <b>پیشرفت:</b> <code>{pct:.1f}%</code>"
+                                if p_txt != last_vid_prog:
+                                    last_vid_prog = p_txt
+                                    try: await wait_msg.edit_text(p_txt, parse_mode=enums.ParseMode.HTML)
+                                    except Exception: pass
 
-                        local_video_path = config.TEMP_DIR / f"sign_vid_{uuid.uuid4().hex[:8]}.mp4"
-                        local_video_path.parent.mkdir(parents=True, exist_ok=True)
-                        from services.url_service import UrlService
-                        dl_ok = await UrlService.download_file_stream(video_url, local_video_path)
-                        if dl_ok and local_video_path.exists() and local_video_path.stat().st_size > 1024:
+                        target_path = None
+                        try:
+                            target_path = await SignService.ensure_video_downloaded(sign, reader_tag=reader_tag, progress_callback=vid_prog)
+                        except Exception as e_dl_v:
+                            logger.warning(f"[tg_sign] ensure_video_downloaded failed: {e_dl_v}")
+
+                        if target_path and target_path.exists():
                             try:
+                                from media.inspector import inspect_technical_metadata
+                                from media.tagger import generate_video_thumbnail
+                                tech = inspect_technical_metadata(target_path)
+                                thumb_p = generate_video_thumbnail(target_path)
                                 sent_v = await message.reply_video(
-                                    video=str(local_video_path),
+                                    video=str(target_path),
                                     caption=caption,
+                                    width=tech.get("width"),
+                                    height=tech.get("height"),
+                                    duration=tech.get("duration_sec"),
+                                    thumb=str(thumb_p) if thumb_p and thumb_p.exists() else None,
                                     reply_markup=vip_kb,
-                                    parse_mode=enums.ParseMode.HTML
+                                    parse_mode=enums.ParseMode.HTML,
+                                    supports_streaming=True
                                 )
                                 if sent_v and sent_v.video:
                                     await db_set_cached_file_id(file_key, "telegram", sent_v.video.file_id, "video")
                                 try: await wait_msg.delete()
                                 except Exception: pass
                                 return
-                            except Exception as e_v_snd:
-                                logger.warning(f"[tg_sign] reply_video failed: {e_v_snd}")
-                                await wait_msg.edit_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
-                                return
-                            finally:
-                                try: local_video_path.unlink()
-                                except Exception: pass
+                            except Exception as e_send_v:
+                                logger.warning(f"[tg_sign] reply_video local failed: {e_send_v}")
+
+                # ۲. ارسال صوت (اگر ویدیو نبود)
+                elif audio_url and not (".mp4" in audio_url.lower()):
+                    local_audio_path = None
+                    try:
+                        local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
+                    except Exception as e_dl:
+                        logger.warning(f"[tg_sign] ensure_audio_downloaded failed: {e_dl}")
+
+                    perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
+                    if local_audio_path and local_audio_path.exists():
+                        try:
+                            await message.reply_audio(
+                                audio=str(local_audio_path),
+                                caption=caption,
+                                title=sign.get("title", "نشانه امروز من"),
+                                performer=perf_title,
+                                reply_markup=vip_kb,
+                                parse_mode=enums.ParseMode.HTML
+                            )
+                            try: await wait_msg.delete()
+                            except Exception: pass
+                            return
+                        except Exception as e_send_loc:
+                            logger.warning(f"[tg_sign] reply_audio local failed: {e_send_loc}")
                         else:
                             await wait_msg.edit_text(caption, reply_markup=vip_kb, parse_mode=enums.ParseMode.HTML)
                             return

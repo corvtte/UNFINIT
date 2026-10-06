@@ -3457,8 +3457,24 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             sign_kb = SignService.build_sign_buttons(sign, platform="bale", is_vip=is_vip)
                                             perf_title = f"@{reader_tag.lstrip('@')}" if reader_tag else None
 
-                                            # ۱. اگر فایل نسخه صوتی واقعی داشته باشد
-                                            if audio_url and not (".mp4" in audio_url.lower()):
+                                            # ۱. اگر فایل نسخه صوتی و# ۱. اولویت با ارسال پیام ویدیویی
+                                            if video_url:
+                                                if not is_vip:
+                                                    bale_msg = (
+                                                        caption + "\n\n"
+                                                        "💎 <b>توجه: این محتوا حاوی فایل تصویری و ویدیویی می‌باشد.</b>\n\n"
+                                                        "جهت دریافت مستقیم این فایل در <b>باشگاه پریمیوم</b> عضو شوید.\n\n"
+                                                    )
+                                                else:
+                                                    bale_msg = (
+                                                        caption + "\n\n"
+                                                        "✨ <b>کاربر ویژه پریمیوم،</b>\n"
+                                                        "این نشانه یک محتوای ویدیویی است. جهت مشاهده و دانلود مستقیم روی دکمه‌های زیر کلیک کنید:"
+                                                    )
+                                                await bale.send_message(chat_id, bale_msg, reply_markup=sign_kb)
+                                            
+                                            # ۲. ارسال صوت (فقط اگر ویدیو وجود نداشت)
+                                            elif audio_url and not (".mp4" in audio_url.lower()):
                                                 local_audio_path = None
                                                 try:
                                                     local_audio_path = await SignService.ensure_audio_downloaded(sign, reader_tag=reader_tag)
@@ -3477,23 +3493,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                         )
                                                     except Exception as ex_snd:
                                                         logger.warning(f"[bale_sign] send_audio local failed: {ex_snd}")
-
-                                            # ۲. اگر فایل فقط تصویری باشد (مانند سریال زندگی در بهشت یا سفر به دور آمریکا)
-                                            if video_url:
-                                                if not is_vip:
-                                                    bale_msg = (
-                                                        caption + "\n\n"
-                                                        "🎬 <b>توجه: نشانه امروز شما یک محتوای اختصاصی تصویری و سریالی است.</b>\n\n"
-                                                        "ارسال مستقیم و دریافت این فایل ویدیویی در ربات، مختص اعضای دارای <b>اشتراک پریمیوم</b> می‌باشد.\n\n"
-                                                        "جهت دسترسی به این قسمت و تمامی سریال‌ها و آموزش‌ها، اشتراک پریمیوم خود را فعال فرمایید:"
-                                                    )
-                                                else:
-                                                    bale_msg = (
-                                                        caption + "\n\n"
-                                                        "💎 <b>کاربر گرامی پریمیوم؛</b>\n"
-                                                        "این نشانه یک محتوای اختصاصی تصویری است. جهت مشاهده و دانلود با نهایت سرعت یا استخراج صوت، از گزینه‌های زیر استفاده فرمایید:"
-                                                    )
-                                                await bale.send_message(chat_id, bale_msg, reply_markup=sign_kb)
                                             else:
                                                 await bale.send_message(chat_id, caption, reply_markup=sign_kb)
                                         except Exception as ex_sign:
