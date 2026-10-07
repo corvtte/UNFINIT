@@ -1906,7 +1906,6 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 else:
                                                     await bale.edit_message_text(chat_id, status_msg["message_id"], "❌ خطا در عملیات تبدیل فرمت فایل.")
                                             except Exception as e_fmt:
-                                                from core.logger import logger
                                                 logger.error(f"Format conversion error: {e_fmt}")
                                                 await bale.edit_message_text(chat_id, status_msg["message_id"], f"❌ خطای سیستمی: {e_fmt}")
 
