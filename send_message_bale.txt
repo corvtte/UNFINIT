@@ -1,0 +1,98 @@
+async def send_message(self, chat_id: str | int, text: str, reply_markup: Any = None) -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        clean_text = BaleFormatter.clean_text(text)
+        url = f"{self.base_url}/sendMessage"
+        payload = {"chat_id": str(chat_id), "text": clean_text}
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        session = await self.get_session()
+        async with session.post(url, json=payload) as resp:
+            return await resp.json()
+
+    async def send_chat_action(self, chat_id: str | int, action: str = "typing") -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url = f"{self.base_url}/sendChatAction"
+        payload = {"chat_id": str(chat_id), "action": str(action)}
+        try:
+            session = await self.get_session()
+            async with session.post(url, json=payload) as resp:
+                return await resp.json()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    async def send_photo(
+        self,
+        chat_id: str | int,
+        photo_path: Union[str, Path, bytes],
+        caption: Optional[str] = None,
+        reply_markup: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url_photo = f"{self.base_url}/sendPhoto"
+        form = aiohttp.FormData(quote_fields=False)
+        form.add_field("chat_id", str(chat_id))
+        if caption: form.add_field("caption", BaleFormatter.clean_text(caption))
+        if reply_markup:
+            if isinstance(reply_markup, dict):
+                form.add_field("reply_markup", json.dumps(reply_markup))
+            else:
+                form.add_field("reply_markup", str(reply_markup))
+        try:
+            if isinstance(photo_path, bytes):
+                form.add_field("photo", photo_path, filename="photo.jpg", content_type="image/jpeg")
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                    async with session.post(url_photo, data=form) as resp:
+                        return await resp.json()
+            else:
+                path_obj = Path(str(photo_path))
+                if not path_obj.exists():
+                    return {"ok": False, "error": "Photo not found"}
+                with open(path_obj, "rb") as f:
+                    form.add_field("photo", f, filename=path_obj.name, content_type="image/jpeg")
+                    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
+                        async with session.post(url_photo, data=form) as resp:
+                            return await resp.json()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    async def send_document(
+        self,
+        chat_id: str | int,
+        document: Union[str, Path, bytes, Any],
+        caption: Optional[str] = None,
+        filename: Optional[str] = None,
+        reply_markup: Optional[Dict[str, Any]] = None,
+        progress_callback: Optional[Callable] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        ارسال فایل/سند بر پایه معماری آزموده و سریع نگارش v0.5.8.
+        پشتیبانی مستقیم از هندل فایل باز بدون درگیری رم و بدون تحمیل انکودر ویدیویی بله.
+        """
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url_doc = f"{self.base_url}/sendDocument"
+        form = aiohttp.FormData(quote_fields=False)
+        form.add_field("chat_id", str(chat_id))
+        if caption:
+            form.add_field("caption", BaleFormatter.clean_text(caption))
+        if reply_markup:
+            if isinstance(reply_markup, dict):
+                form.add_field("reply_markup", json.dumps(reply_markup))
+            else:
+                form.add_field("reply_markup", str(reply_markup))
+
+        bale_upload_timeout = aiohttp.ClientTimeout(total=600, connect=30, sock_read=300)
+        try:
+            if isinstance(document, (bytes, bytearray)):
+                fname = filename or "document.bin"
+                form.add_field("document", document, filename=fname, content_type="application/octet-stream")
+                async with aiohttp.ClientSession(timeout=bale_upload_timeout) as session:
+                    async with session.post(url_doc, data=form) as resp:
+                        res_data = await resp.json()
+                        logger.info(f"[Bale Response sendDocument] HTTP {resp.status}: {res_data}")
+                        return res

@@ -1,0 +1,35 @@
+async def run_telegram_supervisor():
+            from pyrogram.errors import FloodWait
+            import re
+            while True:
+                try:
+                    is_conn = False
+                    if hasattr(tg_adapter.app, "is_connected"):
+                        if callable(tg_adapter.app.is_connected):
+                            is_conn = tg_adapter.app.is_connected()
+                        else:
+                            is_conn = getattr(tg_adapter.app, "is_connected", False)
+                            
+                    if not is_conn:
+                        logger.info("Starting/Reconnecting Telegram MTProto Client (Supervisor)...")
+                        if hasattr(tg_adapter, "start_client"):
+                            await tg_adapter.start_client()
+                        else:
+                            await tg_adapter.app.start()
+                        logger.info("Telegram MTProto Client is ONLINE and listening!")
+                except FloodWait as fw:
+                    wait_sec = int(fw.value)
+                    logger.warning(f"Telegram MTProto FloodWait: waiting {wait_sec}s before auto-reconnecting...")
+                    await asyncio.sleep(wait_sec + 2)
+                except Exception as e:
+                    err_str = str(e) or repr(e)
+                    if "FLOOD_WAIT" in err_str:
+                        m = re.search(r"(\d+)\s*seconds", err_str)
+                        wait_sec = int(m.group(1)) if m else 60
+                        logger.warning(f"Telegram MTProto FloodWait: waiting {wait_sec}s before auto-reconnecting...")
+                        await asyncio.sleep(wait_sec + 2)
+                    else:
+                        err_str_lower = err_str.lower()
+                        if "auth_key_duplicated" in err_str_lower or getattr(e, "ID", None) == "AUTH_KEY_DUPLICATED" or getattr(e, "CODE", None) == 406 or "406" in err_str:
+                            logger.warning("[TG] AUTH_KEY_DUPLICATED detected. Another container may be disconnecting. Waiting 5s...")
+                            await asyncio.sleep(5)

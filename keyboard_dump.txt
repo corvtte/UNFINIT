@@ -1,0 +1,88 @@
+    def build_media_keyboard(self, drop_id: str, data: dict, is_sub: bool = False) -> InlineKeyboardMarkup:
+        if is_sub:
+            return InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 بازگشت به منوی رسانه", callback_data=f"smeta:back:{drop_id}")],
+                [InlineKeyboardButton("❌ لغو", callback_data=f"smeta:cancel:{drop_id}")]
+            ])
+
+        mtype = data.get("media_type", "audio")
+        e_fields = data.get("edited_fields", {})
+        draft_tags = data.get("draft_tags", {})
+
+        fn_check = " ✅" if e_fields.get("filename") else ""
+        perf_check = " ✅" if ("artist" in draft_tags or e_fields.get("artist")) else ""
+        title_check = " ✅" if ("title" in draft_tags or e_fields.get("title")) else ""
+        thumb_check = " ✅" if e_fields.get("thumb") else ""
+
+        if mtype == "video":
+            rows = [
+                [
+                    InlineKeyboardButton(f"✏️ تغییر نام فایل{fn_check}", callback_data=f"smeta:fn:{drop_id}")
+                ],
+                [
+                    InlineKeyboardButton(f"🗣 تغییر نام خواننده{perf_check}", callback_data=f"smeta:perf:{drop_id}"),
+                    InlineKeyboardButton(f"🎵 تغییر نام موزیک{title_check}", callback_data=f"smeta:title:{drop_id}")
+                ],
+                [
+                    InlineKeyboardButton("🎵 تبدیل به صوت / دریافت MP3", callback_data=f"smeta:to_mp3:{drop_id}"),
+                    InlineKeyboardButton("🧠 دستیار هوش مصنوعی", callback_data=f"smeta:ai_transcribe:{drop_id}")
+                ],
+                [
+                    InlineKeyboardButton("✂️ تقسیم فایل (Split)", callback_data=f"smeta:split_video:{drop_id}"),
+                    InlineKeyboardButton("💾 اعمال تغییرات", callback_data=f"smeta:apply_changes:{drop_id}")
+                ],
+                [
+                    InlineKeyboardButton("🟢 ارسال به بله", callback_data=f"smeta:send_bale:{drop_id}"),
+                    InlineKeyboardButton("🟣 ارسال به روبیکا", callback_data=f"smeta:choose_rubika:{drop_id}")
+                ],
+                [
+                    InlineKeyboardButton("🔷 ارسال به سروش‌پلاس", callback_data=f"smeta:send_splus:{drop_id}")
+                ]
+            ]
+            return InlineKeyboardMarkup(rows)
+
+        # Audio Menu (Full Feature Suite)
+        rows = [
+            [
+                InlineKeyboardButton(f"✏️ تغییر نام فایل{fn_check}", callback_data=f"smeta:fn:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton(f"🗣 تغییر نام خواننده{perf_check}", callback_data=f"smeta:perf:{drop_id}"),
+                InlineKeyboardButton(f"🎵 تغییر نام موزیک{title_check}", callback_data=f"smeta:title:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("✂️ برش فایل صوتی", callback_data=f"smeta:trim:{drop_id}"),
+                InlineKeyboardButton("🧠 دستیار هوش مصنوعی", callback_data=f"smeta:ai_transcribe:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("🔄 تغییر فرمت", callback_data=f"smeta:format_menu:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("📋 اطلاعات تگ‌ها", callback_data=f"smeta:tag_details:{drop_id}"),
+                InlineKeyboardButton("📊 مشخصات فنی صوت", callback_data=f"smeta:audio_specs:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton(f"🖼 تغییر تصویر بند انگشتی{thumb_check}", callback_data=f"smeta:change_cover:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("📥 دریافت تصویر بند انگشتی", callback_data=f"smeta:view_cover:{drop_id}"),
+                InlineKeyboardButton("🧹 حذف کامل متادیتا", callback_data=f"smeta:strip_tags:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("➕ افزودن به دوره", callback_data=f"smeta:add_to_course:{drop_id}"),
+                InlineKeyboardButton("⚡ فشرده‌سازی", callback_data=f"smeta:compress:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("💾 اعمال تغییرات", callback_data=f"smeta:apply_changes:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("🟢 ارسال به بله", callback_data=f"smeta:send_bale:{drop_id}"),
+                InlineKeyboardButton("🟣 ارسال به روبیکا", callback_data=f"smeta:choose_rubika:{drop_id}")
+            ],
+            [
+                InlineKeyboardButton("🔷 ارسال به سروش‌پلاس", callback_data=f"smeta:send_splus:{drop_id}")
+            ]
+        ]
+        return InlineKeyboardMarkup(rows)
+
+    def register_handlers(self):

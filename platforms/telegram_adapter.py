@@ -3787,13 +3787,13 @@ class TelegramAdapter:
                 status_msg = await callback_query.message.reply_text(f"⏳ <b>در حال پردازش و تبدیل فرمت فایل به {target_fmt.upper()}...</b>", parse_mode=enums.ParseMode.HTML)
                 await ensure_binary()
                 try:
-                    ok, final_audio = MediaService.convert_audio_format(c_data["working_path"], target_fmt)
+                    ok, final_audio = MediaService.convert_audio_format(drop["working_path"], target_fmt)
                     if ok and final_audio.exists():
                         await status_msg.edit_text(f"✅ <b>تبدیل فرمت به {target_fmt.upper()} با موفقیت انجام شد. در حال ارسال نسخه جدید...</b>", parse_mode=enums.ParseMode.HTML)
-                        title = c_data.get("api_meta", {}).get("title") or "Unknown"
-                        artist = c_data.get("api_meta", {}).get("artist") or "Unknown"
-                        duration = c_data.get("api_meta", {}).get("duration_sec") or 0
-                        thumb_p = c_data.get("thumb_path")
+                        title = drop.get("api_meta", {}).get("title") or "Unknown"
+                        artist = drop.get("api_meta", {}).get("artist") or "Unknown"
+                        duration = drop.get("api_meta", {}).get("duration_sec") or 0
+                        thumb_p = drop.get("thumb_path")
                         
                         sent_audio = await self.send_audio(
                             user_id,

@@ -1,0 +1,94 @@
+def build_bale_media_keyboard(drop_id: str, data: dict, is_sub: bool = False) -> dict:
+    if is_sub:
+        return {
+            "inline_keyboard": [
+                [{"text": "🔙 بازگشت به منوی رسانه", "callback_data": f"bmeta:back:{drop_id}"}],
+                [{"text": "❌ لغو", "callback_data": f"bmeta:cancel:{drop_id}"}]
+            ]
+        }
+
+    mtype = data.get("media_type", "audio")
+    e_fields = data.get("edited_fields", {})
+    draft_tags = data.get("draft_tags", {})
+
+    fn_check = " ✅" if e_fields.get("filename") else ""
+    perf_check = " ✅" if ("artist" in draft_tags or e_fields.get("artist")) else ""
+    title_check = " ✅" if ("title" in draft_tags or e_fields.get("title")) else ""
+    thumb_check = " ✅" if e_fields.get("thumb") else ""
+
+    if mtype == "video":
+        rows = [
+            [
+                {"text": "🎙 ویرایش تگ‌ها", "callback_data": f"bmeta:tags_menu:{drop_id}"},
+                {"text": "➕ افزودن به سرفصل‌های دوره", "callback_data": f"bmeta:add_to_course:{drop_id}"}
+            ],
+            [
+                {"text": "⚡ فشرده‌سازی خودکار", "callback_data": f"bmeta:compress:{drop_id}"},
+                {"text": "📊 مشخصات فنی", "callback_data": f"bmeta:audio_specs:{drop_id}"}
+            ],
+            [
+                {"text": f"✏️ تغییر نام فایل{fn_check}", "callback_data": f"bmeta:fn:{drop_id}"}
+            ],
+            [
+                {"text": "🎵 تبدیل به صوت / دریافت MP3", "callback_data": f"bmeta:to_mp3:{drop_id}"},
+                {"text": "🧠 دستیار هوش مصنوعی", "callback_data": f"bmeta:ai_transcribe:{drop_id}"}
+            ],
+            [
+                {"text": "⚡️ اعمال سریع", "callback_data": f"bmeta:quick_send:{drop_id}"},
+                {"text": "💾 اعمال تغییرات", "callback_data": f"bmeta:send_back:{drop_id}"}
+            ],
+            [
+                {"text": "✈️ انتقال به تلگرام", "callback_data": f"bmeta:send_tg:{drop_id}"},
+                {"text": "🟣 انتقال به روبیکا", "callback_data": f"bmeta:send_rub:{drop_id}"}
+            ],
+            [
+                {"text": "🔷 انتقال به سروش‌پلاس", "callback_data": f"bmeta:send_splus:{drop_id}"}
+            ]
+        ]
+        return {"inline_keyboard": rows}
+
+    rows = [
+        [
+            {"text": "🎙 ویرایش تگ‌ها", "callback_data": f"bmeta:tags_menu:{drop_id}"},
+            {"text": "➕ افزودن به سرفصل‌های دوره", "callback_data": f"bmeta:add_to_course:{drop_id}"}
+        ],
+        [
+            {"text": "⚡ فشرده‌سازی خودکار", "callback_data": f"bmeta:compress:{drop_id}"},
+            {"text": "📊 مشخصات فنی", "callback_data": f"bmeta:audio_specs:{drop_id}"}
+        ],
+        [
+            {"text": f"✏️ تغییر نام فایل{fn_check}", "callback_data": f"bmeta:fn:{drop_id}"}
+        ],
+        [
+            {"text": f"🗣 نام خواننده{perf_check}", "callback_data": f"bmeta:perf:{drop_id}"},
+            {"text": f"🎵 عنوان موزیک{title_check}", "callback_data": f"bmeta:title:{drop_id}"}
+        ],
+        [
+            {"text": "✂️ برش فایل صوتی", "callback_data": f"bmeta:trim:{drop_id}"},
+            {"text": "🧠 دستیار هوش مصنوعی", "callback_data": f"bmeta:ai_transcribe:{drop_id}"}
+        ],
+        [
+            {"text": "📋 اطلاعات تگ‌ها", "callback_data": f"bmeta:tag_details:{drop_id}"},
+            {"text": f"🖼 تصویر کاور{thumb_check}", "callback_data": f"bmeta:change_cov:{drop_id}"}
+        ],
+        [
+            {"text": "📥 دریافت تصویر کاور", "callback_data": f"bmeta:view_cov:{drop_id}"},
+            {"text": "🧹 حذف کامل متادیتا", "callback_data": f"bmeta:strip_tags:{drop_id}"}
+        ],
+        [
+            {"text": "⚡️ اعمال سریع", "callback_data": f"bmeta:quick_send:{drop_id}"},
+            {"text": "💾 اعمال تغییرات", "callback_data": f"bmeta:send_back:{drop_id}"}
+        ],
+        [
+            {"text": "✈️ انتقال به تلگرام", "callback_data": f"bmeta:send_tg:{drop_id}"},
+            {"text": "🟣 انتقال به روبیکا", "callback_data": f"bmeta:send_rub:{drop_id}"}
+        ],
+        [
+            {"text": "🔷 انتقال به سروش‌پلاس", "callback_data": f"bmeta:send_splus:{drop_id}"}
+        ]
+    ]
+
+    return {"inline_keyboard": rows}
+
+
+def build_bale_force_join_keyboard(channel_username: str) -> dict:
