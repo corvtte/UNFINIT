@@ -640,6 +640,18 @@ class BaleAdapter:
         async with session.post(url, json=payload) as resp:
             return await resp.json()
 
+    async def edit_message_reply_markup(self, chat_id: str | int, message_id: int, reply_markup: Any = None) -> Dict[str, Any]:
+        if not self.token:
+            return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
+        url = f"{self.base_url}/editMessageReplyMarkup"
+        payload = {"chat_id": str(chat_id), "message_id": message_id}
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+
+        session = await self.get_session()
+        async with session.post(url, json=payload) as resp:
+            return await resp.json()
+
     async def edit_message_caption(self, chat_id: str | int, message_id: int, caption: str, reply_markup: Any = None) -> Dict[str, Any]:
         if not self.token:
             return {"ok": False, "error": "BALE_BOT_TOKEN missing"}
