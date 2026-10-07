@@ -5501,15 +5501,7 @@ def render_dashboard_html() -> str:
         }});
     }}
     
-                    const filtered = allLoadedUsers.filter(u => {{
-                        const id = String(u.user_id || '').toLowerCase();
-                        const name = String(u.username || u.name || '').toLowerCase();
-                        const phone = String(u.phone || '').toLowerCase();
-                        const ref = String(u.referred_by || '').toLowerCase();
-                        return id.includes(q) || name.includes(q) || phone.includes(q) || ref.includes(q);
-                    }});
-                    renderUsersTable(filtered);
-                }}
+
                 window.filterUsersTable = filterUsersTable; window.toggleAllUsers = toggleAllUsers; window.deleteSelectedUsers = deleteSelectedUsers;
 
                 function exportUsersCsv() {{

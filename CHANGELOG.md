@@ -543,3 +543,6 @@
 - Refactored User Management UI (added Checkboxes, Platform Filters, Join Date, removed Rubika, unified Premium button).
 - Fixed UnboundLocalError in Bale VIP download (status_msg).
 - Fixed Web Panel UI colors, SVGs, and removed hardcoded font-mono for Toman/Persian texts.
+
+## v0.7.47
+- Fixed critical Javascript SyntaxError in web panel causing all interactive buttons and uptime timer to break.
