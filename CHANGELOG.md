@@ -546,3 +546,6 @@
 
 ## v0.7.47
 - Fixed critical Javascript SyntaxError in web panel causing all interactive buttons and uptime timer to break.
+
+## v0.7.48
+- Added audio format conversion submenu (MP3, OGG, M4A, WAV) preserving original bitrate/channels.
