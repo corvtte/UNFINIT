@@ -4032,8 +4032,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                     if text.startswith("/start") or text in ("start", "شروع", "منوی اصلی", "خانه"):
                                         try:
-                                            b_uname = from_user.get("username") or ""
-                                            b_fname = f"{from_user.get('first_name') or ''} {from_user.get('last_name') or ''}".strip() or b_uname or f"کاربر {chat_id}"
+                                            b_uname = msg.get('from', {}).get("username") or ""
+                                            b_fname = f"{msg.get('from', {}).get('first_name') or ''} {msg.get('from', {}).get('last_name') or ''}".strip() or b_uname or f"کاربر {chat_id}"
                                             await StoreService.get_or_create_customer(chat_id, platform="bale", username=b_uname, full_name=b_fname)
                                             if not UserService.get_user_by_any_id(chat_id):
                                                 UserService.register_anonymous_user(str(chat_id), platform="bale", username=b_uname, full_name=b_fname)
