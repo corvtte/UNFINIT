@@ -5510,7 +5510,7 @@ def render_dashboard_html() -> str:
                     }});
                     renderUsersTable(filtered);
                 }}
-                window.filterUsersTable = filterUsersTable;
+                window.filterUsersTable = filterUsersTable; window.toggleAllUsers = toggleAllUsers; window.deleteSelectedUsers = deleteSelectedUsers;
 
                 function exportUsersCsv() {{
                     if (!allLoadedUsers || allLoadedUsers.length === 0) {{

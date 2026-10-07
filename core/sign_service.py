@@ -421,13 +421,29 @@ class SignService:
                         try:
                             from mutagen.easyid3 import EasyID3
                             from mutagen.mp3 import MP3
+                            from mutagen.id3 import ID3
+                            
+                            # 1. Wipe all existing ID3 tags completely (v1 and v2)
+                            try:
+                                tags = ID3(str(dest_file))
+                                tags.delete()
+                            except Exception:
+                                pass
+                                
+                            # 2. Apply clean tags
                             audio = MP3(str(dest_file), ID3=EasyID3)
+                            try:
+                                audio.add_tags()
+                            except Exception:
+                                pass # Tags might already exist if delete failed, just overwrite
+                                
                             if reader_tag:
                                 audio["artist"] = str(reader_tag)
+                                audio["performer"] = str(reader_tag)
                                 audio["albumartist"] = str(reader_tag)
                             if sign_data.get("title"):
                                 audio["title"] = str(sign_data["title"])
-                            audio.save()
+                            audio.save(v2_version=3)
                         except Exception:
                             pass
                     return dest_file
