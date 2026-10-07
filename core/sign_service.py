@@ -312,6 +312,11 @@ class SignService:
         audio_url = (sign_data.get("audio_url") or "").strip()
         video_url = (sign_data.get("video_url") or "").strip()
         page_url = sign_data.get("page_url") or "https://abasmanesh.com/fa/articles/"
+        
+        title_tag = sign_data.get("title", "")
+        if "زندگی در بهشت" in title_tag or "سفر به دور آمریکا" in title_tag or "سریال" in title_tag:
+            audio_url = ""
+            
         is_video_only = bool(video_url and not audio_url)
 
         if platform == "telegram":

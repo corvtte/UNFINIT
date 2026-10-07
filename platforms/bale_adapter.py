@@ -2668,6 +2668,24 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             if media_type == "audio":
                                                 reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
                                                 perf_val = f"@{reader_tag.lstrip('@')}" if reader_tag else None
+                                                
+                                                try:
+                                                    from core.media_service import modify_id3_tags
+                                                    await bale.edit_message_text(chat_id, status_msg.id, "⏳ <b>در حال پاکسازی متادیتا و تنظیمات نهایی فایل...</b>")
+                                                    modify_id3_tags(
+                                                        target_path,
+                                                        {
+                                                            "title": ep.get("title", "فایل صوتی"),
+                                                            "artist": perf_val,
+                                                            "album": perf_val
+                                                        },
+                                                        remove_cover=True
+                                                    )
+                                                except Exception as e_meta:
+                                                    import logging
+                                                    logging.getLogger().error(f"Failed to modify ID3 tags for VIP bale download: {e_meta}")
+                                                    
+                                                await bale.edit_message_text(chat_id, status_msg.id, "⏳ <b>در حال ارسال فایل به بله...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.")
                                                 sent = await bale.send_audio(
                                                     chat_id,
                                                     target_path,
@@ -2679,6 +2697,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 if f_id:
                                                     await db_set_cached_file_id(file_key, "bale", f_id, "audio")
                                             else:
+                                                await bale.edit_message_text(chat_id, status_msg.id, "⏳ <b>در حال ارسال ویدیو به بله...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.")
                                                 sent = await bale.send_video(
                                                     chat_id,
                                                     target_path,

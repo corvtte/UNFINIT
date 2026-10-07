@@ -3537,83 +3537,83 @@ def render_dashboard_html() -> str:
         <!-- Feed Download Dispatch Destination Modal -->
         <div id="feedDispatchModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="glass-card max-w-md w-full p-6 rounded-2xl border shadow-2xl relative space-y-4" style="background: var(--card-bg, #1e293b); border-color: var(--card-border, #334155);">
-                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                <div class="flex items-center justify-between border-b border-[var(--card-border)] pb-3">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                        <svg class="w-4 h-4 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                        <svg class="w-4 h-4 text-[var(--accent-color)] stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
                         <span>انتقال هدیه دانلودی به پیام‌رسان‌ها</span>
                     </h3>
-                    <button type="button" onclick="closeFeedDispatchModal()" class="text-slate-400 hover:text-white text-lg transition">✕</button>
+                    <button type="button" onclick="closeFeedDispatchModal()" class="text-[var(--text-muted)] hover:text-white text-lg transition">✕</button>
                 </div>
                 <div>
-                    <div id="feedDispatchModalTitle" class="p-3 rounded-xl  border border-slate-800 text-xs font-bold text-cyan-300 line-clamp-2 leading-relaxed">
+                    <div id="feedDispatchModalTitle" class="p-3 rounded-xl  border text-xs font-bold text-[var(--accent-color)] line-clamp-2 leading-relaxed">
                         -
                     </div>
                 </div>
 
                 <!-- Dual Independent Format Checkboxes: MP3 & MP4 -->
                 <div class="space-y-1.5">
-                    <label class="text-[11px] text-slate-400 block font-medium">فرمت‌های رسانه جهت ارسال (امکان انتخاب همزمان هر دو):</label>
+                    <label class="text-[11px] text-[var(--text-muted)] block font-medium">فرمت‌های رسانه جهت ارسال (امکان انتخاب همزمان هر دو):</label>
                     <div class="grid grid-cols-2 gap-2 text-xs">
                         <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition hover:border-cyan-500/50" style="background: var(--input-bg); border-color: var(--card-border);">
-                            <input type="checkbox" id="chkFormatAudio" checked class="rounded text-cyan-600 focus:ring-0">
+                            <input type="checkbox" id="chkFormatAudio" checked class="rounded text-[var(--accent-color)] focus:ring-0">
                             <span style="color: var(--text-main);">نسخه صوتی (MP3)</span>
                         </label>
                         <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition hover:border-indigo-500/50" style="background: var(--input-bg); border-color: var(--card-border);">
-                            <input type="checkbox" id="chkFormatVideo" checked class="rounded text-indigo-600 focus:ring-0">
+                            <input type="checkbox" id="chkFormatVideo" checked class="rounded text-[var(--accent-color)] focus:ring-0">
                             <span style="color: var(--text-main);">نسخه تصویری (MP4)</span>
                         </label>
                     </div>
                 </div>
 
                                 <!-- Audio Metadata Override -->
-                <div class="space-y-2 pt-2 border-t border-slate-700/60">
+                <div class="space-y-2 pt-2 border-t border-[var(--card-border)]">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="chkOverrideMeta" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0" onchange="document.getElementById('metaOverrideBox').classList.toggle('hidden', !this.checked)">
-                        <span class="text-[11px] text-slate-300 font-medium">⚡ اصلاح خودکار تگ‌های فایل صوتی (ID3)</span>
+                        <input type="checkbox" id="chkOverrideMeta" checked class="rounded text-[var(--accent-color)] focus:ring-0" style="background: var(--input-bg); border-color: var(--border-color);" onchange="document.getElementById('metaOverrideBox').classList.toggle('hidden', !this.checked)">
+                        <span class="text-[11px] font-medium" style="color: var(--text-main);">⚡ اصلاح خودکار تگ‌های فایل صوتی (ID3)</span>
                     </label>
                     <div id="metaOverrideBox" class="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                            <label class="text-[10px] text-slate-400 block mb-1">عنوان (Title):</label>
-                            <input type="text" id="metaTitleInput" class="w-full p-2 rounded-xl border text-slate-200 placeholder-slate-500" style="background: var(--input-bg); border-color: var(--border-color);" placeholder="نام فایل">
+                            <label class="text-[10px] text-[var(--text-muted)] block mb-1">عنوان (Title):</label>
+                            <input type="text" id="metaTitleInput" class="w-full p-2 rounded-xl border text-[var(--text-main)] placeholder-slate-500" style="background: var(--input-bg); border-color: var(--border-color);" placeholder="نام فایل">
                         </div>
                         <div>
-                            <label class="text-[10px] text-slate-400 block mb-1">خواننده (Artist):</label>
-                            <input type="text" id="metaArtistInput" class="w-full p-2 rounded-xl border text-slate-200 placeholder-slate-500" style="background: var(--input-bg); border-color: var(--border-color);" value="@abasmanesh365">
+                            <label class="text-[10px] text-[var(--text-muted)] block mb-1">خواننده (Artist):</label>
+                            <input type="text" id="metaArtistInput" class="w-full p-2 rounded-xl border text-[var(--text-main)] placeholder-slate-500" style="background: var(--input-bg); border-color: var(--border-color);" value="@abasmanesh365">
                         </div>
                     </div>
                 </div>
 
                 <!-- Multi-select Checklist for Target Platforms -->
-                <div class="space-y-2 pt-2 border-t border-slate-700/60">
-                    <label class="text-[11px] text-slate-400 block font-medium">پلتفرم‌های مقصد را انتخاب فرمایید:</label>
+                <div class="space-y-2 pt-2 border-t border-[var(--card-border)]">
+                    <label class="text-[11px] text-[var(--text-muted)] block font-medium">پلتفرم‌های مقصد را انتخاب فرمایید:</label>
                     <div class="grid grid-cols-2 gap-2 text-xs">
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
-                            <input type="checkbox" id="chkDispatchTg" checked class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                            <span class="text-slate-200">تلگرام</span>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer hover:border-cyan-500/50 transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="checkbox" id="chkDispatchTg" checked class="rounded text-[var(--accent-color)] focus:ring-0" style="background: var(--input-bg); border-color: var(--border-color);">
+                            <span style="color: var(--text-main);">تلگرام</span>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-emerald-500/50 transition">
-                            <input type="checkbox" id="chkDispatchBale" checked class="rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-0">
-                            <span class="text-slate-200">بله</span>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer hover:border-emerald-500/50 transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="checkbox" id="chkDispatchBale" checked class="rounded text-[var(--accent-color)] focus:ring-0" style="background: var(--input-bg); border-color: var(--border-color);">
+                            <span style="color: var(--text-main);">بله</span>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-indigo-500/50 transition">
-                            <input type="checkbox" id="chkDispatchRubika" class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-0">
-                            <span class="text-slate-200">روبیکا کاربری</span>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer hover:border-indigo-500/50 transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="checkbox" id="chkDispatchRubika" class="rounded text-[var(--accent-color)] focus:ring-0" style="background: var(--input-bg); border-color: var(--border-color);">
+                            <span class="text-[var(--text-main)]">روبیکا کاربری</span>
                         </label>
-                        <label class="flex items-center gap-2 p-2.5 rounded-xl  border border-slate-800 cursor-pointer hover:border-cyan-500/50 transition">
-                            <input type="checkbox" id="chkDispatchSoroush" class="rounded bg-slate-800 border-slate-700 text-cyan-500 focus:ring-0">
-                            <span class="text-slate-200">سروش‌پلاس</span>
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer hover:border-cyan-500/50 transition" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <input type="checkbox" id="chkDispatchSoroush" class="rounded text-[var(--accent-color)] focus:ring-0" style="background: var(--input-bg); border-color: var(--border-color);">
+                            <span style="color: var(--text-main);">سروش‌پلاس</span>
                         </label>
                     </div>
 
                     <button type="button" onclick="executeFeedMultiDispatch()" id="btnExecuteMultiDispatch" class="w-full mt-2 py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                         <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                        <span>ارسال به پلتفرم‌های انتخاب‌شده</span>
+                        <span>انتقال به ربات</span>
                     </button>
                 </div>
 
                 <!-- Direct Add to Course Episodes Section -->
-                <div class="space-y-2 pt-3 border-t border-slate-700/60">
-                    <label class="text-[11px] text-cyan-400 block font-bold flex items-center gap-1.5">
+                <div class="space-y-2 pt-3 border-t border-[var(--card-border)]">
+                    <label class="text-[11px] text-[var(--accent-color)] block font-bold flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                         <span>افزودن مستقیم به سرفصل‌های دوره:</span>
                     </label>
@@ -3621,13 +3621,13 @@ def render_dashboard_html() -> str:
                         <select id="feedCourseSelect" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
                             <!-- Populated dynamically from window.COURSES_CACHE -->
                         </select>
-                        <button type="button" onclick="addFeedToCourseEpisodes()" id="btnAddFeedToCourse" class="w-full py-2 px-4 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <button type="button" onclick="addFeedToCourseEpisodes()" id="btnAddFeedToCourse" class="w-full py-2 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                             <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                             <span>افزودن به عنوان قسمت جدید این دوره</span>
                         </button>
                     </div>
                 </div>
-                <div class="pt-3 border-t border-slate-700/60 flex justify-end">
+                <div class="pt-3 border-t border-[var(--card-border)] flex justify-end">
                     <button type="button" onclick="closeFeedDispatchModal()" class="px-4 py-2 rounded-xl theme-card-btn text-xs font-bold transition">
                         انصراف
                     </button>
@@ -6702,7 +6702,7 @@ def render_dashboard_html() -> str:
                                     linksGrid +
                                     '<button type="button" onclick="transferFeedDownload(\\'' + safeUrl + '\\', \\'' + safeTitle + '\\', \\'' + safeAudio + '\\', \\'' + safeVideo + '\\', \\'' + safeSource + '\\')" class="w-full theme-accent-btn py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer">' +
                                         '<svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>' +
-                                        '<span>انتقال به ربات جهت دانلود و نشر</span>' +
+                                        '<span>انتقال به ربات</span>' +
                                     '</button>' +
                                 '</div>' +
                             '</div>' +

@@ -113,5 +113,28 @@
             "--input-bg": "#1e2030",
             "--table-row-hover": "rgba(54, 58, 79, 0.5)"
         }
+    },
+    "solarized-dark": {
+        "name": "solarized-dark",
+        "label": "Solarized Dark",
+        "accent": "#268BD2",
+        "variables": {
+            "--bg-main": "#002B36",
+            "--bg-card": "#073642",
+            "--bg-input": "#073642",
+            "--text-main": "#93A1A1",
+            "--text-muted": "#586E75",
+            "--border-color": "rgba(38, 139, 210, 0.2)",
+            "--accent-color": "#268BD2",
+            "--table-head-bg": "#002B36",
+            "--bg-color": "#002B36",
+            "--fg-color": "#93A1A1",
+            "--panel-bg": "#073642",
+            "--glass-bg": "rgba(0, 43, 54, 0.85)",
+            "--card-border": "rgba(38, 139, 210, 0.2)",
+            "--card-bg": "#073642",
+            "--input-bg": "#073642",
+            "--table-row-hover": "rgba(7, 54, 66, 0.5)"
+        }
     }
 }

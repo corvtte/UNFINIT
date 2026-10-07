@@ -1996,25 +1996,32 @@ class TelegramAdapter:
             try:
                 import aiohttp
                 async with aiohttp.ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as sess:
-                    async with sess.get(url, timeout=aiohttp.ClientTimeout(total=240)) as resp:
+                    async with sess.get(url, timeout=aiohttp.ClientTimeout(total=3600, connect=30)) as resp:
                         if resp.status == 200:
                             total_size = int(resp.headers.get('content-length', 0))
                             downloaded = 0
                             last_prog_text = ""
+                            import time
+                            last_vid_upd = 0
                             with open(target_path, "wb") as f_out:
                                 async for chunk in resp.content.iter_chunked(128 * 1024):
                                     f_out.write(chunk)
                                     downloaded += len(chunk)
                                     if total_size > 0:
                                         pct = (downloaded / total_size) * 100
-                                        if int(pct) % 5 == 0:
-                                            prog_text = f"⏳ <b>در حال دریافت و آماده‌سازی مستقیم از سرور...</b>\n\n✨ <b>{escape(ep.get('title', ''))}</b>\n\n⬇️ <b>دریافت:</b> <code>{pct:.1f}%</code>"
+                                        now = time.time()
+                                        if now - last_vid_upd > 3.0:
+                                            last_vid_upd = now
+                                            bar_length = 10
+                                            filled = int(bar_length * pct // 100)
+                                            bar = "█" * filled + "░" * (bar_length - filled)
+                                            prog_text = f"⏳ <b>در حال دریافت فایل درخواستی شما از سرور...</b>\n\n✨ <b>{escape(ep.get('title', ''))}</b>\n\n⬇️ <b>پیشرفت:</b> <code>[{bar}] {pct:.1f}%</code>"
                                             if prog_text != last_prog_text:
                                                 last_prog_text = prog_text
                                                 try: await status_msg.edit_text(prog_text, parse_mode=enums.ParseMode.HTML)
                                                 except Exception: pass
                         else:
-                            await status_msg.edit_text("❌ خطا در دانلود فایل از سرور منبع.")
+                            await status_msg.edit_text("❌ خطا در دریافت فایل از سرور. ممکن است لینک منقضی شده باشد.")
                             return
 
                 if not target_path.exists() or target_path.stat().st_size == 0:
@@ -2038,6 +2045,22 @@ class TelegramAdapter:
                 if media_type == "audio":
                     reader_tag = await get_system_setting("sign_reader_tag", "abasmanesh365")
                     perf_val = f"@{reader_tag.lstrip('@')}" if reader_tag else None
+                    try:
+                        from core.media_service import modify_id3_tags
+                        await status_msg.edit_text("⏳ <b>در حال پاکسازی متادیتا و تنظیمات نهایی فایل...</b>", parse_mode=enums.ParseMode.HTML)
+                        modify_id3_tags(
+                            target_path,
+                            {
+                                "title": ep.get("title", "فایل صوتی"),
+                                "artist": perf_val,
+                                "album": perf_val
+                            },
+                            remove_cover=True
+                        )
+                    except Exception as e_meta:
+                        import logging
+                        logging.getLogger().error(f"Failed to modify ID3 tags for VIP tg download: {e_meta}")
+                    await status_msg.edit_text("⏳ <b>در حال ارسال فایل به تلگرام...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.", parse_mode=enums.ParseMode.HTML)
                     sent = await client.send_audio(
                         chat_id=callback_query.message.chat.id,
                         audio=str(target_path),
@@ -2049,6 +2072,7 @@ class TelegramAdapter:
                     if sent and sent.audio:
                         await db_set_cached_file_id(file_key, "telegram", sent.audio.file_id, "audio")
                 else:
+                    await status_msg.edit_text("⏳ <b>در حال ارسال ویدیو به تلگرام...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.", parse_mode=enums.ParseMode.HTML)
                     sent = await client.send_video(
                         chat_id=callback_query.message.chat.id,
                         video=str(target_path),

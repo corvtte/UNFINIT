@@ -532,3 +532,9 @@
 - برچیدن کامل واژه VIP و الزام عبارت استاندارد «اشتراک پریمیوم».
 - مهار کامل استثناهای شبکه `BrokenPipeError` در خروجی وب‌سرور.
 - ایجاد صف امن ذخیره‌سازی محلی فایل‌ها برای سروش‌پلاس در زمان قطعی شبکه.
+
+## v0.7.45
+- Fixed audio extraction/UI for video-only series (Zendegi Dar Behesht).
+- Excluded recent UI noise (Profile, Rooms) from feed chapter extraction.
+- Fixed feedDispatchModal hardcoded colors to respect Solarized Dark and other CSS themes.
+- Shortened the dispatch modal submit button text.
