@@ -397,6 +397,7 @@ class WebhookAndHealthHandler(BaseHTTPRequestHandler):
                             "wallet_balance": rc.get("wallet_balance") or 0,
                             "commitment_signed": bool(rc.get("terms_accepted")),
                             "is_vip": UserService.is_user_vip(uid),
+                            "created_at": rc.get("created_at") or 0,
                             "vip_until": "",
                             "purchased_courses": [],
                             "successful_invites": 0

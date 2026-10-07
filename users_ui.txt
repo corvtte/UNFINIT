@@ -1,0 +1,17 @@
+584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                    </svg>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'users')">مدیریت کاربران</span>
+                </button>
+
+                <!-- 7. Tokens & AI -->
+                <button type="button" onclick="switchTab('tokens'); toggleSidebar(false);" data-tab="tokens" id="s-btn-tab-tokens" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                    </svg>
+                    <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'tokens')">سکرت‌ها و هوش مصنوعی</span>
+                </button>
+
+                <!-- 9. Settings & Logs -->
+                <button type="button" onclick="switchTab('settings'); toggleSidebar(false);" data-tab="settings" id="s-btn-tab-settings" class="sidebar-nav-btn w-full text-right px-3 py-2.5 rounded-xl text-xs font-medium transition flex items-center gap-2.5 cursor-pointer hover:bg-slate-800/60">
+                    <svg width="20" height="20" class="w-5 h-5 shrink-0 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.4

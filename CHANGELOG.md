@@ -538,3 +538,8 @@
 - Excluded recent UI noise (Profile, Rooms) from feed chapter extraction.
 - Fixed feedDispatchModal hardcoded colors to respect Solarized Dark and other CSS themes.
 - Shortened the dispatch modal submit button text.
+
+## v0.7.46
+- Refactored User Management UI (added Checkboxes, Platform Filters, Join Date, removed Rubika, unified Premium button).
+- Fixed UnboundLocalError in Bale VIP download (status_msg).
+- Fixed Web Panel UI colors, SVGs, and removed hardcoded font-mono for Toman/Persian texts.

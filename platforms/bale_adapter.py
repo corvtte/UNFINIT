@@ -2615,11 +2615,12 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             await bale.send_message(chat_id, "❌ لینک دانلودی برای این فرمت موجود نیست.")
                                             continue
 
-                                        await bale.send_message(
+                                        status_msg_res = await bale.send_message(
                                             chat_id,
                                             f"⏳ <b>در حال آماده‌سازی و ارسال {'صوت' if media_type == 'audio' else 'ویدیو'}...</b>\n"
                                             f"📄 {escape(ep.get('title', ''))}"
                                         )
+                                        status_msg_id = status_msg_res.get("result", {}).get("message_id") if isinstance(status_msg_res, dict) else None
 
                                         file_key = f"abas_{cat_id}_{page}_{ep_idx}_{media_type}_{abs(hash(url))}"
                                         cached_fid = await db_get_cached_file_id(file_key, "bale")
@@ -2671,7 +2672,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 
                                                 try:
                                                     from core.media_service import modify_id3_tags
-                                                    await bale.edit_message_text(chat_id, status_msg.id, "⏳ <b>در حال پاکسازی متادیتا و تنظیمات نهایی فایل...</b>")
+                                                    await bale.edit_message_text(chat_id, status_msg_id, "⏳ <b>در حال پاکسازی متادیتا و تنظیمات نهایی فایل...</b>")
                                                     modify_id3_tags(
                                                         target_path,
                                                         {
@@ -2685,7 +2686,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     import logging
                                                     logging.getLogger().error(f"Failed to modify ID3 tags for VIP bale download: {e_meta}")
                                                     
-                                                await bale.edit_message_text(chat_id, status_msg.id, "⏳ <b>در حال ارسال فایل به بله...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.")
+                                                await bale.edit_message_text(chat_id, status_msg_id, "⏳ <b>در حال ارسال فایل به بله...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.")
                                                 sent = await bale.send_audio(
                                                     chat_id,
                                                     target_path,
@@ -2697,7 +2698,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 if f_id:
                                                     await db_set_cached_file_id(file_key, "bale", f_id, "audio")
                                             else:
-                                                await bale.edit_message_text(chat_id, status_msg.id, "⏳ <b>در حال ارسال ویدیو به بله...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.")
+                                                await bale.edit_message_text(chat_id, status_msg_id, "⏳ <b>در حال ارسال ویدیو به بله...</b>\n\nاین مرحله بسته به حجم فایل ممکن است کمی زمان‌بر باشد، لطفاً صبور باشید.")
                                                 sent = await bale.send_video(
                                                     chat_id,
                                                     target_path,

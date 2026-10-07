@@ -1,0 +1,138 @@
+<div id="tab-users" class="hidden space-y-6">
+            <!-- User Sub-Tabs Navigation Buttons -->
+            <div class="flex items-center gap-2 border-b border-slate-800 pb-3 flex-wrap">
+                <button type="button" onclick="switchUserSubTab('list')" id="btnUserSubTabList" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-accent-btn">
+                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                    فهرست و مشخصات کاربران و خریداران
+                </button>
+                <button type="button" onclick="switchUserSubTab('referrals')" id="btnUserSubTabRef" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 theme-card-btn text-slate-300">
+                    <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                    </svg>
+                    شبکه رفرال و آمار زیرمجموعه‌گیری
+                </button>
+            </div>
+
+            <!-- Sub-Tab 1: Users List & Profiles -->
+            <div id="userSubTabContentList" class="space-y-4">
+                <!-- Users Table Card -->
+                <div class="glass p-6 rounded-2xl border space-y-4" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <svg class="w-5 h-5 text-cyan-400 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                </svg>
+                                <span>فهرست کاربران و خریداران</span>
+                            </h3>
+                            <p class="text-xs text-slate-400">اطلاعات کاربران، شماره تلفن‌ها و سابقه عضویت در بات‌های تلگرام و بله</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class=" border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border);">
+                            <button type="button" onclick="purgeTestUsers()" class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5" title="پاکسازی کاربران تستی">
+                                <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                                پاکسازی تست
+                            </button>
+                            <button type="button" onclick="exportUsersCsv()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs transition flex items-center gap-1.5" style="background: var(--input-bg); border-color: var(--card-border);">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                خروجی CSV
+                            </button>
+                            <button type="button" onclick="loadUsersData()" class="px-3 py-1.5 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                                بروزرسانی
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto block whitespace-nowrap rounded-xl border" style="border-color: var(--card-border);">
+                        <table class="w-full text-right text-xs whitespace-nowrap">
+                            <thead class="text-slate-400 border-b" style="background: var(--table-head-bg); border-color: var(--card-border);">
+                                <tr>
+                                    <th class="p-3">پلتفرم</th>
+                                    <th class="p-3">شناسه کاربری</th>
+                                    <th class="p-3">نام / نام کاربری</th>
+                                    <th class="p-3">شماره تماس</th>
+                                    <th class="p-3">وضعیت اشتراک</th>
+                                    <th class="p-3">معرف رفرال</th>
+                                    <th class="p-3">موجودی کیف پول</th>
+                                    <th class="p-3">وضعیت تعهدنامه</th>
+                                    <th class="p-3 text-center">عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody" class="divide-y divide-slate-800/60">
+                                <tr>
+                                    <td colspan="9" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-Tab 2: Viral Referral Network & Stats -->
+            <div id="userSubTabContentRef" class="hidden space-y-6">
+                <!-- User Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-400">کل کاربران ثبت‌نامی</span>
+                            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-white" id="statTotalUsers">0</div>
+                        <p class="text-[11px] text-slate-500 mt-1">شناسه یکپارچه بله و تلگرام</p>
+                    </div>
+
+                    <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-400">معرفی‌شده‌ها (رفرال فعال)</span>
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-emerald-400" id="statRefUsers">0</div>
+                        <p class="text-[11px] text-slate-500 mt-1">شبکه بازاریابی دهان‌به‌دهان</p>
+                    </div>
+
+                    <div class="glass p-4 rounded-2xl border" style="background: var(--card-bg); border-color: var(--card-border);">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-400">مجموع اعتبار کیف‌پول‌ها</span>
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                                <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-amber-400" id="statTotalWallet">۰ تومان</div>
+                        <p class="text-[11px] text-slate-500 mt-1">پاداش‌های رفرال و خرید</p>
+                    </div>
+                </div>
+
+                <!-- Referral Architecture Info Box -->
+                <div class="glass p-6 rounded-2xl border space-y-3" style="background: var(--card-bg); border-color: var(--card-border);">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🌐</span>
+                        <h4 class="text-sm font-bold text-slate-100">شبکه بازاریابی رفرال ویروسی (Identical Twin Referral Engine)</h4>
+                    </div>
+                    <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
+                        سامانه رفرال با مکانیزم یکپارچه دوگانه عمل می‌کند: هر کاربر در تلگرام و بله با شناسه عددی یکسان به عنوان معرف ثبت شده و با دعوت هر کاربر جدید، پاداش رفرال به صورت خودکار به کیف پول افزوده شده و سوابق در دیتابیس رمزنگاری‌شده ثبت می‌گردد.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: SECRETS & TOKENS ================= -->
+        

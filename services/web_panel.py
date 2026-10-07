@@ -275,7 +275,7 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-mono text-amber-400 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/80">{d['drop_id']}</span>
+                            <span class="text-xs text-amber-400 font-bold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/80">{d['drop_id']}</span>
                             <span class="text-xs font-bold text-slate-100 truncate max-w-[240px]" title="{safe_fn}">{safe_fn}</span>
                         </div>
                         <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-2">
@@ -288,7 +288,7 @@ def render_studio_table_rows(sort_by: str = "newest") -> str:
             </td>
             <td class="py-3 px-3">
                 <div class="flex flex-col gap-1">
-                    <span class="text-xs text-slate-300 font-mono">{d['size']}</span>
+                    <span class="text-xs text-slate-300">{d['size']}</span>
                     <span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700 uppercase inline-block w-max">{d['platform']} | {d['media_type']}</span>
                 </div>
             </td>
@@ -433,7 +433,7 @@ def render_dashboard_html() -> str:
     else:
         for prod in products:
             status_badge = f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> فعال</span>' if prod.active else f'<span id="status_badge_{prod.product_id}" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> غیرفعال</span>'
-            price_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
+            price_badge = f'<span class="text-sm font-bold text-emerald-400">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
             
             card_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-cyan-300 border border-cyan-800/60" style="color: var(--accent-color);">کارت‌به‌کارت ✓</span>' if prod.allow_card else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">کارت‌به‌کارت ✕</span>'
             bale_badge = '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">درگاه بله ✓</span>' if prod.allow_bale else '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-500 border border-slate-700">درگاه بله ✕</span>'
@@ -444,7 +444,7 @@ def render_dashboard_html() -> str:
 
             dl_html = f'''
             <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                <span class="truncate max-w-[180px] font-mono" title="{prod.download_link}">{prod.download_link}</span>
+                <span class="truncate max-w-[180px]" title="{prod.download_link}">{prod.download_link}</span>
                 <button onclick="copyText('{prod.download_link}')" class="text-cyan-400 hover:text-cyan-300 px-2 py-1 rounded bg-slate-800 text-[10px] border border-slate-700 transition">کپی لینک</button>
             </div>
             ''' if prod.download_link else '<div class="mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-slate-500 flex items-center gap-1">فاقد لینک مستقیم</div>'
@@ -459,7 +459,7 @@ def render_dashboard_html() -> str:
                     {banner_html}
                     <div class="flex justify-between items-start gap-2 mb-2">
                         <div>
-                            <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">{prod.product_id}</span>
+                            <span class="text-[10px] text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">{prod.product_id}</span>
                             <h3 class="text-base font-bold text-white mt-1.5 leading-snug group-hover:text-cyan-300 transition">{prod.name}</h3>
                         </div>
                         {status_badge}
@@ -497,13 +497,13 @@ def render_dashboard_html() -> str:
         audiobook_cards = '<div class="col-span-full py-12 text-center text-slate-500  rounded-2xl border border-slate-800">هیچ کتاب یا پکیج صوتی مستقلی ثبت نشده است. دوره‌های صوتی ثبت‌شده به صورت خودکار در این بخش نمایش می‌یابند.</div>'
     else:
         for prod in audio_prods:
-            p_badge = f'<span class="text-sm font-bold text-emerald-400 font-mono">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
+            p_badge = f'<span class="text-sm font-bold text-emerald-400">{prod.price:,} تومان</span>' if prod.price > 0 else '<span class="text-sm font-bold text-cyan-400">رایگان</span>'
             audiobook_cards += f"""
             <div class="glass p-5 rounded-2xl flex flex-col justify-between border border-slate-800 hover:border-cyan-500/40 transition group" style="background: var(--card-bg); border-color: var(--card-border);">
                 <div>
                     <div class="flex justify-between items-start gap-2 mb-2">
                         <div>
-                            <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">{prod.product_id}</span>
+                            <span class="text-[10px] text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">{prod.product_id}</span>
                             <h4 class="text-sm font-bold text-white mt-1.5 leading-snug group-hover:text-cyan-300 transition">{prod.name}</h4>
                         </div>
                         <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">کتاب صوتی</span>
@@ -627,7 +627,7 @@ def render_dashboard_html() -> str:
             font-family: 'Vazirmatn', sans-serif !important;
             letter-spacing: normal !important;
         }}
-        code, pre, .font-mono {{ font-family: 'Roboto', monospace !important; }}
+        code, pre, .{{ font-family: 'Roboto', monospace !important; }}
         .glass, .settings-box, .setting-card, .glass-card, .store-card, details.settings-accordion {{
             background: var(--card-bg) !important;
             border: 1px solid var(--card-border) !important;
@@ -806,7 +806,7 @@ def render_dashboard_html() -> str:
                 <div class="text-right">
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-black text-white tracking-tight">UNFINIT Panel</h1>
-                        <span class="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">{config.ENGINE_VERSION}</span>
+                        <span class="text-[11px] font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-lg border border-cyan-800">{config.ENGINE_VERSION}</span>
                     </div>
                 </div>
             </div>
@@ -819,12 +819,12 @@ def render_dashboard_html() -> str:
             <div id="mainLoginContainer" class="space-y-4 text-right">
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">شناسه کاربری / ایمیل</label>
-                    <input type="text" id="loginUsername" value="admin" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition">
+                    <input type="text" id="loginUsername" value="admin" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">رمز عبور مدیریت</label>
                     <div class="relative">
-                        <input type="password" id="adminPasswordInput" autocomplete="current-password" placeholder="رمز عبور مدیریت..." onkeydown="if(event.key==='Enter') executeAdminLogin()" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono transition pl-10 text-left" dir="ltr">
+                        <input type="password" id="adminPasswordInput" autocomplete="current-password" placeholder="رمز عبور مدیریت..." onkeydown="if(event.key==='Enter') executeAdminLogin()" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition pl-10 text-left" dir="ltr">
                         <button type="button" onclick="toggleAdminLoginPwd()" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-sm" title="نمایش/مخفی‌سازی رمز">
                             👁
                         </button>
@@ -1067,7 +1067,7 @@ def render_dashboard_html() -> str:
                                         <path d="M2.5 19h19v2h-19v-2zm1.2-14.5l4.8 6.5 3.5-5 3.5 5 4.8-6.5 1.7 12.5h-20l1.7-12.5z"/>
                                     </svg>
                                 </span>
-                                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">{config.ENGINE_VERSION}</span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">{config.ENGINE_VERSION}</span>
                             </h1>
                             <p class="text-[11px] text-slate-400 truncate">Store &amp; Media Studio</p>
                         </div>
@@ -1103,7 +1103,7 @@ def render_dashboard_html() -> str:
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                     </svg>
                     <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'studio')">استودیوی رسانه و وکتور</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400 font-mono">{active_drops_count}</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-cyan-400">{active_drops_count}</span>
                 </button>
 
                 <!-- 4. Products -->
@@ -1112,7 +1112,7 @@ def render_dashboard_html() -> str:
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                     </svg>
                     <span class="flex-1 text-right" title="جهت تغییر نام دابل‌کلیک کنید" ondblclick="inlineRenameTab(this, 'courses')">محصولات</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-emerald-400 font-mono">{len(products)}</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-emerald-400">{len(products)}</span>
                 </button>
 
                 <!-- 5. Orders -->
@@ -1166,7 +1166,7 @@ def render_dashboard_html() -> str:
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span class="text-slate-400">آپ‌تایم:</span>
                     </div>
-                    <span id="uptimeDisplay" class="font-mono font-bold text-emerald-400" data-start="{int(SERVER_START_TIME)}">{health['uptime']}</span>
+                    <span id="uptimeDisplay" class="font-bold text-emerald-400" data-start="{int(SERVER_START_TIME)}">{health['uptime']}</span>
                 </div>
 
                 <!-- Logout Button -->
@@ -1245,7 +1245,7 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold font-mono text-white" id="dashTotalDrops">{active_drops_count}</div>
+                    <div class="text-xl sm:text-2xl font-bold text-white" id="dashTotalDrops">{active_drops_count}</div>
                     <p class="text-[11px] text-slate-500 mt-1">آماده پردازش و دیسپچ</p>
                 </div>
 
@@ -1259,7 +1259,7 @@ def render_dashboard_html() -> str:
                             </svg>
                         </div>
                     </div>
-                    <div class="text-xl sm:text-2xl font-bold text-emerald-400" style="letter-spacing: normal !important;" id="dashConnectedPlatforms"><span class="font-mono">{connected_platforms_count}</span> پلتفرم فعال</div>
+                    <div class="text-xl sm:text-2xl font-bold text-emerald-400" style="letter-spacing: normal !important;" id="dashConnectedPlatforms"><span class="">{connected_platforms_count}</span> پلتفرم فعال</div>
                     <p class="text-[11px] text-slate-500 mt-1" id="dashConnectedSummary">از ۴ درگاه پیام‌رسان</p>
                 </div>
 
@@ -1297,7 +1297,7 @@ def render_dashboard_html() -> str:
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">شناسه ادمین: <code style="color: var(--accent-color);">{p['telegram']['owner_id']}</code></p>
-                        <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300 font-mono text-[11px]">Pyrogram MTProto v2</span></p>
+                        <p class="text-xs text-slate-400 mt-1">پروتکل: <span class="text-slate-300 text-[11px]">Pyrogram MTProto v2</span></p>
                     </div>
                     <div class="mt-3 pt-2 border-t border-white/5 text-[11px] text-emerald-400 flex items-center gap-1.5">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> متصل و آماده تبادل رسانه
@@ -1350,8 +1350,8 @@ def render_dashboard_html() -> str:
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-emerald-400">ارسال به Saved Messages</span></p>
-                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code id="rubikaPhoneDisplay" class="font-mono text-cyan-300">{p['rubika_user'].get('masked_phone') or 'بدون شماره'}</code></p>
-                        <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
+                        <p class="text-xs text-slate-400 mt-1">شماره حساب: <code id="rubikaPhoneDisplay" class="text-cyan-300">{p['rubika_user'].get('masked_phone') or 'بدون شماره'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
                     <div id="rubikaBtnContainer" class="mt-3">
                         {f'''<button type="button" onclick="disconnectSession('rubika')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['rubika_user']['status'] == 'ONLINE' else '''<p class="text-[11px] text-amber-400 text-center py-1">سشن غیرفعال است</p>'''}
@@ -1375,8 +1375,8 @@ def render_dashboard_html() -> str:
                             </span>
                         </div>
                         <p class="text-xs text-slate-400">حالت: <span class="font-semibold text-cyan-400">ارسال به Saved Messages</span></p>
-                        <p class="text-xs text-slate-400 mt-1">وضعیت حساب: <code id="soroushPhoneDisplay" class="font-mono text-cyan-300">{p['soroush'].get('masked_phone') or 'عدم اتصال'}</code></p>
-                        <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 font-mono text-[11px]">AES-256-GCM رمزنگاری</span></p>
+                        <p class="text-xs text-slate-400 mt-1">وضعیت حساب: <code id="soroushPhoneDisplay" class="text-cyan-300">{p['soroush'].get('masked_phone') or 'عدم اتصال'}</code></p>
+                        <p class="text-xs text-slate-400 mt-1">سشن: <span class="text-cyan-400 text-[11px]">AES-256-GCM رمزنگاری</span></p>
                     </div>
                     <div id="soroushBtnContainer" class="mt-3">
                         {f'''<button type="button" onclick="disconnectSession('soroush')" class="w-full py-1.5 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800 text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg><span>قطع اتصال / خروج</span></button>''' if p['soroush']['status'] == 'ONLINE' else '''<button type="button" onclick="openSoroushLoginModal()" class="w-full py-1.5 px-2 rounded-lg theme-accent-btn text-[11px] font-bold transition flex items-center justify-center gap-1.5"><svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg><span>ورود به حساب سروش‌پلاس</span></button>'''}
@@ -1391,7 +1391,7 @@ def render_dashboard_html() -> str:
             <div class="p-3 border-b flex items-center justify-between gap-2" style="border-color: var(--card-border); background: var(--table-head-bg);">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <h3 class="font-bold text-xs text-white font-mono flex items-center gap-2">
+                    <h3 class="font-bold text-xs text-white flex items-center gap-2">
                         <span>Console Stream</span>
                         <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800">LIVE</span>
                     </h3>
@@ -1415,7 +1415,7 @@ def render_dashboard_html() -> str:
                 </div>
             </div>
             <div class="flex-1 p-3 overflow-hidden flex flex-col">
-                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 font-mono text-xs overflow-y-auto p-3 rounded-xl border space-y-1 select-text no-scrollbar" style="background: var(--card-bg, #09090b); border-color: var(--card-border); color: #34d399;">
+                <div id="dashboardRecentLogs" dir="ltr" class="flex-1 text-xs overflow-y-auto p-3 rounded-xl border space-y-1 select-text no-scrollbar" style="background: var(--card-bg, #09090b); border-color: var(--card-border); color: #34d399;">
                     <div class="text-slate-500">// UNFINIT Engine {config.ENGINE_VERSION} Live Stream initialized...</div>
                 </div>
             </div>
@@ -1440,7 +1440,7 @@ def render_dashboard_html() -> str:
                         </svg>
                         <span>استودیوی پیشرفته متادیتا و رسانه (Web Mp3tag Studio)</span>
                     </div>
-                    <span class="text-xs text-cyan-400 font-mono bg-cyan-950/80 px-3 py-1 rounded-lg border border-cyan-800">
+                    <span class="text-xs text-cyan-400 bg-cyan-950/80 px-3 py-1 rounded-lg border border-cyan-800">
                         تعداد کل فایل‌ها: {active_drops_count}
                     </span>
                 </summary>
@@ -1466,7 +1466,7 @@ def render_dashboard_html() -> str:
                                 <input type="checkbox" id="cfg_studio_auto_title" onchange="toggleStudioMetaSetting('AUTO_RENAME_FILE_TO_TITLE', this.checked)" class="w-4 h-4 rounded border-slate-700  text-cyan-600 focus:ring-cyan-500 cursor-pointer">
                                 <span>تغییر نام فایل به عنوان آهنگ</span>
                             </label>
-                            <span id="studioMetaSyncNotice" class="text-[11px] text-emerald-400 hidden font-mono">ذخیره شد ✓</span>
+                            <span id="studioMetaSyncNotice" class="text-[11px] text-emerald-400 hidden">ذخیره شد ✓</span>
                         </div>
                     </div>
 
@@ -1482,7 +1482,7 @@ def render_dashboard_html() -> str:
                             <p class="text-xs font-bold text-slate-200">فایل‌های صوتی یا ویدیویی خود را به اینجا بکشید یا برای انتخاب کلیک کنید</p>
                             <p class="text-[11px] text-slate-400 mt-1">پشتیبانی از فرمت‌های صوتی و ویدیویی (MP3, M4A, AAC, WAV, MP4) با ثبت خودکار در سشن‌های استودیو</p>
                         </div>
-                        <div id="studioUploadProgress" class="hidden text-xs text-cyan-400 font-mono"></div>
+                        <div id="studioUploadProgress" class="hidden text-xs text-cyan-400"></div>
                     </div>
 
                     <!-- Batch Action Bar -->
@@ -1492,7 +1492,7 @@ def render_dashboard_html() -> str:
                                 <input type="checkbox" id="selectAllDrops" onchange="toggleSelectAllDrops(this)" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-600 focus:ring-cyan-500 cursor-pointer">
                                 <span>انتخاب همه</span>
                             </label>
-                            <span id="selectedCountBadge" class="text-xs text-cyan-300 font-mono bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800/80">۰ فایل انتخاب شده</span>
+                            <span id="selectedCountBadge" class="text-xs text-cyan-300 bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-800/80">۰ فایل انتخاب شده</span>
                             <button onclick="batchDeleteStudioDrops()" class="px-3.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 text-xs font-bold border border-rose-800 transition flex items-center gap-1.5" title="حذف گروهی فایل‌های انتخاب‌شده از حافظه و دیسک">
                                 <span>حذف فایل‌های انتخاب‌شده</span>
                             </button>
@@ -1550,7 +1550,7 @@ def render_dashboard_html() -> str:
                         </svg>
                         <span>دانلود استریم از لینک مستقیم و دیسپچ بین پلتفرم‌ها (URL Uploader)</span>
                     </div>
-                    <span class="text-xs text-slate-400 font-mono">▼</span>
+                    <span class="text-xs text-slate-400">▼</span>
                 </summary>
                 <div class="p-6 pt-2 space-y-4">
                     <p class="text-xs text-slate-400 mb-2">
@@ -1575,7 +1575,7 @@ def render_dashboard_html() -> str:
                             </button>
                         </div>
                     </form>
-                    <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono"></div>
+                    <div id="dispatchResult" class="hidden mt-4 p-3 rounded-xl text-xs"></div>
                 </div>
             </details>
 
@@ -1590,7 +1590,7 @@ def render_dashboard_html() -> str:
                     <div>
                         <h2 class="text-base font-bold text-white flex items-center gap-2">
                             دستیار هوشمند دوره‌ها و استودیوی رسانه (Studio & Course Copilot)
-                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">🟢 فعال و آنلاین</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800"><svg class="w-4 h-4 text-emerald-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" /></svg> فعال و آنلاین</span>
                         </h2>
                         <p class="text-xs text-slate-400 mt-1">اتصال به Nara Router با سهمیه رایگان - متخصص اتوماسیون متادیتا، تدوین کپشن دوره‌ها و مهندسی رسانه</p>
                     </div>
@@ -1598,13 +1598,13 @@ def render_dashboard_html() -> str:
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border" style="background: var(--input-bg); border-color: var(--card-border);">
                         <label for="hermesModelSelect" class="text-xs text-slate-300 whitespace-nowrap">🤖 مدل هوش مصنوعی:</label>
-                        <select id="hermesModelSelect" class="border rounded-lg px-2.5 py-1 text-xs font-mono focus:outline-none" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">
+                        <select id="hermesModelSelect" class="border rounded-lg px-2.5 py-1 text-xs focus:outline-none" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">
                             <option value="stepfun-3.7-flash" selected>stepfun-3.7-flash (پیش‌فرض هوشمند و قوی متون فارسی)</option>
                             <option value="mimo-v2.5-free">mimo-v2.5-free (فوق‌سریع و رایگان)</option>
                             <option value="qwen2.5-72b">qwen2.5-72b (دقت نگارش بالا)</option>
                         </select>
                     </div>
-                    <span class="px-2.5 py-1.5 rounded-xl border font-mono text-[11px]" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">🌐 router.bynara.id</span>
+                    <span class="px-2.5 py-1.5 rounded-xl border text-[11px]" style="background: var(--card-bg); border-color: var(--card-border); color: var(--accent-color);">🌐 router.bynara.id</span>
                 </div>
             </div>
 
@@ -1641,7 +1641,7 @@ def render_dashboard_html() -> str:
                         </svg>
                         <span>استودیوی وکتور SVG (SVG Studio Suite)</span>
                     </div>
-                    <span class="text-xs font-mono px-2.5 py-1 rounded-lg border text-cyan-400 bg-cyan-950/80 border-cyan-800">
+                    <span class="text-xs px-2.5 py-1 rounded-lg border text-cyan-400 bg-cyan-950/80 border-cyan-800">
                         Vector Engine {config.ENGINE_VERSION}
                     </span>
                 </summary>
@@ -1673,7 +1673,7 @@ def render_dashboard_html() -> str:
                                     <label class="block text-[11px] font-bold text-slate-300">تغییر رنگ هوشمند وکتور (Smart Recolor):</label>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <input type="color" id="svgRecolorPicker" value="#FFFFFF" onchange="syncSvgColorPicker(this.value)" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0">
-                                        <input type="text" id="svgHexInput" value="#FFFFFF" placeholder="#FFFFFF" maxlength="9" onchange="syncSvgHexInput(this.value)" class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs font-mono text-center text-cyan-300 focus:outline-none focus:border-cyan-500" dir="ltr">
+                                        <input type="text" id="svgHexInput" value="#FFFFFF" placeholder="#FFFFFF" maxlength="9" onchange="syncSvgHexInput(this.value)" class="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center text-cyan-300 focus:outline-none focus:border-cyan-500" dir="ltr">
                                         <button type="button" onclick="setSvgColor('#FFFFFF')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-[11px] font-medium border border-slate-600 transition">سفید (#FFF)</button>
                                         <button type="button" onclick="setSvgColor('#000000')" class="px-2.5 py-1 rounded-lg  hover:bg-slate-800 text-slate-300 text-[11px] font-medium border border-slate-700 transition">مشکی (#000)</button>
                                         <button type="button" onclick="setSvgColor('#3B82F6')" class="px-2.5 py-1 rounded-lg bg-sky-950 hover:bg-sky-900 text-sky-300 text-[11px] font-medium border border-sky-800 transition">آبی (#3B82F6)</button>
@@ -1694,7 +1694,7 @@ def render_dashboard_html() -> str:
                                     <label class="block text-[11px] font-bold text-slate-300">تولید وکتور متنی (Text to SVG Typography):</label>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <input type="text" id="svgTextInput" placeholder="متن جهت تولید لوگوتایپ یا عنوان وکتور..." class="flex-1 min-w-[200px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500">
-                                        <input type="number" id="svgTextSizeInput" value="48" min="12" max="144" class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-mono text-center text-slate-200" title="اندازه فونت">
+                                        <input type="number" id="svgTextSizeInput" value="48" min="12" max="144" class="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-center text-slate-200" title="اندازه فونت">
                                         <button type="button" onclick="handleGenerateTextSvg()" class="px-3.5 py-1.5 rounded-xl bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1">
                                             <span>ساخت وکتور</span>
                                         </button>
@@ -1713,7 +1713,7 @@ def render_dashboard_html() -> str:
                         <div class="lg:col-span-5 flex flex-col">
                             <div class="flex items-center justify-between mb-1">
                                 <label class="text-xs font-medium text-slate-300">پیش‌نمایش زنده وکتور:</label>
-                                <span id="svgDimensionsBadge" class="text-[10px] font-mono text-slate-400  px-2 py-0.5 rounded border border-slate-800">-</span>
+                                <span id="svgDimensionsBadge" class="text-[10px] text-slate-400  px-2 py-0.5 rounded border border-slate-800">-</span>
                             </div>
                             <div id="svgLivePreview" class="flex-1 border border-dashed border-slate-700/80 rounded-xl p-4 bg-slate-950/70 min-h-[200px] flex items-center justify-center overflow-auto">
                                 <span class="text-xs text-slate-500">فایل SVG انتخاب شده در اینجا رسم می‌شود</span>
@@ -1721,7 +1721,7 @@ def render_dashboard_html() -> str:
                         </div>
                     </div>
 
-                    <div id="svgConvertResult" class="hidden mt-4 p-3 rounded-xl text-xs font-mono flex items-center justify-between"></div>
+                    <div id="svgConvertResult" class="hidden mt-4 p-3 rounded-xl text-xs flex items-center justify-between"></div>
                 </div>
             </details>
 
@@ -1767,7 +1767,7 @@ def render_dashboard_html() -> str:
                 <div class="flex items-center gap-3">
                     <div class="text-right px-4 py-2 rounded-xl  border border-slate-800">
                         <span class="text-[11px] text-slate-400 block">دوره‌های فعال / کل:</span>
-                        <span class="text-sm font-bold text-cyan-400 font-mono">{active_count} از {len(products)}</span>
+                        <span class="text-sm font-bold text-cyan-400">{active_count} از {len(products)}</span>
                     </div>
                     <a href="/store" target="_blank" class="theme-accent-btn font-bold py-2.5 px-4 rounded-xl shadow-lg transition flex items-center gap-2 text-xs">
                         <span>🌐</span> مشاهده ویترین فروشگاه (/store)
@@ -1788,18 +1788,18 @@ def render_dashboard_html() -> str:
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs text-slate-300">نام دوره *</label>
-                                <span id="counter_newCName" class="text-[11px] font-mono text-slate-400">0 / 32</span>
+                                <span id="counter_newCName" class="text-[11px] text-slate-400">0 / 32</span>
                             </div>
                             <input type="text" id="newCName" required maxlength="32" oninput="updateCharCounter('newCName', 'counter_newCName', 32)" placeholder="مثال: آموزش جامع رشد فردی" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">قیمت به تومان (0 برای رایگان) *</label>
-                            <input type="text" inputmode="numeric" id="newCPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <input type="text" inputmode="numeric" id="newCPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                         <div>
                             <label class="block text-xs text-slate-300 mb-1">بنر یا عکس دوره</label>
                             <div class="flex gap-2 items-center">
-                                <input type="text" id="newCPhoto" placeholder="آدرس اینترنتی یا با دکمه آپلود کنید..." class="flex-1  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                                <input type="text" id="newCPhoto" placeholder="آدرس اینترنتی یا با دکمه آپلود کنید..." class="flex-1  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                                 <label class="cursor-pointer px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 font-medium transition flex items-center gap-1 shrink-0">
                                     <span>📷</span> آپلود بنر
                                     <input type="file" accept="image/*" class="hidden" onchange="uploadBannerFile(this, 'newCPhoto')">
@@ -1819,7 +1819,7 @@ def render_dashboard_html() -> str:
                                     <span>✨</span> خلاصه هوشمند برای بله (زیر ۲۵۵ کاراکتر)
                                 </button>
                             </div>
-                            <span id="counter_newCDesc" class="text-[11px] font-mono text-slate-400">0 / 255</span>
+                            <span id="counter_newCDesc" class="text-[11px] text-slate-400">0 / 255</span>
                         </div>
                         <textarea id="newCDesc" rows="3" oninput="updateCharCounter('newCDesc', 'counter_newCDesc', 255)" placeholder="توضیحات کامل دوره و سرفصل‌ها..." class="w-full  border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
                     </div>
@@ -1833,7 +1833,7 @@ def render_dashboard_html() -> str:
                         </div>
                         <div id="newCDownloadBox">
                             <label class="block text-xs text-slate-300 mb-1">لینک دانلود فایل دوره (تحویل خودکار)</label>
-                            <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <input type="text" id="newCDownload" placeholder="https://example.com/course_files.zip" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                     </div>
                     <div id="newCPackageBox" class="hidden">
@@ -1841,7 +1841,7 @@ def render_dashboard_html() -> str:
                             <label class="block text-xs text-cyan-300 font-medium">لیست فایل‌های پکیج (JSON یا خط‌به‌خط)</label>
                             <span class="text-[10px] text-slate-400">تحویل زنجیره‌ای در تلگرام و بله</span>
                         </div>
-                        <textarea id="newCFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full  border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono"></textarea>
+                        <textarea id="newCFilesPackage" rows="3" placeholder='[&#10;  {{"title": "جلسه اول", "file_name": "lesson1.mp3", "duration": 1200}}&#10;]' class="w-full  border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500"></textarea>
                     </div>
                     <div class="flex flex-wrap items-center gap-6 pt-2">
                         <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
@@ -1909,22 +1909,22 @@ def render_dashboard_html() -> str:
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class=" p-4 rounded-xl border border-cyan-900/40">
                         <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش کل (تایید شده)</div>
-                        <div id="metricTotalSales" class="text-lg font-bold text-cyan-400 font-mono">۰ تومان</div>
+                        <div id="metricTotalSales" class="text-lg font-bold text-cyan-400">۰ تومان</div>
                         <div id="metricTotalOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش موفق</div>
                     </div>
                     <div class=" p-4 rounded-xl border border-emerald-900/40">
                         <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش امروز</div>
-                        <div id="metricTodaySales" class="text-lg font-bold text-emerald-400 font-mono">۰ تومان</div>
+                        <div id="metricTodaySales" class="text-lg font-bold text-emerald-400">۰ تومان</div>
                         <div id="metricTodayOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
                     <div class=" p-4 rounded-xl border border-sky-900/40">
                         <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش ۷ روز گذشته</div>
-                        <div id="metricWeekSales" class="text-lg font-bold text-sky-400 font-mono">۰ تومان</div>
+                        <div id="metricWeekSales" class="text-lg font-bold text-sky-400">۰ تومان</div>
                         <div id="metricWeekOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
                     <div class=" p-4 rounded-xl border border-purple-900/40">
                         <div class="text-[11px] mb-1" style="color: var(--text-muted);">فروش ۳۰ روز گذشته</div>
-                        <div id="metricMonthSales" class="text-lg font-bold text-purple-400 font-mono">۰ تومان</div>
+                        <div id="metricMonthSales" class="text-lg font-bold text-purple-400">۰ تومان</div>
                         <div id="metricMonthOrders" class="text-[10px] text-slate-500 mt-1">۰ سفارش</div>
                     </div>
                 </div>
@@ -1933,30 +1933,30 @@ def render_dashboard_html() -> str:
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
                     <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span>✈️</span>
+                            <span><svg class="w-4 h-4 text-cyan-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg></span>
                             <span class="text-xs text-slate-300">تلگرام</span>
                         </div>
-                        <div class="text-left font-mono text-xs text-sky-400" id="platSalesTg">۰ تومان (۰)</div>
+                        <div class="text-left text-xs text-sky-400" id="platSalesTg">۰ تومان (۰)</div>
                     </div>
                     <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span>🟢</span>
+                            <span><svg class="w-4 h-4 text-emerald-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" /></svg></span>
                             <span class="text-xs text-slate-300">بله</span>
                         </div>
-                        <div class="text-left font-mono text-xs text-emerald-400" id="platSalesBale">۰ تومان (۰)</div>
+                        <div class="text-left text-xs text-emerald-400" id="platSalesBale">۰ تومان (۰)</div>
                     </div>
                     <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span>🟣</span>
+                            <span></span>
                             <span class="text-xs text-slate-300">روبیکا</span>
                         </div>
-                        <div class="text-left font-mono text-xs text-purple-400" id="platSalesRubika">۰ تومان (۰)</div>
+                        <div class="text-left text-xs text-purple-400" id="platSalesRubika">۰ تومان (۰)</div>
                     </div>
                     <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-slate-300">فروشگاه وب</span>
                         </div>
-                        <div class="text-left font-mono text-xs text-amber-400" id="platSalesWeb">۰ تومان (۰)</div>
+                        <div class="text-left text-xs text-amber-400" id="platSalesWeb">۰ تومان (۰)</div>
                     </div>
                 </div>
             </div>
@@ -2010,7 +2010,7 @@ def render_dashboard_html() -> str:
                         </p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold font-mono">
+                        <span class="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30 text-xs font-bold">
                             تعرفه جاری: {int(settings.get('VIP_MONTHLY_PRICE', 111000)):,} تومان
                         </span>
                     </div>
@@ -2026,15 +2026,15 @@ def render_dashboard_html() -> str:
                         <div class="space-y-3 text-xs">
                             <div>
                                 <label class="block mb-1" style="color: var(--text-muted);">قیمت اشتراک ۳۰ روزه (تومان):</label>
-                                <input type="text" id="viphub_price" value="{settings.get('VIP_MONTHLY_PRICE', '111000')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                                <input type="text" id="viphub_price" value="{settings.get('VIP_MONTHLY_PRICE', '111000')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
                             <div>
                                 <label class="block mb-1" style="color: var(--text-muted);">مدت اعتبار (روز):</label>
-                                <input type="number" id="viphub_days" value="{settings.get('VIP_DURATION_DAYS', '30')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                                <input type="number" id="viphub_days" value="{settings.get('VIP_DURATION_DAYS', '30')}" class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
                             <div>
                                 <label class="block mb-1" style="color: var(--text-muted);">شماره کارت اختصاصی جهت واریز دستی:</label>
-                                <input type="text" id="viphub_card" value="{settings.get('VIP_CARD_NUMBER', '')}" placeholder="۶۰۳۷..." class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                                <input type="text" id="viphub_card" value="{settings.get('VIP_CARD_NUMBER', '')}" placeholder="۶۰۳۷..." class="w-full px-3 py-2 rounded-xl border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             </div>
                             <div>
                                 <label class="block mb-1" style="color: var(--text-muted);">متن و توضیحات تبلیغاتی اشتراک پریمیوم (سفارشی):</label>
@@ -2164,7 +2164,7 @@ def render_dashboard_html() -> str:
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1">کد تخفیف (Coupon Code)</label>
-                                <input type="text" id="newCouponCode" required placeholder="مثلاً: NOWRUZ1404" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase focus:outline-none focus:border-emerald-500">
+                                <input type="text" id="newCouponCode" required placeholder="مثلاً: NOWRUZ1404" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white uppercase focus:outline-none focus:border-emerald-500">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1">نوع تخفیف</label>
@@ -2175,21 +2175,21 @@ def render_dashboard_html() -> str:
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1">مقدار تخفیف</label>
-                                <input type="number" id="newCouponValue" required min="1" placeholder="مثلاً 20 درصد یا 50000 تومان" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                                <input type="number" id="newCouponValue" required min="1" placeholder="مثلاً 20 درصد یا 50000 تومان" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1">سقف تعداد استفاده (0 = نامحدود)</label>
-                                <input type="number" id="newCouponMaxUses" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                                <input type="number" id="newCouponMaxUses" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1">حداقل مبلغ سفارش (تومان، 0 = بدون شرط)</label>
-                                <input type="number" id="newCouponMinAmount" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                                <input type="number" id="newCouponMinAmount" value="0" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                             </div>
                             <div>
                                 <label class="block text-xs text-slate-300 mb-1">تاریخ انقضا (YYYY-MM-DD اختیاری)</label>
-                                <input type="text" id="newCouponExpire" placeholder="2026-12-31" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500">
+                                <input type="text" id="newCouponExpire" placeholder="2026-12-31" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
                             </div>
                         </div>
                         <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
@@ -2327,8 +2327,9 @@ def render_dashboard_html() -> str:
                             <p class="text-xs text-slate-400">اطلاعات کاربران، شماره تلفن‌ها و سابقه عضویت در بات‌های تلگرام و بله</p>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
+                            <select id="userPlatformFilter" onchange="filterUsersTable()" class=" border border-slate-700 rounded-xl px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border);"><option value="all">همه پلتفرم‌ها</option><option value="telegram">تلگرام</option><option value="bale">بله</option></select>
                             <input type="text" id="usersSearchInput" oninput="filterUsersTable()" placeholder="جستجو نام، آیدی، شماره..." class=" border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border);">
-                            <button type="button" onclick="purgeTestUsers()" class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5" title="پاکسازی کاربران تستی">
+                            <button type="button" onclick="deleteSelectedUsers()" class="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs transition flex items-center gap-1.5" title="پاکسازی کاربران تستی">
                                 <svg class="w-3.5 h-3.5 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                 </svg>
@@ -2364,7 +2365,7 @@ def render_dashboard_html() -> str:
                                     <th class="p-3 text-center">عملیات</th>
                                 </tr>
                             </thead>
-                            <tbody id="usersTableBody" class="divide-y divide-slate-800/60 font-mono">
+                            <tbody id="usersTableBody" class="divide-y divide-slate-800/60">
                                 <tr>
                                     <td colspan="9" class="p-6 text-center text-slate-500 font-sans">در حال دریافت فهرست کاربران...</td>
                                 </tr>
@@ -2387,7 +2388,7 @@ def render_dashboard_html() -> str:
                                 </svg>
                             </div>
                         </div>
-                        <div class="text-2xl font-bold font-mono text-white" id="statTotalUsers">0</div>
+                        <div class="text-2xl font-bold text-white" id="statTotalUsers">0</div>
                         <p class="text-[11px] text-slate-500 mt-1">شناسه یکپارچه بله و تلگرام</p>
                     </div>
 
@@ -2400,7 +2401,7 @@ def render_dashboard_html() -> str:
                                 </svg>
                             </div>
                         </div>
-                        <div class="text-2xl font-bold font-mono text-emerald-400" id="statRefUsers">0</div>
+                        <div class="text-2xl font-bold text-emerald-400" id="statRefUsers">0</div>
                         <p class="text-[11px] text-slate-500 mt-1">شبکه بازاریابی دهان‌به‌دهان</p>
                     </div>
 
@@ -2413,7 +2414,7 @@ def render_dashboard_html() -> str:
                                 </svg>
                             </div>
                         </div>
-                        <div class="text-2xl font-bold font-mono text-amber-400" id="statTotalWallet">۰ تومان</div>
+                        <div class="text-2xl font-bold text-amber-400" id="statTotalWallet">۰ تومان</div>
                         <p class="text-[11px] text-slate-500 mt-1">پاداش‌های رفرال و خرید</p>
                     </div>
                 </div>
@@ -2470,27 +2471,27 @@ def render_dashboard_html() -> str:
                                 <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>🤖</span> توکن‌های ربات‌ها و درگاه‌های پرداخت
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات تلگرام (TELEGRAM_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="text" id="cfg_TELEGRAM_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-sky-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_TELEGRAM_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-sky-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_TELEGRAM_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-sky-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن ربات بله (BALE_BOT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="text" id="cfg_BALE_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_BALE_BOT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_BOT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن درگاه پرداخت بله (BALE_PAYMENT_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="text" id="cfg_BALE_PAYMENT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-emerald-400 transition" dir="ltr">
+                                        <input type="text" id="cfg_BALE_PAYMENT_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-emerald-500/80 text-emerald-400 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-emerald-400 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_BALE_PAYMENT_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
@@ -2504,24 +2505,24 @@ def render_dashboard_html() -> str:
                                     <span>👑</span> مدیریت دسترسی‌ها و شناسه مدیران
                                     <span class="hidden" style="display:none;">شناسه‌های ادمین‌ها و سوپرگروه تاپیک‌دار تلگرام</span>
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه عددی مدیر تلگرام (TELEGRAM_OWNER_ID)</label>
-                                    <input type="text" id="cfg_TELEGRAM_OWNER_ID" placeholder="12345678" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_TELEGRAM_OWNER_ID" placeholder="12345678" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه عددی مدیر بله (BALE_OWNER_ID)</label>
-                                    <input type="text" id="cfg_BALE_OWNER_ID" placeholder="12345678" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_BALE_OWNER_ID" placeholder="12345678" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه تاپیک/سوپرگروه تلگرام - اختیاری (TELEGRAM_FORUM_GROUP_ID)</label>
-                                    <input type="text" id="cfg_TELEGRAM_FORUM_GROUP_ID" placeholder="-100xxxxxxxxxx" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-sky-400 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_TELEGRAM_FORUM_GROUP_ID" placeholder="-100xxxxxxxxxx" class="w-full bg-slate-800/80 border border-sky-500/80 text-sky-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-sky-400 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه‌های کمکی ادمین - جداشده با کاما (ADMIN_USER_IDS)</label>
-                                    <input type="text" id="cfg_ADMIN_USER_IDS" placeholder="12345678, 87654321" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_ADMIN_USER_IDS" placeholder="12345678, 87654321" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <input type="hidden" id="cfg_RUBIKA_OWNER_ID" value="" style="display:none;">
                                 <div class="hidden border-purple-500/80 text-purple-400" style="display:none;"><input type="hidden" id="cfg_RUBIKA_BOT_TOKEN" value=""></div>
@@ -2535,7 +2536,7 @@ def render_dashboard_html() -> str:
                                     <span>🧠</span> تنظیمات موتورهای هوش مصنوعی (Multi-Provider AI Hub)
                                     <span class="hidden" style="display:none;">تنظیمات هوش مصنوعی (Google Gemini & Nara Router)</span>
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
                             <div class="space-y-4 pt-1">
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2550,11 +2551,11 @@ def render_dashboard_html() -> str:
                                     </div>
                                     <div class="md:col-span-1">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">آدرس پایه API (AI_BASE_URL)</label>
-                                        <input type="url" id="cfg_AI_BASE_URL" placeholder="https://vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                        <input type="url" id="cfg_AI_BASE_URL" placeholder="https://vyceai.com/v1" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                     </div>
                                     <div class="md:col-span-1">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">مدل هوش مصنوعی فعال (AI_MODEL)</label>
-                                        <select id="cfg_AI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                        <select id="cfg_AI_MODEL" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                             <option value="deepseek-v4.1">deepseek-v4.1 (VyceAI)</option>
                                             <option value="deepseek-v4-flash">deepseek-v4-flash (VyceAI)</option>
                                             <option value="claude-sonnet-4-6">claude-sonnet-4-6 (VyceAI)</option>
@@ -2567,7 +2568,7 @@ def render_dashboard_html() -> str:
                                             <option value="gemini-1.5-pro">gemini-1.5-pro (Gemini)</option>
                                         </select>
                                         <!-- Legacy Gemini models reference: value="gemini-3.8-flash" value="gemini-3.1-pro" value="gemini-3.6-flash" -->
-                                        <input type="text" id="cfg_AI_MODEL_CUSTOM" placeholder="نام مدل سفارشی (مثلاً gpt-4o-mini)" class="hidden w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left mt-1" dir="ltr">
+                                        <input type="text" id="cfg_AI_MODEL_CUSTOM" placeholder="نام مدل سفارشی (مثلاً gpt-4o-mini)" class="hidden w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left mt-1" dir="ltr">
                                     </div>
                                 </div>
 
@@ -2579,21 +2580,21 @@ def render_dashboard_html() -> str:
                                             <span class="text-[10px] text-teal-400 font-normal">پیش‌فرض</span>
                                         </label>
                                         <div class="relative">
-                                            <input type="text" id="cfg_VYCEAI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <input type="text" id="cfg_VYCEAI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                             <button type="button" onclick="togglePasswordVisibility('cfg_VYCEAI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                         </div>
                                     </div>
                                     <div id="box_nara_key">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید نارا روتر (NARA_API_KEY)</label>
                                         <div class="relative">
-                                            <input type="text" id="cfg_NARA_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-nara-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <input type="text" id="cfg_NARA_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="sk-nara-..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                             <button type="button" onclick="togglePasswordVisibility('cfg_NARA_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                         </div>
                                     </div>
                                     <div id="box_gemini_key">
                                         <label class="text-slate-300 font-medium text-xs mb-1.5 block">کلید گوگل جمینای (GEMINI_API_KEY)</label>
                                         <div class="relative">
-                                            <input type="text" id="cfg_GEMINI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="AIzaSy..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                            <input type="text" id="cfg_GEMINI_API_KEY" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="AIzaSy..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                             <button type="button" onclick="togglePasswordVisibility('cfg_GEMINI_API_KEY', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                         </div>
                                     </div>
@@ -2627,19 +2628,19 @@ def render_dashboard_html() -> str:
                                 <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>☁️</span> سکرت‌های هاگینگ فیس و امنیت و تغییر رمز عبور مدیریت
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">توکن دسترسی هاگینگ فیس (HF_TOKEN)</label>
                                     <div class="relative">
-                                        <input type="text" id="cfg_HF_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="hf_..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs font-mono focus:outline-none focus:border-cyan-500 transition" dir="ltr">
+                                        <input type="text" id="cfg_HF_TOKEN" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="hf_..." style="-webkit-text-security: disc; text-security: disc;" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 pl-9 text-xs focus:outline-none focus:border-cyan-500 transition" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_HF_TOKEN', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شناسه اسپیس هاگینگ فیس (HF_SPACE_ID)</label>
-                                    <input type="text" id="cfg_HF_SPACE_ID" placeholder="Foadian/UNFINIT" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_HF_SPACE_ID" placeholder="Foadian/UNFINIT" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور جدید مدیریت</label>
@@ -2740,7 +2741,7 @@ def render_dashboard_html() -> str:
                                 <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>📝</span> مدیریت پیام‌ها و کانال‌ها (تحویل دوره‌ها و حساب بانکی)
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
                             <p class="text-[11px] text-slate-400">تنظیمات عنوان فروشگاه، متن شروع ربات‌ها، متن گرم پایان پیام تحویل دوره، کانال‌های عضویت اجباری و مشخصات کارت بانکی</p>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
@@ -2750,7 +2751,7 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">شماره کارت ۱۶ رقمی (CARD_NUMBER)</label>
-                                    <input type="text" id="cfg_CARD_NUMBER" autocomplete="new-password" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_CARD_NUMBER" autocomplete="new-password" class="w-full bg-slate-800/80 border border-amber-500/80 text-amber-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-400 transition text-left" dir="ltr">
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">متن خوش‌آمدگویی و استارت ربات‌ها (WELCOME_TEXT)</label>
@@ -2770,11 +2771,11 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">کانال قفل تلگرام (tg_fjoin_channel)</label>
-                                    <input type="text" id="cfg_FORCE_JOIN_CHANNEL_TELEGRAM" placeholder="@channel یا -100xxx" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_FORCE_JOIN_CHANNEL_TELEGRAM" placeholder="@channel یا -100xxx" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">کانال قفل بله (bale_fjoin_channel)</label>
-                                    <input type="text" id="cfg_FORCE_JOIN_CHANNEL_BALE" placeholder="@channel" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="text" id="cfg_FORCE_JOIN_CHANNEL_BALE" placeholder="@channel" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">نام دارنده حساب (CARD_HOLDER)</label>
@@ -2789,12 +2790,12 @@ def render_dashboard_html() -> str:
                                 <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
                                     <span>📚</span> تنظیمات محتوا، رسانه‌ها و فشرده‌سازی هوشمند بله
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">حداکثر طول توضیحات دوره (کاراکتر)</label>
-                                    <input type="number" id="cfg_COURSE_DESC_MAX_LEN" value="255" min="50" max="2000" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="number" id="cfg_COURSE_DESC_MAX_LEN" value="255" min="50" max="2000" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">نام خواننده پیش‌فرض (DEFAULT_ARTIST)</label>
@@ -2802,11 +2803,11 @@ def render_dashboard_html() -> str:
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">سقف امن آپلود بله (MAX_SAFE_BALE_SIZE_MB)</label>
-                                    <input type="number" step="0.01" id="cfg_MAX_SAFE_BALE_SIZE_MB" value="49.99" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="number" step="0.01" id="cfg_MAX_SAFE_BALE_SIZE_MB" value="49.99" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">درصد پاداش کش‌بک خرید (CASHBACK_PERCENT %)</label>
-                                    <input type="number" step="0.1" min="0" max="100" id="cfg_CASHBACK_PERCENT" value="0.0" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
+                                    <input type="number" step="0.1" min="0" max="100" id="cfg_CASHBACK_PERCENT" value="0.0" class="w-full bg-slate-800/80 border border-slate-700/80 text-slate-100 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-cyan-500 transition text-left" dir="ltr">
                                 </div>
                                 <div class="flex items-center gap-3 pt-2 md:col-span-2">
                                     <label class="relative inline-flex items-center cursor-pointer">
@@ -2834,7 +2835,7 @@ def render_dashboard_html() -> str:
                                     </svg>
                                     <span>چیدمان و شخصی‌سازی بصری کیبورد اصلی ربات‌ها (Keyboard Customizer)</span>
                                 </h4>
-                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200 font-mono">▼</span>
+                                <span class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
                             </summary>
 
                             <div class="space-y-4 pt-1">
@@ -2884,7 +2885,7 @@ def render_dashboard_html() -> str:
                                             <!-- Phone screen header -->
                                             <div class="flex items-center justify-between px-2 pb-2 mb-2 border-b border-white/5 text-[11px] text-slate-400">
                                                 <span class="font-bold text-slate-200">پیش‌نمایش کیبورد ربات</span>
-                                                <span class="text-[10px] text-emerald-400 font-mono">Telegram & Bale</span>
+                                                <span class="text-[10px] text-emerald-400">Telegram & Bale</span>
                                             </div>
                                             <!-- Chat dummy content -->
                                             <div class="h-28 rounded-xl p-2.5 flex flex-col justify-end space-y-2 border text-[11px] select-none mb-3" style="background: var(--card-bg); border-color: var(--card-border);">
@@ -2917,18 +2918,18 @@ def render_dashboard_html() -> str:
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">ایمیل اکانت (FEED_AUTH_EMAIL)</label>
-                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
+                                    <input type="text" id="cfg_FEED_AUTH_EMAIL" placeholder="user@example.com" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                 </div>
                                 <div>
                                     <label class="text-slate-300 font-medium text-xs mb-1.5 block">رمز عبور (FEED_AUTH_PASSWORD)</label>
                                     <div class="relative">
-                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
+                                        <input type="password" id="cfg_FEED_AUTH_PASSWORD" data-token-field="true" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" dir="ltr">
                                         <button type="button" onclick="togglePasswordVisibility('cfg_FEED_AUTH_PASSWORD', this)" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-300 transition text-xs"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button>
                                     </div>
                                 </div>
                                 <div class="mt-4">
                                     <label class="block text-xs font-bold mb-1" style="color: var(--text-muted);">سشن کوکی مرورگر (FEED_AUTH_COOKIE) - اولویت اول ورود قطعی</label>
-                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{cfg.get('FEED_AUTH_COOKIE', '')}</textarea>
+                                    <textarea id="cfg_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);" placeholder="session_cookie=...">{cfg.get('FEED_AUTH_COOKIE', '')}</textarea>
                                     <p class="mt-1 text-[10px] text-slate-500">سشن کوکی لاگین‌شده از مرورگر خود را کپی کنید تا بدون نیاز به فرم لاگین، به سادگی و ۱۰۰٪ قطعی وارد شوید.</p>
                                 </div>
                             </div>
@@ -2990,7 +2991,7 @@ def render_dashboard_html() -> str:
                             <span>پاکسازی</span>
                         </button>
                     </div>
-                    <div id="logContainer" dir="ltr" class="text-left font-mono text-xs max-h-96 overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text">
+                    <div id="logContainer" dir="ltr" class="text-left text-xs max-h-96 overflow-y-auto bg-slate-950/90 text-emerald-400 p-4 rounded-xl border border-slate-800 space-y-1 select-text">
                         <div class="text-slate-500">Connecting to server logs...</div>
                     </div>
                 </div>
@@ -3022,19 +3023,19 @@ def render_dashboard_html() -> str:
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-slate-300 mb-1">هزینه اشتراک ماهانه (تومان)</label>
-                            <input type="text" id="cfgVipMonthlyPrice" inputmode="numeric" placeholder="مثال: ۱۱۱,۰۰۰" oninput="formatPriceInput(this)" required class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                            <input type="text" id="cfgVipMonthlyPrice" inputmode="numeric" placeholder="مثال: ۱۱۱,۰۰۰" oninput="formatPriceInput(this)" required class="w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-300 mb-1">مدت اعتبار پلن (روز)</label>
-                            <input type="number" id="cfgVipDurationDays" min="1" max="365" placeholder="۳۰" required class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                            <input type="number" id="cfgVipDurationDays" min="1" max="365" placeholder="۳۰" required class="w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-300 mb-1">شماره کارت اختصاصی اشتراک پریمیوم</label>
-                            <input type="text" id="cfgVipCardNumber" placeholder="شماره کارت ۱۶ رقمی" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                            <input type="text" id="cfgVipCardNumber" placeholder="شماره کارت ۱۶ رقمی" class="w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-300 mb-1">توکن درگاه پرداخت بله اشتراک پریمیوم</label>
-                            <input type="password" id="cfgVipBaleToken" placeholder="توکن درگاه بانکی بله" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
+                            <input type="password" id="cfgVipBaleToken" placeholder="توکن درگاه بانکی بله" class="w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-indigo-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-color);">
                         </div>
                     </div>
 
@@ -3047,7 +3048,7 @@ def render_dashboard_html() -> str:
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-[11px] text-slate-300 mb-1">خواننده و منبع متادیتا (ID3 & Caption)</label>
-                                <input type="text" id="cfgSignReaderTag" placeholder="abasmanesh365" class="w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);">
+                                <input type="text" id="cfgSignReaderTag" placeholder="abasmanesh365" class="w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-color);">
                                 <span class="text-[10px] text-slate-400 mt-1 block">این نام در متادیتای فایل صوتی و کپشن ارسالی جایگزین برندینگ خواهد شد.</span>
                             </div>
                             <div class="flex flex-col justify-center">
@@ -3170,7 +3171,7 @@ def render_dashboard_html() -> str:
                 <div class="flex justify-between items-center pb-3 border-b border-slate-800">
                     <h3 class="text-sm font-bold text-white flex items-center gap-2">
                         <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        <span>ویرایش دوره</span> <span id="modalProdIdBadge" class="text-xs font-mono text-cyan-400"></span>
+                        <span>ویرایش دوره</span> <span id="modalProdIdBadge" class="text-xs text-cyan-400"></span>
                     </h3>
                     <button type="button" id="btnEditModalCloseX" onclick="closeEditModal()" class="p-1 rounded-lg border text-slate-400 hover:text-white transition cursor-pointer" style="background: var(--input-bg); border-color: var(--card-border);">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -3181,13 +3182,13 @@ def render_dashboard_html() -> str:
                     <div>
                         <div class="flex justify-between items-center mb-1">
                             <label class="block text-xs" style="color: var(--text-main);">نام دوره</label>
-                            <span id="counter_editName" class="text-[11px] font-mono text-slate-400">0 / 32</span>
+                            <span id="counter_editName" class="text-[11px] text-slate-400">0 / 32</span>
                         </div>
                         <input type="text" id="editName" required maxlength="32" oninput="updateCharCounter('editName', 'counter_editName', 32)" class="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                     </div>
                     <div>
                         <label class="block text-xs mb-1" style="color: var(--text-main);">قیمت (تومان)</label>
-                        <input type="text" inputmode="numeric" id="editPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                        <input type="text" inputmode="numeric" id="editPrice" required oninput="formatPriceInput(this)" placeholder="مثال: ۱۵۰,۰۰۰" class="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                     </div>
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -3198,7 +3199,7 @@ def render_dashboard_html() -> str:
                                     <span>خلاصه هوشمند برای بله (زیر ۲۵۵ کاراکتر)</span>
                                 </button>
                             </div>
-                            <span id="counter_editDesc" class="text-[11px] font-mono text-slate-400">0 / 255</span>
+                            <span id="counter_editDesc" class="text-[11px] text-slate-400">0 / 255</span>
                         </div>
                         <textarea id="editDesc" rows="3" oninput="updateCharCounter('editDesc', 'counter_editDesc', 255)" class="w-full rounded-xl p-3 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);"></textarea>
                     </div>
@@ -3212,7 +3213,7 @@ def render_dashboard_html() -> str:
                         </div>
                         <div id="editDownloadBox">
                             <label class="block text-xs mb-1" style="color: var(--text-main);">لینک دانلود فایل دوره</label>
-                            <input type="text" id="editDl" class="w-full rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            <input type="text" id="editDl" class="w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                         </div>
                     </div>
                     <!-- مدیریت تعاملی جلسات پکیج دوره (Package Lessons UI) -->
@@ -3231,7 +3232,7 @@ def render_dashboard_html() -> str:
                         <!-- نوار افزودن جلسه جدید -->
                         <div class="p-2.5 rounded-xl border flex flex-col sm:flex-row gap-2 items-center" style="background: var(--input-bg); border-color: var(--card-border);">
                             <input type="text" id="newLessonTitle" placeholder="عنوان جلسه (مثال: جلسه اول: مقدمه)" class="w-full sm:w-1/2 px-2.5 py-1.5 rounded-lg text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);">
-                            <input type="text" id="newLessonFile" placeholder="شناسه فایل یا نام فایل (مثال: lesson1.mp3)" class="w-full sm:w-1/2 px-2.5 py-1.5 rounded-lg text-xs font-mono border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);" dir="ltr">
+                            <input type="text" id="newLessonFile" placeholder="شناسه فایل یا نام فایل (مثال: lesson1.mp3)" class="w-full sm:w-1/2 px-2.5 py-1.5 rounded-lg text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--card-bg); border-color: var(--card-border); color: var(--text-main);" dir="ltr">
                             <button type="button" onclick="addPackageLessonRow()" class="w-full sm:w-auto px-3.5 py-1.5 rounded-lg theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 shadow-sm">
                                 <svg class="w-3.5 h-3.5 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                                 <span>افزودن جلسه</span>
@@ -3239,12 +3240,12 @@ def render_dashboard_html() -> str:
                         </div>
                         
                         <!-- تکست‌اریا همگام‌سازی و پشتیبان JSON -->
-                        <textarea id="editFilesPackage" rows="2" class="hidden w-full font-mono text-[11px]"></textarea>
+                        <textarea id="editFilesPackage" rows="2" class="hidden w-full text-[11px]"></textarea>
                     </div>
                     <div>
                         <label class="block text-xs mb-1" style="color: var(--text-main);">آدرس عکس / بنر</label>
                         <div class="flex gap-2 items-center">
-                            <input type="text" id="editPhoto" class="flex-1 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
+                            <input type="text" id="editPhoto" class="flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 border" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);">
                             <label class="cursor-pointer px-3 py-2 rounded-xl border text-xs text-cyan-300 font-medium transition flex items-center gap-1 shrink-0" style="background: var(--input-bg); border-color: var(--card-border);">
                                 <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
                                 <span>تغییر بنر</span>
@@ -3297,15 +3298,15 @@ def render_dashboard_html() -> str:
                     <div class=" p-3 rounded-xl border border-slate-800 space-y-2">
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">نام فایل:</span>
-                            <span id="specFilename" class="text-slate-100 font-bold font-mono text-left truncate max-w-[200px]" dir="ltr"></span>
+                            <span id="specFilename" class="text-slate-100 font-bold text-left truncate max-w-[200px]" dir="ltr"></span>
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">بیت‌ریت (Bitrate):</span>
-                            <span id="specBitrate" class="text-emerald-400 font-bold font-mono" dir="ltr"></span>
+                            <span id="specBitrate" class="text-emerald-400 font-bold" dir="ltr"></span>
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">نرخ نمونه‌برداری (Sample Rate):</span>
-                            <span id="specSampleRate" class="text-cyan-300 font-bold font-mono" dir="ltr"></span>
+                            <span id="specSampleRate" class="text-cyan-300 font-bold" dir="ltr"></span>
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">کانال صوتی (Channels):</span>
@@ -3313,15 +3314,15 @@ def render_dashboard_html() -> str:
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">کدک (Codec):</span>
-                            <span id="specCodec" class="text-amber-300 font-bold font-mono"></span>
+                            <span id="specCodec" class="text-amber-300 font-bold"></span>
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">مدت زمان (Duration):</span>
-                            <span id="specDuration" class="text-blue-300 font-bold font-mono"></span>
+                            <span id="specDuration" class="text-blue-300 font-bold"></span>
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">حجم فایل (Size):</span>
-                            <span id="specSize" class="text-slate-200 font-bold font-mono"></span>
+                            <span id="specSize" class="text-slate-200 font-bold"></span>
                         </div>
                         <div class="flex justify-between text-xs">
                             <span class="text-slate-400">کاور آرت تعبیه‌شده:</span>
@@ -3383,7 +3384,7 @@ def render_dashboard_html() -> str:
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">نام فایل فیزیکی (Physical Filename)</label>
-                        <input type="text" id="tagFilename" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-cyan-500 text-left" dir="ltr">
+                        <input type="text" id="tagFilename" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 text-left" dir="ltr">
                     </div>
 
                     <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
@@ -3406,7 +3407,7 @@ def render_dashboard_html() -> str:
                 <form id="batchTagForm" onsubmit="handleSaveBatchTags(event)" class="space-y-4">
                     <input type="hidden" id="batchCoverB64">
                     <div class="p-3 bg-cyan-950/40 border border-cyan-800/80 rounded-xl text-xs text-cyan-200">
-                        تعداد <span id="batchCountBadge" class="font-bold font-mono text-white">۰</span> فایل جهت ویرایش یکپارچه انتخاب شده است.
+                        تعداد <span id="batchCountBadge" class="font-bold text-white">۰</span> فایل جهت ویرایش یکپارچه انتخاب شده است.
                     </div>
 
                     <!-- Batch Cover Art Section -->
@@ -3447,7 +3448,7 @@ def render_dashboard_html() -> str:
                         </label>
                         <div>
                             <label class="block text-[11px] mb-1" style="color: var(--text-muted);">الگوی عنوان (Title Pattern - متغیر {{n}} شماره است):</label>
-                            <input type="text" id="batchTitlePattern" value="جلسه {{n}}" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                            <input type="text" id="batchTitlePattern" value="جلسه {{n}}" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500">
                         </div>
                     </div>
 
@@ -3471,14 +3472,14 @@ def render_dashboard_html() -> str:
 
                 <input type="hidden" id="cutterDropId">
                 <div>
-                    <span id="cutterFilename" class="text-xs font-bold text-cyan-300 font-mono" dir="ltr"></span>
+                    <span id="cutterFilename" class="text-xs font-bold text-cyan-300" dir="ltr"></span>
                 </div>
 
                 <!-- Waveform Container -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
                     <div id="waveformLoading" class="text-center py-6 text-xs text-cyan-400 animate-pulse">در حال بارگذاری نمودار موج صوتی...</div>
                     <div id="waveform" class="w-full"></div>
-                    <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                    <div class="flex justify-between text-[11px] text-slate-400">
                         <span id="cutterCurrentTime">00:00.0</span>
                         <span id="cutterTotalDuration">00:00.0</span>
                     </div>
@@ -3503,11 +3504,11 @@ def render_dashboard_html() -> str:
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">زمان شروع (Start Time - ثانیه یا 00:00.0)</label>
-                        <input type="text" id="cutStartTime" value="00:00.0" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 font-mono text-left focus:outline-none focus:border-cyan-500" dir="ltr">
+                        <input type="text" id="cutStartTime" value="00:00.0" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-cyan-300 text-left focus:outline-none focus:border-cyan-500" dir="ltr">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-300 mb-1">زمان پایان (End Time - ثانیه یا 00:00.0)</label>
-                        <input type="text" id="cutEndTime" value="00:00.0" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono text-left focus:outline-none focus:border-cyan-500" dir="ltr">
+                        <input type="text" id="cutEndTime" value="00:00.0" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-300 text-left focus:outline-none focus:border-cyan-500" dir="ltr">
                     </div>
                 </div>
 
@@ -3517,7 +3518,7 @@ def render_dashboard_html() -> str:
                         <button type="button" onclick="toggleWavePlayPause()" id="btnWaveToggle" class="w-11 h-11 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center text-lg font-bold shadow-lg shadow-cyan-600/30 transition hover:scale-105" title="پخش / مکث">
                             <span id="waveToggleIcon">▶</span>
                         </button>
-                        <div class="text-left font-mono">
+                        <div class="text-left">
                             <span id="waveToggleTime" class="text-xs text-cyan-300 font-bold block">00:00.0</span>
                             <span class="text-[10px] text-slate-400 block">پخش / مکث</span>
                         </div>
@@ -3663,7 +3664,7 @@ def render_dashboard_html() -> str:
                     <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
                         شماره موبایل حساب سروش‌پلاس خود را جهت دریافت پیامک تایید وارد نمایید:
                     </p>
-                    <input type="text" id="soroushPhoneInput" placeholder="09121234567" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                    <input type="text" id="soroushPhoneInput" placeholder="09121234567" class="w-full rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     <button type="button" onclick="submitSoroushPhone()" id="btnSoroushSendCode" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                         <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                         <span>دریافت کد تایید پیامکی</span>
@@ -3673,9 +3674,9 @@ def render_dashboard_html() -> str:
                 <!-- SMS Mode: Step 2 Code -->
                 <div id="soroushStepCode" class="hidden space-y-3">
                     <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
-                        کد تایید ارسال‌شده به شماره <b id="soroushTargetPhoneDisplay" class="text-cyan-300 font-mono"></b> را وارد نمایید:
+                        کد تایید ارسال‌شده به شماره <b id="soroushTargetPhoneDisplay" class="text-cyan-300"></b> را وارد نمایید:
                     </p>
-                    <input type="text" id="soroushCodeInput" placeholder="12345" maxlength="6" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-center text-lg" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                    <input type="text" id="soroushCodeInput" placeholder="12345" maxlength="6" class="w-full rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none text-center text-lg" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     <button type="button" onclick="submitSoroushCode()" id="btnSoroushVerifyCode" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                         <svg class="w-4 h-4 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                         <span>تایید و فعال‌سازی سشن امن</span>
@@ -3692,11 +3693,11 @@ def render_dashboard_html() -> str:
                     </p>
                     <div>
                         <label class="block text-[11px] mb-1" style="color: var(--text-muted);">کلید سشن یا آبجکت JSON کامل account1 نسخه وب GramJS</label>
-                        <textarea id="soroushManualTokenInput" rows="4" placeholder='{{"dcId":2,"dc2_auth_key":"...","userId":"...","phone":"0912...","firstName":"..."}}' class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr"></textarea>
+                        <textarea id="soroushManualTokenInput" rows="4" placeholder='{{"dcId":2,"dc2_auth_key":"...","userId":"...","phone":"0912...","firstName":"..."}}' class="w-full rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr"></textarea>
                     </div>
                     <div>
                         <label class="block text-[11px] mb-1" style="color: var(--text-muted);">شماره موبایل یا برچسب سشن (اختیاری - در صورت وجود در JSON خودکار استخراج می‌شود)</label>
-                        <input type="text" id="soroushManualPhoneInput" placeholder="09121234567 یا سشن دستی وب" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
+                        <input type="text" id="soroushManualPhoneInput" placeholder="09121234567 یا سشن دستی وب" class="w-full rounded-xl px-3 py-2 text-xs text-cyan-300 focus:outline-none text-left" style="background: var(--input-bg); border: 1px solid var(--card-border);" dir="ltr">
                     </div>
                     <button type="button" onclick="submitSoroushManualToken()" id="btnSoroushManualSubmit" class="w-full py-2.5 px-4 rounded-xl theme-accent-btn text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                         <svg class="w-4 h-4 stroke-[1.75]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
@@ -3704,7 +3705,7 @@ def render_dashboard_html() -> str:
                     </button>
                 </div>
 
-                <div id="soroushLoginError" class="hidden p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-xs text-rose-300 font-mono"></div>
+                <div id="soroushLoginError" class="hidden p-2.5 rounded-xl bg-rose-950/80 border border-rose-800 text-xs text-rose-300"></div>
             </div>
         </div>
 
@@ -3723,18 +3724,18 @@ def render_dashboard_html() -> str:
                 <form id="formBaleCapSettings" onsubmit="submitBaleCapSettings(event)" class="space-y-4">
                     <div>
                         <label class="block text-xs mb-1" style="color: var(--text-muted);">سقف مجاز بله (مگابایت) *</label>
-                        <input type="number" step="0.1" min="1" max="50" id="baleCapInput" required value="{bale_cap}" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);" oninput="calcEffectiveCap()">
+                        <input type="number" step="0.1" min="1" max="50" id="baleCapInput" required value="{bale_cap}" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);" oninput="calcEffectiveCap()">
                         <span class="text-[11px] text-slate-500 mt-1 block">حداکثر سقف مجاز بارگذاری پیام‌رسان بله (پیش‌فرض ۵۰ مگابایت)</span>
                     </div>
                     <div>
                         <label class="block text-xs mb-1" style="color: var(--text-muted);">بافر حاشیه امنیتی انکودر (درصد) *</label>
-                        <input type="number" step="0.1" min="0" max="15" id="baleBufferInput" required value="{bale_buf}" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500 font-mono" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);" oninput="calcEffectiveCap()">
+                        <input type="number" step="0.1" min="0" max="15" id="baleBufferInput" required value="{bale_buf}" class="w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-cyan-500" style="background: var(--input-bg); border-color: var(--card-border); color: var(--text-main);" oninput="calcEffectiveCap()">
                         <span class="text-[11px] text-slate-500 mt-1 block">درصد کسر از سقف جهت تضمین عدم سرریز بیت‌ریت (مثال: ۳٪ یا ۲٪)</span>
                     </div>
                     <div class="p-3 rounded-xl border" style="background: var(--panel-bg); border-color: var(--card-border);">
                         <div class="flex justify-between items-center text-xs">
                             <span style="color: var(--text-muted);">هدف نهایی فشرده‌سازی:</span>
-                            <span class="font-bold font-mono" style="color: var(--accent-color);"><span id="previewEffectiveCap">{bale_effective}</span> مگابایت</span>
+                            <span class="font-bold" style="color: var(--accent-color);"><span id="previewEffectiveCap">{bale_effective}</span> مگابایت</span>
                         </div>
                     </div>
                     <div class="flex justify-end gap-2 pt-2 border-t" style="border-color: var(--card-border);">
@@ -3919,16 +3920,16 @@ def render_dashboard_html() -> str:
                     if (len > maxLen) {{
                         const diff = maxLen - len;
                         counter.innerText = diff + ' (بیش از سقف مجاز فاکتور بله)';
-                        counter.className = 'text-[11px] font-mono text-rose-500 font-bold';
+                        counter.className = 'text-[11px] text-rose-500 font-bold';
                     }} else if (len === maxLen) {{
                         counter.innerText = len + ' / ' + maxLen;
-                        counter.className = 'text-[11px] font-mono text-rose-400 font-bold';
+                        counter.className = 'text-[11px] text-rose-400 font-bold';
                     }} else if (len >= maxLen * 0.85) {{
                         counter.innerText = len + ' / ' + maxLen;
-                        counter.className = 'text-[11px] font-mono text-amber-400 font-bold';
+                        counter.className = 'text-[11px] text-amber-400 font-bold';
                     }} else {{
                         counter.innerText = len + ' / ' + maxLen;
-                        counter.className = 'text-[11px] font-mono text-slate-400';
+                        counter.className = 'text-[11px] text-slate-400';
                     }}
                 }}
                 window.updateCharCounter = updateCharCounter;
@@ -5087,6 +5088,7 @@ def render_dashboard_html() -> str:
                                 '</span>';
                             }}
                             const phone = u.phone ? ('<span dir="ltr">' + escapeHtml(u.phone) + '</span>') : '<span class="text-slate-600 font-sans">-</span>';
+                            const joinDate = u.created_at ? new Date(u.created_at * 1000).toLocaleDateString('fa-IR') : 'نامشخص';
                             const name = escapeHtml(u.username || ('کاربر ' + (u.user_id || '')));
                             const ref = u.referred_by ? ('<span class="text-indigo-400" dir="ltr">' + escapeHtml(String(u.referred_by)) + '</span>') : '<span class="text-slate-600 font-sans">مستقیم</span>';
                             const wallet = (Number(u.wallet_balance) || 0).toLocaleString('fa-IR') + ' ت';
@@ -5095,37 +5097,19 @@ def render_dashboard_html() -> str:
                                 : '<span class="text-slate-500 font-sans">در انتظار</span>';
                             const userIdClean = escapeHtml(String(u.user_id || '-'));
                             
-                            const vipBtn = isUserVip
-                                ? '<div class="inline-flex items-center gap-1">' +
-                                    '<button type="button" data-user-action="grant_10" data-user-id="' + userIdClean + '" title="تمدید ۱۰ روزه" class="px-2 py-1 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
-                                        '<span>+۱۰</span>' +
-                                    '</button>' +
-                                    '<button type="button" data-user-action="grant_30" data-user-id="' + userIdClean + '" title="تمدید ۳۰ روزه" class="px-2 py-1 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
-                                        '<span>+۳۰</span>' +
-                                    '</button>' +
-                                    '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" title="لغو اشتراک پریمیوم" class="px-2 py-1 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer">' +
-                                        '<span>لغو</span>' +
-                                    '</button>' +
-                                  '</div>'
-                                : '<div class="inline-flex items-center gap-1">' +
-                                    '<button type="button" data-user-action="grant_10" data-user-id="' + userIdClean + '" title="اعطای ۱۰ روزه" class="px-2 py-1 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
-                                        '<span>+۱۰ روز</span>' +
-                                    '</button>' +
-                                    '<button type="button" data-user-action="grant_30" data-user-id="' + userIdClean + '" title="اعطای ۳۰ روزه" class="px-2 py-1 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 transition-all font-sans text-xs inline-flex items-center gap-0.5 cursor-pointer font-bold">' +
-                                        '<span>+۳۰ روز</span>' +
-                                    '</button>' +
-                                  '</div>';
+                            const vipBtn = isUserVip ? '<button type="button" data-user-action="revoke_vip" data-user-id="' + userIdClean + '" class="px-2 py-1 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 font-sans text-xs font-bold transition">لغو پریمیوم</button>' : '<button type="button" data-user-action="grant_vip" data-user-id="' + userIdClean + '" class="px-2 py-1 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 font-sans text-xs font-bold transition">پریمیوم</button>';
+// 
 
-                            return '<tr class="hover:bg-white/[0.03] transition">' +
+                            return '<tr class="hover:bg-white/[0.03] transition user-row" data-platform="' + escapeHtml(u.platform||'') + '">' + '<td class="p-3"><input type="checkbox" class="user-cb rounded text-cyan-600 border-slate-700 bg-slate-800 cursor-pointer form-checkbox accent-cyan-500 w-4 h-4" value="' + userIdClean + '" style="background:var(--input-bg);"></td>' +
                                 '<td class="p-3">' + platformBadge + '</td>' +
-                                '<td class="p-3 text-cyan-300 font-mono" dir="ltr">' + userIdClean + '</td>' +
+                                '<td class="p-3 text-cyan-300" dir="ltr">' + userIdClean + '</td>' +
                                 '<td class="p-3 text-slate-200 font-sans font-medium">' + name + '</td>' +
                                 '<td class="p-3 text-slate-300">' + phone + '</td>' +
                                 '<td class="p-3">' + vipBadge + '</td>' +
                                 '<td class="p-3">' + ref + '</td>' +
                                 '<td class="p-3 text-amber-400 font-bold">' + wallet + '</td>' +
                                 '<td class="p-3 text-xs">' + commitment + '</td>' +
-                                '<td class="p-3 text-center">' +
+                                '<td class="p-3 text-xs text-slate-400">' + joinDate + '</td>' + '<td class="p-3 text-center">' +
                                     '<div class="inline-flex items-center gap-1.5">' +
                                         '<button type="button" data-user-action="view_profile" data-user-id="' + userIdClean + '" title="مشاهده پروفایل و دوره‌ها" class="p-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all font-sans text-xs inline-flex items-center gap-1 cursor-pointer">' +
                                             '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
@@ -5234,7 +5218,7 @@ def render_dashboard_html() -> str:
                                             '</div>' +
                                             '<div>' +
                                                 '<h4 class="font-bold text-sm text-white">' + userName + '</h4>' +
-                                                '<span class="text-slate-400 font-mono text-[11px]">' + userPlatform + ' | ' + userUid + '</span>' +
+                                                '<span class="text-slate-400 text-[11px]">' + userPlatform + ' | ' + userUid + '</span>' +
                                             '</div>' +
                                         '</div>' +
                                         '<div class="text-left">' + vipText + '</div>' +
@@ -5242,11 +5226,11 @@ def render_dashboard_html() -> str:
                                     '<div class="grid grid-cols-2 gap-3 text-right">' +
                                         '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">شماره تماس:</span>' +
-                                            '<span class="font-mono text-slate-200" dir="ltr">' + userPhone + '</span>' +
+                                            '<span class="text-slate-200" dir="ltr">' + userPhone + '</span>' +
                                         '</div>' +
                                         '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">موجودی کیف پول:</span>' +
-                                            '<span class="font-mono text-amber-400 font-bold">' + userWallet + '</span>' +
+                                            '<span class="text-amber-400 font-bold">' + userWallet + '</span>' +
                                         '</div>' +
                                         '<div class="p-3 rounded-xl  border border-slate-800">' +
                                             '<span class="text-slate-500 block text-[11px]">دوره‌های ثبت‌شده:</span>' +
@@ -5478,12 +5462,45 @@ def render_dashboard_html() -> str:
                 }}
                 window.purgeTestUsers = purgeTestUsers;
 
-                function filterUsersTable() {{
-                    const q = (document.getElementById('usersSearchInput')?.value || '').toLowerCase().trim();
-                    if (!q) {{
-                        renderUsersTable(allLoadedUsers);
-                        return;
-                    }}
+                
+    function toggleAllUsers(source) {{
+        document.querySelectorAll('.user-cb').forEach(cb => {{
+            if(cb.closest('tr').style.display !== 'none') {{
+                cb.checked = source.checked;
+            }}
+        }});
+    }}
+    async function deleteSelectedUsers() {{
+        const selected = Array.from(document.querySelectorAll('.user-cb:checked')).map(cb => cb.value);
+        if(!selected.length) return alert('کاربری انتخاب نشده است.');
+        if(!confirm(`آیا از حذف ${{selected.length}} کاربر مطمئن هستید؟`)) return;
+        
+        for(let uid of selected) {{
+            await fetch('/api/users/delete', {{
+                method: 'POST',
+                headers: {{'Content-Type':'application/json'}},
+                body: JSON.stringify({{user_id: uid}})
+            }});
+        }}
+        alert('کاربران انتخاب‌شده حذف شدند.');
+        loadUsersData();
+    }}
+    
+    function filterUsersTable() {{
+        const val = document.getElementById('usersSearchInput').value.toLowerCase();
+        const platElem = document.getElementById('userPlatformFilter');
+        const plat = platElem ? platElem.value : 'all';
+        const rows = document.getElementById('usersTableBody').querySelectorAll('tr.user-row');
+        
+        rows.forEach(tr => {{
+            const text = tr.innerText.toLowerCase();
+            const rp = tr.getAttribute('data-platform');
+            const matchSearch = text.includes(val);
+            const matchPlat = (plat === 'all') || (rp === plat);
+            tr.style.display = (matchSearch && matchPlat) ? '' : 'none';
+        }});
+    }}
+    
                     const filtered = allLoadedUsers.filter(u => {{
                         const id = String(u.user_id || '').toLowerCase();
                         const name = String(u.username || u.name || '').toLowerCase();
@@ -6690,7 +6707,7 @@ def render_dashboard_html() -> str:
                             cover +
                             '<div class="p-4 flex flex-col justify-between flex-1 gap-3">' +
                                 '<div class="space-y-2">' +
-                                    '<div class="flex items-center justify-between text-[11px] text-slate-400 font-mono">' +
+                                    '<div class="flex items-center justify-between text-[11px] text-slate-400">' +
                                         '<span class="text-cyan-400 font-semibold">' + (item.tag || 'هدیه دانلودی') + '</span>' +
                                         '<span>' + (item.published_at || '') + '</span>' +
                                     '</div>' +
@@ -6914,7 +6931,7 @@ def render_dashboard_html() -> str:
 
             const resBox = document.getElementById('dispatchResult');
             if (resBox) {{
-                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+                resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-slate-800 text-slate-300 border border-slate-700';
                 resBox.innerText = '⏳ در حال دانلود و ارسال همزمان هدیه: ' + title + ' به پلتفرم‌های منتخب...';
             }}
             try {{
@@ -6936,7 +6953,7 @@ def render_dashboard_html() -> str:
                 if (allSuccess) {{
                     showToast('✅ ارسال با موفقیت به ' + targets.join(' و ') + ' انجام شد!');
                     if (resBox) {{
-                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-emerald-950 text-emerald-300 border border-emerald-700';
                         resBox.innerText = '✅ نسخه(های) انتخابی فایل هدیه با موفقیت ارسال شد!';
                     }}
                 }} else {{
@@ -6963,7 +6980,7 @@ def render_dashboard_html() -> str:
             }}
             const resBox = document.getElementById('dispatchResult');
             if (resBox) {{
-                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+                resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-slate-800 text-slate-300 border border-slate-700';
                 resBox.innerText = '⏳ در حال دانلود و پردازش استریم هدیه: ' + title + ' ... لطفاً شکیبا باشید.';
             }}
             try {{
@@ -6981,13 +6998,13 @@ def render_dashboard_html() -> str:
                 if (data.ok) {{
                     showToast('✅ فایل هدیه با موفقیت دانلود و به ' + (data.target || 'پیام‌رسان‌ها') + ' منتقل شد!');
                     if (resBox) {{
-                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-emerald-950 text-emerald-300 border border-emerald-700';
                         resBox.innerText = '✅ ' + (data.message || 'فایل هدیه با موفقیت دانلود و ارسال شد!');
                     }}
                 }} else {{
                     showToast('❌ خطا در دانلود و ارسال: ' + (data.error || 'عملیات ناموفق بود'));
                     if (resBox) {{
-                        resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                        resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-rose-950 text-rose-300 border border-rose-700';
                         resBox.innerText = '❌ خطا: ' + (data.error || 'ناموفق');
                     }}
                 }}
@@ -7257,7 +7274,7 @@ def render_dashboard_html() -> str:
                     }}
                     if (resultDiv) {{
                         resultDiv.classList.remove('hidden');
-                        resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-cyan-950/60 border border-cyan-800 text-cyan-300 flex items-center justify-between';
+                        resultDiv.className = 'mt-4 p-3 rounded-xl text-xs bg-cyan-950/60 border border-cyan-800 text-cyan-300 flex items-center justify-between';
                         resultDiv.innerHTML = '<span>⚡️ در حال پردازش فایل وکتور و رندر تصویر...</span>';
                     }}
 
@@ -7278,7 +7295,7 @@ def render_dashboard_html() -> str:
                             const data = await res.json();
                             if (data.ok) {{
                                 if (resultDiv) {{
-                                    resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-emerald-950/60 border border-emerald-800 text-emerald-300 flex items-center justify-between';
+                                    resultDiv.className = 'mt-4 p-3 rounded-xl text-xs bg-emerald-950/60 border border-emerald-800 text-emerald-300 flex items-center justify-between';
                                     resultDiv.innerHTML = '<span>✅ تبدیل موفق: ' + data.filename + ' (' + Math.round((data.size || 0) / 1024) + ' KB)</span>' +
                                         '<a href="' + data.data + '" download="' + data.filename + '" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-sans font-bold transition">دریافت فایل</a>';
                                 }}
@@ -7290,13 +7307,13 @@ def render_dashboard_html() -> str:
                                 a.remove();
                             }} else {{
                                 if (resultDiv) {{
-                                    resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                    resultDiv.className = 'mt-4 p-3 rounded-xl text-xs bg-rose-950/60 border border-rose-800 text-rose-300';
                                     resultDiv.innerText = '❌ خطای تبدیل: ' + (data.error || 'عملیات ناموفق بود');
                                 }}
                             }}
                         }} catch (err) {{
                             if (resultDiv) {{
-                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs bg-rose-950/60 border border-rose-800 text-rose-300';
                                 resultDiv.innerText = '❌ خطای ارتباط با سرور: ' + err.message;
                             }}
                         }} finally {{
@@ -7314,7 +7331,7 @@ def render_dashboard_html() -> str:
                         }};
                         reader.onerror = function() {{
                             if (resultDiv) {{
-                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs bg-rose-950/60 border border-rose-800 text-rose-300';
                                 resultDiv.innerText = '❌ خطا در خواندن فایل وکتور از دستگاه.';
                             }}
                             if (btn) {{
@@ -7329,7 +7346,7 @@ def render_dashboard_html() -> str:
                             sendConvertRequest(b64, fname);
                         }} catch (e) {{
                             if (resultDiv) {{
-                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs font-mono bg-rose-950/60 border border-rose-800 text-rose-300';
+                                resultDiv.className = 'mt-4 p-3 rounded-xl text-xs bg-rose-950/60 border border-rose-800 text-rose-300';
                                 resultDiv.innerText = '❌ خطا در کدگذاری وکتور: ' + e.message;
                             }}
                             if (btn) {{
@@ -7517,7 +7534,7 @@ def render_dashboard_html() -> str:
                 hiddenTa.value = lessons.length ? JSON.stringify(lessons, null, 2) : '';
             }}
             if (lessons.length === 0) {{
-                listEl.innerHTML = '<div class="text-center py-3 text-xs text-slate-400 font-mono">هیچ جلسه‌ای برای این پکیج ثبت نشده است. از فرم زیر جلسه جدید اضافه کنید.</div>';
+                listEl.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">هیچ جلسه‌ای برای این پکیج ثبت نشده است. از فرم زیر جلسه جدید اضافه کنید.</div>';
                 return;
             }}
             lessons.forEach(function(item, idx) {{
@@ -7527,7 +7544,7 @@ def render_dashboard_html() -> str:
                 row.style.borderColor = 'var(--card-border)';
                 
                 const badge = document.createElement('span');
-                badge.className = 'w-6 h-6 rounded-lg bg-cyan-950/80 text-cyan-400 border border-cyan-800 flex items-center justify-center font-mono text-[11px] shrink-0 font-bold';
+                badge.className = 'w-6 h-6 rounded-lg bg-cyan-950/80 text-cyan-400 border border-cyan-800 flex items-center justify-center text-[11px] shrink-0 font-bold';
                 badge.textContent = '#' + (idx + 1);
                 row.appendChild(badge);
 
@@ -7546,7 +7563,7 @@ def render_dashboard_html() -> str:
                 fileInp.type = 'text';
                 fileInp.value = item.file_name || item.file_id || item.link || '';
                 fileInp.placeholder = 'فایل / شناسه';
-                fileInp.className = 'w-1/3 px-2 py-1 rounded-lg border text-xs font-mono focus:outline-none focus:border-cyan-500';
+                fileInp.className = 'w-1/3 px-2 py-1 rounded-lg border text-xs focus:outline-none focus:border-cyan-500';
                 fileInp.style.background = 'var(--card-bg)';
                 fileInp.style.borderColor = 'var(--card-border)';
                 fileInp.style.color = 'var(--text-main)';
@@ -7915,14 +7932,14 @@ def render_dashboard_html() -> str:
                     if (badge) {{
                         if (isActive) {{
                             badge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1';
-                            badge.innerHTML = '<span>🟢</span> فعال';
+                            badge.innerHTML = '<span><svg class="w-4 h-4 text-emerald-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" /></svg></span> فعال';
                         }} else {{
                             badge.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1';
                             badge.innerHTML = '<span>🔴</span> غیرفعال';
                         }}
                     }}
                     if (btn) {{
-                        btn.innerHTML = isActive ? '🔴 غیرفعال‌سازی' : '🟢 فعال‌سازی';
+                        btn.innerHTML = isActive ? '🔴 غیرفعال‌سازی' : '<svg class="w-4 h-4 text-emerald-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" /></svg> فعال‌سازی';
                     }}
                     if (window.coursesData && window.coursesData[pid]) {{
                         window.coursesData[pid].is_active = isActive ? 1 : 0;
@@ -8063,9 +8080,9 @@ def render_dashboard_html() -> str:
                     let platBadge = '';
                     const p = (ord.platform || '').toLowerCase();
                     if (p === 'telegram' || p === 'tg') {{
-                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/70 text-sky-300 border border-sky-800/70 inline-flex items-center gap-1"><span>✈️</span> تلگرام</span>';
+                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-950/70 text-sky-300 border border-sky-800/70 inline-flex items-center gap-1"><span><svg class="w-4 h-4 text-cyan-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg></span> تلگرام</span>';
                     }} else if (p === 'bale') {{
-                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/70 text-emerald-300 border border-emerald-800/70 inline-flex items-center gap-1"><span>🟢</span> بله</span>';
+                        platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/70 text-emerald-300 border border-emerald-800/70 inline-flex items-center gap-1"><span><svg class="w-4 h-4 text-emerald-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" /></svg></span> بله</span>';
                     }} else {{
                         platBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950/70 text-purple-300 border border-purple-800/70 inline-flex items-center gap-1"><span>🌐</span> فروشگاه وب</span>';
                     }}
@@ -8094,20 +8111,20 @@ def render_dashboard_html() -> str:
 
                     return '<tr class="border-b border-slate-800 hover:bg-slate-800/30 transition">' +
                         '<td class="py-3 px-3 text-center"><input type="checkbox" class="order-chk rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0 cursor-pointer" value="' + escapeHtml(ord.order_id) + '" onchange="updateSelectedOrdersCount()"></td>' +
-                        '<td class="py-3 px-3 font-mono text-cyan-400 font-bold">' + escapeHtml(ord.order_id) + '</td>' +
+                        '<td class="py-3 px-3 text-cyan-400 font-bold">' + escapeHtml(ord.order_id) + '</td>' +
                         '<td class="py-3 px-3">' +
                             '<div class="font-bold text-slate-200">' + escapeHtml(ord.customer_name || 'کاربر') + '</div>' +
-                            '<div class="text-[11px] font-mono text-slate-400">' + escapeHtml(ord.phone || ord.user_id || '-') + '</div>' +
+                            '<div class="text-[11px] text-slate-400">' + escapeHtml(ord.phone || ord.user_id || '-') + '</div>' +
                         '</td>' +
                         '<td class="py-3 px-3">' +
                             '<div class="text-slate-200 font-medium">' + escapeHtml(ord.product_name || ord.product_id) + '</div>' +
-                            '<div class="text-[11px] font-mono text-emerald-400 font-bold">' + amountStr + '</div>' +
+                            '<div class="text-[11px] text-emerald-400 font-bold">' + amountStr + '</div>' +
                         '</td>' +
                         '<td class="py-3 px-3">' + platBadge + '</td>' +
                         '<td class="py-3 px-3">' + payMethodBadge + '</td>' +
                         '<td class="py-3 px-3">' +
                             '<div class="max-w-[200px] truncate text-slate-300 text-[11px]" title="' + escapeHtml(ord.receipt_text || '') + '">' + escapeHtml(ord.receipt_text || '-') + '</div>' +
-                            '<div class="text-[10px] text-slate-400 font-mono">' + escapeHtml(orderDate) + '</div>' +
+                            '<div class="text-[10px] text-slate-400">' + escapeHtml(orderDate) + '</div>' +
                         '</td>' +
                         '<td class="py-3 px-3">' + statusBadge + '</td>' +
                         '<td class="py-3 px-3 text-left">' + actionBtn + '</td>' +
@@ -8266,11 +8283,11 @@ def render_dashboard_html() -> str:
                     const statusBadge = c.active ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800">فعال</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">غیرفعال</span>';
 
                     return '<tr class="border-b border-slate-800/80 hover:bg-slate-800/30 transition">' +
-                        '<td class="py-2.5 px-3 font-mono text-emerald-400 font-bold">' + escapeHtml(c.code) + '</td>' +
+                        '<td class="py-2.5 px-3 text-emerald-400 font-bold">' + escapeHtml(c.code) + '</td>' +
                         '<td class="py-2.5 px-3 text-slate-200 font-bold">' + typeLabel + '</td>' +
-                        '<td class="py-2.5 px-3 font-mono text-slate-300">' + maxLabel + '</td>' +
-                        '<td class="py-2.5 px-3 text-slate-400 font-mono">' + minLabel + '</td>' +
-                        '<td class="py-2.5 px-3 text-slate-400 font-mono text-[11px]">' + escapeHtml(expLabel) + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-300">' + maxLabel + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-400">' + minLabel + '</td>' +
+                        '<td class="py-2.5 px-3 text-slate-400 text-[11px]">' + escapeHtml(expLabel) + '</td>' +
                         '<td class="py-2.5 px-3">' + statusBadge + '</td>' +
                     '</tr>';
                 }}).join('');
@@ -8327,7 +8344,7 @@ def render_dashboard_html() -> str:
 
             btn.disabled = true;
             btn.innerText = '⏳ در حال دانلود و پردازش استریم...';
-            resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-slate-800 text-slate-300 border border-slate-700';
+            resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-slate-800 text-slate-300 border border-slate-700';
             resBox.innerText = '⏳ ارسال درخواست به سرور و دانلود استریم... لطفاً شکیبا باشید.';
 
             try {{
@@ -8338,14 +8355,14 @@ def render_dashboard_html() -> str:
                 }});
                 const data = await res.json();
                 if (data.ok) {{
-                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-emerald-950 text-emerald-300 border border-emerald-700';
+                    resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-emerald-950 text-emerald-300 border border-emerald-700';
                     resBox.innerText = '✅ ' + (data.message || 'فایل با موفقیت دانلود و ارسال شد!');
                 }} else {{
-                    resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                    resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-rose-950 text-rose-300 border border-rose-700';
                     resBox.innerText = '❌ خطا: ' + (data.error || 'عملیات ناموفق بود');
                 }}
             }} catch (err) {{
-                resBox.className = 'mt-4 p-3 rounded-xl text-xs font-mono block bg-rose-950 text-rose-300 border border-rose-700';
+                resBox.className = 'mt-4 p-3 rounded-xl text-xs block bg-rose-950 text-rose-300 border border-rose-700';
                 resBox.innerText = '❌ خطای شبکه: ' + err.message;
             }} finally {{
                 btn.disabled = false;
@@ -8468,7 +8485,7 @@ def render_dashboard_html() -> str:
 
                 let toolsHtml = '';
                 if (toolsUsed.length > 0) {{
-                    toolsHtml = '<div class="flex flex-wrap gap-1.5 mb-2">' + toolsUsed.map(t => '<span class="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-800 font-mono">🛠 ' + escapeHtml(t) + '</span>').join('') + '</div>';
+                    toolsHtml = '<div class="flex flex-wrap gap-1.5 mb-2">' + toolsUsed.map(t => '<span class="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-800">🛠 ' + escapeHtml(t) + '</span>').join('') + '</div>';
                 }}
 
                 const assistantBubble = document.createElement('div');
@@ -8555,7 +8572,7 @@ def render_dashboard_html() -> str:
                             previewEl.src = data.url;
                             previewEl.style.display = 'block';
                         }}
-                        if (statusEl) statusEl.innerHTML = '✅ تصویر ذخیره شد: <a href="' + data.url + '" target="_blank" class="text-cyan-400 underline font-mono">' + data.url + '</a>';
+                        if (statusEl) statusEl.innerHTML = '✅ تصویر ذخیره شد: <a href="' + data.url + '" target="_blank" class="text-cyan-400 underline">' + data.url + '</a>';
                     }} else {{
                         if (statusEl) statusEl.innerText = '❌ خطا: ' + (data.error || 'آپلود ناموفق بود');
                     }}
@@ -9259,7 +9276,7 @@ def render_dashboard_html() -> str:
                         : '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">شبانگاهی</span>';
                     return `
                         <tr class="hover:bg-white/[0.02] transition">
-                            <td class="py-3 px-4 text-center font-mono text-slate-400">${{idx + 1}}</td>
+                            <td class="py-3 px-4 text-center text-slate-400">${{idx + 1}}</td>
                             <td class="py-3 px-4 font-bold text-slate-100">${{escapeHtml(item.title || '')}}</td>
                             <td class="py-3 px-4 text-center">${{catBadge}}</td>
                             <td class="py-3 px-4 leading-relaxed" style="color: var(--text-muted);">${{escapeHtml(item.text || '')}}</td>
@@ -9579,8 +9596,8 @@ def render_dashboard_html() -> str:
                 return '<div class="p-3.5 rounded-xl border space-y-2.5 transition" style="background: var(--card-bg); border-color: var(--card-border);">' +
                     '<div class="flex items-center justify-between pb-2 border-b border-white/5 text-xs">' +
                     '<div class="flex items-center gap-2">' +
-                    '<span class="font-mono text-cyan-400 font-bold">سطر ' + (rIdx + 1) + '</span>' +
-                    '<span class="text-[10px] text-slate-400 font-mono">(' + row.length + ' دکمه)</span>' +
+                    '<span class="text-cyan-400 font-bold">سطر ' + (rIdx + 1) + '</span>' +
+                    '<span class="text-[10px] text-slate-400">(' + row.length + ' دکمه)</span>' +
                     '</div>' +
                     '<div class="flex items-center gap-1">' +
                     '<button type="button" onclick="moveKeyboardRow(' + rIdx + ', -1)" ' + (isFirstRow ? 'disabled ' : '') +
@@ -9804,7 +9821,7 @@ def render_dashboard_html() -> str:
                     <div>
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
                         <div class="relative">
-                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 pr-10 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 pr-10 text-xs transition focus:outline-none" style="background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
                         <button type="button" onclick="document.getElementById('quick_FEED_AUTH_COOKIE').value=''" class="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-rose-400 transition" title="پاک کردن کوکی">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
@@ -9812,12 +9829,12 @@ def render_dashboard_html() -> str:
                     </div>
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
-                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                     </div>
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">کلمه عبور (FEED_AUTH_PASSWORD)</label>
                         <div class="relative">
-                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                             <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>
@@ -11303,7 +11320,7 @@ def render_storefront_html() -> str:
         import html as py_html
         for p in active_prods:
             banner_img = f'<img src="{p.photo_url}" alt="{p.name}" class="w-full h-auto max-h-[520px] object-cover rounded-2xl mb-4 border border-slate-700/60 shadow-lg transition duration-300 group-hover:scale-[1.01]" onerror="this.style.display=\'none\'">' if p.photo_url else '<div class="w-full h-48 rounded-2xl mb-4 bg-gradient-to-tr from-slate-900 via-slate-800 to-cyan-950/60 border border-slate-700/60 flex items-center justify-center text-4xl">🎓</div>'
-            price_display = f'<span class="text-base font-black text-emerald-400 font-mono">{p.price:,} <span class="text-xs font-normal">تومان</span></span>' if p.price > 0 else '<span class="text-base font-bold text-cyan-400">رایگان 🎁</span>'
+            price_display = f'<span class="text-base font-black text-emerald-400">{p.price:,} <span class="text-xs font-normal">تومان</span></span>' if p.price > 0 else '<span class="text-base font-bold text-cyan-400">رایگان 🎁</span>'
 
             safe_id = py_html.escape(str(p.product_id or ''), quote=True)
             safe_name = py_html.escape(str(p.name or ''), quote=True)
@@ -11436,7 +11453,7 @@ def render_storefront_html() -> str:
                 <div>
                     <h1 class="text-sm font-black tracking-wide text-white flex items-center gap-2">
                         UNFINIT STORE
-                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">{config.ENGINE_VERSION}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800">{config.ENGINE_VERSION}</span>
                     </h1>
                     <p class="text-[11px] text-slate-400">فروشگاه آنلاین و هوشمند دوره‌های آموزشی</p>
                 </div>
@@ -11475,7 +11492,7 @@ def render_storefront_html() -> str:
     <footer class="border-t border-slate-800/80 bg-slate-950/60 py-6 mt-16 text-center text-xs text-slate-500">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p>© UNFINIT Store Engine - سیستم جامع فروش دوره‌های تخصصی</p>
-            <p class="text-[11px] text-slate-600 font-mono">Secure Payments via Bale &amp; Direct Verification | UNFINIT Store {config.ENGINE_VERSION}</p>
+            <p class="text-[11px] text-slate-600">Secure Payments via Bale &amp; Direct Verification | UNFINIT Store {config.ENGINE_VERSION}</p>
         </div>
     </footer>
 
@@ -11500,7 +11517,7 @@ def render_storefront_html() -> str:
                 </div>
                 <div class="text-left">
                     <span class="text-slate-400 block text-[11px]">مبلغ قابل پرداخت:</span>
-                    <span id="baleModalCoursePrice" class="font-bold text-emerald-400 font-mono mt-0.5 block">-</span>
+                    <span id="baleModalCoursePrice" class="font-bold text-emerald-400 mt-0.5 block">-</span>
                 </div>
             </div>
 
@@ -11512,7 +11529,7 @@ def render_storefront_html() -> str:
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">شماره همراه (جهت پیگیری و ارسال لینک) *</label>
-                    <input type="tel" id="baleCustomerPhone" required placeholder="مثال: 09123456789" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono" dir="ltr">
+                    <input type="tel" id="baleCustomerPhone" required placeholder="مثال: 09123456789" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" dir="ltr">
                 </div>
                 <button type="submit" id="btnBalePaySubmit" class="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
                     <span>⚡️</span> دریافت لینک پرداخت بله
@@ -11524,7 +11541,7 @@ def render_storefront_html() -> str:
                 <div class="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/80 space-y-2">
                     <span class="text-2xl">🔗</span>
                     <p class="text-xs font-bold text-emerald-300">لینک درگاه پرداخت بله آماده شد!</p>
-                    <p class="text-[11px] text-slate-300">شناسه سفارش شما: <span id="baleOrderIdBadge" class="font-mono text-cyan-400 font-bold"></span></p>
+                    <p class="text-[11px] text-slate-300">شناسه سفارش شما: <span id="baleOrderIdBadge" class="text-cyan-400 font-bold"></span></p>
                 </div>
                 <div class="space-y-2">
                     <a id="baleInvoiceLinkBtn" href="#" target="_blank" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/20 transition flex items-center justify-center gap-2">
@@ -11577,12 +11594,12 @@ def render_storefront_html() -> str:
             <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950/40 border border-slate-800 space-y-3">
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400">مبلغ واریزی:</span>
-                    <span id="cardModalCoursePrice" class="font-bold text-emerald-400 font-mono">-</span>
+                    <span id="cardModalCoursePrice" class="font-bold text-emerald-400">-</span>
                 </div>
                 <div class="space-y-1">
                     <span class="text-[11px] text-slate-400">شماره کارت بانکی:</span>
                     <div class="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                        <span id="cardModalNumber" class="font-mono text-cyan-400 text-sm font-bold tracking-wider">{card_number}</span>
+                        <span id="cardModalNumber" class="text-cyan-400 text-sm font-bold tracking-wider">{card_number}</span>
                         <button onclick="copyText('{card_number}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] border border-slate-700 transition">
                             کپی
                         </button>
@@ -11602,7 +11619,7 @@ def render_storefront_html() -> str:
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">شماره همراه خریدار *</label>
-                    <input type="tel" id="cardCustomerPhone" required placeholder="مثال: 09123456789" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono" dir="ltr">
+                    <input type="tel" id="cardCustomerPhone" required placeholder="مثال: 09123456789" class="w-full  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" dir="ltr">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-300 mb-1">شماره پیگیری واریز یا ۴ رقم آخر کارت *</label>
@@ -11622,7 +11639,7 @@ def render_storefront_html() -> str:
                     <span class="text-3xl">✅</span>
                     <h4 class="text-sm font-bold text-emerald-300">سفارش شما با موفقیت ثبت شد!</h4>
                     <p class="text-xs leading-relaxed" style="color: var(--text-muted);">
-                        کد رهگیری شما: <span id="cardOrderIdBadge" class="font-mono text-cyan-400 font-bold"></span>
+                        کد رهگیری شما: <span id="cardOrderIdBadge" class="text-cyan-400 font-bold"></span>
                     </p>
                     <p class="text-[11px] text-slate-400 mt-2">
                         پس از بررسی و تایید فیش توسط پشتیبانی، دوره شما فعال خواهد شد. شما می‌توانید با استفاده از کد رهگیری یا شماره همراه خود از بخش "پیگیری سفارش" وضعیت را بررسی نمایید.
@@ -11650,7 +11667,7 @@ def render_storefront_html() -> str:
             </div>
 
             <form class="flex gap-2" onsubmit="handleTrackSubmit(event)">
-                <input type="text" id="trackInput" required placeholder="کد رهگیری (ORD_...) یا شماره همراه..." class="flex-1  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 font-mono">
+                <input type="text" id="trackInput" required placeholder="کد رهگیری (ORD_...) یا شماره همراه..." class="flex-1  border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500">
                 <button type="submit" id="btnTrackSubmit" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition shrink-0">
                     استعلام
                 </button>
@@ -11685,7 +11702,7 @@ def render_storefront_html() -> str:
                 </div>
                 <div class="text-left">
                     <span class="text-[11px] text-slate-400 block">مبلغ قابل پرداخت:</span>
-                    <span id="zarinpalModalPrice" class="text-sm font-extrabold text-amber-400 font-mono">-</span>
+                    <span id="zarinpalModalPrice" class="text-sm font-extrabold text-amber-400">-</span>
                 </div>
             </div>
 
@@ -11698,11 +11715,11 @@ def render_storefront_html() -> str:
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">شماره تلفن همراه</label>
-                    <input type="tel" id="zarinpalCustomerPhone" required placeholder="09xxxxxxxxx" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono transition text-left" dir="ltr">
+                    <input type="tel" id="zarinpalCustomerPhone" required placeholder="09xxxxxxxxx" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 transition text-left" dir="ltr">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">ایمیل خریدار (اختیاری جهت دریافت فاکتور)</label>
-                    <input type="email" id="zarinpalCustomerEmail" placeholder="user@example.com" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono transition text-left" dir="ltr">
+                    <input type="email" id="zarinpalCustomerEmail" placeholder="user@example.com" class="w-full  border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 transition text-left" dir="ltr">
                 </div>
 
                 <div class="pt-2">
@@ -12119,7 +12136,7 @@ def render_storefront_html() -> str:
                         badge = '<span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">✅ پرداخت تایید شده</span>';
                         if (ord.download_link) {{
                             dlHtml = '<div class="pt-2 border-t border-slate-800 mt-2 flex items-center justify-between gap-2">' +
-                                '<span class="text-[11px] text-slate-400 truncate max-w-[200px] font-mono">🔗 ' + ord.download_link + '</span>' +
+                                '<span class="text-[11px] text-slate-400 truncate max-w-[200px]">🔗 ' + ord.download_link + '</span>' +
                                 '<div class="flex gap-1.5">' +
                                     '<a href="' + ord.download_link + '" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">📥 دانلود</a>' +
                                     '<button data-dl="' + ord.download_link + '" onclick="copyText(this.dataset.dl)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-cyan-300 text-xs border border-slate-700">کپی</button>' +
@@ -12140,14 +12157,14 @@ def render_storefront_html() -> str:
                     return '<div class="p-4 rounded-2xl  border border-slate-800 space-y-2 text-xs">' +
                         '<div class="flex justify-between items-start gap-2">' +
                             '<div>' +
-                                '<span class="font-mono text-[10px] text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">' + ord.order_id + '</span>' +
+                                '<span class="text-[10px] text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">' + ord.order_id + '</span>' +
                                 '<h4 class="font-bold text-white text-sm mt-1">' + (ord.product_name || 'دوره آموزشی') + '</h4>' +
                             '</div>' +
                             badge +
                         '</div>' +
                         '<div class="flex justify-between text-[11px] text-slate-400 pt-1">' +
-                            '<span>مبلغ: <span class="text-emerald-400 font-mono font-bold">' + (ord.amount || 0).toLocaleString() + ' تومان</span></span>' +
-                            '<span class="font-mono">' + dateStr + '</span>' +
+                            '<span>مبلغ: <span class="text-emerald-400 font-bold">' + (ord.amount || 0).toLocaleString() + ' تومان</span></span>' +
+                            '<span class="">' + dateStr + '</span>' +
                         '</div>' +
                         dlHtml +
                     '</div>';
@@ -12199,7 +12216,7 @@ def render_storefront_html() -> str:
                     <div>
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">FEED_AUTH_COOKIE (سشن کوکی مرورگر - اولویت)</label>
                         <div class="relative">
-                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 pr-10 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
+                        <textarea id="quick_FEED_AUTH_COOKIE" dir="ltr" rows="2" class="w-full rounded-xl px-4 py-2.5 pr-10 text-xs transition focus:outline-none" style="background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-color);" placeholder="session_cookie=..."></textarea>
                         <button type="button" onclick="document.getElementById('quick_FEED_AUTH_COOKIE').value=''" class="absolute right-2 top-2 p-1.5 text-slate-400 hover:text-rose-400 transition" title="پاک کردن کوکی">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
@@ -12207,12 +12224,12 @@ def render_storefront_html() -> str:
                     </div>
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">ایمیل حساب کاربری (FEED_AUTH_EMAIL)</label>
-                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                        <input type="text" id="quick_FEED_AUTH_EMAIL" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                     </div>
                     <div class="relative">
                         <label class="block text-[11px] font-bold mb-1" style="color: var(--text-muted);">کلمه عبور (FEED_AUTH_PASSWORD)</label>
                         <div class="relative">
-                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs font-mono transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
+                            <input type="password" id="quick_FEED_AUTH_PASSWORD" dir="ltr" class="w-full rounded-xl px-4 py-2.5 text-xs transition focus:outline-none" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-color);">
                             <button type="button" onclick="togglePasswordVisibility('quick_FEED_AUTH_PASSWORD', this)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>

@@ -1,0 +1,40 @@
+def get_system_health(settings: dict = None) -> Dict[str, Any]:
+    if settings is None:
+        settings = {}
+        try:
+            settings_file = getattr(config, "SETTINGS_JSON_FILE", None) or (Path(getattr(config, "DATA_DIR", "data")) / "settings.json")
+            if settings_file.exists():
+                import json
+                with open(settings_file, "r", encoding="utf-8") as sf:
+                    settings = json.load(sf)
+        except:
+            pass
+    uptime_sec = int(time.time() - getattr(config, "SERVER_START_TIME", time.time()))
+    h = uptime_sec // 3600
+    m = (uptime_sec % 3600) // 60
+    s = uptime_sec % 60
+    uptime_str = f"{h}h {m}m {s}s"
+
+    temp_files = list(config.TEMP_DIR.glob("*")) if config.TEMP_DIR.exists() else []
+    temp_size = sum(f.stat().st_size for f in temp_files if f.is_file())
+
+    rub_user_active = has_rubika_session(config.RUBIKA_SESSION) or has_rubika_session()
+    rub_phone = ""
+    if rub_user_active:
+        try:
+            
+            rub_phone = RubikaUserClient().get_masked_phone()
+        except:
+            pass
+
+    splus_active = False
+    splus_phone = ""
+    try:
+        splus_active = soroush_worker.is_connected()
+        splus_phone = soroush_worker.get_masked_phone()
+    except:
+        pass
+        
+    auth_online = bool(settings.get("FEED_AUTH_COOKIE")) or bool((settings.get("FEED_AUTH_EMAIL") or settings.get("ABASMANESH_EMAIL")) and (settings.get("FEED_AUTH_PASSWORD") or settings.get("ABASMANESH_PASSWORD")))
+
+    return
