@@ -3123,11 +3123,21 @@ class TelegramAdapter:
                     except Exception: pass
 
         # Incoming Photos (Receipts & Covers)
-        @self.app.on_message(filters.private & filters.photo)
-        async def photo_handler(client: Client, message: Message):
+        @self.app.on_message(filters.private & (filters.photo | filters.text))
+        async def photo_and_text_state_handler(client: Client, message: Message):
             user_id = message.from_user.id
-            text = (message.caption or "").strip()
+            text = (message.text or message.caption or "").strip()
             user_act = session_manager.get_user_action(f"tg_{user_id}")
+            
+            # Handle photo requirement explicitly for states that need it
+            if user_act and user_act.get("action") in ["await_c_photo", "await_c_edit_photo", "await_receipt", "await_cover"]:
+                if not message.photo:
+                    if text == "/skip" and user_act.get("action") == "await_c_photo":
+                        # allow skip
+                        pass
+                    else:
+                        await message.reply_text("❌ لطفاً یک عکس/تصویر ارسال کنید.", parse_mode=enums.ParseMode.HTML)
+                        return
             if user_act and text == "/cancel":
                 session_manager.clear_user_action(f"tg_{user_id}")
                 await message.reply_text("❌ عملیات با موفقیت لغو شد.", parse_mode=enums.ParseMode.HTML)
