@@ -4103,7 +4103,7 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                 ]
                                             }
                                             await bale.send_message(chat_id, "\n".join(lines), reply_markup=kb)
-                                        continue
+                                    continue
 
                                     if text in ("🔒 مدیریت قفل کانال", "قفل کانال"):
                                         if bale.is_admin(chat_id):
@@ -4154,9 +4154,8 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                         kb = None
                                     if getattr(self, "is_admin", lambda x: False)(user_id):
                                         kb = {"inline_keyboard": [[{"text": "🛠 تایید پرداخت و دسترسی آزمایشی (ادمین)", "callback_data": f"bmeta:adm_sim_pay:{order.order_id}"}]]}
-                                    await bale.send_message(chat_id, "
-".join(lines), reply_markup=kb)
-                                        continue
+                                    await bale.send_message(chat_id, "\n".join(lines), reply_markup=kb)
+                                    continue
 
                                     if text in ("💬 پشتیبانی و تیکت‌ها", "تیکت‌ها"):
                                         await bale.send_message(chat_id, "💬 <b>تیکت‌های پشتیبانی:</b>\nپیام‌های جدید کاربران بلافاصله در این چت برای پاسخ‌دهی نمایش داده می‌شوند.")

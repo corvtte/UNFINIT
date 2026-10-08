@@ -2473,8 +2473,7 @@ class TelegramAdapter:
             kb = None
             if getattr(self, "is_admin", lambda x: False)(user_id):
                 kb = InlineKeyboardMarkup([[InlineKeyboardButton("🛠 تایید پرداخت و دسترسی آزمایشی (ادمین)", callback_data=f"adm_sim_pay:{order.order_id}")]])
-            await client.send_message(chat_id, "
-".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=kb)
+            await client.send_message(chat_id, "\n".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
         async def _check_terms_and_proceed(client: Client, chat_id: int | str, user_id: int | str, username: str, full_name: str, prod: Any, u: Any):
             if prod.price > 0 and not u.terms_accepted:
@@ -2563,7 +2562,7 @@ class TelegramAdapter:
                 except: pass
             else:
                 await callback_query.answer("خطا در تایید سفارش", show_alert=True)
-@self.app.on_callback_query(filters.regex(r"^terms_accept:"))
+        @self.app.on_callback_query(filters.regex(r"^terms_accept:"))
         async def terms_accept_cb(client: Client, callback_query: CallbackQuery):
             await callback_query.answer("تعهدنامه با موفقیت پذیرفته شد.")
             prod_id = callback_query.data.split(":", 1)[1]
