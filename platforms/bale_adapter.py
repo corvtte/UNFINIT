@@ -4151,7 +4151,11 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                             "فیش‌های واریزی جدید بلافاصله برای بررسی و تایید ارسال می‌گردند.",
                                             f"تعداد تراکنش‌های ثبت‌شده اخیر: {len(recent_orders)}"
                                         ]
-                                        await bale.send_message(chat_id, "\n".join(lines))
+                                        kb = None
+                                    if getattr(self, "is_admin", lambda x: False)(user_id):
+                                        kb = {"inline_keyboard": [[{"text": "🛠 تایید پرداخت و دسترسی آزمایشی (ادمین)", "callback_data": f"bmeta:adm_sim_pay:{order.order_id}"}]]}
+                                    await bale.send_message(chat_id, "
+".join(lines), reply_markup=kb)
                                         continue
 
                                     if text in ("💬 پشتیبانی و تیکت‌ها", "تیکت‌ها"):

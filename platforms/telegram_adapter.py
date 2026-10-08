@@ -2470,7 +2470,11 @@ class TelegramAdapter:
             c_num = await get_system_setting("CARD_NUMBER", config.CARD_NUMBER)
             c_holder = await get_system_setting("CARD_HOLDER", config.CARD_HOLDER)
             lines.extend([f"💳 <b>مبلغ قابل پرداخت:</b> <b>{remaining:,} تومان</b>", "", "🏦 <b>اطلاعات کارت جهت واریز:</b>", f"▫️ شماره کارت: <code>{c_num}</code>", f"▫️ صاحب حساب: <b>{c_holder}</b>", "", "📸 <i>لطفاً پس از واریز، عکس فیش واریزی خود را ارسال فرمایید.</i>"])
-            await client.send_message(chat_id, "\n".join(lines), parse_mode=enums.ParseMode.HTML)
+            kb = None
+            if getattr(self, "is_admin", lambda x: False)(user_id):
+                kb = InlineKeyboardMarkup([[InlineKeyboardButton("🛠 تایید پرداخت و دسترسی آزمایشی (ادمین)", callback_data=f"adm_sim_pay:{order.order_id}")]])
+            await client.send_message(chat_id, "
+".join(lines), parse_mode=enums.ParseMode.HTML, reply_markup=kb)
 
         async def _check_terms_and_proceed(client: Client, chat_id: int | str, user_id: int | str, username: str, full_name: str, prod: Any, u: Any):
             if prod.price > 0 and not u.terms_accepted:
@@ -2546,7 +2550,20 @@ class TelegramAdapter:
             await _check_terms_and_proceed(client, callback_query.message.chat.id, user_id, username, full_name, prod, u)
 
         # Pre-Purchase Terms Acceptance Callbacks
-        @self.app.on_callback_query(filters.regex(r"^terms_accept:"))
+        
+        @self.app.on_callback_query(filters.regex(r"^adm_sim_pay:"))
+        async def adm_sim_pay_cb(client: Client, callback_query: CallbackQuery):
+            if not getattr(self, "is_admin", lambda x: False)(callback_query.from_user.id):
+                return
+            order_id = callback_query.data.split(":")[1]
+            res = await StoreService.approve_order(order_id)
+            if res:
+                await callback_query.answer("سفارش تایید و محتوا ارسال شد (شبیه‌سازی)", show_alert=True)
+                try: await callback_query.message.edit_reply_markup(None)
+                except: pass
+            else:
+                await callback_query.answer("خطا در تایید سفارش", show_alert=True)
+@self.app.on_callback_query(filters.regex(r"^terms_accept:"))
         async def terms_accept_cb(client: Client, callback_query: CallbackQuery):
             await callback_query.answer("تعهدنامه با موفقیت پذیرفته شد.")
             prod_id = callback_query.data.split(":", 1)[1]
