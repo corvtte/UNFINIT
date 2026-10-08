@@ -379,7 +379,7 @@ def render_dashboard_html() -> str:
 
     try:
         import sqlite3
-        con = sqlite3.connect(getattr(config, "DB_FILE", "data/unfinit.db"))
+        con = sqlite3.connect(getattr(config, "DB_PATH", "store_database.db"))
         con.row_factory = sqlite3.Row
         cur = con.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT, title TEXT, price INTEGER, is_active BOOLEAN, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")

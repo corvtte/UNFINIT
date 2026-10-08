@@ -3142,6 +3142,25 @@ class TelegramAdapter:
                 session_manager.clear_user_action(f"tg_{user_id}")
                 await message.reply_text("❌ عملیات با موفقیت لغو شد.", parse_mode=enums.ParseMode.HTML)
                 return
+            if user_act and text == "/back":
+                act = user_act.get("action")
+                c_data = user_act.get("extra") or {}
+                if act == "await_c_price":
+                    session_manager.set_user_action(f"tg_{user_id}", "await_c_name", "new_course", extra=c_data)
+                    await message.reply_text("🔙 <b>برگشت به مرحله قبل (نام دوره):</b>\n\nلطفاً نام کامل دوره را ارسال فرمایید:", parse_mode=enums.ParseMode.HTML)
+                elif act == "await_c_desc":
+                    session_manager.set_user_action(f"tg_{user_id}", "await_c_price", "new_course", extra=c_data)
+                    await message.reply_text("🔙 <b>برگشت به مرحله قبل (قیمت):</b>\n\nلطفاً قیمت دوره را به تومان ارسال کنید (برای رایگان عدد 0 بفرستید):", parse_mode=enums.ParseMode.HTML)
+                elif act == "await_c_link":
+                    session_manager.set_user_action(f"tg_{user_id}", "await_c_desc", "new_course", extra=c_data)
+                    await message.reply_text("🔙 <b>برگشت به مرحله قبل (توضیحات):</b>\n\nلطفاً توضیحات متنی یا سرفصل‌های دوره را بفرستید:", parse_mode=enums.ParseMode.HTML)
+                elif act == "await_c_photo":
+                    session_manager.set_user_action(f"tg_{user_id}", "await_c_link", "new_course", extra=c_data)
+                    await message.reply_text("🔙 <b>برگشت به مرحله قبل (لینک دسترسی):</b>\n\nلطفاً لینک دسترسی کانال یا گروه را بفرستید:", parse_mode=enums.ParseMode.HTML)
+                else:
+                    await message.reply_text("❌ امکان برگشت از این مرحله وجود ندارد.", parse_mode=enums.ParseMode.HTML)
+                return
+
 
             if user_act and user_act.get("action") == "await_c_name":
                 c_data = user_act.get("extra") or {}
@@ -3190,26 +3209,7 @@ class TelegramAdapter:
                 )
                 return
 
-            if user_act and user_act.get("action") == "await_c_photo":
-                c_data = user_act.get("extra") or {}
-                session_manager.clear_user_action(f"tg_{user_id}")
-                prod = await StoreService.add_product(
-                    name=c_data.get("name") or "دوره جدید",
-                    price=int(c_data.get("price") or 0),
-                    description=c_data.get("desc") or "",
-                    download_link=c_data.get("link") or "",
-                    photo_url="",
-                    allow_card=True,
-                    allow_bale=True
-                )
-                await message.reply_text(
-                    f"🎉 <b>دوره «{escape(prod.name)}» با موفقیت ثبت گردید!</b>\n\n"
-                    f"💰 قیمت: <code>{prod.price:,} تومان</code>\n"
-                    f"📥 لینک دانلود: <code>{escape(prod.download_link or 'ندارد')}</code>\n\n"
-                    "دوره هم‌اکنون به صورت آنی در فروشگاه وب (<code>/store</code>) و ربات‌ها منتشر شد.",
-                    parse_mode=enums.ParseMode.HTML
-                )
-                return
+            
             if user_act and user_act.get("action") == "await_c_photo":
                 c_data = user_act.get("extra") or {}
                 session_manager.clear_user_action(f"tg_{user_id}")
@@ -3795,7 +3795,8 @@ class TelegramAdapter:
             elif action.startswith("fmt_"):
                 target_fmt = action.split("_")[1] # mp3, ogg, m4a, wav
                 status_msg = await callback_query.message.reply_text(f"⏳ <b>در حال پردازش و تبدیل فرمت فایل به {target_fmt.upper()}...</b>\n\nدرصد پیشرفت: <code>0%</code>\n[░░░░░░░░░░]", parse_mode=enums.ParseMode.HTML)
-                await ensure_binary()
+                await ensure_binary(existing_status_m=status_msg)
+                await status_msg.edit_text(f'⏳ <b>در حال پردازش و تبدیل فرمت فایل به {target_fmt.upper()}...</b>\n\nدرصد پیشرفت: <code>0%</code>\n[░░░░░░░░░░]', parse_mode=enums.ParseMode.HTML)
                 try:
                     async def progress_cb(pct):
                         bar_len = 10
