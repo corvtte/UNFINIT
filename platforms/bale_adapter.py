@@ -1879,12 +1879,26 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
 
                                         elif action.startswith("fmt_"):
                                             target_fmt = action.split("_")[1]
-                                            status_msg = await bale.send_message(chat_id, f"⏳ <b>در حال پردازش و تبدیل فرمت فایل به {target_fmt.upper()}...</b>")
+                                            status_msg = await bale.send_message(chat_id, f"⏳ <b>در حال پردازش و تبدیل فرمت فایل به {target_fmt.upper()}...</b>\n\nدرصد پیشرفت: <code>0%</code>\n[░░░░░░░░░░]")
                                             await ensure_bale_binary()
                                             try:
-                                                ok, final_audio = MediaService.convert_audio_format(drop["working_path"], target_fmt)
+                                                async def progress_cb(pct):
+                                                    bar_len = 10
+                                                    filled = int(pct / 100 * bar_len)
+                                                    bar = "█" * filled + "░" * (bar_len - filled)
+                                                    try:
+                                                        await bale.edit_message_text(chat_id, status_msg["message_id"], f"⏳ <b>در حال پردازش و تبدیل فرمت فایل به {target_fmt.upper()}...</b>\n\nدرصد پیشرفت: <code>{pct}%</code>\n[{bar}]")
+                                                    except Exception:
+                                                        pass
+
+                                                ok, final_audio = await MediaService.convert_audio_format_async(
+                                                    drop["working_path"], 
+                                                    target_fmt,
+                                                    progress_callback=progress_cb
+                                                )
+                                                
                                                 if ok and final_audio.exists():
-                                                    await bale.edit_message_text(chat_id, status_msg["message_id"], f"✅ <b>تبدیل فرمت به {target_fmt.upper()} با موفقیت انجام شد. در حال ارسال نسخه جدید...</b>")
+                                                    await bale.edit_message_text(chat_id, status_msg["message_id"], f"✅ <b>تبدیل فرمت به {target_fmt.upper()} با موفقیت انجام شد. در حال ارسال نسخه نهایی...</b>")
                                                     title = drop.get("api_meta", {}).get("title") or "Unknown"
                                                     artist = drop.get("api_meta", {}).get("artist") or "Unknown"
                                                     duration = drop.get("api_meta", {}).get("duration_sec") or 0
@@ -1893,32 +1907,24 @@ async def run_bale_polling_engine(telegram_adapter_instance=None, rubika_adapter
                                                     sent_audio = await bale.send_audio(
                                                         chat_id,
                                                         final_audio,
+                                                        caption=f"🎧 <b>فایل صوتی تبدیل‌شده ({target_fmt.upper()}):</b>\n📄 <code>{final_audio.name}</code>\n👤 خواننده: <b>{artist}</b>",
                                                         title=title,
                                                         performer=artist,
                                                         duration=duration,
-                                                        thumb=thumb_p,
-                                                        caption=f"🎧 <b>فایل صوتی تبدیل‌شده ({target_fmt.upper()}):</b>\n📁 <code>{final_audio.name}</code>\n🎤 خواننده: <b>{artist}</b>\n⏳ مدت زمان: <code>{duration} ثانیه</code>"
+                                                        thumb=thumb_p
                                                     )
-                                                    new_drop_id = __import__('uuid').uuid4().hex[:8]
-                                                    new_audio_id = sent_audio.get("message_id")
-                                                    new_data = MediaService.register_incoming_message_meta(
-                                                        new_drop_id, "bale", chat_id, str(new_audio_id), final_audio.name, final_audio.stat().st_size,
-                                                        media_type="audio", api_meta={"filename": final_audio.name, "duration_sec": duration, "title": title, "artist": artist}
-                                                    )
-                                                    new_data["working_path"] = str(final_audio)
-                                                    new_data["is_downloaded_locally"] = True
-                                                    if thumb_p: new_data["thumb_path"] = thumb_p
-                                                    
-                                                    from core.formatters import TelegramFormatter
-                                                    new_card = TelegramFormatter.format_light_card(new_data)
-                                                    new_kb = build_bale_media_keyboard(new_drop_id, new_data)
-                                                    c_sent = await bale.send_message(chat_id, new_card, reply_markup=new_kb)
-                                                    new_data["card_msg_id"] = c_sent.get("message_id")
-                                                    await bale.delete_message(chat_id, status_msg["message_id"])
+                                                    try:
+                                                        await bale.delete_message(chat_id, status_msg["message_id"])
+                                                    except:
+                                                        pass
+                                                    if final_audio.exists() and final_audio != drop.get("working_path"):
+                                                        try: final_audio.unlink()
+                                                        except: pass
                                                 else:
                                                     await bale.edit_message_text(chat_id, status_msg["message_id"], "❌ خطا در عملیات تبدیل فرمت فایل.")
                                             except Exception as e_fmt:
-                                                logger.error(f"Format conversion error: {e_fmt}")
+                                                import logging
+                                                logging.getLogger(__name__).error(f"Format conversion error: {e_fmt}")
                                                 await bale.edit_message_text(chat_id, status_msg["message_id"], f"❌ خطای سیستمی: {e_fmt}")
 
                                         elif action == "audio_specs":

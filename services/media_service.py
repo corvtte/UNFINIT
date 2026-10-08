@@ -583,32 +583,36 @@ class MediaService:
         return ok, raw_p
 
     @staticmethod
-    def convert_audio_format(
-        audio_path,
-        target_format: str, # e.g. "mp3", "ogg", "m4a", "wav"
-        output_path = None
+    async def convert_audio_format_async(
+        input_path,
+        target_format: str,
+        output_path = None,
+        progress_callback = None
     ):
         from core.config import config
-        from media.inspector import inspect_audio_stream
-        import subprocess, uuid, logging
+        from media.inspector import inspect_technical_metadata
+        import asyncio
+        import uuid
+        import logging
         from pathlib import Path
+        import math
         logger = logging.getLogger(__name__)
 
-        a_path = Path(audio_path).resolve()
+        a_path = Path(input_path).resolve()
         if not a_path.exists():
-            raise FileNotFoundError(f"Input audio file not found: {audio_path}")
+            raise FileNotFoundError(f"Input file not found: {input_path}")
 
         target_out = (Path(output_path) if output_path else config.TEMP_DIR / f"{a_path.stem}.{target_format}").resolve()
         target_out.parent.mkdir(parents=True, exist_ok=True)
 
         if target_out == a_path or target_out.exists():
             target_out = config.TEMP_DIR / f"converted_{a_path.stem}_{uuid.uuid4().hex[:6]}.{target_format}"
-        target_out.parent.mkdir(parents=True, exist_ok=True)
 
-        ast_info = inspect_audio_stream(a_path)
-        sample_rate = ast_info.get("sample_rate", 44100)
-        channels = ast_info.get("channels", 2)
-        bitrate_kbps = ast_info.get("bitrate_kbps", 192)
+        tech = inspect_technical_metadata(a_path)
+        sample_rate = tech.get("sample_rate") or 44100
+        channels = tech.get("channels") or 2
+        bitrate_kbps = tech.get("audio_bitrate_kbps") or 192
+        total_dur_sec = tech.get("duration_sec") or 0.0
 
         if target_format == "mp3":
             acodec = "libmp3lame"
@@ -625,21 +629,55 @@ class MediaService:
             "ffmpeg", "-y",
             "-i", str(a_path),
             "-vn",
-            "-acodec", acodec,
+            "-acodec", acodec
         ]
         
         if target_format != "wav":
             cmd.extend(["-b:a", f"{bitrate_kbps}k"])
-        cmd.extend(["-ar", str(sample_rate), "-ac", str(channels), str(target_out)])
+        cmd.extend(["-ar", str(sample_rate), "-ac", str(channels)])
+        cmd.extend(["-progress", "pipe:1", "-threads", "0", str(target_out)])
         
-        logger.info(f"Converting {a_path.name} to {target_format.upper()}: {' '.join(cmd)}")
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        logger.info(f"Converting to {target_format.upper()}: {' '.join(cmd)}")
         
-        if res.returncode != 0 or not target_out.exists() or target_out.stat().st_size < 100:
-            logger.error(f"FFmpeg audio conversion error: {res.stderr}")
-            return False, target_out
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT
+        )
+        
+        last_update = 0
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                break
+            line_str = line.decode('utf-8', errors='ignore').strip()
             
-        return True, target_out
+            if total_dur_sec > 0 and line_str.startswith("out_time_us="):
+                try:
+                    us_str = line_str.split("=")[1]
+                    if us_str != "N/A":
+                        current_sec = int(us_str) / 1_000_000.0
+                        pct = min(99, int((current_sec / total_dur_sec) * 100))
+                        
+                        now = asyncio.get_event_loop().time()
+                        if now - last_update >= 2.0 or pct >= 99:
+                            last_update = now
+                            if progress_callback:
+                                res = progress_callback(pct)
+                                if asyncio.iscoroutine(res):
+                                    asyncio.create_task(res)
+                except Exception:
+                    pass
+
+        await proc.wait()
+        
+        success = proc.returncode == 0 and target_out.exists() and target_out.stat().st_size > 100
+        if success and progress_callback:
+            res = progress_callback(100)
+            if asyncio.iscoroutine(res):
+                asyncio.create_task(res)
+                
+        return success, target_out
 
     @staticmethod
     def convert_video_to_mp3(
