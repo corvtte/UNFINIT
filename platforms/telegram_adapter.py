@@ -2560,6 +2560,28 @@ class TelegramAdapter:
                 await callback_query.answer("سفارش تایید و محتوا ارسال شد (شبیه‌سازی)", show_alert=True)
                 try: await callback_query.message.edit_reply_markup(None)
                 except: pass
+                
+                order = res["order"]
+                prod = res.get("product")
+                uid_str = str(order.user_id or "")
+                if uid_str.isdigit():
+                    try:
+                        is_pkg = bool(prod and (getattr(prod, "delivery_type", "channel") == "files_package" or getattr(prod, "files_package", None) or getattr(prod, "episodes", None)))
+                        if is_pkg:
+                            await client.send_message(int(uid_str), f"🎁 <b>سفارش شما تایید شد!</b>\nفایل‌های دوره «{prod.name}» هم‌اکنون به صورت دکمه‌های شیشه‌ای ارسال می‌شوند:\nشماره سفارش: <code>{order.order_id}</code>", parse_mode=enums.ParseMode.HTML)
+                            await StoreService.deliver_course_package(prod, int(uid_str), "telegram")
+                        else:
+                            dl_content = (prod.download_link if prod else "") or ""
+                            cb_awarded = res.get("cashback_awarded", 0)
+                            cust_msg = StoreService.format_delivery_message(order.product_name, order.order_id, dl_content, cb_awarded)
+                            parsed_dl = StoreService.parse_delivery_links(dl_content)
+                            cust_buttons = []
+                            for lk in parsed_dl["links"]:
+                                cust_buttons.append([InlineKeyboardButton(lk["title"], url=lk["url"])])
+                            cust_kb = InlineKeyboardMarkup(cust_buttons) if cust_buttons else None
+                            await client.send_message(int(uid_str), cust_msg, reply_markup=cust_kb, parse_mode=enums.ParseMode.HTML)
+                    except Exception as e:
+                        logger.error(f"[adm_sim_pay] Failed to deliver: {e}")
             else:
                 await callback_query.answer("خطا در تایید سفارش", show_alert=True)
         @self.app.on_callback_query(filters.regex(r"^terms_accept:"))

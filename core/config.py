@@ -69,7 +69,7 @@ class Config:
     این کلاس وظیفه خواندن متغیرهای محیطی، مقادیر پیش‌فرض امن، مسیرهای دایرکتوری داده،
     آپلودها، سشن‌ها، و تنظیمات ارتباط با پلتفرم‌های پیام‌رسان و هوش مصنوعی را بر عهده دارد.
     """
-    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.7.57").strip())
+    ENGINE_VERSION: VersionStr = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.7.58").strip())
     THEME: str = (os.environ.get("THEME") or "default-dark").strip()
     DATA_ENCRYPTION_KEY: str = (os.environ.get("DATA_ENCRYPTION_KEY") or "").strip()
     APPLY_DEFAULT_ARTIST_TAG: bool = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "false").strip().lower() in ("true", "1", "yes")
@@ -234,7 +234,7 @@ class Config:
         self.APPLY_DEFAULT_ARTIST_TAG = (os.environ.get("APPLY_DEFAULT_ARTIST_TAG") or "false").strip().lower() in ("true", "1", "yes")
         self.AUTO_RENAME_FILE_TO_TITLE = (os.environ.get("AUTO_RENAME_FILE_TO_TITLE") or "false").strip().lower() in ("true", "1", "yes")
         self.CASHBACK_PERCENT = float((os.environ.get("CASHBACK_PERCENT") or "0.0").strip() or 0.0)
-        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.7.57").strip())
+        self.ENGINE_VERSION = VersionStr((os.environ.get("ENGINE_VERSION") or "v0.7.58").strip())
 
     def is_admin(self, user_id: Any) -> bool:
         """Check if given user_id is the owner or listed in ADMIN_USER_IDS."""
